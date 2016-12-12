@@ -1,0 +1,12 @@
+rootProject.name = 'elements'
+include 'common'
+include 'jmx'
+include 'jobs'
+include 'network'
+include 'persist'
+include 'persist-hibernate'
+include 'reporting'
+include 'rules'
+include 'security'
+include 'web'
+
