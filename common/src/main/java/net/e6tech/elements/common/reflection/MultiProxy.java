@@ -45,10 +45,10 @@ public class MultiProxy {
     /**
      * Create a MultiProxy object to configure InvocationHandlers.
      *
-     * @param cls
-     * @param handler
-     * @param methods
-     * @return
+     * @param cls Root class to be proxied
+     * @param handler an InvocationHandler to handle method calls
+     * @param methods names of methods to be intercepted
+     * @return a configured MultiProxy
      */
     public static MultiProxy createProxy(Class cls, InvocationHandler handler, String... methods) {
         MultiProxy proxy = new MultiProxy();

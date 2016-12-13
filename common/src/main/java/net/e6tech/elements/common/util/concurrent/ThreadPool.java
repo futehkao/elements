@@ -43,15 +43,15 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
     /**
      * Return a thread pool that supports unlimited number of threads.  It will create threads as needed.
      * The default keep alive time for a thread is 60 seconds.
-     * @param name
-     * @return
+     * @param name name of the pool
+     * @return ThreadPool
      */
     public static ThreadPool cachedThreadPool(String name) {
         return cachedThreadPools.computeIfAbsent(name, (poolName) ->
                 new ThreadPool(name, (p) -> Executors.newCachedThreadPool(p)));
     }
 
-    /**
+    /*
      *
      * Using this type of threadPool may result in RejectedExecutionException when submitting a task.
      */
@@ -65,6 +65,9 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
     /**
      * Returns a fixed size pool.  If there are more requests than the number of threads, they are put into a queue to be processed when
      * a thread becomes available.
+     * @param name name of the pool
+     * @param nThreads number of threads
+     * @return ThreadPool
      */
     public static ThreadPool fixedThreadPool(String name, int nThreads) {
         return fixedThreadPools.computeIfAbsent(name, (poolName) ->

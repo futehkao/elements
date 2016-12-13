@@ -128,7 +128,7 @@ public class JMXService {
         return mBeanServer.invoke(objectName, method, arguments, signature);
     }
 
-    /** invokes an operation on the mbean */
+    /* invokes an operation on the mbean */
     public static Object invoke(ObjectName objectName,
                        String methodName,
                        Object ... arguments) throws Exception {

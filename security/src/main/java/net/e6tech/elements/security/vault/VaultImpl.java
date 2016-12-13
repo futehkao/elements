@@ -111,10 +111,9 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         return vault;
     }
 
-    /**
+    /*
      * We have a getter here so that ObjectMapper can get the property name and then use field
      * to set addedSecrets during deserialization.
-     * @return
      */
     public Map<String, SortedMap<Long, Secret>> getSecrets() {
         return secrets;

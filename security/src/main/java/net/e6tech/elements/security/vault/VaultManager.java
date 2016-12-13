@@ -260,9 +260,9 @@ public class VaultManager {
      * Adding a public private key.  The key is treated as if it is regular data and store in the
      * data vault.  As always, data vault items are encrypted with m-key
      *
-     * @param alias
-     * @param dualEntry
-     * @throws GeneralSecurityException
+     * @param alias alias of the key
+     * @param dualEntry dual entry containing authentication info for two users.
+     * @throws GeneralSecurityException general exception
      */
     public void addKeyPair(String alias, DualEntry dualEntry) throws GeneralSecurityException {
         checkAccess(dualEntry);
@@ -273,9 +273,9 @@ public class VaultManager {
     /**
      * Adding secret to the data vault.  It will be encrypted by m-key when stored.
      *
-     * @param alias
-     * @param dualEntry
-     * @throws GeneralSecurityException
+     * @param alias alias of the secret data
+     * @param dualEntry dual entry containing authentication info for two users.
+     * @throws GeneralSecurityException general exception
      */
     public void addSecretData(String alias, ClearText ct, DualEntry dualEntry) throws GeneralSecurityException {
         checkAccess(dualEntry);
@@ -491,7 +491,7 @@ public class VaultManager {
      * 3. remove all other users
      * 4. re-encrypt everything in local vault
      * 5. re-encrypt keys in the database.  We need to iterate through all version for each alias.
-     * @param dualEntry
+     * @param dualEntry dual entry containing authentication info for two users.
      */
     public void changePassphrase(DualEntry dualEntry) throws GeneralSecurityException, IOException {
         checkAccess(dualEntry);

@@ -23,13 +23,13 @@ import java.lang.reflect.Method;
 public interface InterceptorHandler {
     /**
      *
-     * @param interceptorInstance the inteceport instance that wraps a target.
-     * @param thisMethod
+     * @param interceptorInstance the intercepting instance that wraps a target.
+     * @param thisMethod the intercepting method
      * @param target can be null if the interceptor is created using newInstance.
-     * @param proceed
-     * @param args
-     * @return
-     * @throws Throwable
+     * @param proceed the intercepted method
+     * @param args arguments
+     * @return return value of the call.
+     * @throws Throwable general exception
      */
     Object invoke(Object interceptorInstance, Method thisMethod, Object target, Method proceed, Object[] args) throws Throwable;
 }

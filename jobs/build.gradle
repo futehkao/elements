@@ -16,7 +16,7 @@ limitations under the License.
 dependencies {
     compile project(':common')
     compile project(':jmx')
-    compile('org.quartz-scheduler:quartz:2.2.+') { exclude group: 'org.slf4j'}
-    compile('org.quartz-scheduler:quartz-jobs:2.2.+') { exclude group: 'org.slf4j'}
+    compile('org.quartz-scheduler:quartz:2.2.3') { exclude group: 'org.slf4j'}
+    compile('org.quartz-scheduler:quartz-jobs:2.2.3') { exclude group: 'org.slf4j'}
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }

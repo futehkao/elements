@@ -16,6 +16,11 @@ public interface PersistenceListener {
 
     /**
      * This method is called when EntityManager.persist is called.
+     *
+     * @param id The primary key object
+     * @param state state
+     * @param propertyNames property names
+     * @return whether the entity has been modified.
      */
     boolean onSave(
             Serializable id,

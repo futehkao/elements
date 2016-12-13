@@ -122,7 +122,7 @@ public class Measurement implements Serializable, MeasurementMXBean {
 
     /**
      * Because dataPoints is transient, we have to record everything.
-     * @param value
+     * @param value a measurement
      */
     public synchronized void add(double value) {
         total ++;

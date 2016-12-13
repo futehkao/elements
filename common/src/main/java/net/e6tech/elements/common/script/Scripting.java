@@ -266,8 +266,8 @@ public class Scripting {
      * Run a script.  The script may trigger further calls to exec.  But, load should not be
      * be called again.
      *
-     * @param path
-     * @throws ScriptException
+     * @param path file path of the script to be load
+     * @throws ScriptException throws exception if there are errors.
      */
     public void load(String path) throws ScriptException {
         exec(path, true);

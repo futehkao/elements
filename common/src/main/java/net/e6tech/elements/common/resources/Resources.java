@@ -300,8 +300,8 @@ public class Resources implements AutoCloseable, ResourcePool {
     /**
      * This method is mostly used for unit testing.  the bound class disappear once resources is closed.
      * Unless you know what you are doing, please don't use.
-     * @param cls
-     * @param service
+     * @param cls Class to bind to
+     * @param service  service class
      */
     public void bindClass(Class cls, Class service) {
         state.bindClass(cls, service);

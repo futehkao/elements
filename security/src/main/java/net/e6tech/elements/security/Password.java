@@ -48,14 +48,14 @@ public class Password {
         return password;
     }
 
-    /** Computes a salted PBKDF2 hash of given plaintext password
+    /* Computes a salted PBKDF2 hash of given plaintext password
      suitable for storing in a database.
      Empty passwords are not supported. */
     public static String getSaltedHash(char[] password) throws GeneralSecurityException {
         return getSaltedHash(password, false);
     }
 
-    /** Computes a salted PBKDF2 hash of given plaintext password
+    /* Computes a salted PBKDF2 hash of given plaintext password
      suitable for storing in a database.
      Empty passwords are not supported. */
     protected static String getSaltedHash(char[] password, boolean base64) throws GeneralSecurityException {
@@ -67,7 +67,7 @@ public class Password {
         return Hex.toString(salt) + "$" + hash(password, salt, base64);
     }
 
-    /** Checks whether given plaintext password corresponds
+    /* Checks whether given plaintext password corresponds
      to a stored salted hash of the password. */
     public static boolean check(char[] password, String stored) throws GeneralSecurityException {
         if (stored == null) return false;

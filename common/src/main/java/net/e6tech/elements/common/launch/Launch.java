@@ -54,8 +54,8 @@ public class Launch {
      *  arguments defined outside of the last "end" are applied to every launch profile.
      *  arguments between launch and end are only visible for that particular launch profile.
      *
-     * @param args
-     * @throws Exception
+     * @param args arguments
+     * @throws Exception general exception.
      */
     public static void main(String ... args) throws Exception {
         List<LaunchController> controllers = new ArrayList<>();

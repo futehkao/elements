@@ -34,14 +34,25 @@ subprojects {
         sign configurations.archives
     }
 
+    javadoc {
+        source = sourceSets.main.allJava
+        classpath = configurations.compile
+    }
+
     task sourcesJar(type: Jar) {
         baseName "elements-${project.name}"
         classifier 'sources'
         from sourceSets.main.allSource
     }
 
+    task javadocJar(type: Jar) {
+        classifier = 'javadoc'
+        from javadoc
+    }
+
     artifacts {
         archives sourcesJar
+        archives javadocJar
     }
 
     publishing {
@@ -51,6 +62,7 @@ subprojects {
                 artifactId "elements-${project.name}"
 
                 artifact sourcesJar
+                artifact javadocJar
             }
         }
     }
@@ -69,7 +81,8 @@ subprojects {
                 }
 
                 pom.project {
-                    name 'Elements'
+                    name project.name
+                    description "elements-${project.name}"
                     packaging 'jar'
                     // optionally artifactId can be defined here. description 'A application used as an example on how to set up pushing its components to the Central Repository.'
                     url 'http://github.com/futehkao/elements.git'

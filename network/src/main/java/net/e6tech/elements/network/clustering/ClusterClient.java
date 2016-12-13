@@ -86,7 +86,7 @@ public class ClusterClient {
 
     /**
      * connects to Cluster's admin port.  The format is host:port/serviceName
-     * @param clusterAddress
+     * @param clusterAddress address
      */
     public synchronized void connect(String clusterAddress) {
         if (clusterAddress == null) return;
@@ -170,12 +170,9 @@ public class ClusterClient {
 
     }
 
-    /**
+    /*
      * Select a socket from a list of hosts.  Initially there is only one host.  However, once
      * we retrieve services from the host, we will get a list of hosts.
-     *
-     * @return
-     * @throws IOException
      */
     protected Socket selectSocket() throws IOException {
         if (services.size() == 0) {

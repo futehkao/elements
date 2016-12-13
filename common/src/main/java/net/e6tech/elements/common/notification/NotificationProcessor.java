@@ -65,7 +65,7 @@ public class NotificationProcessor implements NotificationListener, Startable {
      * sender.  This method needs to handle the event fast and schedule longer running task
      * using the run method.
      *
-     * @param notification
+     * @param notification Notification instance
      */
     @Override
     public void onEvent(Notification notification) {
@@ -90,7 +90,7 @@ public class NotificationProcessor implements NotificationListener, Startable {
     /**
      * It is the catch all processEvent method.  It is running on the same thread and using
      * the same Resources as the caller.  Please schedule long running task using the run method.
-     * @param notification
+     * @param notification  Notification instance
      */
     public void processEvent(Notification notification) {
     }

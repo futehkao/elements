@@ -257,8 +257,8 @@ public class Select<T> extends Statement<T> {
      * the master instance does not have detail instances, it will not be returned whereas for leftFetch the master
      * instance is returned.
      *
-     * @param joinCondition
-     * @return
+     * @param joinCondition runnable to specify the join condition
+     * @return Select instance
      */
     public Select<T> fetch(Runnable joinCondition) {
         return fetch(JoinType.INNER, joinCondition);
@@ -267,8 +267,8 @@ public class Select<T> extends Statement<T> {
     /**
      * See description on fetch.
      *
-     * @param joinCondition
-     * @return
+     * @param joinCondition runnable to specify the join condition
+     * @return Select instance
      */
     public Select<T> leftFetch(Runnable joinCondition) {
         return fetch(JoinType.LEFT, joinCondition);

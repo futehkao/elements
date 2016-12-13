@@ -79,14 +79,8 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
         return modified;
     }
 
-    /**
+    /*
      * When persist is called ...
-     * @param entity
-     * @param id
-     * @param state
-     * @param propertyNames
-     * @param types
-     * @return
      */
     @Override
     public boolean onSave(
@@ -110,10 +104,8 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
         return modified;
     }
 
-    /**
+    /*
      * This call is triggered by execution of queries or commit
-     *
-     * @param entities
      */
     @Override
     public void preFlush(Iterator entities) {

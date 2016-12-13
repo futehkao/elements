@@ -91,10 +91,10 @@ public class Atom implements Map<String, Object> {
 
     /**
      * Used by groovy scripts.
-     * @param cls
-     * @param resource
-     * @param <T>
-     * @return
+     * @param cls  The class that identifies the binding object.
+     * @param resource  the object to be bound to the {@code cls}
+     * @param <T> type of resource
+     * @return return the resource object.  If resource is a Class, returns new instance of the class.
      */
     public <T> T bind(Class<T> cls, T resource) {
         return resources.bind(cls, resource);

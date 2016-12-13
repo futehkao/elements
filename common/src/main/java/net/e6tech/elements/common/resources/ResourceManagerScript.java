@@ -31,9 +31,9 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
     /**
      * This method is for catching key { closure } pattern.  The key could resolve to an instance
      * and the closure would be run with the instance as the delegate.
-     * @param name
-     * @param args
-     * @return
+     * @param name method name
+     * @param args arguments
+     * @return result
      */
     @Override
     public Object invokeMethod(String name, Object args) {

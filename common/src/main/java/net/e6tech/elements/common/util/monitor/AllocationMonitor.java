@@ -42,8 +42,8 @@ public class AllocationMonitor {
      * the listener is in the form of lambda expression.
      *
      * @param timeout  timeout period
-     * @param obj
-     * @param listener
+     * @param obj the object to be monitor
+     * @param listener an AllocationListener
      */
     public void monitor(long timeout, Object obj, AllocationListener listener) {
         if (disabled) return;

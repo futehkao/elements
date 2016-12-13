@@ -26,7 +26,7 @@ import java.util.concurrent.Callable;
 
 /**
  * This class should be instantiated as an anonymous class.  For example,
- * new CacheFacade<K,V>("name") {}
+ * {@code new CacheFacade&lt;K,V&gt;("name") {}}
  * Created by futeh.
  */
 public abstract class CacheFacade<K, V> {

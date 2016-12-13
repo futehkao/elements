@@ -191,7 +191,7 @@ public class WebServer implements Startable {
 
     /**
      * setting threadPool's max threads
-     * @param maxThreads
+     * @param maxThreads max threads
      */
     public void setMaxThreads(int maxThreads) {
         this.maxThreads = maxThreads;
@@ -203,7 +203,7 @@ public class WebServer implements Startable {
 
     /**
      * setting threadPool's min threads.
-     * @param minThreads
+     * @param minThreads min threads
      */
     public void setMinThreads(int minThreads) {
         this.minThreads = minThreads;
@@ -211,7 +211,7 @@ public class WebServer implements Startable {
 
     /**
      * setting the HTTP port
-     * @return
+     * @return HTTP port
      */
     public int getHttpPort() {
         return httpPort;
@@ -223,7 +223,7 @@ public class WebServer implements Startable {
 
     /**
      * Setting the HTTPS port.  If this is set, you must set the keyStoreFile
-     * @return
+     * @return HTTPS port
      */
     public long getHttpsPort() {
         return httpsPort;
@@ -256,7 +256,7 @@ public class WebServer implements Startable {
     /**
      * Setting the rootContext
      *
-     * @param rootContext
+     * @param rootContext root context
      */
     public void setRootContext(String rootContext) {
         this.rootContext = rootContext;
