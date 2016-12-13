@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.sshd:sshd-pam:0.11.0">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.sshd/sshd-pam/0.11.0/b939ceb742cefc1c632132111b8e4facc41b3d38/sshd-pam-0.11.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.sshd/sshd-pam/0.11.0/49e42c54e97ae99d9840a49730090b1ea321a1bd/sshd-pam-0.11.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

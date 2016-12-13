@@ -1,0 +1,9 @@
+x: ${home}
+y: hello
+dir: ${home}/bin
+---
+env: dev
+xhello: nested
+z: world ${x${y}} ${y} world
+map.key1: value1
+map.key2: value2

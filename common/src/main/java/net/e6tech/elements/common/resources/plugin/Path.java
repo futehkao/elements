@@ -1,0 +1,95 @@
+/*
+ * Copyright 2015 Futeh Kao
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.e6tech.elements.common.resources.plugin;
+
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * Created by futeh.
+ */
+public class Path<T> {
+    private Path parent;
+    private Class<T> type;
+    private String name;
+
+    public static <T> Path<T> of(Class<T> cls, String name) {
+        return new Path(cls, name);
+    }
+
+    protected Path(Class<T> cls, String name) {
+        this.type = cls;
+        this.name = name;
+    }
+
+    public Class<T> getType() {
+        return type;
+    }
+
+    public void setType(Class<T> type) {
+        this.type = type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public <R> Path<R> and(Class<R> cls, String name) {
+        Path<R> child = new Path(cls, name);
+        child.parent = this;
+        return child;
+    }
+
+    public <R> Path<R> and(Class<R> cls) {
+        Path<R> child = new Path(cls, null);
+        child.parent = this;
+        return child;
+    }
+
+    public List<Path> list() {
+        LinkedList list = new LinkedList();
+        Path path = this;
+        while (path != null) {
+            list.addFirst(path);
+            path = path.parent;
+        }
+        return list;
+    }
+
+    public String path() {
+        StringBuilder builder = new StringBuilder();
+        List<Path> list = list();
+        boolean first = true;
+        for (Path p : list) {
+            if (first) {
+                first  = false;
+            } else {
+                builder.append("/");
+            }
+            builder.append(p.getType().getName());
+            if (p.getName() != null) {
+                builder.append("/").append(p.getName());
+            }
+        }
+        return builder.toString();
+    }
+
+}

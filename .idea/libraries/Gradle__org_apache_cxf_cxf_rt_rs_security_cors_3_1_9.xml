@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.cxf:cxf-rt-rs-security-cors:3.1.9">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-rs-security-cors/3.1.9/ca47e0b49592d6f2efd487c946c6a9402a86da48/cxf-rt-rs-security-cors-3.1.9.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-rs-security-cors/3.1.9/eb6a1527ee96246338c3fc3aa31873b44d91773d/cxf-rt-rs-security-cors-3.1.9-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

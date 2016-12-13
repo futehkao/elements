@@ -1,14 +1,101 @@
-group 'net.e6tech'
-version '1.0-SNAPSHOT'
 
-apply plugin: 'java'
+allprojects {
+    group 'net.e6tech'
+    version '1.0-SNAPSHOT'
 
-sourceCompatibility = 1.5
+    apply plugin: 'java'
 
-repositories {
-    mavenCentral()
+    sourceCompatibility = 1.8
+
+    repositories {
+        mavenCentral()
+    }
 }
+
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+subprojects {
+
+    group 'net.e6tech'
+    version '1.0'
+
+    apply plugin: 'groovy'
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+    apply plugin: 'maven'
+    apply plugin: 'signing'
+
+    archivesBaseName = "elements-${project.name}"
+
+    signing {
+        sign configurations.archives
+    }
+
+    task sourcesJar(type: Jar) {
+        baseName "elements-${project.name}"
+        classifier 'sources'
+        from sourceSets.main.allSource
+    }
+
+    artifacts {
+        archives sourcesJar
+    }
+
+    publishing {
+        publications {
+            common(MavenPublication) {
+                from components.java
+                artifactId "elements-${project.name}"
+
+                artifact sourcesJar
+            }
+        }
+    }
+
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                    authentication(userName: ossrhUsername, password: ossrhPassword)
+                }
+
+                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                    authentication(userName: ossrhUsername, password: ossrhPassword)
+                }
+
+                pom.project {
+                    name 'Elements'
+                    packaging 'jar'
+                    // optionally artifactId can be defined here. description 'A application used as an example on how to set up pushing its components to the Central Repository.'
+                    url 'http://github.com/futehkao/elements.git'
+
+                    scm {
+                        connection 'scm:git:https://github.com/futehkao/elements.git'
+                        developerConnection 'scm:git:https://github.com/futehkao/elements.git'
+                        url 'https://github.com/futehkao/elements.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'The Apache License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id 'futeh'
+                            name 'Futeh Kao'
+                            email 'futeh@episodesix.com'
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

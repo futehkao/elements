@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.mina:mina-core:2.0.7">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.mina/mina-core/2.0.7/c878e2aa82de748474a624ec3933e4604e446dec/mina-core-2.0.7.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.mina/mina-core/2.0.7/42097d3346d4fa5d694f2ed6e87a4bf7689cff0e/mina-core-2.0.7-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.betfair.net.java.opendmk:core:1.0-b02">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.betfair.net.java.opendmk/core/1.0-b02/32c16ab0c522e674aaf3ef7efa204bc1a680a56/core-1.0-b02.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.betfair.net.java.opendmk/core/1.0-b02/25e9e3f2fc42f42e6131d439afda7ab6de677e65/core-1.0-b02-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

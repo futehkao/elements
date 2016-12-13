@@ -1,14 +1,46 @@
-group 'net.e6tech'
-version '1.0-SNAPSHOT'
+/*
+Copyright 2015 Futeh Kao
 
-apply plugin: 'java'
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-sourceCompatibility = 1.5
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 repositories {
-    mavenCentral()
+    mavenCentral(artifactUrls: ["http://jasperreports.sourceforge.net/maven2",
+        "http://jaspersoft.artifactoryonline.com/jaspersoft/third-party-ce-artifacts/"])
 }
 
 dependencies {
+    compile project(':common')
+    compile project(':security')
+    compile ('org.apache.poi:poi:3.10.1')
+    compile fileTree(dir: 'lib', include: '*.jar')
+
+    /* compile ('com.lowagie:itext:2.1.7.js4') {
+        exclude group: 'bouncycastle'
+    }
+    compile ('org.olap4j:olap4j:0.9.7.309-JS-3') */
+
+    compile ('net.sf.jasperreports:jasperreports:6.2.0') {
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'bouncycastle'
+        exclude group: 'com.lowagie'
+        exclude group: 'org.olap4j'
+        exclude group: 'org.springframework'
+        exclude group: 'org.codehaus.castor'
+        exclude group: 'org.apache.lucene'
+        exclude group: 'xml-apis'
+        exclude group: 'commons-logging'
+    }
+
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
