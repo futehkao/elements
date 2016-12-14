@@ -65,21 +65,22 @@ public class DualEntry {
 
     public void run(String text, ServerSocket serverSocket) {
         Terminal terminal = new Terminal();
-        while (!_user1(terminal, text));
+        while (!_user1(terminal, text, serverSocket));
         while(!_user2(terminal, serverSocket));
     }
 
     private boolean _run(String text, int port) {
-        ServerSocket serverSocket;
+        ServerSocket serverSocket = null;
         try {
             serverSocket = new ServerSocket(port);
             serverSocket.setReuseAddress(true);
         } catch (IOException e) {
+            try { if (serverSocket != null) serverSocket.close(); } catch (Exception ex) {}
             throw new RuntimeException(e);
         }
 
         Terminal terminal = new Terminal();
-        if (!_user1(terminal, text)) return false;
+        if (!_user1(terminal, text, serverSocket)) return false;
         try {
              return _user2(terminal, serverSocket);
         } catch (Exception ex) {
@@ -93,26 +94,35 @@ public class DualEntry {
         }
     }
 
-    private boolean _user1(Terminal terminal, String text) {
+    private boolean _user1(Terminal terminal, String text, ServerSocket serverSocket) {
         if (user1 == null || user2 == null || user1.getUser() == null || user2.getUser() == null) terminal.println(text);
         if (user1 == null || user1.getUser() == null) {
+            Terminal t = null;
             try {
-                String u1 = terminal.readLine("Username: ");
-                char[] pwd = terminal.readPassword("Password: ");
-                if (!verifyPassword(terminal, pwd)) return false;
-                if (u1.length() > 0 && pwd.length > 0) user1 = new Credential(u1, pwd);
+                t = new Terminal(serverSocket);
+                String u1 = t.readLine("Username: ");
+                char[] pwd = t.readPassword("Password: ");
+                while (u1.length() == 0 || pwd.length == 0) {
+                    if (u1.length() == 0) t.println("user name is empty...try again\n");
+                    else if (pwd.length == 0) t.println("password is empty...try again\n");
+                    u1 = t.readLine("Username: ");
+                    pwd = t.readPassword("Password: ");
+                }
+                if (!verifyPassword(t, pwd)) return false;
+                user1 = new Credential(u1, pwd);
+                t.println("Please have user2 connect to port " + serverSocket.getLocalPort() + " to provide user name and password");
             } catch (Exception ex) {
-                terminal.println("Error getting user name and password: " + ex.getMessage());
-                throw ex;
+                terminal.println("Error getting user1 name and password: " + ex.getMessage());
+                return false;
+            } finally {
+                if (t != null) t.close();
             }
         }
         return true;
     }
 
     private boolean _user2(Terminal terminal, ServerSocket serverSocket) {
-
         while (user2 == null || user2.getUser() == null) {
-            terminal.println("Please have user2 connect to port " + serverSocket.getLocalPort() + " to provide user name and password");
             Terminal t = null;
             try {
                 t = new Terminal(serverSocket);
@@ -130,9 +140,10 @@ public class DualEntry {
                     pwd = t.readPassword("Password:");
                 }
                 if (!verifyPassword(t, pwd)) return false;
-                if (u2.length() > 0 && pwd.length > 0) user2 = new Credential(u2, pwd);
+                user2 = new Credential(u2, pwd);
             } catch (Exception e) {
                 terminal.println("Error getting user2 name and password: " + e.getMessage());
+                return false;
             } finally {
                 if (t != null) t.close();
             }

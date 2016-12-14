@@ -13,16 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-group 'net.e6tech'
-version '1.0'
-
-apply plugin: 'java'
-
-sourceCompatibility = 1.8
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     compile project(':common')
     compile project(':jmx')

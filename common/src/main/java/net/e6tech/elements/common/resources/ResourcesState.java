@@ -269,6 +269,7 @@ class ResourcesState {
     }
 
     public <T> T inject(Resources resources, T object) {
+        if (object == null) return object;
         if (isDirty()) {
             injectionList.add(object); // so that the object can be injected as part of onOpen
             // This is critical because onOpen may call onOpen on

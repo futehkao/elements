@@ -389,6 +389,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public <T> T inject(T obj) {
+        if (obj == null) return obj;
         if (obj instanceof InjectionListener) {
             ((InjectionListener) obj).preInject(this);
         }

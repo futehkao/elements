@@ -13,10 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 repositories {
+    mavenCentral()
     mavenCentral(artifactUrls: ["http://jasperreports.sourceforge.net/maven2",
-        "http://jaspersoft.artifactoryonline.com/jaspersoft/third-party-ce-artifacts/"])
+                                "http://jaspersoft.artifactoryonline.com/jaspersoft/third-party-ce-artifacts/"])
 }
 
 dependencies {
@@ -25,10 +25,11 @@ dependencies {
     compile ('org.apache.poi:poi:3.10.1')
     compile fileTree(dir: 'lib', include: '*.jar')
 
-    /* compile ('com.lowagie:itext:2.1.7.js4') {
+    compile ('com.lowagie:itext:2.1.7.js4') {
         exclude group: 'bouncycastle'
     }
-    compile ('org.olap4j:olap4j:0.9.7.309-JS-3') */
+
+    // compile ('org.olap4j:olap4j:0.9.7.309-JS-3')
 
     compile ('net.sf.jasperreports:jasperreports:6.2.0') {
         exclude group: 'com.fasterxml.jackson.core'
