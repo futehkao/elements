@@ -46,6 +46,7 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
     @Inject(optional = true)
     Resources resources;
 
+    @Inject(optional = true)
     SessionFactoryImplementor sessionFactory;
 
     @Inject(optional = true)

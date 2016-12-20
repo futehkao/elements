@@ -18,6 +18,9 @@ package net.e6tech.elements.security.vault;
 
 import net.e6tech.elements.common.util.Terminal;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.SocketException;
 import java.util.Arrays;
 
 /**
@@ -57,6 +60,38 @@ public class Credential {
             term.println(text);
             user = term.readLine("Username:");
             password = term.readPassword("Password:");
+        }
+    }
+
+    public void run(String text, int port) {
+        if (user != null && user.length() > 0 && password != null && password.length > 0) return;
+        Terminal term = new Terminal();
+        term.println(text);
+        ServerSocket serverSocket = null;
+        Terminal t = null;
+        try {
+            serverSocket = new ServerSocket(port);
+            serverSocket.setReuseAddress(true);
+            t = new Terminal(serverSocket);
+            user = t.readLine("Username: ");
+            password = t.readPassword("Password: ");
+            while (user.length() == 0 || password.length == 0) {
+                if (user.length() == 0) t.println("user name is empty...try again\n");
+                else if (password.length == 0) t.println("password is empty...try again\n");
+                user = t.readLine("Username:");
+                password = t.readPassword("Password:");
+            }
+        } catch (IOException e) {
+            user = null;
+            password = null;
+            throw new RuntimeException(e);
+        } finally {
+            if (t != null) t.close();
+            if (serverSocket != null) try {
+                serverSocket.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

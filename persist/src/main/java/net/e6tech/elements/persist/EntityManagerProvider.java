@@ -213,18 +213,20 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
     // Submits a thread task to monitor expired EntityManagers.
     // the thread would break out after monitorIdle time.
-    // when another monitor shows up, the thread taks would resume.
+    // when another monitor shows up, the thread task would resume.
     private void monitor(EntityManagerMonitor monitor) {
 
         // entityManagerMonitors contains open, committed and aborted entityManagers.
-
         synchronized (monitorQueue) {
+            monitorQueue.offer(monitor);
             if (monitoring) {
-                monitorQueue.offer(monitor);
                 return;
+            } else {
+                monitoring = true;
             }
         }
 
+        // starting a thread to monitor
         if (threadPool == null) {
             ThreadGroup group = Thread.currentThread().getThreadGroup();
             threadPool = Executors.newCachedThreadPool(runnable -> {
@@ -236,25 +238,29 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         }
 
         threadPool.execute(()->{
-            synchronized (monitorQueue) { monitoring = true; }
-
             try {
                 while (true) {
+                    synchronized (monitorQueue) {
+                        monitoring = true;
+                    }
+
                     long start = System.currentTimeMillis();
                     long expiration = 0;
-                    monitorQueue.drainTo(entityManagerMonitors);
 
-                    Iterator<EntityManagerMonitor> iterator = entityManagerMonitors.iterator();
-                    while (iterator.hasNext()) {
-                        EntityManagerMonitor m = iterator.next();
-                        if (!m.entityManager.isOpen()) { // already closed
-                            iterator.remove();
-                        } else if (m.expiration < System.currentTimeMillis()) {
-                            m.rollback();  // rollback
-                            iterator.remove();
-                        } else {
-                            // for find out the shortest sleep time
-                            if (expiration == 0 || m.expiration < expiration) expiration = m.expiration;
+                    synchronized (entityManagerMonitors) {
+                        monitorQueue.drainTo(entityManagerMonitors);
+                        Iterator<EntityManagerMonitor> iterator = entityManagerMonitors.iterator();
+                        while (iterator.hasNext()) {
+                            EntityManagerMonitor m = iterator.next();
+                            if (!m.entityManager.isOpen()) { // already closed
+                                iterator.remove();
+                            } else if (m.expiration < System.currentTimeMillis()) {
+                                m.rollback();  // rollback
+                                iterator.remove();
+                            } else {
+                                // for find out the shortest sleep time
+                                if (expiration == 0 || m.expiration < expiration) expiration = m.expiration;
+                            }
                         }
                     }
 
@@ -277,11 +283,13 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                             newMonitor = monitorQueue.poll(sleep, TimeUnit.MILLISECONDS);
                         }
                     } catch (InterruptedException e) {
-
                     }
 
-                    if (newMonitor != null) entityManagerMonitors.add(newMonitor);
-                    else {
+                    if (newMonitor != null) {
+                        synchronized (entityManagerMonitors) {
+                            entityManagerMonitors.add(newMonitor);
+                        }
+                    } else {
                         // Some thread may just add a monitor at this point so that
                         // we need to check the monitorQueue size before we break out.
                         // Also, we need to make sure entityManagerMonitors is empty as well.
