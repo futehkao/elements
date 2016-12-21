@@ -9,4 +9,5 @@ include 'reporting'
 include 'rules'
 include 'security'
 include 'web'
+include 'sample'
 

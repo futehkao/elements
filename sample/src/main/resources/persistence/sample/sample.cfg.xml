@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<!--
+  ~ Copyright 2016 Futeh Kao
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<hibernate-configuration>
+    <session-factory name="h3">
+        <!-- properties -->
+        <property name="dialect">org.hibernate.dialect.MySQL57InnoDBDialect</property>
+        <property name="show_sql">${hibernate.show_sql}</property>
+        <property name="hibernate.connection.isolation">2</property> <!-- read uncommitted is 1, read committed is 2 etc. see java.sql.Connection -->
+        <property name="hibernate.cache.use_query_cache">true</property>
+        <property name="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory</property>
+        <property name="hibernate.cache.use_second_level_cache">${hibernate.cache.use_second_level_cache}</property>
+        <!--<property name="hibernate.cache.use_structured_entries">true</property>-->
+        <property name="hibernate.generate_statistics">${hibernate.generate_statistics}</property>
+        <property name="hibernate.archive.autodetection">false</property>
+        <property name="hibernate.ejb.interceptor.session_scoped">net.e6tech.elements.persist.hibernate.Interceptor</property>
+        <!-- <property name="hibernate.ejb.interceptor">net.e6tech.elements.persist.hibernate.Interceptor</property> -->
+
+        <!-- mapping files -->
+        <mapping resource="persistence/sample/employee.hbm.xml"/>
+    </session-factory>
+</hibernate-configuration>

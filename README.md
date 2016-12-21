@@ -64,15 +64,15 @@ The general flow of the commit call is the following
 * If Retry is supported, repeat the process until retry count has reached.
 
 ### Resources Retry
-TDB
+TBD
 
 ## Provision File
 A provision file is a start up script and it is responsible for loading Atoms or other Groovy scripts. The example below shows a simple provision file.
 
-    exec "__dir/variables.groovy",
-        "$__dir/../jobs/**",
-        "$__dir/../persist.groovy",
-        "$__dir/../restful/**"
+    exec "$__dir/variables.groovy",
+        "$__dir/persist.groovy",
+        "$__dir/jobs/**",
+        "$__dir/restful/**"
 
 It executes all of the groovy scripts in the *$__dir/../jobs* and *$__dir/../restful* directories, and *persist.groovy*.  The variable *__dir* is automatically set to the directory that contains the script currently being executed.  It uses Ant's directory syntax: ** means files in all subdirectories where as * means just files in the directory.
 
@@ -142,7 +142,7 @@ In this example, it also demonstrates injection.  HelloWord requires a Utility i
 
     
 ## Resource Providers
-ResourceProviders are used to control the opening and closing of resources.  To register a ResourceProvider, simply declare the provider within an atom and it is automatically pick up by the ResourceManager.
+ResourceProviders are used to control the opening and closing of resources.  To register a ResourceProvider, simply declare the provider within an atom and it is automatically picked up by the ResourceManager.
 
 ### Hibernate Resource Provider
 For an enterprise application, an important task is management of database transactions.  Elements provides a ResourceProvider to manage transactions and JPA EntityManager.  In this section, we will go over the basics of creating an Atom for the ResourceProvider.
@@ -183,10 +183,12 @@ Once a DataSource is created, the Atom below shows how to configure a Hibernate 
         }
     }
 
-There are some features in the Atom that we need to highlight.  First variables enclosed by ${} are replaced with their actual value.  For example, we see ${entityManagerTxTimeout} in the configuration.  Therefore, entityManagerTxTimeout must be defined somewhere so that its value can be used.  In practice, all configuration variables should be aggregated into a Groovy file and be referenced at the beginning of the provision file.  Second, a variable begins with ^ means the actual value would come from a name look up from the ResourceManager.  In the example, ^dataSource would resolve to the DataSource declared in a different Atom.  Last, the *postInit* section is used to run the closure once all of the objects in an Atom has been created, injected, configured and initialized.  In this example, the *postInit* runs a closure to make sure an EntityManager can be retrieved successfully.
+There are some features in the Atom that we need to highlight.  First, variables enclosed by ${} are replaced with their actual value.  For example, we see ${entityManagerTxTimeout} in the configuration.  Therefore, entityManagerTxTimeout must be defined somewhere so that its value can be used.  In practice, all configuration variables should be aggregated into a Groovy file and be referenced at the beginning of the provision file.  Second, a variable begins with ^ means the actual value would come from a name look up from the ResourceManager.  In the example, ^dataSource would resolve to the DataSource declared in a different Atom.  Last, the *postInit* section is used to run the closure once all of the objects in an Atom has been created, injected, configured and initialized.  In this example, the *postInit* runs a closure to make sure an EntityManager can be retrieved successfully.
 
 ### Persistence XML
-After we have created JPA ResourceProvider, the rest of the work is standard JPA configuration.  First, there must be a file named persistence.xml located in the class path under META-INF.  It should look like a standard Hibernate flavored JPA XML file.  The important entry is the value for *hibernate.ejb.cfgfile*, which should points to the location of the Hibernate configuration file.
+After we have created the JPA ResourceProvider, the rest of the work is standard JPA configuration.  First, there must be a file named *persistence.xml* located in the class path under META-INF.  It should look like a standard Hibernate flavored JPA XML file.  The important entry is the value for *hibernate.ejb.cfgfile*, which should point to the location of the Hibernate configuration file.
+
+A very important point to note about this type of configuration file and the Hibernate configuration file is that variables enclosed in ${} need to be defined in System properties, not a Groovy script, because they are part of standard JPA and Hibernate configuration, not Elements.
 
     <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -197,7 +199,6 @@ After we have created JPA ResourceProvider, the rest of the work is standard JPA
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
         <shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>
         <properties>
-            <!-- <property name="hibernate.connection.provider_class" value="provider class" /> -->
             <property name="hibernate.ejb.cfgfile" value="persistence/h3/h3.cfg.xml" />
             <property name="current_session_context" value="thread" />
             <property name="hibernate.cache.use_query_cache" value="false" />
