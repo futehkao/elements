@@ -2,9 +2,9 @@
 
 ## Introduction
 
-Elements is a framework that is used to build applications.  With Elements, an application consists of many components (which are called Atoms).  Essentially, to create an application, one only has to declare a set of Atoms and a "provision" file that references them.  Within an Atom, the inter-dependencies between objects are wired using Google Guice and their properties are configured using YAML.  In a way, it is similar to the Spring Framework.  However, it does away with XML and allows developers to use Groovy whenever necessary.  The end result is that the configuration files are much more terse and flexible.  
+Elements is a framework that is used to build applications.  With it, an application consists of many components (which are called Atoms).  To create an application, one only has to declare a set of Atoms and a "provision" file that references them.  Within an Atom, the objects' inter-dependencies are wired using Google Guice and their properties are configured using YAML.  In a way, it is similar to the Spring Framework.  However, it does away with XML and allows developers to use Groovy directly whenever necessary.  The end result is that the configuration files are much more terse and flexible.  
 
-When compared to Spring Boot, Elements stays away from configuration in code, i.e. via annotations.  Rather, the prefer method is to use a provision file and Atoms.  The fundamental philosophy is that given a set of Atoms, one can deploy different applications using different provision files.  The bottom line is that it aims to be simpler and less verbose than Spring and it allows configuration using groovy scripts so that with a deployment bundle, one can employ different provision files to start different applications.  Think of it as analogous to Java's WORA (write once, run anywhere): BORA (build once, run applications)
+When compared to Spring Boot, Elements stays away from configuration in code, i.e. via annotations.  Rather, the prefer method is to use a provision file and Atoms.  The fundamental philosophy is that given a set of Atoms, one can deploy different applications using different provision files.  The bottom line is that it aims to be simpler and less verbose than Spring and it allows configuration using groovy scripts so that with a deployment bundle, one can employ different provision files to start different applications.  Think of it as analogous to Java's WORA (write once, run anywhere), but in this case BORA (build once, run applications)
 
 Finally, Elements comes with a set of easy to use Atoms that allow developers to quickly set up database thread pools, JPA, Hibernate, RESTful services etc.  In fact, one of the most sophisticated payment system, Tritium by Episode Six, was built using Elements.
 
@@ -15,7 +15,7 @@ An example of using Resources would be declaring it as an injection point for a 
 
     public class Restful {
         @Inject
-        protected Resources resources;
+        private Resources resources;
         
         @POST
         @Produces({MediaType.APPLICATION_JSON})
@@ -39,6 +39,7 @@ The Provision class has several commit methods that take various instance lookup
 
 	// no parameters
     provision.commit(()-> {
+        // do something
     })
     
 The one parameter version is a convenient method and is equivalent to opening a Resources instance and looks up a bound instance and provides it to the closure.  Ditto for methods with higher number of parameters.
@@ -50,6 +51,7 @@ The one parameter version is a convenient method and is equivalent to opening a 
     
     // two parameters example
     provision.commit(DataSource.class, EntityManager.class, (ds, em)-> {
+       ...
     })
 
 The general flow of the commit call is the following
@@ -67,7 +69,8 @@ TDB
 ## Provision File
 A provision file is a start up script and it is responsible for loading Atoms or other Groovy scripts. The example below shows a simple provision file.
 
-    exec "$__dir/../jobs/**",
+    exec "__dir/variables.groovy",
+        "$__dir/../jobs/**",
         "$__dir/../persist.groovy",
         "$__dir/../restful/**"
 
@@ -79,15 +82,15 @@ To launch a provision file, the general syntax is
     java -cp <classpath> net.e6tech.elements.common.launch.Launch 
         launch=<path to the provision file> end
 
-As one may surmise, you can launch more than one provision file.
+As one may surmise, you can launch more than one provision file.  Remember, each provision file is associated with its own ResourceManager.
 
 ### Atom
-An Atom file is a Groovy script that contains Atoms.  Here is an very simple Atom for providing two RESTful services: HelloWorld and Goodbye.
+An Atom file is a Groovy script that contains declarations for Atoms.  Here is an very simple Atom for providing two RESTful services: HelloWorld and Goodbye.
 
     import ...JaxRSServer
     import ...Utility
     
-    atom("hellworld") {
+    atom("helloworld") {
         configuration =  """
         _helloWorld.addresses:
             - "http://0.0.0.0:9001/restful/"
@@ -101,8 +104,8 @@ An Atom file is a Groovy script that contains Atoms.  Here is an very simple Ato
             count: 3
      """
      
-        _helloWorld = JaxRSServer
         _utility = Utility
+        _helloWorld = JaxRSServer
     }
     
 
@@ -131,17 +134,20 @@ The Java implementation of HelloWorld,
         }
     }
 
-Atom must have a name and it must be unique so that it won't be loaded twice.  Within an Atom, the first section is configuration and it is a multiline YAML string that is used to configure POJOs.  The POJOs are declared after the configuration section.  The syntax is 'name = <Java Class>'.  The naming convention is very important in that for a POJO of which name DOES NOT start with a underscore, it is automatically registered with the ResourceManager.  In general, A POJO's name should start with a underscore unless there is a particular reason to register it with the ResourceManager so that other objects can look it up by name.  However, please note that it is better to use injection instead of named lookup.
+Atom must have a name and it must be unique so that it won't be loaded twice.  Within an Atom, the first section is configuration and it is a multiline YAML string that is used to configure POJOs.  POJOs are declared after the configuration section.  The syntax is 'name = <Java Class>'.  The naming convention is very important in that for a POJO of which name STARTS with a underscore, it is NOT registered with the ResourceManager.  In general, A POJO's name should start with a underscore unless there is a particular reason to register it so that other objects from different Atoms can look it up by name.  However, please note that it is better to use injection instead of named lookup and to keep interdependencies local.
 
-As mentioned, the YAML string is used to configured POJOs.  In this example, _helloworld is declared to be an instance of JaxRSServer so that at this point of the script, an instance of JaxRSServer is acutally instantiated.  It has two fields, addresses (List<String>) and resources (List<Map<String, Object>>), and they are set up by the "_helloword" portion of the YAML string.
+As mentioned, the YAML string is used to configured POJOs.  In this example, _helloworld is declared to be an instance of JaxRSServer so that at this point of the script, an instance of JaxRSServer is  instantiated.  It has two fields, addresses (List<String>) and resources (List<Map<String, Object>>), and they are set up by the "_helloword" section of the YAML string.
 
-In the example, it also demonstrates injection.  HelloWord requires a Utility instance to be injected.  By declaring a Utility instance in the Atom, it is automatically injected into _helloworld.
+In this example, it also demonstrates injection.  HelloWord requires a Utility instance to be injected.  By declaring a Utility instance in the Atom, it is automatically injected into _helloworld and it must be noted that because of the dependency, the Utility instance must be declared first.  Circular dependencies are allowed only if the Inject's optional is set to true.  In such a case, the order of declaration is not important.  For further information, please see Google Guice.
 
     
 ## Resource Providers
+ResourceProviders are used to control the opening and closing of resources.  To register a ResourceProvider, simply declare the provider within an atom and it is automatically pick up by the ResourceManager.
 
 ### Hibernate Resource Provider
-Elements provides Hikari database connection pool and support for JPA via Hibernate.  It is rather straightforward to create a Hikari DataSource as shown below.  One can, however, use other types of DataSource.
+For an enterprise application, an important task is management of database transactions.  Elements provides a ResourceProvider to manage transactions and JPA EntityManager.  In this section, we will go over the basics of creating an Atom for the ResourceProvider.
+ 
+But first, we must have a DataSource.  Elements provides support for Hikari database connection pool out of the box.
 
     atom("datasource") {
     configuration = """
@@ -154,7 +160,7 @@ Elements provides Hikari database connection pool and support for JPA via Hibern
         dataSource = HikariDataSource
     }
     
-Once a DataSource is created, the script blow shows how to configure a Hibernate JPA provider.  Elements comes with a HibernateEntityManagerProvider to assist the process.  Since HiberanteEntityManagerProvider is a subclass of ResourceProvider, it is automatically registered with the ResourceManager.
+Once a DataSource is created, the Atom below shows how to configure a Hibernate JPA provider using HibernateEntityManagerProvider. Since it is a subclass of ResourceProvider, it is automatically registered with the ResourceManager.
     
     atom("persist") {
     configuration = """
@@ -177,8 +183,10 @@ Once a DataSource is created, the script blow shows how to configure a Hibernate
         }
     }
 
-### Persistence XML
+There are some features in the Atom that we need to highlight.  First variables enclosed by ${} are replaced with their actual value.  For example, we see ${entityManagerTxTimeout} in the configuration.  Therefore, entityManagerTxTimeout must be defined somewhere so that its value can be used.  In practice, all configuration variables should be aggregated into a Groovy file and be referenced at the beginning of the provision file.  Second, a variable begins with ^ means the actual value would come from a name look up from the ResourceManager.  In the example, ^dataSource would resolve to the DataSource declared in a different Atom.  Last, the *postInit* section is used to run the closure once all of the objects in an Atom has been created, injected, configured and initialized.  In this example, the *postInit* runs a closure to make sure an EntityManager can be retrieved successfully.
 
+### Persistence XML
+After we have created JPA ResourceProvider, the rest of the work is standard JPA configuration.  First, there must be a file named persistence.xml located in the class path under META-INF.  It should look like a standard Hibernate flavored JPA XML file.  The important entry is the value for *hibernate.ejb.cfgfile*, which should points to the location of the Hibernate configuration file.
 
     <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -186,7 +194,6 @@ Once a DataSource is created, the script blow shows how to configure a Hibernate
              version="2.1">
       <persistence-unit name="h3">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
-        <!-- <non-jta-data-source>java:dataSource/h3</non-jta-data-source> -->
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
         <shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>
         <properties>
@@ -200,7 +207,7 @@ Once a DataSource is created, the script blow shows how to configure a Hibernate
     </persistence>
 
 ### Hibernate Configuration
-The important part in the h3.cfg.xml is the configuration of session scoped interceptor.
+This file is a standard Hibernate configuration file and the only notable entry is the session scoped interceptor.  The interceptor's main job is to publish changes to entities to other members of the cluster.  Yes, Elements supports clustering and database caching so that changes can be propagated to members of the cluster.
 
     <?xml version='1.0' encoding='utf-8'?>
 
@@ -209,7 +216,7 @@ The important part in the h3.cfg.xml is the configuration of session scoped inte
           <!-- properties -->
           <property name="dialect">org.hibernate.dialect.MySQL57InnoDBDialect</property>
           <property name="show_sql">${hibernate.show_sql}</property>
-          <property name="hibernate.connection.isolation">2</property> <!-- read uncommitted is 1, read committed is 2 etc. see java.sql.Connection -->
+          <property name="hibernate.connection.isolation">2</property>
           <property name="hibernate.cache.use_query_cache">true</property>
           <property name="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory</property>
           <property name="hibernate.cache.use_second_level_cache">${hibernate.cache.use_second_level_cache}</property>
@@ -217,7 +224,6 @@ The important part in the h3.cfg.xml is the configuration of session scoped inte
           <property name="hibernate.generate_statistics">${hibernate.generate_statistics}</property>
           <property name="hibernate.archive.autodetection">false</property>
           <property name="hibernate.ejb.interceptor.session_scoped">net.e6tech.elements.persist.hibernate.Interceptor</property>
-          <!-- <property name="hibernate.ejb.interceptor">net.e6tech.elements.persist.hibernate.Interceptor</property> -->
 
           <!-- mapping files -->
           <mapping resource="persistence/h3/mappings/account.hbm.xml"/>
@@ -226,5 +232,6 @@ The important part in the h3.cfg.xml is the configuration of session scoped inte
     </hibernate-configuration>
 
 ## RESTful Services
+
 
 ## Batch Jobs
