@@ -15,6 +15,8 @@
  */
 
 import com.zaxxer.hikari.HikariDataSource
+import javax.persistence.EntityManager
+import net.e6tech.elements.persist.hibernate.HibernateEntityManagerProvider
 
 atom("datasource") {
     configuration = """
@@ -23,6 +25,28 @@ atom("datasource") {
             username: sample
             password: password
             jdbcUrl: "jdbc:mariadb://127.0.0.1:3306/sample"
+            maximumPoolSize: $dataSourceMaxPoolSize
     """
     dataSource = HikariDataSource
+}
+
+atom("persist") {
+    configuration = """
+        entityManagerProvider.persistenceUnitName: sample
+        entityManagerProvider.transactionTimeout: ${entityManagerTxTimeout}
+        entityManagerProvider.monitorTransaction: ${entityManagerMonitorTransaction}
+        entityManagerProvider.longTransaction: ${entityManagerLongTransaction}
+        entityManagerProvider.persistenceProperties:
+            javax.persistence.nonJtaDataSource: ^dataSource
+    """
+
+    entityManagerProvider = HibernateEntityManagerProvider
+
+    postInit {
+        // testing if EntityManager can be created correctly
+        open({ resources ->
+            EntityManager em = resources.getInstance(EntityManager)
+            resources.abort()
+        })
+    }
 }

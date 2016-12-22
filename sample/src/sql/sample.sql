@@ -36,8 +36,6 @@ CREATE TABLE sample.dept_manager (
 CREATE TABLE sample.dept_emp (
     emp_id      BIGINT(19) UNSIGNED    NOT NULL,
     dept_id     BIGINT(19) UNSIGNED      NOT NULL,
-    from_date    VARCHAR(8)      NOT NULL,
-    to_date      VARCHAR(8)      NOT NULL,
     FOREIGN KEY (emp_id)  REFERENCES sample.employee(id) ON DELETE CASCADE,
     FOREIGN KEY (dept_id) REFERENCES sample.department (id) ON DELETE CASCADE,
     PRIMARY KEY (emp_id,dept_id)

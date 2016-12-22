@@ -19,10 +19,12 @@ package net.e6tech.elements.persist.hibernate;
 
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.serialization.ObjectReference;
+import net.e6tech.elements.common.util.InitialContextFactory;
 import net.e6tech.elements.persist.*;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.SessionImpl;
 
+import javax.naming.Context;
 import javax.persistence.Cache;
 import javax.persistence.EntityManager;
 import java.io.Serializable;
@@ -31,6 +33,14 @@ import java.io.Serializable;
  * Created by futeh.
  */
 public class HibernateEntityManagerProvider extends EntityManagerProvider {
+
+    @Override
+    public void initialize(Resources resources) {
+        if (System.getProperty(Context.INITIAL_CONTEXT_FACTORY) == null) {
+            InitialContextFactory.setDefault();
+        }
+        super.initialize(resources);
+    }
 
     @Override
     protected void evictCollectionRegion(EvictCollectionRegion notification) {

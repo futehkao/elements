@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+apply plugin: 'application'
 
 dependencies {
     compile project(':common')
@@ -26,3 +27,27 @@ dependencies {
 }
 
 uploadArchives.enabled = false
+
+mainClassName = '''net.e6tech.elements.common.launch.Launch \\
+launch="$APP_HOME"/conf/sample.provision.groovy \\
+home="$APP_HOME" \\
+end \\
+'''
+
+
+task(copyConf, type: Copy) {
+    from "conf"
+    into "$buildDir/conf"
+}
+
+processResources.dependsOn.add copyConf
+
+// distTar.archiveName = 'h3.tar'
+distTar.from("$buildDir/conf") {
+    // into "h3/conf"
+    into "$project.name-$project.version/conf"
+}
+
+installDist.from("$buildDir/conf") {
+    into "conf"
+}

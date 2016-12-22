@@ -21,10 +21,30 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
     <class name="net.e6tech.sample.entity.Employee" table="employee">
+        <cache usage="read-write" region="short"/>
         <id name="id" type="long" column="id">
             <generator class="identity" />
         </id>
+        <property name="firstName" column="first_name" />
+        <property name="lastName" column="last_name" />
+        <property name="birthDate" column="birth_date" />
+        <property name="hireDate" column="hire_date" />
+        <property name="gender" column="gender" />
+    </class>
 
+    <class name="net.e6tech.sample.entity.Department" table="department">
+        <cache usage="read-write" region="short"/>
+        <id name="id" type="long" column="id">
+            <generator class="identity" />
+        </id>
+        <property name="name" column="dept_name" />
+        <set name="employees" table="dept_emp" cascade="all" >
+            <cache usage="read-write" region="collections"/>
+            <key column="dept_id"/>
+            <many-to-many entity-name="net.e6tech.sample.entity.Employee">
+                <column name="emp_id" />
+            </many-to-many>
+        </set>
     </class>
 
 </hibernate-mapping>

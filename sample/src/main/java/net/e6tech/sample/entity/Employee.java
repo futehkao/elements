@@ -25,6 +25,7 @@ public class Employee {
     private String firstName;
     private String lastName;
     private String hireDate;
+    private char gender;
 
     public Long getId() {
         return id;
@@ -64,5 +65,13 @@ public class Employee {
 
     public void setHireDate(String hireDate) {
         this.hireDate = hireDate;
+    }
+
+    public char getGender() {
+        return gender;
+    }
+
+    public void setGender(char gender) {
+        this.gender = gender;
     }
 }

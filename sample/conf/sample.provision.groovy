@@ -14,19 +14,6 @@
  * limitations under the License.
  */
 
-dataSourceMaxPoolSize = 20
-entityManagerTxTimeout = 1200000L
-entityManagerLongTransaction = 2000L
-entityManagerMonitorTransaction = true
-hibernateShowSQL = false
-hibernateGenerateStatistics = false
-hibernateCacheUseSecondLevelCache = false
 
-
-// setting System properties
-systemProperties {
-    'jmx.mxbean.multiname'          'true'
-    'hibernate.show_sql'            "${hibernateShowSQL}"
-    'hibernate.generate_statistics' "${hibernateGenerateStatistics}"
-    'hibernate.cache.use_second_level_cache' "${hibernateCacheUseSecondLevelCache}"
-}
+exec "$__dir/variables.groovy",
+        "$__dir/persist.groovy"
