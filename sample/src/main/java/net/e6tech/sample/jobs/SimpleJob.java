@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 
+package net.e6tech.sample.jobs;
 
-exec "$__dir/variables.groovy",
-        "$__dir/persist.groovy"
+import java.util.Date;
+
+/**
+ * Created by futeh.
+ */
+public class SimpleJob {
+    public void run() {
+        System.out.println(new Date());
+    }
+}

@@ -828,7 +828,7 @@ public class VaultManager {
         userLocalStore.getVault(USER_VAULT).removeSecret(alias, version);
     }
 
-    private Set<String> listUsers() throws GeneralSecurityException {
+    public Set<String> listUsers() throws GeneralSecurityException {
         if (!userLocalOpened) throw new GeneralSecurityException("user local store is not open.  Please call open() first");
         return userLocalStore.getVault(USER_VAULT).aliases();
     }
