@@ -19,6 +19,7 @@ package net.e6tech.elements.network.restful;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import net.e6tech.elements.common.interceptor.Interceptor;
+import net.e6tech.elements.common.interceptor.InterceptorAssist;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 
 import javax.ws.rs.*;
@@ -116,7 +117,7 @@ public class RestfulProxy {
         }
 
         @Override
-        public Object invoke(Object aProxy, Method thisMethod, Object target, Method proceed, Object[] args) throws Throwable {
+        public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
             if (printer != null) {
                 printer.println(thisMethod);
             }

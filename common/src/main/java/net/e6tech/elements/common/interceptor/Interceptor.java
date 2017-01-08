@@ -1,33 +1,38 @@
 /*
-Copyright 2015 Futeh Kao
+ * Copyright 2016 Futeh Kao
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package net.e6tech.elements.common.interceptor;
 
-import javassist.util.proxy.MethodHandler;
-import javassist.util.proxy.ProxyFactory;
-import javassist.util.proxy.ProxyObject;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.implementation.FieldAccessor;
+import net.bytebuddy.implementation.MethodDelegation;
+import net.bytebuddy.implementation.bind.annotation.*;
+import net.bytebuddy.implementation.bytecode.assign.Assigner;
+import net.bytebuddy.matcher.ElementMatchers;
 
 import java.lang.reflect.Method;
 import java.util.Hashtable;
 import java.util.Map;
 
 /**
- * Created by futeh on 1/20/16.
+ * Created by futeh.
  */
 public class Interceptor {
-    Map<Class, Class> proxyClasses = new Hashtable<>(199);
+    private Map<Class, Class> proxyClasses = new Hashtable<>(199);
 
     private static Interceptor instance = new Interceptor();
 
@@ -35,27 +40,18 @@ public class Interceptor {
         return instance;
     }
 
-    private boolean useWriteReplace = false;
-
-    public boolean isUseWriteReplace() {
-        return useWriteReplace;
-    }
-
-    public void setUseWriteReplace(boolean useWriteReplace) {
-        this.useWriteReplace = useWriteReplace;
-    }
-
     public Class createClass(Class cls) {
         Class proxyClass = proxyClasses.get(cls);
         if (proxyClass != null) return proxyClass;
-        ProxyFactory factory = new ProxyFactory();
-        factory.setSuperclass(cls);
-        factory.setUseWriteReplace(false);  // VERY IMPORTANT, or the proxy gets serialized.
-        factory.setFilter((m) -> {
-            if (m.getName().equals("finalize")) return false;
-            return true;
-        });
-        proxyClass = factory.createClass();
+        proxyClass = new ByteBuddy()
+                .subclass(cls)
+                .method(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class)))
+                    .intercept(MethodDelegation.toField("handler"))
+                .defineField("handler", Handler.class, Visibility.PRIVATE)
+                .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
+                .make()
+                .load(cls.getClassLoader())
+                .getLoaded();
         proxyClasses.put(cls, proxyClass);
         return proxyClass;
     }
@@ -64,16 +60,21 @@ public class Interceptor {
         Class proxyClass = createClass(instance.getClass());
         T proxyObject = newObject(proxyClass);
         InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(instance, handler);
-        ((ProxyObject) proxyObject).setHandler(wrapper);
+        ((HandlerAccessor) proxyObject).setHandler(wrapper);
         return proxyObject;
     }
 
     public <T> T newInstance(Class cls, InterceptorHandler handler) {
         Class proxyClass = createClass(cls);
         T proxyObject = newObject(proxyClass);
-        InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(null, handler);
+        InterceptorHandlerWrapper wrapper = null;
+        try {
+            wrapper = new InterceptorHandlerWrapper(cls.newInstance(), handler);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
         wrapper.targetClass = cls;
-        ((ProxyObject) proxyObject).setHandler(wrapper);
+        ((HandlerAccessor) proxyObject).setHandler(wrapper);
         return proxyObject;
     }
 
@@ -87,35 +88,51 @@ public class Interceptor {
         return proxyObject;
     }
 
-    public static <T extends InterceptorHandler> T getHandler(Object proxyObject) {
-        InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((ProxyObject) proxyObject).getHandler();
-        return (T) wrapper.handler;
-    }
-
-    public static  <T extends InterceptorHandler>  void setHandler(Object proxyObject, T handler) {
-        InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((ProxyObject) proxyObject).getHandler();
-        wrapper.handler = handler;
+    public static boolean isProxyObject(Object proxyObject) {
+        if (!(proxyObject instanceof HandlerAccessor)) {
+            return false;
+        }
+        return true;
     }
 
     public static Class getTargetClass(Object proxyObject) {
-        InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((ProxyObject) proxyObject).getHandler();
+        InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
         return wrapper.targetClass;
     }
 
-    private static class InterceptorHandlerWrapper implements MethodHandler {
+    public static <T extends InterceptorHandler> T getInterceptorHandler(Object proxyObject) {
+        InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
+        return (T) wrapper.handler;
+    }
+
+    public static  <T extends InterceptorHandler> void setInterceptorHandler(Object proxyObject, T handler) {
+        InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
+        wrapper.handler = handler;
+    }
+
+    public interface Handler {
+        @RuntimeType
+        Object handle(@Origin Method interceptorMethod, @AllArguments() Object[] arguments) throws Throwable;
+    }
+
+    public interface HandlerAccessor {
+        Handler getHandler();
+        void setHandler(Handler handler);
+    }
+
+    private static class InterceptorHandlerWrapper implements Handler {
         InterceptorHandler handler;
-        Object instance;
+        Object target;
         Class targetClass;
 
-        public InterceptorHandlerWrapper(Object instance, InterceptorHandler handler) {
+        public InterceptorHandlerWrapper(Object target, InterceptorHandler handler) {
             this.handler = handler;
-            this.instance = instance;
-            if (instance != null) targetClass = instance.getClass();
+            this.target = target;
+            if (target != null) targetClass = target.getClass();
         }
 
-        @Override
-        public Object invoke(Object self, Method thisMethod, Method proceed, Object[] args) throws Throwable {
-            return handler.invoke(self, thisMethod, instance, proceed, args);
+        public Object handle(Method interceptorMethod, @RuntimeType  Object[] arguments) throws Throwable {
+            return handler.invoke(target, interceptorMethod, arguments);
         }
     }
 }

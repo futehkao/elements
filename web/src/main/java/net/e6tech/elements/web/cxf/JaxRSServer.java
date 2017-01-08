@@ -407,43 +407,49 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
         }
 
         @Override
-        public Object invoke(Object self, Method thisMethod, Object instance, Method proceed, Object[] args) throws Throwable {
+        public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
             boolean abort = false;
             UnitOfWork uow = null;
             Object result = null;
             boolean ignored = false;
             try {
-                if (thisMethod.getAnnotation(PreDestroy.class) != null
-                        || thisMethod.getAnnotation(PostConstruct.class) != null) ignored = true;
+                // Note PostConstruct is handled by CXF during createInstance
+                if (thisMethod.getAnnotation(PreDestroy.class) != null) ignored = true;
 
                 checkInvocation(thisMethod, args);
 
-                uow = message.getExchange().get(UnitOfWork.class);
-                uow.getResources().inject(instance);
+                if (!ignored) {
+                    uow = message.getExchange().get(UnitOfWork.class);
+                    if (uow.getResources() != null) // could be null when PreDestroy is called.
+                        uow.getResources().inject(target);
 
-                boolean skip = ignored;
-                long start = System.currentTimeMillis();
-                result = uow.submit(() -> {
-                    if (observer != null && !skip) {
-                        observer.beforeInvocation(instance, thisMethod, args);
-                    }
+                    long start = System.currentTimeMillis();
+                    result = uow.submit(() -> {
+                        if (observer != null) {
+                            observer.beforeInvocation(target, thisMethod, args);
+                        }
 
-                    Object ret = thisMethod.invoke(instance, args);
+                        Object ret = thisMethod.invoke(target, args);
 
-                    if (observer != null && !skip) {
-                        observer.afterInvocation(ret);
-                    }
+                        if (observer != null) {
+                            observer.afterInvocation(ret);
+                        }
 
-                    return ret;
-                });
-                long duration = System.currentTimeMillis() - start;
-                computePerformance(thisMethod, methods, map, duration);
+                        return ret;
+                    });
+
+                    long duration = System.currentTimeMillis() - start;
+                    computePerformance(thisMethod, methods, map, duration);
+                } else {
+                    result = thisMethod.invoke(target, args);
+                }
+
             } catch (Throwable th) {
                 recordFailure(thisMethod, methods, map);
                 abort = true;
                 ignored = false;
                 logger.debug(th.getMessage(), th);
-                handleException(instance, thisMethod, args, th);
+                handleException(target, thisMethod, args, th);
             } finally {
                 if (resources != null && !ignored) {
                     if (abort) abort(message);
@@ -475,15 +481,15 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
                 cloneObserver.service(request);
             }
             if (proxy == null) {
-                proxy = interceptor.newInterceptor(super.getInstance(m), (proxy, thisMethod, instance, proceed, args) -> {
+                proxy = interceptor.newInterceptor(super.getInstance(m), (target, thisMethod, args) -> {
                     ClusterService service = (ClusterService) map.get("clusterService");
                     try {
                         checkInvocation(thisMethod, args);
                         if (cloneObserver != null) {
-                            cloneObserver.beforeInvocation(instance, thisMethod, args);
+                            cloneObserver.beforeInvocation(target, thisMethod, args);
                         }
                         long start = System.currentTimeMillis();
-                        Object result = thisMethod.invoke(instance, args);
+                        Object result = thisMethod.invoke(target, args);
                         long duration = System.currentTimeMillis() - start;
                         computePerformance(thisMethod, methods, map, duration);
                         if (service != null) service.getMeasurement().add(duration);
@@ -494,7 +500,7 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
                     } catch (Throwable th) {
                         recordFailure(thisMethod, methods, map);
                         logger.debug(th.getMessage(), th);
-                        handleException(instance, thisMethod, args, th);
+                        handleException(target, thisMethod, args, th);
                     }
                     return null;
                 });

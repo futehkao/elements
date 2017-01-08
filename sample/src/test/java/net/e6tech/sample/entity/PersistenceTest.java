@@ -18,6 +18,7 @@ package net.e6tech.sample.entity;
 
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.sample.BaseCase;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -29,7 +30,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by futeh.
  */
-public class PersistenceTest {
+public class PersistenceTest extends BaseCase {
 
     public static Provision provision;
 
@@ -37,11 +38,7 @@ public class PersistenceTest {
     private Department department;
 
     @Before
-    public void launch() {
-        LaunchController controller = new LaunchController();
-        controller.launchScript("conf/sample.provision.groovy")
-                .addLaunchListener(p -> provision = p.getInstance(Provision.class))
-                .launch();
+    public void setup() {
         employee = new Employee();
         employee.setFirstName("First" + System.currentTimeMillis());
         employee.setLastName("Last" + System.currentTimeMillis());

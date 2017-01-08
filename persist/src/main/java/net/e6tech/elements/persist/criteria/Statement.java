@@ -57,10 +57,10 @@ public class Statement<T> {
 
     public void or(Runnable runnable) {
         Where where = new Where(this.where, this.where.getPath());
-        Interceptor.setHandler(where.getTemplate(), where);
+        Interceptor.setInterceptorHandler(where.getTemplate(), where);
         where.predicates = new ArrayList<>();
         runnable.run();
-        Interceptor.setHandler(where.getTemplate(), this.where);
+        Interceptor.setInterceptorHandler(where.getTemplate(), this.where);
 
         List<Predicate> predicates = where.getPredicates();
         if (predicates.size() > 0) {
@@ -127,7 +127,7 @@ public class Statement<T> {
     }
 
     protected InterceptorHandler getter(Consumer<Path> consumer) {
-        return (interceptorInstance, thisMethod, target, proceed, args) -> {
+        return (target, thisMethod, args) -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
             String property = desc.getName();
             if (thisMethod.equals(desc.getReadMethod())) {
@@ -140,7 +140,7 @@ public class Statement<T> {
     }
 
     private InterceptorHandler setter(BiConsumer<Path, Object[]> consumer) {
-        return (interceptorInstance, thisMethod, target, proceed, args) -> {
+        return (target, thisMethod, args) -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
             String property = desc.getName();
             if (!thisMethod.equals(desc.getReadMethod())) {

@@ -15,7 +15,6 @@ limitations under the License.
 */
 package net.e6tech.elements.common.instance;
 
-import javassist.util.proxy.ProxyObject;
 import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.resources.Resources;
@@ -29,9 +28,15 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 
 /**
+ * This class is used to set fields with Delegate annotation. There are
+ * two use cases.  First, an instance of the implementation class is created and then
+ * delegate fields are set.  Second, if the implementation class is an abstract class,
+ * an interceptor is created with delegate fields set.  In such a case, when a method is
+ * called, delegate fields are search to find the most appropriate method to call.  In
+ * a way, this is somewhat similar to multiple inheritance.
+ *
  * Created by futeh.
  */
-
 public class Instance {
     Interceptor interceptor;
     Class implementationClass;
@@ -71,6 +76,7 @@ public class Instance {
         implementationClass = cls;
         this.interceptor = interceptor;
 
+        // breadth first search to get delegate fields.
         Set<Class> seen = new HashSet<>();
         LinkedList<Class> list = new LinkedList<>();
         list.add(cls);
@@ -94,6 +100,7 @@ public class Instance {
             delegateFields = getDelegateFields(implementationClass);
 
         }
+
         delegateFields.forEach((field) -> {
             field.setAccessible(true);
             Instance child = new Instance(field.getType(), interceptor);
@@ -109,9 +116,9 @@ public class Instance {
                                  String methodName, Class[] parameterTypes) {
         References references = new References();
         Handler handler = new Handler(resources, searchOrder);
-        Object obj =  createInstance(resources, locator, handler, references);
+        Object obj = createInstance(resources, locator, handler, references);
 
-        if (methodName != null && ! (obj instanceof ProxyObject)) {
+        if (methodName != null && !Interceptor.isProxyObject(obj)) {
             obj = handler.findImplementor(methodName, parameterTypes);
         }
         return obj;
@@ -160,6 +167,10 @@ public class Instance {
         return instance;
     }
 
+    /*
+      This class is used to implement delegate pattern.  If the implementation class is an abstract class, an
+      interceptor is created and the handler is used to dispatch calls to one of the Delegate field.
+     */
     private static class Handler implements InterceptorHandler {
 
         // transient Roles roles;
@@ -180,17 +191,14 @@ public class Instance {
         }
 
         @Override
-        public Object invoke(Object proxy, Method thisMethod, Object instance, Method proceed, Object[] args) throws Throwable {
-            if (proceed == null) {
-                Object obj = findImplementor(thisMethod.getName(), thisMethod.getParameterTypes());
-                if (obj != null) {
-                    Method m = obj.getClass().getMethod(thisMethod.getName(), thisMethod.getParameterTypes());
-                    return m.invoke(obj, args);
-                }
-                return null;
-                // need to throw an appropriate exception.
+        public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
+            Object obj = findImplementor(thisMethod.getName(), thisMethod.getParameterTypes());
+            if (obj != null) {
+                Method m = obj.getClass().getMethod(thisMethod.getName(), thisMethod.getParameterTypes());
+                return m.invoke(obj, args);
+            } else {
+                return thisMethod.invoke(target, args);
             }
-            return proceed.invoke(proxy, args);
         }
 
         public Object findImplementor(String methodName, Class[] parameterTypes) {

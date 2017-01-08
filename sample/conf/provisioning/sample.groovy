@@ -18,4 +18,5 @@ import net.e6tech.elements.jobs.JobServer
 
 registerBean('jobServer', JobServer)
 exec "$__dir/../variables.groovy",
-        "$__dir/../persist.groovy"
+        "$__dir/../persist.groovy",
+        "$__dir/../restful/**"

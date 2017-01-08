@@ -94,7 +94,7 @@ public class Where<T> extends Handler {
     }
 
     @Override
-    public Object invoke(Object interceptorInstance, Method thisMethod, Object target, Method proceed, Object[] args) throws Throwable {
+    public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
         PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
         String property = desc.getName();
         CriteriaBuilder builder = getBuilder();

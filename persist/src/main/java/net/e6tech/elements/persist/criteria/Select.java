@@ -107,9 +107,9 @@ public class Select<T> extends Statement<T> {
     }
 
     public Select<T> select(Runnable runnable) {
-        Interceptor.setHandler(where.getTemplate(), getter(path -> selections.add(path)));
+        Interceptor.setInterceptorHandler(where.getTemplate(), getter(path -> selections.add(path)));
         runnable.run();
-        Interceptor.setHandler(where.getTemplate(), where);
+        Interceptor.setInterceptorHandler(where.getTemplate(), where);
         return this;
     }
 
@@ -134,7 +134,7 @@ public class Select<T> extends Statement<T> {
 
     public <R> Select<T> crossJoinManyToOne(Class<R> entityClass, Consumer<T> joinCondition, Consumer<Select<R>> consumer) {
         From<R, R> jointRoot = getQuery().from(entityClass);
-        Interceptor.setHandler(where.getTemplate(), (interceptorInstance, thisMethod, target, proceed, args) -> {
+        Interceptor.setInterceptorHandler(where.getTemplate(), (target, thisMethod, args) -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
             String property = desc.getName();
             if (thisMethod.equals(desc.getReadMethod())) {
@@ -157,7 +157,7 @@ public class Select<T> extends Statement<T> {
             return null;
         });
         joinCondition.accept(getTemplate());
-        Interceptor.setHandler(where.getTemplate(), where);
+        Interceptor.setInterceptorHandler(where.getTemplate(), where);
 
         Where<R> where = new Where<>(this.where, jointRoot);
         Select<R> joinSelect = new Select<>(this, where, jointRoot);
@@ -179,7 +179,7 @@ public class Select<T> extends Statement<T> {
 
     public <R> Select<T> crossJoinOneToMany(Class<R> entityClass, Consumer<R> joinCondition, Consumer<Select<R>> consumer) {
         From<R, R> jointRoot = getQuery().from(entityClass);
-        R joinTemplate = Handler.interceptor.newInstance(entityClass,  (interceptorInstance, thisMethod, target, proceed, args) -> {
+        R joinTemplate = Handler.interceptor.newInstance(entityClass,  (target, thisMethod, args) -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
             String property = desc.getName();
             if (thisMethod.equals(desc.getReadMethod())) {
@@ -234,7 +234,7 @@ public class Select<T> extends Statement<T> {
     }
 
     protected <R> Select<T> join(JoinType type, Runnable joinCondition, BiConsumer<Select<R>, R> consumer) {
-        Interceptor.setHandler(where.getTemplate(), (interceptorInstance, thisMethod, target, proceed, args) -> {
+        Interceptor.setInterceptorHandler(where.getTemplate(), (target, thisMethod, args) -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
             String property = desc.getName();
             if (thisMethod.equals(desc.getReadMethod())) {
@@ -248,7 +248,7 @@ public class Select<T> extends Statement<T> {
             return null;
         });
         joinCondition.run();
-        Interceptor.setHandler(where.getTemplate(), where);
+        Interceptor.setInterceptorHandler(where.getTemplate(), where);
         return this;
     }
 
@@ -275,7 +275,7 @@ public class Select<T> extends Statement<T> {
     }
 
     protected Select<T> fetch(JoinType type, Runnable joinCondition) {
-        Interceptor.setHandler(where.getTemplate(), (interceptorInstance, thisMethod, target, proceed, args) -> {
+        Interceptor.setInterceptorHandler(where.getTemplate(), (target, thisMethod, args) -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
             String property = desc.getName();
             if (thisMethod.equals(desc.getReadMethod())) {
@@ -286,7 +286,7 @@ public class Select<T> extends Statement<T> {
             return null;
         });
         joinCondition.run();
-        Interceptor.setHandler(where.getTemplate(), where);
+        Interceptor.setInterceptorHandler(where.getTemplate(), where);
         return this;
     }
 
@@ -302,21 +302,21 @@ public class Select<T> extends Statement<T> {
 
     public Select<T> asc(Runnable runnable) {
         OrderBy<T> orderBy = new OrderBy(where.getEntityManager(), where.getBuilder(), where.getQuery(), getFrom());
-        Interceptor.setHandler(where.getTemplate(), orderBy);
+        Interceptor.setInterceptorHandler(where.getTemplate(), orderBy);
         orderBy.desc = false;
         orderBy.orderByList = where.orderByList;
         runnable.run();
-        Interceptor.setHandler(where.getTemplate(), where);
+        Interceptor.setInterceptorHandler(where.getTemplate(), where);
         return this;
     }
 
     public Select<T> desc(Runnable runnable) {
         OrderBy<T> orderBy = new OrderBy(where.getEntityManager(), where.getBuilder(), where.getQuery(), getFrom());
-        Interceptor.setHandler(where.getTemplate(), orderBy);
+        Interceptor.setInterceptorHandler(where.getTemplate(), orderBy);
         orderBy.desc = true;
         orderBy.orderByList = where.orderByList;
         runnable.run();
-        Interceptor.setHandler(where.getTemplate(), where);
+        Interceptor.setInterceptorHandler(where.getTemplate(), where);
         return this;
     }
 
