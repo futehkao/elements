@@ -50,7 +50,7 @@ public class KeyServer {
     Provision provision;
 
     @Inject
-    CacheFacade<String, SecretKey> clientKeys; // you cannot inject CacheFacade because it is abstract.
+    CacheFacade<String, SecretKey> clientKeys;
 
     /*@Override
     public void injected() {

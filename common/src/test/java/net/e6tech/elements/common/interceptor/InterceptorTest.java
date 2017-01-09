@@ -20,6 +20,11 @@ import org.junit.Test;
 
 import javax.annotation.Nonnull;
 
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 /**
  * Created by futeh.
  */
@@ -28,28 +33,68 @@ public class InterceptorTest {
     @Test
     public void basic() throws Exception {
         Interceptor interceptor2 = new Interceptor();
+        AtomicReference<Boolean> atomic = new AtomicReference<>();
         TestClass testClass = interceptor2.newInstance(TestClass.class, (target,  thisMethod,  args)-> {
             System.out.print("Intercepted " + thisMethod.getName() + " ... ");
             Nonnull nonnull = thisMethod.getAnnotation(Nonnull.class);
+            if (thisMethod.getName().equals("methodA")) {
+                assertTrue(nonnull != null);
+            }
+            atomic.set(true);
             return thisMethod.invoke(target, args);
         });
 
+        atomic.set(false);
         testClass.methodA();
-        testClass.methodB("Hello World!");
-        testClass.methodC("Hello World1", 10);
+        assertTrue(atomic.get());
 
+        atomic.set(false);
+        testClass.methodB("Hello World!");
+        assertTrue(atomic.get());
+
+        atomic.set(false);
+        testClass.methodC("Hello World!", 10);
+        assertTrue(atomic.get());
+
+        atomic.set(false);
+        testClass.hashCode();
+        assertFalse(atomic.get());
+
+        // testing setting a different handler.
+        AtomicReference<Boolean> atomic2 = new AtomicReference<>();
         Interceptor.getInterceptorHandler(testClass);
         Interceptor.setInterceptorHandler(testClass, (target,  thisMethod,  args)-> {
             System.out.print("New Handler - Intercepted " + thisMethod.getName() + " ... ");
             Nonnull nonnull = thisMethod.getAnnotation(Nonnull.class);
+            if (thisMethod.getName().equals("methodA")) {
+                assertTrue(nonnull != null);
+            }
+            atomic2.set(true);
+            return thisMethod.invoke(target, args);
+        });
+        atomic2.set(false);
+        testClass.methodA();
+        assertTrue(atomic2.get());
+
+        atomic2.set(false);
+        testClass.methodB("Hello World!");
+        assertTrue(atomic2.get());
+
+        atomic2.set(false);
+        testClass.methodC("Hello World1", 10);
+        assertTrue(atomic2.get());
+
+        // testing getting target class
+        Class targetClass = Interceptor.getTargetClass(testClass);
+        assertTrue(targetClass.equals(TestClass.class));
+
+        // testing proxy class caching
+        Class proxyClass = testClass.getClass();
+        testClass = interceptor2.newInstance(TestClass.class, (target,  thisMethod,  args)-> {
             return thisMethod.invoke(target, args);
         });
 
-        testClass.methodA();
-        testClass.methodB("Hello World!");
-        testClass.methodC("Hello World1", 10);
-
-        Interceptor.getTargetClass(testClass);
+        assertTrue(proxyClass == testClass.getClass());
     }
 
     public static class TestClass {

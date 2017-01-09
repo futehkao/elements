@@ -23,7 +23,6 @@ import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.ExceptionMapper;
-import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.jmx.JMXService;
 import net.e6tech.elements.jmx.stat.Measurement;
 import net.e6tech.elements.network.clustering.Cluster;
@@ -40,7 +39,6 @@ import org.apache.cxf.rs.security.cors.CrossOriginResourceSharingFilter;
 import org.apache.cxf.transport.http.AbstractHTTPDestination;
 
 import javax.annotation.Nonnull;
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
@@ -337,10 +335,11 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
     }
 
     private class InstanceResourceProvider extends PerRequestResourceProvider {
-        Provision provision;
-        Observer observer;
-        InjectionModule module;
-        Map<String, Object> map;
+        private Provision provision;
+        private Observer observer;
+        private InjectionModule module;
+        private Map<String, Object> map;  // map is the Map<String, Object> in JaxRSServer's resources. It's used to record measurement
+        private Map<Method, String> methods = new Hashtable<>();
 
         public InstanceResourceProvider(Map<String, Object> map, Class resourceClass, InjectionModule module, Provision provision, Observer observer) {
             super(resourceClass);
@@ -352,9 +351,7 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
 
         protected Object createInstance(Message message) {
             Object instance = super.createInstance(message);
-
             Observer cloneObserver = (observer == null) ? null : observer.clone();
-
             UnitOfWork uow = provision.preOpen((resources) -> {
                     resources.addModule(module);
                 if (exceptionMapper != null) {
@@ -362,27 +359,25 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
                     resources.rebind((Class<ExceptionMapper>) exceptionMapper.getClass(), exceptionMapper);
                 }
                 }).onOpen((resources) -> {
-
-                // call header observer
-                if (cloneObserver !=  null) {
-                    HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
-                    resources.inject(cloneObserver);
-                    try {
-                        cloneObserver.service(request);
-                    } catch (Throwable ex) {
-                        abort(message);
-                        throw ex;
+                    // call header observer
+                    if (cloneObserver !=  null) {
+                        HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
+                        resources.inject(cloneObserver);
+                        try {
+                            cloneObserver.service(request);
+                        } catch (Throwable ex) {
+                            abort(message);
+                            throw ex;
+                        }
                     }
-                }
 
-                // copy from prototype properties to instance.
-                // Reflection.copyInstance(instance, prototype);
-                resources.inject(instance);
-            });
+                    // copy from prototype properties to instance.
+                    // Reflection.copyInstance(instance, prototype);
+                    resources.inject(instance);
+                });
             uow.open();
             message.getExchange().put(UnitOfWork.class, uow);
-
-            return interceptor.newInterceptor(instance, new Handler(map, cloneObserver, message));
+            return interceptor.newInterceptor(instance, new Handler(map, methods, cloneObserver, message));
         }
 
         public void releaseInstance(Message m, Object o) {
@@ -397,13 +392,14 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
     private class Handler implements InterceptorHandler {
         Message message;
         Observer observer;
-        Map<String, Object> map;
-        Map<Method, String> methods = new Hashtable<>();
+        Map<String, Object> map;  // map is the Map<String, Object> in JaxRSServer's resources. It's used to record measurement
+        Map<Method, String> methods;
 
-        public Handler(Map<String, Object> map, Observer observer, Message message) {
+        public Handler(Map<String, Object> map, Map<Method, String> methods, Observer observer, Message message) {
             this.message = message;
             this.observer = observer;
             this.map = map;
+            this.methods = methods;
         }
 
         @Override

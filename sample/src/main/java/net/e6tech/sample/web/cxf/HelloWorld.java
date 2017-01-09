@@ -48,6 +48,13 @@ public class HelloWorld{
 
     @GET
     @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello")
+    public String ping() {
+        return "hello";
+    }
+
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/{greeting}")
     public String sayHello(@PathParam("greeting") String greeting) {
         return "hello " + greeting;

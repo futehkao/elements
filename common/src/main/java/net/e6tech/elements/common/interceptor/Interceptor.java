@@ -24,15 +24,18 @@ import net.bytebuddy.implementation.bind.annotation.*;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.matcher.ElementMatchers;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Created by futeh.
  */
 public class Interceptor {
-    private Map<Class, Class> proxyClasses = new Hashtable<>(199);
+    private Map<Class, WeakReference<Class>> proxyClasses = Collections.synchronizedMap(new WeakHashMap<>(199));
 
     private static Interceptor instance = new Interceptor();
 
@@ -40,19 +43,22 @@ public class Interceptor {
         return instance;
     }
 
-    public Class createClass(Class cls) {
-        Class proxyClass = proxyClasses.get(cls);
-        if (proxyClass != null) return proxyClass;
-        proxyClass = new ByteBuddy()
-                .subclass(cls)
-                .method(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class)))
+    protected Class createClass(Class cls) {
+        WeakReference<Class> ref = proxyClasses.get(cls);
+        Class proxyClass = (ref == null) ? null : ref.get();
+        if (proxyClass == null) {
+            proxyClass = new ByteBuddy()
+                    .subclass(cls)
+                    .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
                     .intercept(MethodDelegation.toField("handler"))
-                .defineField("handler", Handler.class, Visibility.PRIVATE)
-                .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
-                .make()
-                .load(cls.getClassLoader())
-                .getLoaded();
-        proxyClasses.put(cls, proxyClass);
+                    .defineField("handler", Handler.class, Visibility.PRIVATE)
+                    .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
+                    .make()
+                    .load(cls.getClassLoader())
+                    .getLoaded();
+            proxyClasses.put(cls, new WeakReference<Class>(proxyClass));
+        }
+
         return proxyClass;
     }
 
@@ -93,6 +99,19 @@ public class Interceptor {
             return false;
         }
         return true;
+    }
+
+    public static Object getTarget(Object proxyObject) {
+        InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
+        return wrapper.target;
+    }
+
+    public static void setTarget(Object proxyObject, Object target) {
+        InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
+        if (target != null && !target.getClass().isAssignableFrom(wrapper.targetClass)) {
+            throw new IllegalArgumentException("Target class " + target.getClass() + " is not assignable from " + wrapper.targetClass);
+        }
+        wrapper.target = target;
     }
 
     public static Class getTargetClass(Object proxyObject) {

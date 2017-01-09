@@ -40,10 +40,10 @@ import java.util.*;
 public class Instance {
     Interceptor interceptor;
     Class implementationClass;
-    Class proxyClass;
     List<Field> delegateFields;
     Map<Field, Instance> children = new LinkedHashMap<>(); // contains fields marked with @Delegate
     List<Class> searchOrder = new LinkedList<>();
+    boolean proxy = false;
 
     public static List<Field> getDelegateFields(Class cls) {
         Class c = cls;
@@ -93,13 +93,12 @@ public class Instance {
         }
 
         if (Modifier.isAbstract(implementationClass.getModifiers())
-                && ! Modifier.isInterface(implementationClass.getModifiers())) {
-            proxyClass = interceptor.createClass(implementationClass);
-            delegateFields = getDelegateFields(proxyClass);
-        } else {
-            delegateFields = getDelegateFields(implementationClass);
-
+                && !Modifier.isInterface(implementationClass.getModifiers())) {
+            proxy = true;
         }
+
+        delegateFields = getDelegateFields(implementationClass);
+
 
         delegateFields.forEach((field) -> {
             field.setAccessible(true);
@@ -136,7 +135,7 @@ public class Instance {
             ObjectFinder finder = resources.getInstance(ObjectFinder.class);
             instance = finder.toObject(resources, ref);
             references.put(implementationClass, instance);
-        } else if (proxyClass != null) {
+        } else if (proxy) {
             // create an interceptor object.  Need to go through children to set injected fields
             try {
                 instance = interceptor.newInstance(implementationClass, handler);
