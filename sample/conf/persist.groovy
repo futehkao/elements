@@ -17,6 +17,7 @@
 import com.zaxxer.hikari.HikariDataSource
 import javax.persistence.EntityManager
 import net.e6tech.elements.persist.hibernate.HibernateEntityManagerProvider
+import net.e6tech.elements.persist.hibernate.TableIdGenerator
 
 atom("datasource") {
     configuration = """
@@ -41,6 +42,9 @@ atom("persist") {
     """
 
     entityManagerProvider = HibernateEntityManagerProvider
+    def tableId = new TableIdGenerator()
+    tableId.defaultIncrementSize = 20
+    entityManagerProvider.registerIdentifierGenerator('tableId', tableId)
 
     postInit {
         // testing if EntityManager can be created correctly

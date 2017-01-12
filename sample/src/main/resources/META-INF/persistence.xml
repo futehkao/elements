@@ -20,14 +20,42 @@
              version="2.1">
     <persistence-unit name="sample">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
-        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes> <!-- disables annotation -->
         <shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>
         <properties>
             <!-- <property name="hibernate.connection.provider_class" value="provider class" /> -->
             <property name="hibernate.ejb.cfgfile" value="persistence/sample/sample.cfg.xml" />
             <property name="current_session_context" value="thread" />
-            <property name="hibernate.cache.use_query_cache" value="false" />
-            <property name="hibernate.cache.use_second_level_cache" value="false" />
+            <property name="dialect" value="org.hibernate.dialect.MySQL57InnoDBDialect" />
+            <property name="hibernate.connection.isolation" value="2" /> <!-- read uncommitted is 1, read committed is 2 etc. see java.sql.Connection -->
+            <property name="hibernate.cache.use_query_cache" value = "true" />
+            <property name="hibernate.cache.region.factory_class" value ="org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory" />
+            <property name="hibernate.ejb.interceptor.session_scoped" value = "net.e6tech.elements.persist.hibernate.Interceptor" />
+            <property name="hibernate.cache.use_second_level_cache" value = "${hibernate.cache.use_second_level_cache}" />
+            <property name="hibernate.generate_statistics" value ="${hibernate.generate_statistics}" />
+        </properties>
+
+    </persistence-unit>
+
+    <!--
+    <persistence-unit name="sample2">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        <class>net.e6tech.sample.entity.Employee</class>
+        <class>net.e6tech.sample.entity.Department</class>
+        <!- <exclude-unlisted-classes>true</exclude-unlisted-classes> ->
+        <shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>
+        <properties>
+            <!- <property name="hibernate.ejb.cfgfile" value="persistence/sample/sample.cfg.xml" /> ->
+            <property name="current_session_context" value="thread" />
+            <property name="hibernate.archive.autodetection" value="class" /> <!- auto package scanning ->
+            <property name="dialect" value="org.hibernate.dialect.MySQL57InnoDBDialect" />
+            <property name="hibernate.connection.isolation" value="2" /> <!- read uncommitted is 1, read committed is 2 etc. see java.sql.Connection ->
+            <property name="hibernate.cache.use_query_cache" value = "true" />
+            <property name="hibernate.cache.region.factory_class" value ="org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory" />
+            <property name="hibernate.ejb.interceptor.session_scoped" value = "net.e6tech.elements.persist.hibernate.Interceptor" />
+            <property name="hibernate.cache.use_second_level_cache" value = "${hibernate.cache.use_second_level_cache}" />
+            <property name="hibernate.generate_statistics" value ="${hibernate.generate_statistics}" />
         </properties>
     </persistence-unit>
+    -->
 </persistence>

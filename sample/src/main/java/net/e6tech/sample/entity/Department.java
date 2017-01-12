@@ -16,14 +16,29 @@
 
 package net.e6tech.sample.entity;
 
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+
+import javax.persistence.*;
 import java.util.Set;
 
 /**
  * Created by futeh.
  */
+@Entity
+@Table(name="department")
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "short")
 public class Department {
+    @Id
+    @Column
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "dept_name")
     private String name;
+
+    @ManyToMany
+    @JoinTable(name = "dept_emp",
+            joinColumns = { @JoinColumn(name = "dept_id")},
+            inverseJoinColumns = { @JoinColumn(name = "emp_id")} )
     private Set<Employee> employees;
 
     public Long getId() {

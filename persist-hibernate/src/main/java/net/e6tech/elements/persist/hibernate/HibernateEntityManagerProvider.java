@@ -22,24 +22,54 @@ import net.e6tech.elements.common.serialization.ObjectReference;
 import net.e6tech.elements.common.util.InitialContextFactory;
 import net.e6tech.elements.persist.*;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.internal.SessionImpl;
+import org.hibernate.jpa.AvailableSettings;
+import org.hibernate.jpa.spi.IdentifierGeneratorStrategyProvider;
 
 import javax.naming.Context;
 import javax.persistence.Cache;
 import javax.persistence.EntityManager;
 import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Created by futeh.
  */
 public class HibernateEntityManagerProvider extends EntityManagerProvider {
 
+    private Map<String, IdentifierGenerator> identifierGenerators = new LinkedHashMap<>();
+
     @Override
     public void initialize(Resources resources) {
         if (System.getProperty(Context.INITIAL_CONTEXT_FACTORY) == null) {
             InitialContextFactory.setDefault();
         }
+
+        // Note: AvailableSettings.IDENTIFIER_GENERATOR_STRATEGY_PROVIDER is deprecated.
+        // note: another way to do it is to subclass HibernatePersistenceProvider and override
+        // getEntityManagerFactoryBuilder(PersistenceUnitDescriptor persistenceUnitDescriptor, Map integration, ClassLoader providedClassLoader)
+        // to provide a builder (which subclasses EntityManagerFactoryBuilderImpl in order to hook in the strategies.
+        if (identifierGenerators.size() > 0) {
+            net.e6tech.elements.common.interceptor.Interceptor interceptor = new net.e6tech.elements.common.interceptor.Interceptor();
+            Map<String, Class<?>> strategies = new LinkedHashMap<>();
+            for (Map.Entry<String, IdentifierGenerator> entry: identifierGenerators.entrySet()) {
+                Class<IdentifierGenerator> cls = interceptor.newPrototypeClass((Class<IdentifierGenerator>)entry.getValue().getClass(), entry.getValue());
+                strategies.put(entry.getKey(), cls);
+            }
+            getPersistenceProperties().put(AvailableSettings.IDENTIFIER_GENERATOR_STRATEGY_PROVIDER, new IdentifierGeneratorStrategyProvider() {
+                @Override
+                public Map<String, Class<?>> getStrategies() {
+                    return strategies;
+                }
+            });
+        }
         super.initialize(resources);
+    }
+
+    public void registerIdentifierGenerator(String strategy, IdentifierGenerator generator) {
+        identifierGenerators.put(strategy, generator);
     }
 
     @Override

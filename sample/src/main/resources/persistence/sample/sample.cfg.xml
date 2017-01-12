@@ -18,16 +18,7 @@
 
 <hibernate-configuration>
     <session-factory name="sample">
-        <!-- properties -->
-        <property name="dialect">org.hibernate.dialect.MySQL57InnoDBDialect</property>
-        <property name="hibernate.connection.isolation">2</property> <!-- read uncommitted is 1, read committed is 2 etc. see java.sql.Connection -->
-        <property name="hibernate.cache.use_query_cache">true</property>
-        <property name="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory</property>
-        <property name="hibernate.archive.autodetection">false</property>
-        <property name="hibernate.ejb.interceptor.session_scoped">net.e6tech.elements.persist.hibernate.Interceptor</property>
-        <property name="hibernate.cache.use_second_level_cache">${hibernate.cache.use_second_level_cache}</property>
-        <property name="hibernate.generate_statistics">${hibernate.generate_statistics}</property>
-
+        <property name="elements.hibernate.id.generator">generator</property>
         <!-- mapping files -->
         <mapping resource="persistence/sample/employee.hbm.xml"/>
     </session-factory>

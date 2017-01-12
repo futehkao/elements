@@ -32,8 +32,6 @@ import static org.junit.Assert.assertTrue;
  */
 public class PersistenceTest extends BaseCase {
 
-    public static Provision provision;
-
     private Employee employee;
     private Department department;
 
@@ -52,6 +50,16 @@ public class PersistenceTest extends BaseCase {
 
     @Test
     public void testInsert() {
+        provision.commit(EntityManager.class, (em) -> {
+            em.persist(employee);
+        });
+
+        provision.commit(EntityManager.class, (em) -> {
+            Employee e = em.find(Employee.class, employee.getId());
+            assertTrue(e != null);
+        });
+
+        employee.setId(null);
         provision.commit(EntityManager.class, (em) -> {
             em.persist(employee);
         });

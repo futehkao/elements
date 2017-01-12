@@ -23,7 +23,7 @@
     <class name="net.e6tech.sample.entity.Employee" table="employee">
         <cache usage="read-write" region="short"/>
         <id name="id" type="long" column="id">
-            <generator class="identity" />
+            <generator class="tableId" />
         </id>
         <property name="firstName" column="first_name" />
         <property name="lastName" column="last_name" />
@@ -34,8 +34,8 @@
 
     <class name="net.e6tech.sample.entity.Department" table="department">
         <cache usage="read-write" region="short"/>
-        <id name="id" type="long" column="id">
-            <generator class="identity" />
+        <id name="id" type="long" column="id" >
+            <generator class="tableId" />
         </id>
         <property name="name" column="dept_name" />
         <set name="employees" table="dept_emp" cascade="all" >

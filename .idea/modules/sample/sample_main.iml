@@ -6,7 +6,7 @@
         <setting name="validation-enabled" value="true" />
         <setting name="provider-name" value="Hibernate" />
         <datasource-mapping>
-          <factory-entry name="sample" />
+          <factory-entry name="sample" value="b1eb90a1-1fb5-4f04-9b82-bc2904b139b3" />
         </datasource-mapping>
         <deploymentDescriptor name="persistence.xml" url="file://$MODULE_DIR$/../../../sample/src/main/resources/META-INF/persistence.xml" />
       </configuration>
@@ -15,7 +15,7 @@
       <configuration>
         <datasource-map>
           <unit-entry name="h3" value="b1eb90a1-1fb5-4f04-9b82-bc2904b139b3" />
-          <unit-entry name="sample" />
+          <unit-entry name="sample" value="b1eb90a1-1fb5-4f04-9b82-bc2904b139b3" />
         </datasource-map>
         <naming-strategy-map />
         <deploymentDescriptor name="hibernate.cfg.xml" url="file://$MODULE_DIR$/../../../sample/src/main/resources/persistence/sample/sample.cfg.xml" />

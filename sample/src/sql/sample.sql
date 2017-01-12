@@ -40,3 +40,10 @@ CREATE TABLE sample.dept_emp (
     FOREIGN KEY (dept_id) REFERENCES sample.department (id) ON DELETE CASCADE,
     PRIMARY KEY (emp_id,dept_id)
 );
+
+
+CREATE TABLE sample.sequence (
+    sequence_name   VARCHAR(100)     NOT NULL,
+    next_val   BIGINT(19) UNSIGNED      NOT NULL,
+    PRIMARY KEY (sequence_name)
+);

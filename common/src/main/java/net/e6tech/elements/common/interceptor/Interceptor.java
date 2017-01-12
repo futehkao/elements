@@ -17,17 +17,19 @@
 package net.e6tech.elements.common.interceptor;
 
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.implementation.FieldAccessor;
 import net.bytebuddy.implementation.MethodDelegation;
+import net.bytebuddy.implementation.SuperMethodCall;
 import net.bytebuddy.implementation.bind.annotation.*;
-import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.matcher.ElementMatchers;
+import net.e6tech.elements.common.reflection.Reflection;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
-import java.util.Hashtable;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -62,6 +64,84 @@ public class Interceptor {
         return proxyClass;
     }
 
+    /**
+     * Creates a prototype class.  When an instance is created, its bean properties are copied from the prototype.
+     * Afterward, the instance functions independently from the prototype.
+     * @param cls
+     * @param prototype
+     * @param <T>
+     * @return
+     */
+    public static <T> Class<T> newPrototypeClass(Class<T> cls, T prototype) {
+        Class proxyClass = new ByteBuddy()
+                .subclass(cls)
+                .constructor(ElementMatchers.any())
+                    .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.to(new Constructor<T>(prototype))))
+                .make()
+                .load(cls.getClassLoader())
+                .getLoaded();
+        return proxyClass;
+    }
+
+    // must be public static
+    public static class Constructor<T> {
+        T prototype;
+
+        public Constructor(T prototype) {
+            this.prototype = prototype;
+        }
+
+        public void construct(@This Object instance) {
+            if (prototype != null) Reflection.copyInstance(instance, prototype);
+        }
+    }
+
+    /**
+     * Create a class that returns a singleton.  When new instance of the class is created, all operations, except
+     * for finalize, are delegated to the singleton.
+     *
+     * @param cls
+     * @param singleton
+     * @param <T>
+     * @return
+     */
+    public static <T> Class<T> newSingletonClass(Class<T> cls, T singleton) {
+        if (singleton == null) throw new IllegalArgumentException("target cannot be null");
+        Class proxyClass = new ByteBuddy()
+                .subclass(cls)
+                .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.named("finalize").and(ElementMatchers.hasParameters(ElementMatchers.none())))))
+                .intercept(MethodDelegation.toField("handler"))
+                .defineField("handler", Handler.class, Visibility.PRIVATE, Ownership.STATIC)
+                .make()
+                .load(cls.getClassLoader())
+                .getLoaded();
+        try {
+            Field field = proxyClass.getDeclaredField("handler");
+            field.setAccessible(true);
+            InterceptorHandlerWrapper wrapper = null;
+            try {
+                wrapper = new InterceptorHandlerWrapper(singleton,  (t,  thisMethod,  args)-> {
+                    return thisMethod.invoke(singleton, args);
+                } );
+                field.set(null, wrapper);
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+        return proxyClass;
+    }
+
+    /**
+     * Creates an interceptor for an instance.  All calls for the interceptor, except for methods declared in Object, are
+     * forwarded to the handler.
+     *
+     * @param instance
+     * @param handler
+     * @param <T>
+     * @return
+     */
     public <T> T newInterceptor(T instance, InterceptorHandler handler) {
         Class proxyClass = createClass(instance.getClass());
         T proxyObject = newObject(proxyClass);
@@ -70,6 +150,13 @@ public class Interceptor {
         return proxyObject;
     }
 
+    /**
+     * Create an interceptor just like the newInterceptor method.  However, the instance is set to cls.newInstance().
+     * @param cls
+     * @param handler
+     * @param <T>
+     * @return
+     */
     public <T> T newInstance(Class cls, InterceptorHandler handler) {
         Class proxyClass = createClass(cls);
         T proxyObject = newObject(proxyClass);

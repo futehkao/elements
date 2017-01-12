@@ -97,13 +97,57 @@ public class InterceptorTest {
         assertTrue(proxyClass == testClass.getClass());
     }
 
+    @Test
+    public void testPrototype() throws Exception {
+        Interceptor interceptor = new Interceptor();
+        TestClass prototype = new TestClass();
+        prototype.setValue(10);
+        Class cls = interceptor.newPrototypeClass(TestClass.class, prototype);
+        TestClass test = (TestClass) cls.newInstance();
+        assertTrue(test.getValue() == 10);
+        test.setValue(11);
+        assertTrue(prototype.getValue() == 10);
+        assertTrue(test.getValue() == 11);
+    }
+
+    @Test
+    public void testSingleton() throws Exception {
+        Interceptor interceptor = new Interceptor();
+        TestClass singleton = new TestClass();
+        singleton.setValue(10);
+        Class cls = interceptor.newSingletonClass(TestClass.class, singleton);
+        TestClass test = (TestClass) cls.newInstance();
+        assertTrue(test.getValue() == 10);
+
+        test.setValue(11);
+        assertTrue(singleton.getValue() == 11);
+        assertTrue(test.getValue() == 11);
+
+        singleton.setValue(12);
+        assertTrue(singleton.getValue() == 12);
+        assertTrue(test.getValue() == 12);
+    }
+
     public static class TestClass {
+
+        private int value = 0;
+
+        public int getValue() {
+            return value;
+        }
+
+        public void setValue(int value) {
+            this.value = value;
+        }
+
+        public TestClass() {
+            System.out.println("TestClass constructor");
+        }
 
         @Nonnull
         public void methodA() {
             System.out.println("methodA");
         }
-
 
         public String methodB(String arg) {
             System.out.println("methodB: " + arg);

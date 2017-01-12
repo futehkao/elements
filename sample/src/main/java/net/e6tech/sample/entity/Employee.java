@@ -16,15 +16,30 @@
 
 package net.e6tech.sample.entity;
 
+import org.hibernate.annotations.*;
+
+import javax.persistence.*;
+import javax.persistence.Entity;
+import javax.persistence.Table;
+
 /**
  * Created by futeh.
  */
+@Entity
+@Table(name="employee")
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "short")
 public class Employee {
+    @Id @Column @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "birth_date")
     private String birthDate; // yyyyMMdd
+    @Column(name = "first_name")
     private String firstName;
+    @Column(name = "last_name")
     private String lastName;
+    @Column(name = "hire_date")
     private String hireDate;
+    @Column(name = "gender")
     private char gender;
 
     public Long getId() {
