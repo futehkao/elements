@@ -32,6 +32,7 @@ atom("datasource") {
 }
 
 atom("persist") {
+
     configuration = """
         entityManagerProvider.persistenceUnitName: sample
         entityManagerProvider.transactionTimeout: ${entityManagerTxTimeout}
@@ -39,12 +40,19 @@ atom("persist") {
         entityManagerProvider.longTransaction: ${entityManagerLongTransaction}
         entityManagerProvider.persistenceProperties:
             javax.persistence.nonJtaDataSource: ^dataSource
+        _tableId:
+            defaultIncrementSize: 20
+            defaultInitialValue: ^ 10 + _tableId.defaultIncrementSize
+        _tableId2:
+            defaultIncrementSize: 30
     """
 
     entityManagerProvider = HibernateEntityManagerProvider
-    def tableId = new TableIdGenerator()
-    tableId.defaultIncrementSize = 20
-    entityManagerProvider.registerIdentifierGenerator('tableId', tableId)
+
+    _tableId = TableIdGenerator
+    _tableId2 = TableIdGenerator
+    entityManagerProvider.registerIdentifierGenerator('tableId', _tableId)
+    entityManagerProvider.registerIdentifierGenerator('tableId2', _tableId2)
 
     postInit {
         // testing if EntityManager can be created correctly

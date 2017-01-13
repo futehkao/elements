@@ -32,11 +32,19 @@ import java.util.Properties;
  * This class uses a table to generate primary key.
  * Created by futeh.
  */
-public class TableIdGenerator extends TableGenerator {
+public class TableIdGenerator extends TableGenerator implements Cloneable {
 
     private String defaultTableName = "sequence";
     private int defaultInitialValue = 1;
     private int defaultIncrementSize = 100;
+
+    public TableIdGenerator clone() {
+        try {
+            return (TableIdGenerator) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public String getDefaultTableName() {
         return defaultTableName;

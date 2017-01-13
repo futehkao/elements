@@ -35,7 +35,7 @@
     <class name="net.e6tech.sample.entity.Department" table="department">
         <cache usage="read-write" region="short"/>
         <id name="id" type="long" column="id" >
-            <generator class="tableId" />
+            <generator class="tableId2" />
         </id>
         <property name="name" column="dept_name" />
         <set name="employees" table="dept_emp" cascade="all" >

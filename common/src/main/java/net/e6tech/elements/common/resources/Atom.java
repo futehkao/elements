@@ -135,10 +135,17 @@ public class Atom implements Map<String, Object> {
             configurables.add(new Configurable(obj, prefix));
             return;
         }
+
+        if (obj != null) boundInstances.put(prefix, obj); // needed here because configure may execute a script that requires the instance.
+                                                          // when a config string begin with ^, it is turned into a closure.  The expression is
+                                                          // then executed in configuration.configure.
         configuration.configure(obj, prefix,
                 (str) -> {
                     try {
-                        return resourceManager.getScripting().eval(str);
+                        Closure closure = (Closure) resourceManager.getScripting().eval("{ it ->" + str + " }");
+                        closure.setDelegate(this);
+                        closure.setResolveStrategy(Closure.DELEGATE_FIRST);
+                        return closure.call(obj);
                     } catch (MissingPropertyException e) {
                         return null;
                     } catch (ScriptException e) {
@@ -464,7 +471,7 @@ public class Atom implements Map<String, Object> {
                     }
 
                     Class cls = instance.getClass();
-                    resources.bind(cls, instance);
+                    resources.rebind(cls, instance);
                 }
                 configure(instance, key);
             }  else if (value instanceof ResourceProvider) {
