@@ -68,8 +68,16 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         super.initialize(resources);
     }
 
-    public void registerIdentifierGenerator(String strategy, IdentifierGenerator generator) {
+    public IdentifierGeneratorRegistry register(String strategy, IdentifierGenerator generator) {
         identifierGenerators.put(strategy, generator);
+        return new IdentifierGeneratorRegistry();
+    }
+
+    public class IdentifierGeneratorRegistry {
+        public IdentifierGeneratorRegistry register(String strategy, IdentifierGenerator generator) {
+            identifierGenerators.put(strategy, generator);
+            return this;
+        }
     }
 
     @Override

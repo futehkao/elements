@@ -51,8 +51,8 @@ atom("persist") {
 
     _tableId = TableIdGenerator
     _tableId2 = TableIdGenerator
-    entityManagerProvider.registerIdentifierGenerator('tableId', _tableId)
-    entityManagerProvider.registerIdentifierGenerator('tableId2', _tableId2)
+    entityManagerProvider.register('tableId', _tableId)
+            .register('tableId2', _tableId2)
 
     postInit {
         // testing if EntityManager can be created correctly
