@@ -28,7 +28,7 @@ atom("datasource") {
             jdbcUrl: "jdbc:mariadb://127.0.0.1:3306/sample"
             maximumPoolSize: $dataSourceMaxPoolSize
     """
-    dataSource = HikariDataSource
+    delegate["dataSource"] = HikariDataSource  // or dataSource = HikariDataSource
 }
 
 atom("persist") {

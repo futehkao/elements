@@ -110,9 +110,8 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
     public Atom atom(String name, Closure closure) {
 
         Consumer<Atom> consumer = (atom) -> {
-            final Closure clonedClosure = (Closure) closure.clone();
+            final Closure clonedClosure = closure.rehydrate(atom, closure.getOwner(), closure.getOwner());
             clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
-            clonedClosure.setDelegate(atom);
             clonedClosure.call(atom);
             // clonedClosure.setDelegate(null); DO NOT set to null.  run after needs it.
 
