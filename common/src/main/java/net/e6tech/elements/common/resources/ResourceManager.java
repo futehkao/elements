@@ -158,7 +158,24 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return allocation;
     }
 
+    /**
+     * Beware, this method is called from the parent thread.  Typically, a ResourceManager is created and runs in its
+     * own thread.
+     */
     public void onLaunched() {
+        // try to set parent's logDir
+        if (ThreadContext.get("logDir") == null) {
+            String logDir = null;
+            if (System.getProperty("logDir") != null) logDir = System.getProperty("logDir");
+            else if (System.getProperty(Logger.logDir) != null) logDir = System.getProperty(Logger.logDir);
+            else {
+                Properties properties = getProperties();
+                logDir = properties.getProperty("logDir");
+                if (logDir == null) logDir = properties.getProperty(Logger.logDir);
+            }
+            if (logDir != null) ThreadContext.put("logDir", logDir);
+        }
+
         getScripting().onLaunched();
         super.onLoaded();
         beanLifecycle.clearBeanListeners();

@@ -75,7 +75,7 @@ public class Atom implements Map<String, Object> {
         directives.put(PRE_INIT, put);
         directives.put(POST_INIT, put);
         directives.put(AFTER, (key, value) -> runAfter(value));
-        directives.put(LAUNCHED, put);
+        directives.put(LAUNCHED, (key, value) -> runLaunched(value));
         directives.put(EXEC, (key, value) -> {
             try {
                 if (value instanceof String) {

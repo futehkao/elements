@@ -20,6 +20,7 @@ import groovy.lang.GroovyObject;
 import groovy.lang.MetaClass;
 import groovy.lang.MissingMethodException;
 import org.codehaus.groovy.runtime.InvokerHelper;
+import static net.e6tech.elements.rules.ControlFlow.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -108,44 +109,51 @@ public class RuleContext implements GroovyObject {
         return failedMessage;
     }
 
-    protected boolean verifyObject(Object object) {
-        return true;
+    protected ControlFlow verifyObject(Object object) {
+        return Continue;
     }
 
-    public boolean verify(Object ... objects) {
+    public ControlFlow verify(Object ... objects) {
+        ControlFlow flow = Continue;
         for (Object value : objects) {
-            boolean bool = true;
             if (value instanceof Closure) {
                 Closure c1 = (Closure) ((Closure)value).clone();
                 c1.setResolveStrategy(Closure.DELEGATE_FIRST);
                 c1.setDelegate(this);
                 Object obj = c1.call();
-                if (obj == null) bool = true; // this may be counter intuitive.  We should assume true, if there is no effort to return false.
-                else if (obj.getClass().equals(Boolean.TYPE) || obj.getClass().equals(Boolean.class)) {
-                    bool = (boolean) obj;
-                }
+                flow = interpret(obj);
             } else if (value instanceof Verify) {
                 Verify verify = (Verify) value;
                 Closure c1 = (Closure) verify.getClosure().clone();
                 c1.setResolveStrategy(Closure.DELEGATE_FIRST);
                 c1.setDelegate(this);
                 Object obj = c1.call();
-                if (obj == null) bool = true; // this may be counter intuitive.  We should assume true, if there is no effort to return false.
-                else if (obj.getClass().equals(Boolean.TYPE) || obj.getClass().equals(Boolean.class)) {
-                    bool = (boolean) obj;
-                }
+                flow = interpret(obj);
             } else if (value instanceof Boolean) {
-                bool = (boolean) value;
+                flow = interpret(value);
             } else {
-                bool = verifyObject(value);
+                flow = verifyObject(value);
             }
 
-            if (!bool) {
+            if (flow == Failed) {
                 onCheckFailed();
-                throw new AssertionError("failed to verify rule " + currentRule.getName() + " -> " + value);
+                ruleFailed(currentRule, "failed to verify rule " + currentRule.getName() + " -> " + value);
+                break;
             }
         }
-        return true;
+        return flow;
+    }
+
+    private ControlFlow interpret(Object obj) {
+        ControlFlow flow = Continue;
+        if (obj == null) flow = Continue; // this may be counter intuitive.  We should assume true, if there is no effort to return false.
+        else if (obj.getClass().equals(Boolean.TYPE) || obj.getClass().equals(Boolean.class)) {
+            boolean bool = (boolean) obj;
+            if (!bool) flow = Failed;
+        } else if (obj instanceof ControlFlow) {
+            flow = (ControlFlow) obj;
+        }
+        return flow;
     }
 
     protected void handleFailed(Closure closure) {
