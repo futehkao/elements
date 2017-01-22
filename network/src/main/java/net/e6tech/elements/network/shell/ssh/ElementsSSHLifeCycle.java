@@ -1,17 +1,31 @@
 /*
- * This is a replication of CRaSH SSHLifeCycle with changes to pass
- * user name in the session.
+ * Copyright 2017 Futeh Kao
  *
- * The copyright of this file shall be that of SSHLifeCycle.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-package net.e6tech.elements.network.shell;
+package net.e6tech.elements.network.shell.ssh;
 
 import net.e6tech.elements.common.logging.Logger;
 import org.apache.sshd.SshServer;
+import org.apache.sshd.common.Cipher;
 import org.apache.sshd.common.KeyPairProvider;
+import org.apache.sshd.common.Mac;
 import org.apache.sshd.common.NamedFactory;
+import org.apache.sshd.common.cipher.*;
+import org.apache.sshd.common.mac.HMACMD5;
+import org.apache.sshd.common.mac.HMACMD596;
+import org.apache.sshd.common.mac.HMACSHA196;
 import org.apache.sshd.server.Command;
 import org.apache.sshd.server.PasswordAuthenticator;
 import org.apache.sshd.server.PublickeyAuthenticator;
@@ -28,11 +42,13 @@ import org.crsh.ssh.term.subsystem.SubsystemFactoryPlugin;
 import java.nio.charset.Charset;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Created by futeh.
  */
-public class CustomSSHLifeCycle {
+public class ElementsSSHLifeCycle {
 
     private static Logger log = Logger.getLogger();
 
@@ -62,7 +78,7 @@ public class CustomSSHLifeCycle {
     /** . */
     private Integer localPort;
 
-    public CustomSSHLifeCycle(
+    public ElementsSSHLifeCycle(
             PluginContext context,
             Charset encoding,
             int port,
@@ -116,6 +132,29 @@ public class CustomSSHLifeCycle {
 
             //
             SshServer server = SshServer.setUpDefaultServer();
+
+            List<NamedFactory<Mac>> macs = new ArrayList<>();
+            server.getMacFactories().forEach(mac -> {
+                if (!(mac.getName().equals(new HMACMD596.Factory().getName())
+                        || mac.getName().equals(new HMACSHA196.Factory().getName())
+                        || mac.getName().equals(new HMACMD5.Factory().getName()))) {
+                    macs.add(mac);
+                }
+            });
+            server.setMacFactories(macs);
+
+            List<NamedFactory<Cipher>> ciphers = new ArrayList<>();
+            server.getCipherFactories().forEach(cipher -> {
+                if (!(cipher.getName().equals(new AES128CBC.Factory().getName())
+                        || cipher.getName().equals(new AES192CBC.Factory().getName())
+                        || cipher.getName().equals(new AES256CBC.Factory().getName())
+                        || cipher.getName().equals(new TripleDESCBC.Factory().getName())
+                        || cipher.getName().equals(new BlowfishCBC.Factory().getName()))) {
+                    ciphers.add(cipher);
+                }
+            });
+            server.setCipherFactories(ciphers);
+
             server.setPort(port);
 
             if (this.idleTimeout > 0) {

@@ -21,12 +21,12 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
-public class CustomShellFactory extends CRaSHPlugin<ShellFactory> implements ShellFactory {
+public class ElementsShellFactory extends CRaSHPlugin<ShellFactory> implements ShellFactory {
 
     /** . */
     private CRaSH crash;
 
-    public CustomShellFactory() {
+    public ElementsShellFactory() {
     }
 
     @Override

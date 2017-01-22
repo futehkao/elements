@@ -15,6 +15,9 @@ limitations under the License.
 */
 package net.e6tech.elements.network.shell;
 
+import net.e6tech.elements.network.shell.ssh.ElementsSSHPlugin;
+import net.e6tech.elements.network.shell.ssh.SshKeyAuthenticationPlugin;
+import net.e6tech.elements.network.shell.telnet.ElementsTelnetPlugin;
 import net.e6tech.elements.security.SymmetricCipher;
 import org.crsh.console.jline.JLineProcessor;
 import org.crsh.console.jline.Terminal;
@@ -66,6 +69,7 @@ public class Shelld extends Embedded {
     private int sshAuthTimeout = 300000;
     private int sshIdleTimeout = 300000;
     private int telnetPort = -1;
+    private String telnetBindAddress;
 
     public static void main(String ... args) throws Exception {
         Shelld shelld = new Shelld();
@@ -121,6 +125,14 @@ public class Shelld extends Embedded {
 
     public void setTelnetPort(int telnetPort) {
         this.telnetPort = telnetPort;
+    }
+
+    public String getTelnetBindAddress() {
+        return telnetBindAddress;
+    }
+
+    public void setTelnetBindAddress(String telnetBindAddress) {
+        this.telnetBindAddress = telnetBindAddress;
     }
 
     public void addAttribute(String name, Object object) {
@@ -255,7 +267,7 @@ public class Shelld extends Embedded {
             config.setProperty("crash.ssh.port", "" + sshPort);
             if (!config.containsKey("crash.ssh.auth_timeout")) config.setProperty("crash.ssh.auth_timeout", "" + sshAuthTimeout);
             if (!config.containsKey("crash.ssh.idle_timeout"))config.setProperty("crash.ssh.idle_timeout", "" + sshIdleTimeout);
-            includePlugins(CustomerSSHPlugin.class.getName()); // using my own
+            includePlugins(ElementsSSHPlugin.class.getName()); // using my own
             includePlugins(SshKeyAuthenticationPlugin.class.getName());
         }
 
@@ -265,14 +277,16 @@ public class Shelld extends Embedded {
 
         if (telnetPort > 0) {
             config.setProperty("crash.telnet.port", "" + telnetPort);
-        } else {
-            excludePlugins(TelnetPlugin.class.getName());
+            if (telnetBindAddress != null) config.setProperty("crash.telnet.bind_address", "" + telnetBindAddress);
+            includePlugins(ElementsTelnetPlugin.class.getName());
         }
+        excludePlugins(TelnetPlugin.class.getName());
 
-        includePlugins(PasswordAuthenticationPlugin.class.getName());
+        if (config.containsKey("crash.auth.password.file")) {
+            includePlugins(PasswordAuthenticationPlugin.class.getName());
+        }
         excludePlugins(CRaSHShellFactory.class.getName());  // using my own
-        includePlugins(CustomShellFactory.class.getName());  // using my own
-
+        includePlugins(ElementsShellFactory.class.getName());  // using my own
 
         setConfig(config);
 

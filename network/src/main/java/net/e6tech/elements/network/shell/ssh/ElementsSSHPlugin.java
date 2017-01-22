@@ -6,7 +6,7 @@
  *
  */
 
-package net.e6tech.elements.network.shell;
+package net.e6tech.elements.network.shell.ssh;
 
 import org.apache.sshd.common.KeyPairProvider;
 import org.apache.sshd.common.util.SecurityUtils;
@@ -32,7 +32,7 @@ import java.util.logging.Level;
 /**
  * Created by futeh.
  */
-public class CustomerSSHPlugin extends SSHPlugin {
+public class ElementsSSHPlugin extends SSHPlugin {
 
     /** The SSH server idle timeout value. */
     private static final int SSH_SERVER_IDLE_DEFAULT_TIMEOUT = 10 * 60 * 1000;
@@ -40,7 +40,7 @@ public class CustomerSSHPlugin extends SSHPlugin {
     /** The SSH server authentication timeout value. */
     private static final int SSH_SERVER_AUTH_DEFAULT_TIMEOUT = 10 * 60 * 1000;
 
-    private CustomSSHLifeCycle lifeCycle;
+    private ElementsSSHLifeCycle lifeCycle;
 
     @Override
     public SSHPlugin getImplementation() {
@@ -149,7 +149,7 @@ public class CustomerSSHPlugin extends SSHPlugin {
 
         //
         log.log(Level.INFO, "Booting SSHD");
-        CustomSSHLifeCycle lifeCycle = new CustomSSHLifeCycle(
+        ElementsSSHLifeCycle lifeCycle = new ElementsSSHLifeCycle(
                 getContext(),
                 encoding,
                 port,
