@@ -164,6 +164,18 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
      */
     public void onLaunched() {
         // try to set parent's logDir
+        createLoggerContext();
+
+        getScripting().onLaunched();
+        super.onLoaded();
+        beanLifecycle.clearBeanListeners();
+    }
+
+    /**
+     * For creating a logger context.  This is especially true when a batch job is kicked off in
+     * a thread.  In order for logging to work correctly, its ThreadContext needs to be populated.
+     */
+    public void createLoggerContext() {
         if (ThreadContext.get("logDir") == null) {
             String logDir = null;
             if (System.getProperty("logDir") != null) logDir = System.getProperty("logDir");
@@ -175,10 +187,6 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             }
             if (logDir != null) ThreadContext.put("logDir", logDir);
         }
-
-        getScripting().onLaunched();
-        super.onLoaded();
-        beanLifecycle.clearBeanListeners();
     }
 
     protected void onLoaded() {

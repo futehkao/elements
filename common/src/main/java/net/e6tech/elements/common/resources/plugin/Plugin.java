@@ -101,7 +101,7 @@ public class Plugin {
             lookup =  context.lookup(fullPath);
         } catch (NamingException e) {
             Class type = path.getType();
-            Object plugin = defaultPlugins.get(type);
+            lookup = defaultPlugins.get(type);
             if (lookup == null) {
                 while (type != null && !type.equals(Object.class)) {
                     try {

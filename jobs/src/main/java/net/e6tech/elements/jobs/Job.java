@@ -199,6 +199,12 @@ public class Job implements Initializable, Startable, LaunchListener {
 
     public Object execute() throws Throwable {
         try {
+            // this call is executed using a different thread so that we need to set up
+            // logging context.
+            if (jobServer != null &&
+                    jobServer.resourceManager != null) {
+                jobServer.resourceManager.createLoggerContext();
+            }
             return invocation.invoke(target);
         } catch (InvocationTargetException ex) {
             throw ex.getTargetException();
