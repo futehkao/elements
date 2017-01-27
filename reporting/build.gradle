@@ -22,7 +22,8 @@ repositories {
 dependencies {
     compile project(':common')
     compile project(':security')
-    compile ('org.apache.poi:poi:3.10.1')
+    compile ('org.apache.poi:poi:3.15')
+    compile ('commons-beanutils:commons-beanutils:1.9.3')
     compile fileTree(dir: 'lib', include: '*.jar')
 
     compile ('com.lowagie:itext:2.1.7.js4') {
@@ -31,7 +32,7 @@ dependencies {
 
     // compile ('org.olap4j:olap4j:0.9.7.309-JS-3')
 
-    compile ('net.sf.jasperreports:jasperreports:6.2.0') {
+    compile ('net.sf.jasperreports:jasperreports:6.4.0') {
         exclude group: 'com.fasterxml.jackson.core'
         exclude group: 'bouncycastle'
         exclude group: 'com.lowagie'

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: net.sf.jasperreports:jasperreports:6.4.0">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.sf.jasperreports/jasperreports/6.4.0/72d3ce3c2966c0a4f31ada8bd55c66df7c31884d/jasperreports-6.4.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.sf.jasperreports/jasperreports/6.4.0/8573f4a35c455d2e515abee9ae0d11ebdc1d8c8f/jasperreports-6.4.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
