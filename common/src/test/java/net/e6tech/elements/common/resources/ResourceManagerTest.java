@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.resources;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -23,6 +24,7 @@ import org.junit.Test;
  */
 public class ResourceManagerTest {
 
+    @Ignore
     @Test
     public void basic() throws Exception{
         ResourceManager resourceManager = new ResourceManager();

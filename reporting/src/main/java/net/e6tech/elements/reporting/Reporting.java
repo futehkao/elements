@@ -17,13 +17,12 @@ limitations under the License.
 
 package net.e6tech.elements.reporting;
 
-
-import net.e6tech.elements.reporting.jasper.ReportingImpl;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
+import net.e6tech.elements.reporting.text.TextReportingImpl;
 
 /**
  * Created by futeh on 1/14/16.
@@ -33,12 +32,12 @@ public abstract class Reporting {
     private String baseDir = "";
 
     public static Reporting getInstance() {
-        return new ReportingImpl();
+        return new TextReportingImpl();
     }
 
     public static Reporting getInstance(String engine) {
-        if (!engine.equals("JASPER")) throw new IllegalArgumentException("Unsupported reporting engine: ");
-        return new ReportingImpl();
+        if (!engine.equals("text")) throw new IllegalArgumentException("Unsupported reporting engine: " + engine);
+        return new TextReportingImpl();
     }
 
     public Reporting() {
