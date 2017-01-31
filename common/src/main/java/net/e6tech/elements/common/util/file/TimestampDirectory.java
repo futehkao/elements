@@ -123,14 +123,26 @@ public class TimestampDirectory {
         }
 
         public OutputStream getOutputStream() throws IOException {
-            return getOutputStream(fileName, null, null);
+            return Files.newOutputStream(getOutputPath());
         }
 
         public OutputStream getOutputStream(String fileName, String extension) throws IOException {
-            return getOutputStream(fileName, extension, null);
+            return Files.newOutputStream(getOutputPath(fileName, extension));
         }
 
         public OutputStream getOutputStream(String file, String ext, ZonedDateTime timestamp) throws IOException {
+        	return Files.newOutputStream(getOutputPath(file,ext,timestamp));
+        }
+
+        public Path getOutputPath() throws IOException {
+        	return getOutputPath(fileName, null, null);
+        }
+
+        public Path getOutputPath(String fileName, String extension) throws IOException {
+            return getOutputPath(fileName, extension, null);
+        }
+
+        public Path getOutputPath(String file, String ext, ZonedDateTime timestamp) throws IOException {
             if (file != null) fileName = file;
             if (ext != null) fileExtension = ext;
 
@@ -157,9 +169,7 @@ public class TimestampDirectory {
                 fullPath += fileExtension;
             }
 
-            Path filePath = Paths.get(dirPath.toString(), fullPath);
-            return Files.newOutputStream(filePath);
+            return Paths.get(dirPath.toString(), fullPath);
         }
-
     }
 }

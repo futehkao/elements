@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.common.resources;
 
-
 import org.junit.jupiter.api.Test;
 
 /**

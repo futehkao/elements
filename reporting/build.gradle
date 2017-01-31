@@ -15,20 +15,13 @@ limitations under the License.
 */
 repositories {
     mavenCentral()
-    mavenCentral(artifactUrls: ["http://jasperreports.sourceforge.net/maven2",
-                                "http://jaspersoft.artifactoryonline.com/jaspersoft/third-party-ce-artifacts/"])
 }
 
 dependencies {
     compile project(':common')
     compile project(':security')
-    compile ('org.apache.poi:poi:3.15')
     compile ('commons-beanutils:commons-beanutils:1.9.3')
     compile fileTree(dir: 'lib', include: '*.jar')
-
-    compile ('com.lowagie:itext:2.1.7.js4') {
-        exclude group: 'bouncycastle'
-    }
 
     // compile ('org.olap4j:olap4j:0.9.7.309-JS-3')
 

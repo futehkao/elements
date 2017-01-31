@@ -25,12 +25,6 @@ import java.io.OutputStream;
  */
 public interface Print {
 
-    void exportToPdfFile(String outputFile) throws IOException;
-
-    void exportToPdfStream(OutputStream outputStream) throws IOException;
-
-    void exportToHtmlFile(String outputFile) throws IOException;
-
     void exportToTextFile(String outputFile) throws IOException;
 
     void exportToTextStream(OutputStream outputStream) throws IOException;
