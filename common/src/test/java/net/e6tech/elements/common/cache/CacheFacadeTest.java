@@ -26,7 +26,7 @@ import org.ehcache.config.builders.ResourcePoolsBuilder;
 import org.ehcache.expiry.Duration;
 import org.ehcache.expiry.Expirations;
 import org.ehcache.jsr107.EhcacheCachingProvider;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.cache.Caching;
 import javax.cache.configuration.MutableConfiguration;

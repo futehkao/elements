@@ -18,8 +18,8 @@ package net.e6tech.elements.web.security.vault;
 import net.e6tech.elements.security.vault.ClearText;
 import net.e6tech.elements.security.vault.Credential;
 import net.e6tech.elements.web.security.vault.client.KeyClient;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.security.GeneralSecurityException;
 
@@ -30,7 +30,7 @@ public class KeyClientTest {
 
     KeyClient client;
 
-    @Before
+    @BeforeEach
     public void setup() throws GeneralSecurityException {
         client = new KeyClient();
         Credential se = new Credential("user1", "password1".toCharArray());

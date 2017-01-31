@@ -18,5 +18,5 @@ dependencies {
     compile project(':jmx')
     compile('org.quartz-scheduler:quartz:2.2.3') { exclude group: 'org.slf4j'}
     compile('org.quartz-scheduler:quartz-jobs:2.2.3') { exclude group: 'org.slf4j'}
-    testCompile group: 'junit', name: 'junit', version: '4.11'
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.0.0-M3'
 }

@@ -19,13 +19,14 @@ package net.e6tech.sample.entity;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.sample.BaseCase;
-import org.junit.Before;
-import org.junit.Test;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.
@@ -35,7 +36,7 @@ public class PersistenceTest extends BaseCase {
     private Employee employee;
     private Department department;
 
-    @Before
+    @BeforeEach
     public void setup() {
         employee = new Employee();
         employee.setFirstName("First" + System.currentTimeMillis());

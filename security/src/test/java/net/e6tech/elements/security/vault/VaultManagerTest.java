@@ -1,12 +1,12 @@
 package net.e6tech.elements.security.vault;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.util.Arrays;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.
@@ -16,7 +16,7 @@ public class VaultManagerTest {
     DualEntry dualEntry;
     private VaultManager manager;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         String tmpVaultFilename = "/tmp/test-" + System.currentTimeMillis() + ".vault";
         File file = new File(tmpVaultFilename);

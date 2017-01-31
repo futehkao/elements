@@ -17,8 +17,10 @@
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.launch.LaunchController;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.*;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.
@@ -32,7 +34,7 @@ public class ProvisionTestCase {
                 .addLaunchListener((p)-> provision = p);
     }
 
-    @Before
+    @BeforeEach
     public void boot() {
         if (provision == null) {
             createLaunchController().launch();

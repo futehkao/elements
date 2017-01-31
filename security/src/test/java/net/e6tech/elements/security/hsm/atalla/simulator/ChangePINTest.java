@@ -19,10 +19,11 @@ package net.e6tech.elements.security.hsm.atalla.simulator;
 import net.e6tech.elements.security.Hex;
 import net.e6tech.elements.security.hsm.AnsiPinBlock;
 import net.e6tech.elements.security.hsm.atalla.Message;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 /**
  * Created by futeh.
@@ -31,7 +32,7 @@ public class ChangePINTest {
     private AtallaSimulator simulator;
     private ChangePIN generate;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         simulator = new AtallaSimulator();
         generate = new ChangePIN();

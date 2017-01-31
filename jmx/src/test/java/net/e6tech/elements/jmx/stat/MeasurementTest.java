@@ -16,7 +16,7 @@ limitations under the License.
 
 package net.e6tech.elements.jmx.stat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Random;
 

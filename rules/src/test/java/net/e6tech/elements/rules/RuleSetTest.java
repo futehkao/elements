@@ -15,7 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.rules;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 import java.util.Properties;

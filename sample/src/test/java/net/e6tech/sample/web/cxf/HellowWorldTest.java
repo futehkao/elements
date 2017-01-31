@@ -18,8 +18,8 @@ package net.e6tech.sample.web.cxf;
 
 import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.sample.BaseCase;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.PrintWriter;
 
@@ -30,7 +30,7 @@ public class HellowWorldTest extends BaseCase {
     HelloWorld helloWorld;
     RestfulProxy proxy;
 
-    @Before
+    @BeforeEach
     public void setup() {
         proxy = new RestfulProxy("http://localhost:9001/restful");
         proxy.setSkipCertCheck(true);
