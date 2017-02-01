@@ -23,7 +23,7 @@ dependencies {
     compile project(':security')
     compile project(':web')
 
-    testCompile group: 'junit', name: 'junit', version: '4.11'
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.0.0-M3'
 }
 
 uploadArchives.enabled = false

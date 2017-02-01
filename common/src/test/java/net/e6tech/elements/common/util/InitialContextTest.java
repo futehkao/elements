@@ -15,7 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.common.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;

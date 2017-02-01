@@ -20,5 +20,6 @@ dependencies {
     compile 'org.bouncycastle:bcpkix-jdk15on:1.52'
     compile 'org.bouncycastle:bcmail-jdk15on:1.52'
     compile 'org.jgroups:jgroups:3.6.7.Final'
-    testCompile group: 'junit', name: 'junit', version: '4.11'
+
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.0.0-M3'
 }

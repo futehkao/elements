@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 
-component("simple") {
+atom("simple") {
     _simple = Object.class
 }

@@ -18,9 +18,7 @@ package net.e6tech.sample;
 
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.sample.entity.Department;
-import net.e6tech.sample.entity.Employee;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 /**
  * Created by futeh.
@@ -29,7 +27,7 @@ public class BaseCase {
 
     public static Provision provision;
 
-    @Before
+    @BeforeEach
     public void launch() {
         LaunchController controller = new LaunchController();
         controller.launchScript("conf/provisioning/sample.groovy")

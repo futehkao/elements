@@ -18,13 +18,14 @@ package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Configuration;
-import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import java.util.Map;
 import java.util.Properties;
 
-import static org.junit.Assert.assertTrue;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.

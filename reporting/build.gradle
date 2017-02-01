@@ -23,5 +23,23 @@ dependencies {
     compile ('commons-beanutils:commons-beanutils:1.9.3')
     compile fileTree(dir: 'lib', include: '*.jar')
 
+<<<<<<< HEAD
     testCompile group: 'junit', name: 'junit', version: '4.11'
+=======
+    // compile ('org.olap4j:olap4j:0.9.7.309-JS-3')
+
+    compile ('net.sf.jasperreports:jasperreports:6.4.0') {
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'bouncycastle'
+        exclude group: 'com.lowagie'
+        exclude group: 'org.olap4j'
+        exclude group: 'org.springframework'
+        exclude group: 'org.codehaus.castor'
+        exclude group: 'org.apache.lucene'
+        exclude group: 'xml-apis'
+        exclude group: 'commons-logging'
+    }
+
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.0.0-M3'
+>>>>>>> abdb753d6fd97195c2a1986b94e98ea16beb481c
 }

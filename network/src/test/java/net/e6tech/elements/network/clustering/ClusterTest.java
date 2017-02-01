@@ -16,9 +16,8 @@
 
 package net.e6tech.elements.network.clustering;
 
-import org.junit.Test;
 
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * Created by futeh.

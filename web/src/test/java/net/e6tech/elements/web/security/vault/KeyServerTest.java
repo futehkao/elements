@@ -22,8 +22,8 @@ import net.e6tech.elements.security.vault.DualEntry;
 import net.e6tech.elements.security.vault.FileStore;
 import net.e6tech.elements.security.vault.VaultManager;
 import net.e6tech.elements.web.security.vault.client.*;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import javax.crypto.SecretKey;
 import java.io.IOException;
@@ -48,7 +48,7 @@ public class KeyServerTest {
     SecretKey secretKey;
     String token;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         VaultManager manager = new VaultManager();
         DualEntry dualEntry = new DualEntry("user1", "password1".toCharArray(), "user2", "password2".toCharArray());

@@ -19,15 +19,12 @@ package net.e6tech.elements.web.cxf;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.network.restful.RestfulProxy;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
-
 import java.io.PrintWriter;
-
-import static org.junit.Assert.*;
 
 /**
  * Created by futeh.
@@ -37,7 +34,7 @@ public class JaxRSServerTest {
     @Inject
     public Provision provision;
 
-    @Before
+    @BeforeEach
     public void boot() {
         new LaunchController().launchScript("classpath://net/e6tech/elements/web/cxf/JaxRSServerTest.groovy")
                 .property("home", System.getProperty("home", "."))
