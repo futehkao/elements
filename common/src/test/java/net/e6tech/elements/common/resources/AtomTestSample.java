@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,31 @@
  * limitations under the License.
  */
 
-atom("simple") {
-    _simple = Object.class
+package net.e6tech.elements.common.resources;
+
+/**
+ * Created by futeh.
+ */
+public class AtomTestSample implements Initializable, Startable {
+    String name;
+    int initialized = 0;
+    int started = 0;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public void initialize(Resources resources) {
+        initialized ++;
+    }
+
+    @Override
+    public void start() {
+        started ++;
+    }
 }

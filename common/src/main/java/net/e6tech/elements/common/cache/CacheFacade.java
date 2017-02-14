@@ -141,7 +141,7 @@ public abstract class CacheFacade<K, V> {
         getCache().put(key, value);
     }
 
-    protected Cache<K,V> getCache() {
+    protected synchronized Cache<K,V> getCache() {
         if (cache != null) return cache;
         if (pool == null) {
             pool = new CachePool();

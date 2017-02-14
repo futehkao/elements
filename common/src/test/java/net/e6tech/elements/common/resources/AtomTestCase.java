@@ -25,12 +25,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
-public class ProvisionTestCase {
+public class AtomTestCase {
 
     public static Provision provision;
 
     protected LaunchController createLaunchController() {
-        return new LaunchController().launchScript("classpath://net/e6tech/elements/common/resources/ResourcesTestCase.groovy")
+        return new LaunchController().launchScript("classpath://net/e6tech/elements/common/resources/AtomTestCase.groovy")
                 .addLaunchListener((p)-> provision = p);
     }
 
@@ -43,6 +43,9 @@ public class ProvisionTestCase {
 
     @Test
     public void load() {
-        provision.getResourceManager().getAtoms();
+        AtomTestSample2 sample2 = provision.getResourceManager().getAtomResource("sample2", "_sample2");
+        assertTrue(sample2.sample.getName().equals("sample"));
+        assertTrue(sample2.sample.initialized == 1);
+        assertTrue(sample2.sample.started == 1);
     }
 }

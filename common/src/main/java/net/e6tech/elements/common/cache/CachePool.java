@@ -62,6 +62,10 @@ public class CachePool implements Initializable {
     }
 
     public <K,V> Cache<K,V> getCache(String name, Class<K> keyClass, Class<V> valueClass) {
+        if (cacheManager == null) {
+            initialize(null);
+        }
+
         Cache<K, V> cache = cacheManager.getCache(name, keyClass, valueClass);
         if (cache != null) return cache;
         MutableConfiguration<K, V> configuration = new MutableConfiguration<>();

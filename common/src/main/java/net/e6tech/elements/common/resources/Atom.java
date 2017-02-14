@@ -48,6 +48,7 @@ public class Atom implements Map<String, Object> {
     private ResourceManager resourceManager;
     private Resources resources;
     private Map<String, Object> boundInstances = new LinkedHashMap<>();
+    private Map<String, Object> externalInstances = new HashMap<>();
     private Configuration configuration;
     private List<Configurable> configurables = new ArrayList<>();
     private String name;
@@ -178,10 +179,13 @@ public class Atom implements Map<String, Object> {
 
         for (String key : boundInstances.keySet()) {
             Object value = boundInstances.get(key);
+            if (externalInstances.containsKey(key)) continue;
             if (value instanceof Initializable) {
                 ((Initializable) value).initialize(resources);
             }
-            beanLifecycle.fireBeanInitialized(key, value);
+            if (!resourceManager.getScripting().isRunnable(value)) {
+                beanLifecycle.fireBeanInitialized(key, value);
+            }
         }
 
         if (get(POST_INIT) != null) {
@@ -196,6 +200,7 @@ public class Atom implements Map<String, Object> {
             runStartable.name = getName();
             for (String key : boundInstances.keySet()) {
                 Object value = boundInstances.get(key);
+                if (externalInstances.containsKey(key)) continue;
                 if (value instanceof Startable) {
                     runStartable.add(key, (Startable)value);
                 }
@@ -209,6 +214,7 @@ public class Atom implements Map<String, Object> {
             runLaunched.name = getName();
             for (String key : boundInstances.keySet()) {
                 Object value = boundInstances.get(key);
+                if (externalInstances.containsKey(key)) continue;
                 if (value instanceof LaunchListener) {
                     runLaunched.add(key, (LaunchListener) value);
                 }
@@ -294,6 +300,10 @@ public class Atom implements Map<String, Object> {
         return (T) resources.getInstance(cl);
     }
 
+    /**
+     * runs callable after every script is loaded
+     * @param callable
+     */
     public void runAfter(Object callable) {
         resourceManager.runAfter(callable);
     }
@@ -302,6 +312,10 @@ public class Atom implements Map<String, Object> {
         resourceManager.runNow(this, callable);
     }
 
+    /**
+     * runs after all resourceManagers are launched.
+     * @param callable
+     */
     public void runLaunched(Object callable) {
         resourceManager.getScripting().runLaunched(callable);
     }
@@ -501,13 +515,19 @@ public class Atom implements Map<String, Object> {
                     instance = value;
                 }
             } else {
-                instance = resources.rebind((Class) value.getClass(), value);
-                if (!key.startsWith("_")) {
-                    resourceManager.addBean(key, instance);
-                    resources.onOpen();
-                    resources.inject(instance);
+                if (!resourceManager.getScripting().isRunnable(value)) {
+                    instance = resources.rebind((Class) value.getClass(), value);
+                    if (!key.startsWith("_")) {
+                        resourceManager.addBean(key, instance);
+                        resources.onOpen();
+                        resources.inject(instance);
+                    }
+                    externalInstances.put(key, instance);
+                    configure(instance, key);
+                } else {
+                    // this is either a Runnable or a Closure
+                    instance = value;
                 }
-                configure(instance, key);
             }
 
             // the below is to apply closure to instance.
