@@ -27,6 +27,8 @@ public class BeanLifecycle {
     private static final int BEAN_LAUNCHED = 2;
 
     private Map<String, Object> initializedBeans = new Hashtable<>();
+    private Map<String, Object> startedBeans = new Hashtable<>();
+    private Map<String, Object> launchedBeans = new Hashtable<>();
     private Map<String, List<BeanListener>> namedBeanListeners = new Hashtable<>();
     private Map<Class, List<BeanListener>> classBeanListeners = new Hashtable<>();
 
@@ -60,16 +62,32 @@ public class BeanLifecycle {
         initializedBeans.put(beanName, bean);
     }
 
+    public boolean isBeanInitialized(Object bean) {
+        return initializedBeans.containsValue(bean);
+    }
+
     public void fireBeanStarted(String beanName, Object bean) {
         fireBeanEvent(beanName, bean, BEAN_STARTED);
+        startedBeans.put(beanName, bean);
+    }
+
+    public boolean isBeanStarted(Object bean) {
+        return startedBeans.containsValue(bean);
     }
 
     public void fireBeanLaunched(String beanName, Object bean) {
         fireBeanEvent(beanName, bean, BEAN_LAUNCHED);
+        launchedBeans.put(beanName, bean);
+    }
+
+    public boolean isBeanLaunched(Object bean) {
+        return launchedBeans.containsValue(bean);
     }
 
     public void clearBeanListeners() {
         initializedBeans.clear();
+        startedBeans.clear();
+        launchedBeans.clear();
         namedBeanListeners.clear();
         classBeanListeners.clear();
     }
@@ -81,7 +99,6 @@ public class BeanLifecycle {
             List<BeanListener> listeners = namedBeanListeners.get(beanName);
             if (listeners != null) {
                 list.addAll(listeners);
-
             }
         }
         for (Class cls : classBeanListeners.keySet()) {
