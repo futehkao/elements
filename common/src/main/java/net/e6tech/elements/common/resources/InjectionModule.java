@@ -71,7 +71,7 @@ public class InjectionModule extends AbstractModule {
         }
     }
 
-    public Object bindInstance(Class cls, Object instance) {
+    public synchronized Object bindInstance(Class cls, Object instance) {
         instance = newInstance(instance);
         Type[] types = getBindClass(cls);
         Entry entry = new Entry(types, instance);
@@ -82,7 +82,7 @@ public class InjectionModule extends AbstractModule {
         return instance;
     }
 
-    public Object unbindInstance(Class cls) {
+    public synchronized Object unbindInstance(Class cls) {
         Type[] types = getBindClass(cls);
         Entry entry = null;
         for (Type type : types) {
@@ -92,7 +92,7 @@ public class InjectionModule extends AbstractModule {
         return null;
     }
 
-    public Object bindNamedInstance(String name, Class cls, Object instance) {
+    public synchronized Object bindNamedInstance(String name, Class cls, Object instance) {
         instance = newInstance(instance);
         bindNamedInstances.put(name, new Entry(getBindClass(cls), instance));
         return instance;
@@ -109,39 +109,40 @@ public class InjectionModule extends AbstractModule {
         return instance;
     }
 
-    public <T> T getBoundNamedInstance(String name) {
+    public synchronized <T> T getBoundNamedInstance(String name) {
         Entry entry = bindNamedInstances.get(name);
         if (entry == null) return null;
         return (T) entry.instance;
     }
 
-    public <T> T getBoundInstance(Class<T> cls) {
+    public synchronized <T> T getBoundInstance(Class<T> cls) {
         Entry entry = bindInstances.get(cls);
         if (entry == null) return null;
         return (T) entry.instance;
     }
 
-    public boolean hasInstance(Class cls) {
+    public synchronized boolean hasInstance(Class cls) {
         return bindInstances.containsKey(cls);
     }
-    public Object getInstance(Class cls) {
+
+    public synchronized Object getInstance(Class cls) {
         Entry entry = bindInstances.get(cls);
         if (entry == null) return null;
         return entry.instance;
     }
 
-    public void bindClass(Class cls, Class service) {
+    public synchronized void bindClass(Class cls, Class service) {
         Type[] types = getBindClass(cls);
         for (Type type : types) {
             bindClasses.put(type, service);
         }
     }
 
-    public Class getBoundClass(Class cls) {
+    public synchronized Class getBoundClass(Class cls) {
         return bindClasses.get(cls);
     }
 
-    public boolean hasBinding(Class cls) {
+    public synchronized boolean hasBinding(Class cls) {
         return bindInstances.containsKey(cls) || bindClasses.containsKey(cls);
     }
 
@@ -156,7 +157,7 @@ public class InjectionModule extends AbstractModule {
         return listeners.containsKey(cls);
     }
 
-    public void add(InjectionModule module) {
+    public synchronized void add(InjectionModule module) {
 
         BiConsumer<Map, Map> copy = (from, to) -> {
             for (Object key: from.keySet()) {
@@ -173,7 +174,7 @@ public class InjectionModule extends AbstractModule {
     }
 
     @Override
-    protected void configure() {
+    protected synchronized void configure() {
 
         binder().requireExplicitBindings();
 
