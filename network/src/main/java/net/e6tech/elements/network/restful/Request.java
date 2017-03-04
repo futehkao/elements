@@ -46,23 +46,23 @@ public class Request {
         }
     }
 
-    public Response get(String context, Param ... params) throws IOException {
+    public Response get(String context, Param ... params) throws Throwable {
         return request(context, GET, null, params);
     }
 
-    public Response delete(String context, Param ... params) throws IOException {
+    public Response delete(String context, Param ... params) throws Throwable {
         return request(context, DELETE, null, params);
     }
 
-    public Response put(String context, Object data,  Param ... params) throws IOException {
+    public Response put(String context, Object data,  Param ... params) throws Throwable {
         return request(context, PUT, data, params);
     }
 
-    public Response post(String context, Object data,  Param ... params) throws IOException {
+    public Response post(String context, Object data,  Param ... params) throws Throwable {
         return request(context, POST, data, params);
     }
 
-    public Response request(String context, String method, Object data,  Param ... params) throws IOException {
+    public Response request(String context, String method, Object data,  Param ... params) throws Throwable {
         return client.submit(context, method, requestProperties, data, params);
     }
 }

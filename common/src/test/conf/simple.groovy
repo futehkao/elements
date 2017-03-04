@@ -1,7 +1,7 @@
-pluginDirectories = ["$__dir/plugins/**"]
-resourceManager.plugin.loadPlugins(pluginDirectories as String[])
 
-Class cls = getClass().classLoader.loadClass("net.e6tech.elements.common.resources.plugin.TestPlugin")
+
+exec "$__dir/plugins/plugin.groovy"
+exec "$__dir/plugin_test.groovy"
 
 atom("simple") {
     _simple = Object.class

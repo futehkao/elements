@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.serialization.ObjectMapperFactory;
+import net.e6tech.elements.common.util.ErrorResponse;
+import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.network.clustering.ClusterClient;
 import net.e6tech.elements.network.clustering.ClusterService;
 import net.e6tech.elements.security.JCEKS;
@@ -54,6 +56,7 @@ public class RestfulClient {
 
     public static ObjectMapper mapper = ObjectMapperFactory.newInstance();
 
+    private ExceptionMapper exceptionMapper;
     private String staticAddress;
     private String encoding = "UTF-8";
     private String trustStore;
@@ -75,6 +78,14 @@ public class RestfulClient {
 
     public RestfulClient(String address) {
         setAddress(address);
+    }
+
+    public ExceptionMapper getExceptionMapper() {
+        return exceptionMapper;
+    }
+
+    public void setExceptionMapper(ExceptionMapper exceptionMapper) {
+        this.exceptionMapper = exceptionMapper;
     }
 
     public synchronized String getAddress() {
@@ -189,7 +200,7 @@ public class RestfulClient {
         return params.toArray(new Param[params.size()]);
     }
 
-    public Response get(String context, Object object) throws IOException {
+    public Response get(String context, Object object) throws Throwable {
         if (object instanceof Param) {
             return get(context, new Param[] { (Param) object});
         }
@@ -200,33 +211,33 @@ public class RestfulClient {
         return new Request(this);
     }
 
-    public Response get(String context, Param ... params) throws IOException {
+    public Response get(String context, Param ... params) throws Throwable {
         return new Request(this).get(context, params);
     }
 
-    public Response delete(String context, Param ... params) throws IOException {
+    public Response delete(String context, Param ... params) throws Throwable {
         return new Request(this).delete(context, params);
     }
 
-    public Response put(String context, Object data, Object object) throws IOException {
+    public Response put(String context, Object data, Object object) throws Throwable {
         if (object instanceof Param) {
             return put(context, data, new Param[]{(Param) object});
         }
         return put(context, data, toParams(object));
     }
 
-    public Response put(String context, Object data,  Param ... params) throws IOException {
+    public Response put(String context, Object data,  Param ... params) throws Throwable {
         return new Request(this).put(context, data, params);
     }
 
-    public Response post(String context, Object data, Object object) throws IOException {
+    public Response post(String context, Object data, Object object) throws Throwable {
         if (object instanceof Param) {
             return post(context, data, new Param[] { (Param)object} );
         }
         return post(context, data, toParams(object));
     }
 
-    public Response post(String context, Object data,  Param ... params) throws IOException {
+    public Response post(String context, Object data,  Param ... params) throws Throwable {
         return new Request(this).post(context, data, params);
     }
 
@@ -277,7 +288,7 @@ public class RestfulClient {
         }
     }
 
-    protected Response submit(String context, String method, Properties requestProperties, Object data, Param ... params) throws IOException {
+    protected Response submit(String context, String method, Properties requestProperties, Object data, Param ... params) throws Throwable {
         while (true) {
             Destination dest = selectAddress();
             try {
@@ -332,7 +343,7 @@ public class RestfulClient {
         return dest;
     }
 
-    protected Response _submit(String dest, String context, String method, Properties requestProperties, Object data, Param ... params) throws IOException {
+    protected Response _submit(String dest, String context, String method, Properties requestProperties, Object data, Param ... params) throws Throwable {
         Response response = null;
         HttpURLConnection conn = null;
         try {
@@ -398,7 +409,23 @@ public class RestfulClient {
                 }
                 printer.println();
             }
-            checkResponseCode(response);
+            try {
+                checkResponseCode(response.getResponseCode(), response.getResult());
+            } catch (ClientErrorException ex) {
+                Throwable mappedThrowable = null;
+                String result = ex.getMessage();
+                if (result != null && exceptionMapper != null) {
+                    try {
+                        ErrorResponse error = mapper.readValue(result, ErrorResponse.class);
+                        if (error != null) {
+                            mappedThrowable = exceptionMapper.fromResponse(error);
+                        }
+                    } catch (Exception e) {
+                    }
+                }
+                if (mappedThrowable != null) throw mappedThrowable;
+                else throw ex;
+            }
         } catch (MalformedURLException e) {
             logger.runtimeException(e);
         } finally {
@@ -417,26 +444,31 @@ public class RestfulClient {
         if (conn.getResponseCode() == HTTP_NO_CONTENT) return response;
 
         InputStream in = null;
-        if (conn.getResponseCode() < HTTP_OK || conn.getResponseCode() > HTTP_ACCEPTED) {
-            in = conn.getErrorStream();
-        } else {
+        try {
             in = conn.getInputStream();
+        } catch (IOException ex) {
+            in = conn.getErrorStream();
+            if (in == null) checkResponseCode(conn.getResponseCode(), conn.getResponseMessage());
         }
 
-        BufferedInputStream bis = new BufferedInputStream(in);
-        ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
-        int read = 0;
-        int bufSize = 4096;
-        byte[] buffer = new byte[bufSize];
-        while (true) {
-            read = bis.read(buffer);
-            if (read == -1) {
-                break;
+        try {
+            BufferedInputStream bis = new BufferedInputStream(in);
+            ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
+            int read = 0;
+            int bufSize = 4096;
+            byte[] buffer = new byte[bufSize];
+            while (true) {
+                read = bis.read(buffer);
+                if (read == -1) {
+                    break;
+                }
+                byteArray.write(buffer, 0, read);
             }
-            byteArray.write(buffer, 0, read);
+            String result = new String(byteArray.toByteArray(), encoding);
+            response.setResult(result);
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
         }
-        String result = new String(byteArray.toByteArray(), encoding);
-        response.setResult(result);
 
         /*
         try {
@@ -457,8 +489,7 @@ public class RestfulClient {
         return response;
     }
 
-    private void checkResponseCode(Response response) {
-        int code = response.getResponseCode();
+    private void checkResponseCode(int code, String message) {
         javax.ws.rs.core.Response.Status status = javax.ws.rs.core.Response.Status.fromStatusCode(code);
         if (code == 500) throw new InternalServerErrorException();
         if (code > 500) throw new ServiceUnavailableException();
@@ -471,16 +502,16 @@ public class RestfulClient {
             case RESET_CONTENT:
             case PARTIAL_CONTENT:
                 return;
-            case BAD_REQUEST: throw new BadRequestException(response.getResult());
+            case BAD_REQUEST: throw new BadRequestException(message);
             case UNAUTHORIZED: throw new NotAuthorizedException(javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.UNAUTHORIZED).build());
             case PAYMENT_REQUIRED:
-            case FORBIDDEN: throw new ForbiddenException(response.getResult());
-            case NOT_FOUND: throw new NotFoundException(response.getResult());
-            case METHOD_NOT_ALLOWED: throw new NotAllowedException(response.getResult(),
+            case FORBIDDEN: throw new ForbiddenException(message);
+            case NOT_FOUND: throw new NotFoundException(message);
+            case METHOD_NOT_ALLOWED: throw new NotAllowedException(message,
                     javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.METHOD_NOT_ALLOWED).build());
-            case NOT_ACCEPTABLE: throw new NotAcceptableException(response.getResult());
-            case UNSUPPORTED_MEDIA_TYPE: throw new NotSupportedException(response.getResult());
-            default: throw new ServerErrorException(response.getResult(), status);
+            case NOT_ACCEPTABLE: throw new NotAcceptableException(message);
+            case UNSUPPORTED_MEDIA_TYPE: throw new NotSupportedException(message);
+            default: throw new ServerErrorException(message, status);
         }
     }
 

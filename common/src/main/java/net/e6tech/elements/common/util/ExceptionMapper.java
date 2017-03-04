@@ -31,4 +31,8 @@ public interface ExceptionMapper {
 
     ErrorResponse toResponse(Throwable exception);
 
+    default Throwable fromResponse(ErrorResponse response) {
+        return null;
+    }
+
 }

@@ -125,7 +125,7 @@ public class KeyClient implements Startable {
             secretKey = sym.generateKeySpec();
             publicKey = asym.getKeyFactory().generatePublic(publicKeySpec);
             clientKey = asym.encrypt(publicKey, secretKey.getEncoded());
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new NotAuthorizedException("Unable to authenticate with keyserver at " + address);
         }
 
@@ -313,7 +313,7 @@ public class KeyClient implements Startable {
             } else if (code < 200 || code > 202) {
                 throw new GeneralSecurityException();
             }
-        } catch (IOException e) {
+        } catch (Throwable e) {
             throw new GeneralSecurityException(e);
         }
 

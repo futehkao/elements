@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.interceptor.InterceptorAssist;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
+import net.e6tech.elements.common.util.ExceptionMapper;
 
 import javax.ws.rs.*;
 import java.io.IOException;
@@ -47,6 +48,14 @@ public class RestfulProxy {
         this.hostAddress = hostAddress;
         client = new RestfulClient(hostAddress);
         interceptor = Interceptor.getInstance();
+    }
+
+    public ExceptionMapper getExceptionMapper() {
+        return client.getExceptionMapper();
+    }
+
+    public void setExceptionMapper(ExceptionMapper exceptionMapper) {
+        client.setExceptionMapper(exceptionMapper);
     }
 
     public PrintWriter getPrinter() {
@@ -248,7 +257,6 @@ public class RestfulProxy {
             //CollectionType ctype = TypeFactory.defaultInstance().constructCollectionType(collectionType, elementType);
             //String str = Response.mapper.writeValueAsString(value);
             //Collection converted = mapper.readValue(str, ctype);
-
 
             return null;
         }

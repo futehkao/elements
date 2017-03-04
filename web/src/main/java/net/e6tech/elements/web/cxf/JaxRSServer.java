@@ -70,11 +70,19 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
     private static final String BIND_HEADER_OBSERVER = "bindHeaderObserver";
     private static final String REGISTER_BEAN = "registerBean";
     private static final String NAME = "name";
-
-    private static Logger logger = Logger.getLogger();
     private static Logger messageLogger = Logger.getLogger(JaxRSServer.class.getName() + ".message");
 
     private static Map<Integer, ServerFactorBeanEntry> entries = new Hashtable();
+
+    private static Logger logger = Logger.getLogger();
+
+    public static Logger getLogger() {
+        return logger;
+    }
+
+    public static void setLogger(Logger logger) {
+        JaxRSServer.logger = logger;
+    }
 
     @Inject(optional = true)
     private Observer headerObserver;
@@ -270,7 +278,7 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
             }
         });
 
-        if (exceptionMapper != null) for (JAXRSServerFactoryBean bean: beans) bean.setProvider(new InternalExceptionMapper(exceptionMapper));
+        for (JAXRSServerFactoryBean bean: beans) bean.setProvider(new InternalExceptionMapper(exceptionMapper));
         for (JAXRSServerFactoryBean bean: beans) logger.info("Starting Restful at address " + bean.getAddress() + " " + bean.getResourceClasses());
         for (JAXRSServerFactoryBean bean: beans) {
             try {
@@ -322,6 +330,7 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
     }
 
     private void handleException(Object instance, Method thisMethod, Object[] args, Throwable th) throws Throwable {
+        th = ExceptionMapper.unwrap(th);
         if (instance instanceof JaxExceptionHandler) {
             Object response = ((JaxExceptionHandler) instance).handleException(thisMethod, args, th);
             if (response != null) {
@@ -567,13 +576,19 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
             } else if (exception instanceof ServiceUnavailableException) {
                 status = Response.Status.SERVICE_UNAVAILABLE;
             }
-            logger.warn(exception.getMessage(), ExceptionMapper.unwrap(exception));
+
+            // mapper should decide whether to log.
+            // logger.warn(exception.getMessage(), ExceptionMapper.unwrap(exception));
 
             Object response;
             if (exception instanceof InvocationException) {
                 response = ((InvocationException) exception).getResponse();
             } else {
-                response = mapper.toResponse(exception);
+                if (mapper != null) {
+                    response = mapper.toResponse(exception);
+                } else {
+                    response = exception.getMessage();
+                }
             }
             return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(response).build();
         }

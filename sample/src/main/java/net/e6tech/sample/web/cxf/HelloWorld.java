@@ -60,4 +60,18 @@ public class HelloWorld{
         return "hello " + greeting;
     }
 
+    @POST
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello")
+    public HelloData post(HelloData data) {
+        return data;
+    }
+
+    @POST
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/badPost")
+    public HelloData badPost(HelloData data) {
+        throw new NullPointerException("test");
+    }
+
 }

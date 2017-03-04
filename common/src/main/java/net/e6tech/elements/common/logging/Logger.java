@@ -64,4 +64,9 @@ public interface Logger extends org.slf4j.Logger, ExceptionLogger, Rethrowable {
         return (Logger) Proxy.newProxyInstance(Logger.class.getClassLoader(), new Class[] {Logger.class},
                 new LogHandler(name));
     }
+
+    static Logger nullLogger() {
+        return (Logger) Proxy.newProxyInstance(Logger.class.getClassLoader(), new Class[] {Logger.class},
+                new LogHandler(new NullLogger()));
+    }
 }

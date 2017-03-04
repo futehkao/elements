@@ -21,7 +21,11 @@ import net.e6tech.sample.BaseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotSupportedException;
 import java.io.PrintWriter;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Created by futeh.
@@ -40,10 +44,20 @@ public class HellowWorldTest extends BaseCase {
 
     @Test
     public void sayHello() {
-
         helloWorld.ping();
-
         String response = helloWorld.sayHello("hello");
         System.out.println(response);
+    }
+
+    @Test
+    public void post() {
+        HelloData data = new HelloData();
+        data = helloWorld.post(data);
+
+        assertThrows(NotSupportedException.class, () -> helloWorld.post(null));
+
+        assertThrows(NotSupportedException.class, () -> helloWorld.badPost(null));
+
+        assertThrows(BadRequestException.class, () -> helloWorld.badPost(new HelloData()));
     }
 }
