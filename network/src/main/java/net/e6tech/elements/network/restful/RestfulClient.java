@@ -348,7 +348,7 @@ public class RestfulClient {
         HttpURLConnection conn = null;
         try {
             conn = open(dest, context, params);
-            if (data != null) {
+            if (method.equals(Request.POST) || method.equals(Request.PUT)) {
                 conn.setDoOutput(true);
                 conn.setRequestProperty("Content-Type", "application/json");
             }
@@ -367,14 +367,16 @@ public class RestfulClient {
                 printer.println();
             }
 
-            if (data != null ) {
+            if (method.equals(Request.POST) || method.equals(Request.PUT)) {
                 OutputStream out = conn.getOutputStream();
-                Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), "UTF-8");
-                String posted = mapper.writeValueAsString(data);
-                writer.write(posted);
-                logger.debug(posted);
-                writer.flush();
-                writer.close();
+                if (data != null) {
+                    Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), "UTF-8");
+                    String posted = mapper.writeValueAsString(data);
+                    writer.write(posted);
+                    logger.debug(posted);
+                    writer.flush();
+                    writer.close();
+                }
                 out.close();
             }
 

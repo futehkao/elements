@@ -54,9 +54,7 @@ public class HellowWorldTest extends BaseCase {
         HelloData data = new HelloData();
         data = helloWorld.post(data);
 
-        assertThrows(NotSupportedException.class, () -> helloWorld.post(null));
-
-        assertThrows(NotSupportedException.class, () -> helloWorld.badPost(null));
+        assertThrows(BadRequestException.class, () -> helloWorld.post(null));
 
         assertThrows(BadRequestException.class, () -> helloWorld.badPost(new HelloData()));
     }

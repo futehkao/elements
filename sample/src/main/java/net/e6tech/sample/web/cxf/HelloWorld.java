@@ -64,6 +64,7 @@ public class HelloWorld{
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello")
     public HelloData post(HelloData data) {
+        if (data == null) throw new NullPointerException();
         return data;
     }
 

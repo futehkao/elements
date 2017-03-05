@@ -12,11 +12,11 @@ import java.util.Properties;
  */
 public class Request {
 
-    private static final String GET = "GET";
-    private static final String PUT = "PUT";
-    private static final String POST = "POST";
-    private static final String DELETE = "DELETE";
-    private static final int RETRY = 4;
+    static final String GET = "GET";
+    static final String PUT = "PUT";
+    static final String POST = "POST";
+    static final String DELETE = "DELETE";
+    static final int RETRY = 4;
 
     private static Logger logger = Logger.getLogger();
 
