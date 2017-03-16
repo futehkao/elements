@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.interceptor.InterceptorAssist;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
+import net.e6tech.elements.common.interceptor.InterceptorListener;
 import net.e6tech.elements.common.util.ExceptionMapper;
 
 import javax.ws.rs.*;
@@ -93,6 +94,11 @@ public class RestfulProxy {
     public  <T> T newProxy(Class<T> serviceClass) {
         client.setPrinter(printer);
         return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, printer));
+    }
+
+    public  <T> T newProxy(Class<T> serviceClass, InterceptorListener listener) {
+        client.setPrinter(printer);
+        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, printer), listener);
     }
 
     public void setRequestProperty(String key, String value) {

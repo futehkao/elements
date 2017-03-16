@@ -95,6 +95,14 @@ public class InterceptorTest {
         });
 
         assertTrue(proxyClass == testClass.getClass());
+
+        // test proxy object cloning
+        TestClass clone = Interceptor.cloneProxyObject(testClass);
+        assertTrue(Interceptor.getTarget(clone) == Interceptor.getTarget(testClass));
+        assertTrue(Interceptor.getInterceptorHandler(clone) == Interceptor.getInterceptorHandler(testClass));
+        Interceptor.setInterceptorListener(clone, (target, method, args, exception) -> { return null; });
+        assertTrue(Interceptor.getInterceptorListener(clone) != null);
+        assertTrue(Interceptor.getInterceptorListener(clone) != Interceptor.getInterceptorListener(testClass));
     }
 
     @Test

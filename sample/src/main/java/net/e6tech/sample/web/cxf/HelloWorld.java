@@ -19,6 +19,7 @@ package net.e6tech.sample.web.cxf;
 import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.common.resources.Resources;
 
+import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
@@ -63,7 +64,7 @@ public class HelloWorld{
     @POST
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello")
-    public HelloData post(HelloData data) {
+    public HelloData post(@Nonnull HelloData data) {
         if (data == null) throw new NullPointerException();
         return data;
     }
