@@ -15,11 +15,11 @@ limitations under the License.
 */
 dependencies {
     compile project(':common')
-    compile 'org.bouncycastle:bcprov-jdk15on:1.52'
-    compile 'org.bouncycastle:bcpg-jdk15on:1.52'
-    compile 'org.bouncycastle:bcpkix-jdk15on:1.52'
-    compile 'org.bouncycastle:bcmail-jdk15on:1.52'
-    compile 'org.jgroups:jgroups:3.6.7.Final'
+    compile 'org.bouncycastle:bcprov-jdk15on:1.56'
+    compile 'org.bouncycastle:bcpg-jdk15on:1.56'
+    compile 'org.bouncycastle:bcpkix-jdk15on:1.56'
+    compile 'org.bouncycastle:bcmail-jdk15on:1.56'
+    compile 'org.jgroups:jgroups:4.0.1.Final'
 
     testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.0.0-M3'
 }

@@ -41,7 +41,7 @@ public class ClusterTest {
 
     @Test
     public void basic2() throws Exception {
-        Cluster cluster = tcp(9901);
+        Cluster cluster = tcpLocal(9901);
 
         cluster.subscribe("test", (notice)-> {
             System.out.println(notice.getUserObject());
@@ -56,9 +56,23 @@ public class ClusterTest {
 
     public Cluster tcp(int adminPort) throws Exception {
         System.setProperty("java.net.preferIPv4Stack", "true");
-        System.setProperty("jgroup.tcp.bind_addr", "192.168.1.121");
+        System.setProperty("jgroup.tcp.bind_addr", "192.168.1.133");
         // System.setProperty("jgroups.udp.mcast_port", "45587");
-        System.setProperty("jgroups.tcpping.initial_hosts", "192.168.1.121[7800]");
+        System.setProperty("jgroups.tcpping.initial_hosts", "192.168.1.133[7800]");
+        //System.setProperty("jgroups.tcpping.initial_hosts", "127.0.0.1[7800]");
+        Cluster cluster = new Cluster();
+        cluster.setName("h3_cluster");
+        cluster.setConfigFile("jgroup-tcp.xml");
+        cluster.setAdminPort(adminPort);
+        cluster.initialize(null);
+        return cluster;
+    }
+
+    public Cluster tcpLocal(int adminPort) throws Exception {
+        System.setProperty("java.net.preferIPv4Stack", "true");
+        System.setProperty("jgroup.tcp.bind_addr", "localhost");
+        // System.setProperty("jgroups.udp.mcast_port", "45587");
+        System.setProperty("jgroups.tcpping.initial_hosts", "192.168.1.133[7800]");
         //System.setProperty("jgroups.tcpping.initial_hosts", "127.0.0.1[7800]");
         Cluster cluster = new Cluster();
         cluster.setName("h3_cluster");

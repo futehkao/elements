@@ -15,8 +15,8 @@ limitations under the License.
 */
 dependencies {
     compile project(':common')
-    compile ('com.zaxxer:HikariCP:2.5.1')
-    compile 'org.mariadb.jdbc:mariadb-java-client:1.5.5'
+    compile ('com.zaxxer:HikariCP:2.6.1')
+    compile 'org.mariadb.jdbc:mariadb-java-client:1.5.9'
     compile 'javax:javaee-api:7.0'
 
     testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.0.0-M3'
