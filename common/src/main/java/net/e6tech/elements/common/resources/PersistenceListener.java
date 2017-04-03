@@ -9,6 +9,11 @@ import java.io.Serializable;
  */
 public interface PersistenceListener {
 
+    boolean onFlush(Serializable id,
+                    Object[] currentState,
+                    Object[] previousState,
+                    String[] propertyNames);
+
     boolean onLoad(
             Serializable id,
             Object[] state,

@@ -68,8 +68,8 @@ public class PersistenceTest extends BaseCase {
         provision.commit(EntityManager.class, (em) -> {
             Employee e = em.find(Employee.class, employee.getId());
             assertTrue(e != null);
+            e.setHireDate("20170401");
         });
-
     }
 
     @Test
@@ -95,9 +95,7 @@ public class PersistenceTest extends BaseCase {
 
         provision.commit(EntityManager.class, (em) -> {
             Department d = em.find(Department.class, department.getId());
-            assertTrue(d.getEmployees().size() == size );
+            assertTrue(d.getEmployees().size() == size);
         });
-
     }
-
 }

@@ -43,14 +43,16 @@ import java.util.stream.Collectors;
  */
 public class Interceptor extends EmptyInterceptor implements PersistenceInterceptor {
 
-    @Inject(optional = true)
-    Resources resources;
+    // below @Inject happens during HibernateEntityManagerProvider.onOpen(Resources resources)
 
     @Inject(optional = true)
-    SessionFactoryImplementor sessionFactory;
+    protected Resources resources;
 
     @Inject(optional = true)
-    NotificationCenter center;
+    protected SessionFactoryImplementor sessionFactory;
+
+    @Inject(optional = true)
+    protected NotificationCenter center;
 
     public Resources getResources() {
         return resources;
@@ -60,6 +62,25 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
     public void setResources(Resources resources) {
         this.resources = resources;
     }
+
+    @Override
+    public boolean onFlushDirty(
+            Object entity,
+            Serializable id,
+            Object[] currentState,
+            Object[] previousState,
+            String[] propertyNames,
+            Type[] types) {
+        boolean modified = false;
+        if (entity instanceof PersistenceListener) {
+            if (resources != null) resources.inject(entity);
+            long start = System.currentTimeMillis();
+            modified = ((PersistenceListener) entity).onFlush(id, currentState, previousState, propertyNames);
+            Watcher.addGracePeriod(System.currentTimeMillis() - start);
+        }
+        return modified;
+    }
+
 
     @Override
     public boolean onLoad(
@@ -148,7 +169,7 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             PersistentCollection coll = (PersistentCollection) collection;
             boolean cached = false;
             if (sessionFactory != null) {
-                cached = sessionFactory.getCollectionPersister(coll.getRole()).hasCache();
+                cached = sessionFactory.getMetamodel().collectionPersister(coll.getRole()).hasCache();
             }
 
             /* Another way of doing it
@@ -161,7 +182,6 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
                 // center.fireNotification(new EvictCollectionRegion(coll.getRole()));
                 center.publish(EvictCollectionRegion.class, new EvictCollectionRegion(coll.getRole()));
             }
-
         }
     }
 
@@ -169,8 +189,7 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
         boolean cached = false;
         if (center != null) {
             if (sessionFactory != null) {
-                String entityName = sessionFactory.getClassMetadata(entity.getClass()).getEntityName();
-                cached = sessionFactory.getEntityPersister(entityName).hasCache();
+                cached = sessionFactory.getMetamodel().locateEntityPersister(entity.getClass()).hasCache();
             }
             if (cached) {
                 // center.fireNotification(new EvictEntity(this, new ObjectReference(entity.getClass(), key)));
