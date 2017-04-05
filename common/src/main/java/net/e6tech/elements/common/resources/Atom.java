@@ -117,7 +117,7 @@ public class Atom implements Map<String, Object> {
         return resources.bind(cls, resource);
     }
 
-    public <T> T resourceManangerBind(Class<T> cls, T resource) {
+    public <T> T resourceManagerBind(Class<T> cls, T resource) {
         resources.unbind(cls);
         return resourceManager.bind(cls, resource);
     }
