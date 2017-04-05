@@ -107,8 +107,33 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
         return atom(null, closure);
     }
 
-    public Atom atom(String name, Closure closure) {
+    public Atom prototype(String name, Closure closure) {
+        Consumer<Atom> consumer = atomConsumer(closure);
+        Atom atom = getShell().createAtom(name, consumer, null, true);
+        return atom;
+    }
 
+    public Atom prototype(String name,  String prototypePath, Closure closure) {
+        Atom prototype = (Atom) getShell().exec(prototypePath);
+        Consumer<Atom> consumer = atomConsumer(closure);
+        Atom atom = getShell().createAtom(name, consumer, prototype, true);
+        return atom;
+    }
+
+    public Atom atom(String name, Closure closure) {
+        Consumer<Atom> consumer = atomConsumer(closure);
+        Atom atom = getShell().createAtom(name, consumer, null, false);
+        return atom;
+    }
+
+    public Atom atom(String name, String prototypePath,  Closure closure) {
+        Atom prototype = (Atom) getShell().exec(prototypePath);
+        Consumer<Atom> consumer = atomConsumer(closure);
+        Atom atom = getShell().createAtom(name, consumer, prototype, false);
+        return atom;
+    }
+
+    private Consumer<Atom> atomConsumer(Closure closure) {
         Consumer<Atom> consumer = (atom) -> {
             final Closure clonedClosure = closure.rehydrate(atom, closure.getOwner(), closure.getOwner());
             clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
@@ -125,7 +150,6 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
                 }
             });
         };
-        Atom atom = getShell().createAtom(name, consumer);
-        return atom;
+        return consumer;
     }
 }

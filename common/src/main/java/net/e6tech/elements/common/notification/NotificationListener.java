@@ -16,9 +16,27 @@ limitations under the License.
 
 package net.e6tech.elements.common.notification;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+
 /**
  * Created by futeh on 1/21/16.
  */
 public interface NotificationListener<T extends Notification> {
+
+    default Class<? extends Notification>[] getNotificationTypes() {
+        Type[] genericInterfaces = getClass().getGenericInterfaces();
+        for (Type genericInterface : genericInterfaces) {
+            if (genericInterface instanceof ParameterizedType && ((ParameterizedType) genericInterface).getRawType().equals(NotificationListener.class)) {
+                ParameterizedType parametrizedType = (ParameterizedType) genericInterface;
+                Type[] typeArguments =  parametrizedType.getActualTypeArguments();
+                if (typeArguments.length > 0 && typeArguments[0] instanceof Class) {
+                    return new Class[] { (Class) typeArguments[0] };
+                }
+            }
+        }
+        return new Class[0];
+    }
+
     void onEvent(T notification);
 }

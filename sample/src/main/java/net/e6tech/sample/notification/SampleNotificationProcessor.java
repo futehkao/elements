@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,20 @@
  * limitations under the License.
  */
 
-import net.e6tech.elements.jobs.JobServer
+package net.e6tech.sample.notification;
 
-registerBean('jobServer', JobServer)
-exec "$__dir/../variables.groovy",
-        "$__dir/../shell.groovy",
-        "$__dir/../persist.groovy",
-        "$__dir/../notification.groovy",
-        "$__dir/../prototype/concrete.groovy",
-        "$__dir/../restful/**"
+import net.e6tech.elements.common.notification.NotificationProcessor;
+
+/**
+ * Created by futeh.
+ */
+public class SampleNotificationProcessor extends NotificationProcessor {
+
+    protected void processEvent(SampleNotification1 notification) {
+
+    }
+
+    protected void processEvent(SampleNotification2 notification) {
+
+    }
+}

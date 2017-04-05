@@ -21,14 +21,16 @@ import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Startable;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 /**
  * Created by futeh.
  */
-public class NotificationProcessor implements NotificationListener, Startable {
+public class NotificationProcessor implements NotificationListener {
     @Inject(optional = true)
     protected ExecutorService threadPool;
 
@@ -39,9 +41,11 @@ public class NotificationProcessor implements NotificationListener, Startable {
     protected Provision provision;
 
     private Map<Class<? extends Notification>, Method> methods = new HashMap<>();
+    private Class<? extends Notification>[] notificationTypes = new Class[0];
 
-    public void start() {
+    public NotificationProcessor() {
         Class cls = getClass();
+        List<Class<? extends Notification>> types = new ArrayList<>();
         while (cls != null & !cls.equals(Object.class)) {
             Method[] methods = cls.getDeclaredMethods();
             for (Method method : methods) {
@@ -49,15 +53,18 @@ public class NotificationProcessor implements NotificationListener, Startable {
                         && method.getParameterCount() == 1
                         && Notification.class.isAssignableFrom(method.getParameterTypes()[0])) {
                     method.setAccessible(true);
-                    this.methods.computeIfAbsent((Class<? extends Notification>) method.getParameterTypes()[0], (key) -> method);
+                    Class<? extends Notification> notificationType = (Class<? extends Notification>) method.getParameterTypes()[0];
+                    this.methods.computeIfAbsent(notificationType, (key) -> method);
+                    types.add(notificationType);
                 }
             }
             cls = cls.getSuperclass();
         }
+        notificationTypes = types.toArray(new Class[types.size()]);
+    }
 
-        for (Class<? extends Notification> type : methods.keySet()) {
-            notificationCenter.addNotificationListener(type, this);
-        }
+    public Class<? extends Notification>[] getNotificationTypes() {
+        return notificationTypes;
     }
 
     /**
@@ -84,7 +91,7 @@ public class NotificationProcessor implements NotificationListener, Startable {
             }
         }
 
-        processEvent(notification);
+        catchEvent(notification);
     }
 
     /**
@@ -92,7 +99,7 @@ public class NotificationProcessor implements NotificationListener, Startable {
      * the same Resources as the caller.  Please schedule long running task using the run method.
      * @param notification  Notification instance
      */
-    public void processEvent(Notification notification) {
+    public void catchEvent(Notification notification) {
     }
 
     public void run(Runnable runnable) {

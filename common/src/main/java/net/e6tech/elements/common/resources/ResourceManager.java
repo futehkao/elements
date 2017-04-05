@@ -201,13 +201,18 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return Collections.unmodifiableMap(atoms);
     }
 
-    public Atom createAtom(Consumer<Atom> consumer) {
-        return createAtom(null, consumer);
+    public Atom getAtom(String name) {
+        return atoms.get(name);
     }
 
-    public Atom createAtom(String atomName, Consumer<Atom> consumer) {
+    public Atom removeAtom(String name) {
+        return atoms.remove(name);
+    }
+
+    public Atom createAtom(String atomName, Consumer<Atom> consumer, Atom prototypeAtom, boolean prototype) {
         if (name != null && atoms.get(atomName) != null) return atoms.get(atomName);
-        Atom atom = new Atom(this);
+        Atom atom = new Atom(this, prototypeAtom);
+        atom.setPrototype(prototype);
         atom.setName(atomName);
         // Groovy script holds on to closures that have references to atoms so that they are not
         // GC'ed.  Make sure lambda doesn't reference atom.
@@ -222,7 +227,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         if (atomName == null) {
             logger.warn("Atom name is null", new Throwable());
         } else {
-            atoms.put(atomName, atom);
+            if (!prototype) atoms.put(atomName, atom);
         }
         consumer.accept(atom);
         TimedLogger timed = new TimedLogger(0);

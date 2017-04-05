@@ -41,9 +41,19 @@ public class NotificationCenter implements Broadcast {
         listeners.add(listener);
     }
 
+    public void removeSourceNotificationListener(Object src, NotificationListener listener) {
+        List<NotificationListener> listeners = srcNotificationListeners.computeIfAbsent(src, n -> new Vector<>());
+        listeners.remove(listener);
+    }
+
     public <T extends Notification> void addNotificationListener(Class<T> cls, NotificationListener<T> listener) {
         List<NotificationListener> listeners = notificationListeners.computeIfAbsent(cls, n -> new Vector<>());
         listeners.add(listener);
+    }
+
+    public <T extends Notification> void removeNotificationListener(Class<T> cls, NotificationListener<T> listener) {
+        List<NotificationListener> listeners = notificationListeners.computeIfAbsent(cls, n -> new Vector<>());
+        listeners.remove(listener);
     }
 
     public void fireNotification(Notification notification) {

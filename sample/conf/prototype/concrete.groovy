@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-import net.e6tech.elements.jobs.JobServer
+import net.e6tech.sample.prototype.*
 
-registerBean('jobServer', JobServer)
-exec "$__dir/../variables.groovy",
-        "$__dir/../shell.groovy",
-        "$__dir/../persist.groovy",
-        "$__dir/../notification.groovy",
-        "$__dir/../prototype/concrete.groovy",
-        "$__dir/../restful/**"
+atom("concrete", "prototype.groovy") {
+    configuration = """
+    _dependent.description: new description
+    _owner.name: owner
+"""
+    _dependent = Dependent
+    _owner = Owner
+}
