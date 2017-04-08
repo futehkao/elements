@@ -22,7 +22,8 @@ dependencies {
  //   compile 'javax.servlet.jsp:jsp-api:2.2.+'
 
     compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.8.7'
-    compile 'org.eclipse.jetty:jetty-webapp:9.3.17.RC0'
+    compile 'org.eclipse.jetty:jetty-webapp:9.3.17.v20170317'
+    compile 'org.eclipse.jetty:jetty-continuation:9.3.17.v20170317'
 //    compile 'org.eclipse.jetty.orbit:org.apache.jasper.glassfish:2.2.+'
 //    compile 'org.eclipse.jetty.orbit:org.apache.taglibs.standard.glassfish:1.2.+'
 

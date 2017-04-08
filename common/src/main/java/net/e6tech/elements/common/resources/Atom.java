@@ -27,8 +27,6 @@ import net.e6tech.elements.common.reflection.Reflection;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.script.ScriptException;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -479,6 +477,23 @@ public class Atom implements Map<String, Object> {
         return object;
     }
 
+    private void registerBean(String key, Object value) {
+        if (!key.startsWith("_")) {
+            Object existing = resourceManager.getBean(key);
+            if (existing == null) {
+                resourceManager.addBean(key, value);
+                resources.onOpen();
+                resources.inject(value);
+            } else {
+                if (existing == value) {
+                    // ok ignore
+                } else {
+                    throw logger.runtimeException("bean with name=" + name + " already registered");
+                }
+            }
+        }
+    }
+
     @Override
     public Object put(String key, Object value) {
         // NOTE: at this point resources is mostly likely not open so that inject won't work
@@ -502,33 +517,36 @@ public class Atom implements Map<String, Object> {
                 } else if (ResourceProvider.class.isAssignableFrom((Class) value)) {
                     Class cls = (Class) value;
                     try {
-                        value = cls.newInstance();
+                        if (resourceManager.getBean(cls) != null && !key.startsWith("_")) {
+                            instance = resourceManager.getBean(cls);
+                        } else {
+                            instance = cls.newInstance();
+                            resourceManager.addResourceProvider((ResourceProvider) instance);
+                            if (!key.startsWith("_")) {
+                                resourceManager.addBean(key, instance);
+                            }
+                        }
                     } catch (Exception e) {
                         throw logger.runtimeException(e);
                     }
-                    if (!key.startsWith("_")) {
-                        resourceManager.addBean(key, value);
-                    }
-                    resourceManager.addResourceProvider((ResourceProvider) value);
-                    instance = value;
                 } else {
+                    // creating an instance from Class
+                    Class cls = (Class) value;
                     try {
-                        instance = ((Class) value).newInstance();
+                        if (resourceManager.getBean(cls) != null && !key.startsWith("_")) {
+                            instance = resourceManager.getBean(cls);
+                        } else {
+                            instance = cls.newInstance();
+                        }
                     } catch (InstantiationException | IllegalAccessException e) {
                         throw logger.runtimeException(e);
                     }
 
-                    if (!key.startsWith("_")) {
-                        resourceManager.addBean(key, instance);
-                        resources.onOpen();
-                        resources.inject(instance);
-                    }
+                    registerBean(key, instance);
 
                     if (instance == null) {
                         throw new RuntimeException("Cannot instantiate " + value);
                     }
-
-                    Class cls = instance.getClass();
                     resources.rebind(cls, instance);
                 }
                 configure(instance, key);
@@ -561,11 +579,7 @@ public class Atom implements Map<String, Object> {
             } else {
                 if (!resourceManager.getScripting().isRunnable(value)) {
                     instance = resources.rebind((Class) value.getClass(), value);
-                    if (!key.startsWith("_")) {
-                        resourceManager.addBean(key, instance);
-                        resources.onOpen();
-                        resources.inject(instance);
-                    }
+                    registerBean(key, instance);
                     configure(instance, key);
                 } else {
                     // this is either a Runnable or a Closure

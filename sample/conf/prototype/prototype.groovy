@@ -15,7 +15,7 @@
  */
 
 
-import net.e6tech.sample.prototype.Dependent
+import net.e6tech.sample.prototype.*
 
 prototype("prototype") {
     configuration = """
