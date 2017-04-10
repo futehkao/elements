@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * Created by futeh.
@@ -70,33 +71,58 @@ public class JMXService {
     }
 
     public static void registerMBean(Object mbean, String name) {
-        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         try {
-            JmxServer jmxServer = new JmxServer(server);
-            if (mbean.getClass().getAnnotation(JmxResource.class) != null) {
-                jmxServer.register(mbean, new ObjectName(name), null, null, null);
-            } else {
-                boolean conformToMBean = false;
-                Class[] interfaces = mbean.getClass().getInterfaces();
-                for (Class intf : interfaces) {
-                    MXBean annotation = (MXBean) intf.getAnnotation(MXBean.class);
-                    if (annotation != null) {
-                        conformToMBean = annotation.value();
-                        break;
-                    }
-
-                    if (intf.getSimpleName().endsWith("MXBean") || intf.getSimpleName().endsWith("MBean")) {
-                        conformToMBean = true;
-                        break;
-                    }
-                }
-                if (conformToMBean) server.registerMBean(mbean, new ObjectName(name));
-                else jmxServer.register(mbean, new ObjectName(name), null, null, null);
-            }
+            register(mbean, new ObjectName(name));
         } catch (javax.management.NotCompliantMBeanException | IllegalArgumentException ex) {
             logger.info("Cannot register " + name + " as MBean", ex);
         } catch (Exception e) {
             logger.warn("Cannot register " + name + " as MBean", e);
+        }
+    }
+
+    public static ObjectInstance registerIfAbsent(String name, Supplier supplier) throws JMException {
+        ObjectName objectName = null;
+        try {
+            objectName = new ObjectName(name);
+        } catch(MalformedObjectNameException ex) {
+            throw new IllegalArgumentException(ex);
+        }
+
+        Optional<ObjectInstance> optional = find(objectName);
+        if (!optional.isPresent()) {
+            try {
+                register(supplier.get(), objectName);
+                return find(objectName).orElseThrow(() -> new InstanceNotFoundException("ObjectInstance with name=" + name + " not found."));
+            } catch (InstanceAlreadyExistsException ex) {
+                return find(objectName).orElseThrow(() -> ex);
+            }
+        } else {
+            return optional.get();
+        }
+    }
+
+    private static void register(Object mbean, ObjectName objectName) throws JMException {
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        JmxServer jmxServer = new JmxServer(server);
+        if (mbean.getClass().getAnnotation(JmxResource.class) != null) {
+            jmxServer.register(mbean, objectName, null, null, null);
+        } else {
+            boolean conformToMBean = false;
+            Class[] interfaces = mbean.getClass().getInterfaces();
+            for (Class intf : interfaces) {
+                MXBean annotation = (MXBean) intf.getAnnotation(MXBean.class);
+                if (annotation != null) {
+                    conformToMBean = annotation.value();
+                    break;
+                }
+
+                if (intf.getSimpleName().endsWith("MXBean") || intf.getSimpleName().endsWith("MBean")) {
+                    conformToMBean = true;
+                    break;
+                }
+            }
+            if (conformToMBean) server.registerMBean(mbean, objectName);
+            else jmxServer.register(mbean, objectName, null, null, null);
         }
     }
 
@@ -110,12 +136,23 @@ public class JMXService {
         }
     }
 
+    public static Optional<ObjectInstance> find(String objectName) {
+        try {
+            return find(new ObjectName(objectName));
+        } catch (MalformedObjectNameException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
     public static Optional<ObjectInstance> find(ObjectName objectName) {
         MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        Set<ObjectInstance> instances = mBeanServer.queryMBeans(objectName, null);
-        if (instances.size() == 0) return Optional.empty();
-        if (instances.size() > 1) throw new IllegalArgumentException("More one instances found with objectName=" + objectName);
-        return Optional.of(instances.iterator().next());
+        ObjectInstance instance;
+        try {
+            instance = mBeanServer.getObjectInstance(objectName);
+        } catch (InstanceNotFoundException e) {
+            return Optional.empty();
+        }
+        return Optional.of(instance);
     }
 
     public static Set<ObjectInstance> query(ObjectName objectName) {

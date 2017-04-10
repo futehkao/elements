@@ -40,6 +40,10 @@ import org.apache.cxf.transport.http.AbstractHTTPDestination;
 
 import javax.annotation.Nonnull;
 import javax.annotation.PreDestroy;
+import javax.management.JMException;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectInstance;
+import javax.management.ObjectName;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -619,48 +623,48 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
     }
 
     private static void computePerformance(Method method, Map<Method,String> methods,  Map<String, Object> map, long duration) {
-        synchronized (map) {
-            getMeasurement(method, methods, map).add(duration);
+        ObjectInstance instance = null;
+        try {
+            instance = getMeasurement(method, methods);
+            JMXService.invoke(instance.getObjectName(), "add", duration);
+        } catch (Exception e) {
+            logger.debug("Unable to record measurement for " + method, e);
         }
+
         ClusterService service = (ClusterService) map.get("clusterService");
         if (service != null) service.getMeasurement().add(duration);
     }
 
     private static void recordFailure(Method method, Map<Method,String> methods,  Map<String, Object> map) {
-        synchronized (map) {
-            getMeasurement(method, methods, map).fail();
+        ObjectInstance instance = null;
+        try {
+            instance = getMeasurement(method, methods);
+            JMXService.invoke(instance.getObjectName(), "fail");
+        } catch (Exception e) {
+            logger.debug("Unable to record fail measurement for " + method, e);
         }
+
         ClusterService service = (ClusterService) map.get("clusterService");
         if (service != null) service.getMeasurement().fail();
     }
 
-    private static Measurement getMeasurement(Method method, Map<Method, String> methods,  Map<String, Object> map) {
-        synchronized (map) {
-            String methodName = methods.computeIfAbsent(method, m ->{
-                StringBuilder builder = new StringBuilder();
-                builder.append(m.getDeclaringClass().getSimpleName());
-                builder.append(".");
-                builder.append(m.getName());
-                Class[] types = m.getParameterTypes();
-                for (int i = 0; i < types.length; i++) {
-                    builder.append("|"); // separating parameters using underscores instead commas because of JMX
-                    // ObjectName constraint
-                    builder.append(types[i].getSimpleName());
-                }
-                return builder.toString();
-            });
-
-            Measurement measurement;
-            synchronized (map) {
-                 measurement = (Measurement) map.computeIfAbsent(methodName + ".measurement",
-                        key -> {
-                            Measurement m = new Measurement(methodName, "ms");
-                            JMXService.registerMBean(m, "net.e6tech:type=Restful,name=" + methodName);
-                            return m;
-                        });
+    private static ObjectInstance getMeasurement(Method method, Map<Method, String> methods) throws JMException {
+        String methodName = methods.computeIfAbsent(method, m ->{
+            StringBuilder builder = new StringBuilder();
+            builder.append(m.getDeclaringClass().getTypeName());
+            builder.append(".");
+            builder.append(m.getName());
+            Class[] types = m.getParameterTypes();
+            for (int i = 0; i < types.length; i++) {
+                builder.append("|"); // separating parameters using underscores instead commas because of JMX
+                // ObjectName constraint
+                builder.append(types[i].getSimpleName());
             }
-            return measurement;
-        }
+            return builder.toString();
+        });
+
+        String objectName = "net.e6tech:type=Restful,name=" + methodName;
+        return JMXService.registerIfAbsent(objectName, () -> new Measurement(methodName, "ms"));
     }
 
     private static void checkInvocation(Method method, Object[] args) {

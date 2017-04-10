@@ -27,10 +27,7 @@ import net.e6tech.elements.common.util.ExceptionMapper;
 import javax.ws.rs.*;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.net.URLEncoder;
 import java.util.*;
 
@@ -117,6 +114,7 @@ public class RestfulProxy {
         private RestfulProxy proxy;
         private String context;
         private Map<Method, MethodForwarder> methodForwarders = new Hashtable<>();
+        private Map<Method, String> methodSignatures = new Hashtable<>();
         private PrintWriter printer;
 
         InvocationHandler(RestfulProxy proxy, Class serviceClass, PrintWriter printer) {
@@ -134,7 +132,8 @@ public class RestfulProxy {
         @Override
         public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
             if (printer != null) {
-                printer.println(thisMethod);
+                String signature = methodSignatures.computeIfAbsent(thisMethod, key -> methodSignature(key));
+                printer.println(signature);
             }
             Request request = proxy.client.create();
             for (Map.Entry<String, String> entry : proxy.requestProperties.entrySet()) {
@@ -153,6 +152,31 @@ public class RestfulProxy {
             MethodForwarder forwarder = methodForwarders.computeIfAbsent(thisMethod, (key) ->  new MethodForwarder(ctx, key) );
             return forwarder.forward(request, args);
         }
+
+        String methodSignature(Method method) {
+            try {
+                StringBuilder sb = new StringBuilder();
+                sb.append(method.getReturnType().getSimpleName()).append(' ');
+                sb.append(method.getDeclaringClass().getTypeName()).append('.');
+                sb.append(method.getName());
+
+                sb.append('(');
+                separateWithCommas(method.getParameterTypes(), sb);
+                sb.append(')');
+                return sb.toString();
+            } catch (Exception e) {
+                return "<" + e + ">";
+            }
+        }
+
+        void separateWithCommas(Class<?>[] types, StringBuilder sb) {
+            for (int j = 0; j < types.length; j++) {
+                sb.append(types[j].getSimpleName());
+                if (j < (types.length - 1))
+                    sb.append(",");
+            }
+        }
+
     }
 
     private static class MethodForwarder {

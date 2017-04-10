@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.persist.criteria;
 
+import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 
 import javax.persistence.EntityManager;
@@ -105,6 +106,9 @@ public class Where<T> extends Handler {
             if (!Modifier.isFinal(cls.getModifiers())) {
                 Where where = new Where(this, getPath().get(property));
                 return where.getTemplate();
+            }
+            if (cls.isPrimitive()) {
+                return Primitives.defaultValue(cls);
             }
             return null;
         } else {

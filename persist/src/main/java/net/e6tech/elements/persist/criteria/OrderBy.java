@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.persist.criteria;
 
+import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 
 import javax.persistence.EntityManager;
@@ -67,6 +68,9 @@ public class OrderBy<T> extends Handler {
                 orderBy.orderByList = orderByList;
                 orderBy.desc = this.desc;
                 return orderBy.getTemplate();
+            }
+            if (cls.isPrimitive()) {
+                return Primitives.defaultValue(cls);
             }
             return null;
         } else {

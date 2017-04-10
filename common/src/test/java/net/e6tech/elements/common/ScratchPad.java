@@ -29,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 public class ScratchPad {
     @Test
     public void scratch() throws Exception {
+        Boolean b = Boolean.class.newInstance();
         String settlementDate = "20150911";
         LocalDate localDate = LocalDate.parse(settlementDate, DateTimeFormatter.BASIC_ISO_DATE);
         ZoneId id = ZoneId.of("UTC").normalized();

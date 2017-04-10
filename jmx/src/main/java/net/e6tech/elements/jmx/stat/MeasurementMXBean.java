@@ -41,5 +41,7 @@ public interface MeasurementMXBean {
 
     long getFailureCount();
 
+    void fail();
+
     void add(double value);
 }

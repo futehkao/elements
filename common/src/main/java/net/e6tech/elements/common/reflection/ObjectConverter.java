@@ -41,20 +41,10 @@ public class ObjectConverter {
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
         mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-
-        primitives = new HashMap<>();
-        primitives.put(Boolean.TYPE.getName(), Boolean.TYPE);
-        primitives.put(Character.TYPE.getName(), Character.TYPE);
-        primitives.put(Byte.TYPE.getName(), Byte.TYPE);
-        primitives.put(Short.TYPE.getName(), Short.TYPE);
-        primitives.put(Integer.TYPE.getName(), Integer.TYPE);
-        primitives.put(Long.TYPE.getName(), Long.TYPE);
-        primitives.put(Float.TYPE.getName(), Float.TYPE);
-        primitives.put(Double.TYPE.getName(), Double.TYPE);
     }
 
     public static Class loadClass(ClassLoader loader, String name) throws ClassNotFoundException {
-       if (primitives.get(name) != null) return primitives.get(name);
+        if (Primitives.isPrimitive(name)) return Primitives.get(name);
         return loader.loadClass(name);
     }
 
