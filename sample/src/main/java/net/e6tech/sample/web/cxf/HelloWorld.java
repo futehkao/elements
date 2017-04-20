@@ -51,7 +51,7 @@ public class HelloWorld{
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello")
     public String ping() {
-        return "hello";
+        return "ping ...";
     }
 
     @GET
@@ -59,6 +59,13 @@ public class HelloWorld{
     @Path("hello/{greeting}")
     public String sayHello(@PathParam("greeting") String greeting) {
         return "hello " + greeting;
+    }
+
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/2/{greeting}")
+    public String sayHello2(@PathParam("greeting") String greeting, @QueryParam("hello2") @Nonnull String arg) {
+        return "hello " + greeting + " " +  arg;
     }
 
     @POST

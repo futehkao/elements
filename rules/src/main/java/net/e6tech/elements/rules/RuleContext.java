@@ -19,6 +19,7 @@ import groovy.lang.Closure;
 import groovy.lang.GroovyObject;
 import groovy.lang.MetaClass;
 import groovy.lang.MissingMethodException;
+import net.e6tech.elements.common.logging.Logger;
 import org.codehaus.groovy.runtime.InvokerHelper;
 import static net.e6tech.elements.rules.ControlFlow.*;
 
@@ -30,6 +31,8 @@ import java.util.Map;
  */
 public class RuleContext implements GroovyObject {
 
+    static Logger logger = Logger.getLogger();
+
     Result result = new Result();
     Rule currentRule;
     boolean completed = false;
@@ -39,6 +42,7 @@ public class RuleContext implements GroovyObject {
     private Map<String, Rule> rulesExecuted = new HashMap<>();
     private Rule ruleFailed;
     private String failedMessage;
+    private Throwable exception;
 
     public RuleContext() {
     }
@@ -93,6 +97,17 @@ public class RuleContext implements GroovyObject {
         }
     }
 
+    void ruleFailed(Rule rule, Throwable throwable) {
+        exception = throwable;
+        ruleFailed = rule;
+        if (failedMessage == null) {
+            this.failedMessage = "Rule failed: " + rule.getName() + ".";
+        } else {
+            this.failedMessage = "Rule failed: " + rule.getName() + " - " + throwable.getMessage();
+        }
+        logger.debug(throwable.getMessage(), throwable);
+    }
+
     public Rule getRuleExecuted(String ruleName) {
         return rulesExecuted.get(ruleName);
     }
@@ -107,6 +122,10 @@ public class RuleContext implements GroovyObject {
 
     public String getFailedMessage() {
         return failedMessage;
+    }
+
+    public Throwable getException() {
+        return exception;
     }
 
     protected ControlFlow verifyObject(Object object) {

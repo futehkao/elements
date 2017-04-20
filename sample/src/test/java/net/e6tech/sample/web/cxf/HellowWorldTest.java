@@ -47,6 +47,11 @@ public class HellowWorldTest extends BaseCase {
         helloWorld.ping();
         String response = helloWorld.sayHello("hello");
         System.out.println(response);
+
+        response = helloWorld.sayHello2("hello2", "blah");
+        System.out.println(response);
+
+        assertThrows(BadRequestException.class, () -> helloWorld.sayHello2("elements", "  "));
     }
 
     @Test

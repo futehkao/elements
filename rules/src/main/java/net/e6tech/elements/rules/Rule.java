@@ -260,7 +260,7 @@ public class Rule {
             if (th instanceof  RuntimeException) throw (RuntimeException) th;
             throw new RuntimeException(th);
         }
-        context.ruleFailed(this, throwable.getMessage());
+        context.ruleFailed(this, throwable);
         return Failed;
     }
 

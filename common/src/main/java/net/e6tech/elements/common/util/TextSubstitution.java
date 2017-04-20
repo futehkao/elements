@@ -17,6 +17,7 @@ limitations under the License.
 
 package net.e6tech.elements.common.util;
 
+import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
 import java.io.IOException;
 import java.io.Reader;
@@ -31,7 +32,7 @@ import static java.util.Locale.ENGLISH;
  * Created by futeh.
  *
  *  ${var:default} expands to default if var not defined, to var if var is defined.
- *  ${var:-default}  expands to "" if var is not defined, to default if var is defined.
+ *  ${var:+default}  expands to "" if var is not defined, to default if var is defined.
  */
 public class TextSubstitution {
 
@@ -39,8 +40,11 @@ public class TextSubstitution {
     private Map<String, Var> declared = new LinkedHashMap<>();
     private String template;
 
+    // NOTE.  If template ever gets modified, parseVariableNames needs to be called.
+
     public TextSubstitution(String template) {
         this.template = template;
+        parseVariableNames(template);
     }
 
     public TextSubstitution(Reader reader) throws IOException {
@@ -51,7 +55,12 @@ public class TextSubstitution {
             builder.append(buffer, 0, len);
         }
         this.template = builder.toString();
+        parseVariableNames(template);
         reader.close();
+    }
+
+    public String getTemplate() {
+        return template;
     }
 
     public TextSubstitution declare(String var) {
@@ -59,14 +68,8 @@ public class TextSubstitution {
         return this;
     }
 
-    public String build(Object binding, String ... declares) {
+    public String build(Object binding) {
         if (template == null) return "";
-        if (declares != null) {
-            for (String var : declares) {
-                declared.put(var, new Var(var));
-            }
-        }
-        parseVariableNames(template);
         String text = template;
         for (Map.Entry<String, Var> entry : variables.entrySet()) {
             Var var = entry.getValue();
@@ -76,11 +79,12 @@ public class TextSubstitution {
     }
 
     private String replaceVariable(String key, String value, String text) {
-        return text.replaceAll("\\$\\{" + key + "}", value);
+        return text.replace("${" + key + "}", value);
     }
 
     private void parseVariableNames(String text) {
-        List<String> names = new LinkedList<>();
+        variables.clear();
+        List<String> expressions = new LinkedList<>();
         int pos = 0, max = text.length();
         while (pos < max) {
             pos = text.indexOf("${", pos);
@@ -90,42 +94,66 @@ public class TextSubstitution {
             if (end == -1)
                 break;
             String name = text.substring(pos + 2, end);
-            names.add(name);
+            expressions.add(name);
             pos = end + 1;
         }
 
-        for (String name : names) {
-            String key = name.trim();
+        for (String expression : expressions) {
+            String key = expression;
             String defVal = null;
             String strategy = null;
-            if (name.contains(":-")) {
-                int index = name.indexOf(":-");
-                if (index > 0) {
-                    key = name.substring(0, index).trim();
-                    defVal = name.substring(index + 2).trim();
-                    strategy = ":-";
+            if (expression.contains(":+")) {
+                int index = expression.indexOf(":+");
+                if (index >= 0) {
+                    key = expression.substring(0, index).trim();
+                    defVal = expression.substring(index + 2);
+                    strategy = ":+";
                 }
-            } else if (name.contains(":")) {
-                int index = name.indexOf(":");
-                if (index > 0) {
-                    key = name.substring(0, index).trim();
-                    defVal = name.substring(index + 1).trim();
+            } else if (expression.contains(":")) {
+                int index = expression.indexOf(":");
+                if (index >= 0) {
+                    key = expression.substring(0, index).trim();
+                    defVal = expression.substring(index + 1);
                     strategy = ":";
                 }
             }
+
+            // computing leading white spaces. only matter for expressions without ':' or ':+'
+            int index = 0;
+            for (int i = 0; i < key.length(); i++) {
+                if (!Character.isWhitespace(key.codePointAt(i))) {
+                    index = i;
+                    break;
+                }
+            }
+            String leadingSpaces = key.substring(0, index);
+
+            // computing trailing white spaces. only matter for expressions without ':' or ':+'
+            index = key.length();
+            for (int i = key.length() - 1; i >=0 ; i--) {
+                if (!Character.isWhitespace(key.codePointAt(i))) {
+                    index = i + 1;
+                    break;
+                }
+            }
+            String trailingSpaces = "";
+            if (index < key.length()) trailingSpaces = key.substring(index);
 
             String[] tokens = key.split("\\.");
             Var var = declared.get(tokens[0]);
             if (var == null) {
                 // throw new IllegalArgumentException("Unrecognized variable: " + tokens[0]);
-                var = new Var(name);
+                var = new Var(expression);
             } else {
                 var = var.clone();
             }
+
+            var.leading = leadingSpaces;
+            var.trailing = trailingSpaces;
             var.defaultValue = defVal;
             var.strategy = strategy;
             var.path = tokens;
-            variables.put(name, var);
+            variables.put(expression, var);
         }
     }
 
@@ -138,6 +166,8 @@ public class TextSubstitution {
 
     private static class Var implements Cloneable {
         String name;
+        String leading;
+        String trailing;
         String defaultValue;
         String strategy;
         String[] path;
@@ -166,13 +196,22 @@ public class TextSubstitution {
             Object result = object;
             PropertyDescriptor desc;
             for (String comp : path) {
+                comp = comp.trim();
+                if (comp.isEmpty()) {
+                    result = null;
+                    continue;
+                }
                 try {
                     if (result == null) break;
                     if (result instanceof Map) {
                         result = ((Map) result).get(comp);
                     } else {
-                        desc = new PropertyDescriptor(comp, result.getClass(), "is" + capitalize(comp), null);
-                        result = desc.getReadMethod().invoke(result);
+                        try {
+                            desc = new PropertyDescriptor(comp, result.getClass(), "is" + capitalize(comp), null);
+                            result = desc.getReadMethod().invoke(result);
+                        } catch (IntrospectionException ex) {
+                            result = null;
+                        }
                     }
                 } catch (Throwable e) {
                     throw new RuntimeException(e);
@@ -180,19 +219,21 @@ public class TextSubstitution {
             }
 
             if (result == null) {
-                if (":-".equals(strategy)) {
+                // variable not defined
+                if (":+".equals(strategy)) {
                     return "";
                 } else if (":".equals(strategy)) {
                     return (defaultValue == null) ? "" : defaultValue;
                 }
                 return "";
             } else {
-                if (":-".equals(strategy)) {
+                // variable is defined
+                if (":+".equals(strategy)) {
                     return defaultValue;
                 } else if (":".equals(strategy)) {
                     return result.toString();
                 }
-                return result.toString();
+                return leading + result.toString() + trailing;
             }
         }
 

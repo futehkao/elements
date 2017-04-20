@@ -675,19 +675,23 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
             QueryParam queryParam =  param.getAnnotation(QueryParam.class);
             PathParam pathParam =  param.getAnnotation(PathParam.class);
 
-            if(pathParam != null && args[idx] == null) {
-                if (builder == null) builder = new StringBuilder();
-                builder.append("path parameter ").append(pathParam.value()).append(" cannot be null. \n");
-            }
+            if (args[idx] == null || (args[idx] instanceof String && ((String) args[idx]).trim().isEmpty())) {
+                if (pathParam != null) {
+                    if (builder == null) builder = new StringBuilder();
+                    builder.append("path parameter ").append(pathParam.value()).append(" cannot be null. \n");
+                }
 
-            if (param.getAnnotation(Nonnull.class) != null && args[idx] == null) {
-                if (builder == null) builder = new StringBuilder();
-                if (queryParam != null) {
-                    builder.append("query parameter ").append(queryParam.value()).append(" cannot be null. \n");
-                } else {
-                    builder.append("post parameter ").append(" cannot be null. \n");
+                if (param.getAnnotation(Nonnull.class) != null) {
+                    if (queryParam != null) {
+                        if (builder == null) builder = new StringBuilder();
+                        builder.append("query parameter ").append(queryParam.value()).append(" cannot be null. \n");
+                    } else if (pathParam == null) {
+                        if (builder == null) builder = new StringBuilder();
+                        builder.append("post parameter ").append("arg").append(idx).append(" cannot be null. \n");
+                    }
                 }
             }
+
             idx++;
         }
         if (builder != null) {

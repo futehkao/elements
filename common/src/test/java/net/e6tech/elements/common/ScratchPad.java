@@ -15,6 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.common;
 
+import net.e6tech.elements.common.interceptor.Interceptor;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -40,7 +41,15 @@ public class ScratchPad {
     }
 
     @Test
-    public void jpa() {
+    public void interceptor() {
+        X x = Interceptor.getInstance().newInstance(X.class, (target, method, args)-> {
+            return "hello";
+        });
+        String ret = x.doSomething();
+        System.out.println(ret);
+    }
 
+    public interface X {
+        String doSomething();
     }
 }

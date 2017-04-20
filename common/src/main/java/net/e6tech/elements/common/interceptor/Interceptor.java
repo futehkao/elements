@@ -177,7 +177,9 @@ public class Interceptor {
         T proxyObject = newObject(proxyClass);
         InterceptorHandlerWrapper wrapper = null;
         try {
-            wrapper = new InterceptorHandlerWrapper(this, proxyClass, cls.newInstance(), handler, listener);
+            Object target = null;
+            if (!cls.isInterface()) target = cls.newInstance();
+            wrapper = new InterceptorHandlerWrapper(this, proxyClass, target, handler, listener);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }

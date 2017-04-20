@@ -13,14 +13,15 @@ allprojects {
 }
 
 dependencies {
-    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.0.0-M3'
-    // testCompile group: 'junit', name: 'junit', version: '4.11'
+    testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")
+    testCompile("org.junit.platform:junit-platform-launcher:1.0.0-M4")
+    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.0-M4")
 }
 
 subprojects {
 
     group 'net.e6tech'
-    version '1.8.8'
+    version '1.8.14'
 
     apply plugin: 'groovy'
     apply plugin: 'java'
