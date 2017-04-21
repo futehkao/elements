@@ -15,15 +15,17 @@
  */
 package net.e6tech.elements.common.reflection;
 
+import net.e6tech.elements.common.cache.CacheFacade;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.TextSubstitution;
-import net.e6tech.elements.common.cache.CacheFacade;
+import net.e6tech.elements.common.util.lambda.Each;
 
 import java.beans.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static java.util.Locale.ENGLISH;
 
@@ -73,7 +75,10 @@ public class Reflection {
     }
 
     public static Class getCallingClass() {
-        Class<?>[] trace = securityManager.getClassContext();
+        Class<?>[] trace = securityManager.getClassContext(); // trace[0]
+                                                              // trace[1] is Reflection because of this call.
+                                                              // trace[2] is the caller who wants the calling class
+                                                              // trace[3] is the caller.
         String thisClassName = Reflection.class.getName();
 
         int i;
@@ -90,32 +95,29 @@ public class Reflection {
         return trace[i + 2];
     }
 
-    public static StackTraceElement[] getCallingStackTrace() {
-        return getCallingStackTrace(0);
-    }
-
-    public static StackTraceElement[] getCallingStackTrace(int skip) {
+    public static <V, C> Optional<V> mapCallingStackTrace(Function<Each<StackTraceElement,C>, ? extends V> mapper) {
         Throwable th = new Throwable();
         StackTraceElement[] trace = th.getStackTrace();
         String thisClassName = Reflection.class.getName();
 
         int i;
         for (i = 0; i < trace.length; i++) {
-            if (thisClassName.equals(trace[i].getClassName()));
-                break;
+            if (thisClassName.equals(trace[i].getClassName())) break;
         }
 
-        // trace[i] = Reflection; trace[i+1] = caller; trace[i+2] = caller's caller
-        if (i >= trace.length || i + 2 + skip >= trace.length) {
-            throw new IllegalStateException("Failed to find caller in the stack");
+        Each.Mutator<StackTraceElement, C> mutator = Each.create();
+        for (int j = i + 2; j < trace.length; j++) {
+            mutator.setValue(trace[j]);
+            V v = mapper.apply(mutator.each());
+            if (v != null) return Optional.of(v);
         }
 
-        return Arrays.copyOfRange(trace, 2 + skip, trace.length);
+        return Optional.empty();
     }
 
     public static void printStackTrace(StringBuilder builder, String indent, int start, int end) {
-        StackTraceElement[] elements = getCallingStackTrace(1);
-        int i = start;
+        StackTraceElement[] elements = new Throwable().getStackTrace();
+        int i = start + 1; // skip 1 for this printStackTrace call
         while (i < end && i < elements.length) {
             builder.append("\n");
             if (indent != null) builder.append(indent);

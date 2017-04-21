@@ -9,15 +9,19 @@ import java.io.Serializable;
  */
 public interface PersistenceListener {
 
-    boolean onFlush(Serializable id,
+    default boolean onFlush(Serializable id,
                     Object[] currentState,
                     Object[] previousState,
-                    String[] propertyNames);
+                    String[] propertyNames) {
+        return false;
+    }
 
-    boolean onLoad(
+    default boolean onLoad(
             Serializable id,
             Object[] state,
-            String[] propertyNames);
+            String[] propertyNames) {
+        return false;
+    }
 
     /**
      * This method is called when EntityManager.persist is called.
@@ -27,13 +31,16 @@ public interface PersistenceListener {
      * @param propertyNames property names
      * @return whether the entity has been modified.
      */
-    boolean onSave(
+    default boolean onSave(
             Serializable id,
             Object[] state,
-            String[] propertyNames);
+            String[] propertyNames) {
+        return false;
+    }
 
     /**
      * preFlush is called either EntityManager.flush is called or as part of commit.
      */
-    void preFlush();
+    default void preFlush() {
+    }
 }

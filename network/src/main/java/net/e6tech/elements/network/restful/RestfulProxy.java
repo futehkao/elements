@@ -19,15 +19,18 @@ package net.e6tech.elements.network.restful;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import net.e6tech.elements.common.interceptor.Interceptor;
-import net.e6tech.elements.common.interceptor.InterceptorAssist;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.interceptor.InterceptorListener;
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.ExceptionMapper;
 
 import javax.ws.rs.*;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.URLEncoder;
 import java.util.*;
 
@@ -133,6 +136,12 @@ public class RestfulProxy {
         public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
             if (printer != null) {
                 String signature = methodSignatures.computeIfAbsent(thisMethod, key -> methodSignature(key));
+                String caller = Reflection.<String, Boolean>mapCallingStackTrace(e -> {
+                    if (e.state().isPresent()) return e.get().toString(); // previous element match.
+                    if (e.get().getMethodName().equals(thisMethod.getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
+                    return null;
+                }).orElse("Cannot detect caller");
+                printer.println("Called by: " + caller);
                 printer.println(signature);
             }
             Request request = proxy.client.create();

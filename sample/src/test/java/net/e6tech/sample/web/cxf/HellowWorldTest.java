@@ -16,6 +16,7 @@
 
 package net.e6tech.sample.web.cxf;
 
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.sample.BaseCase;
 import org.junit.jupiter.api.BeforeEach;
