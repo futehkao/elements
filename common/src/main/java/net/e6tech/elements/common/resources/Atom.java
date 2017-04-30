@@ -74,7 +74,7 @@ public class Atom implements Map<String, Object> {
             }
         });
         directives.put(WAIT_FOR, (key, value) -> {
-            (new MyBeanListener()).invokeMethod(key, new Object[] {value});
+            (new MyBeanListener()).invokeMethod(key, new Object[]{value});
         });
         directives.put(PRE_INIT, put);
         directives.put(POST_INIT, put);
@@ -97,7 +97,8 @@ public class Atom implements Map<String, Object> {
         this(resourceManager);
 
         if (prototype == null) return;
-        if (!prototype.isPrototype()) throw new IllegalArgumentException("Atom named " + prototype.getName() + " is not a prototype.");
+        if (!prototype.isPrototype())
+            throw new IllegalArgumentException("Atom named " + prototype.getName() + " is not a prototype.");
         resources = prototype.resources;
         boundInstances = prototype.boundInstances;
 
@@ -106,9 +107,10 @@ public class Atom implements Map<String, Object> {
 
     /**
      * Used by groovy scripts.
-     * @param cls  The class that identifies the binding object.
-     * @param resource  the object to be bound to the {@code cls}
-     * @param <T> type of resource
+     *
+     * @param cls      The class that identifies the binding object.
+     * @param resource the object to be bound to the {@code cls}
+     * @param <T>      type of resource
      * @return return the resource object.  If resource is a Class, returns new instance of the class.
      */
     public <T> T bind(Class<T> cls, T resource) {
@@ -144,7 +146,7 @@ public class Atom implements Map<String, Object> {
         }
     }
 
-    public Map<String,Object> getConfiguration() {
+    public Map<String, Object> getConfiguration() {
         if (configuration == null) return null;
         return Collections.unmodifiableMap(configuration);
     }
@@ -168,9 +170,10 @@ public class Atom implements Map<String, Object> {
             return;
         }
 
-        if (obj != null) boundInstances.put(prefix, obj); // needed here because configure may execute a script that requires the instance.
-                                                          // when a config string begin with ^, it is turned into a closure.  The expression is
-                                                          // then executed in configuration.configure.
+        if (obj != null)
+            boundInstances.put(prefix, obj); // needed here because configure may execute a script that requires the instance.
+        // when a config string begin with ^, it is turned into a closure.  The expression is
+        // then executed in configuration.configure.
         configuration.configure(obj, prefix,
                 (str) -> {
                     try {
@@ -184,15 +187,32 @@ public class Atom implements Map<String, Object> {
                         throw new RuntimeException(e);
                     }
                 },
-                (value, toType, instance) -> resources.inject(instance));
+                (value, toType, instance) -> {
+                    if (instance != null) {
+                        Package p = instance.getClass().getPackage();
+                        if (p == null
+                                || (!p.getName().startsWith("java.")
+                                && !p.getName().startsWith("javax.")))
+                            resources.inject(instance);
+                    }
+                });
     }
 
     public Atom build() {
+        long start = System.currentTimeMillis();
         if (configuration != null) {
             for (Configurable configurable : configurables) {
                 configuration.configure(configurable.instance, configurable.prefix,
                         this::get,
-                        (value, toType, instance) -> resources.inject(instance));
+                        (value, toType, instance) -> {
+                            if (instance != null) {
+                                Package p = instance.getClass().getPackage();
+                                if (p == null
+                                        || (!p.getName().startsWith("java.")
+                                        && !p.getName().startsWith("javax.")))
+                                    resources.inject(instance);
+                            }
+                        });
             }
         }
         configurables.clear();
@@ -231,7 +251,7 @@ public class Atom implements Map<String, Object> {
             for (String key : boundInstances.keySet()) {
                 Object value = boundInstances.get(key);
                 if (value instanceof Startable) {
-                    runStartable.add(key, (Startable)value);
+                    runStartable.add(key, (Startable) value);
                 }
             }
             if (runStartable.startables.size() > 0) resourceManager.runAfter(runStartable);
@@ -253,6 +273,7 @@ public class Atom implements Map<String, Object> {
         // this only applies when the Component is created outside of loading a script.
         resourceManager.runAfterIfNotLoading();
 
+        logger.info("Atom " + getName() + " loaded in " + (System.currentTimeMillis() - start) + "ms");
         return this;
     }
 
@@ -270,7 +291,9 @@ public class Atom implements Map<String, Object> {
                 for (String key : startables.keySet()) {
                     Startable startable = startables.get(key);
                     if (!beanLifecycle.isBeanStarted(startable)) {
+                        long s = System.currentTimeMillis();
                         startable.start();
+                        logger.info("Class " + startable.getClass() + " started in " + (System.currentTimeMillis() - s));
                         beanLifecycle.fireBeanStarted(key, startable);
                     }
                 }
@@ -323,7 +346,10 @@ public class Atom implements Map<String, Object> {
             resources = resourceManager.open();
             consumer.accept(resources);
         } finally {
-            if (resources != null) try { resources.commit();} catch (Throwable th) {}
+            if (resources != null) try {
+                resources.commit();
+            } catch (Throwable th) {
+            }
         }
         return this;
     }
@@ -334,6 +360,7 @@ public class Atom implements Map<String, Object> {
 
     /**
      * runs callable after every script is loaded
+     *
      * @param callable
      */
     public void runAfter(Object callable) {
@@ -346,6 +373,7 @@ public class Atom implements Map<String, Object> {
 
     /**
      * runs after all resourceManagers are launched.
+     *
      * @param callable
      */
     public void runLaunched(Object callable) {
@@ -550,7 +578,7 @@ public class Atom implements Map<String, Object> {
                     resources.rebind(cls, instance);
                 }
                 configure(instance, key);
-            }  else if (value instanceof ResourceProvider) {
+            } else if (value instanceof ResourceProvider) {
                 if (!key.startsWith("_")) {
                     resourceManager.addBean(key, value);
                 }
@@ -573,7 +601,7 @@ public class Atom implements Map<String, Object> {
                     //Check if closure has an associated instance
                     instance = boundInstances.get(key);
                     resourceManager.runNow(instance, value);
-                }  else {
+                } else {
                     instance = value;
                 }
             } else {
@@ -657,6 +685,7 @@ public class Atom implements Map<String, Object> {
     class Configurable {
         Object instance;
         String prefix;
+
         Configurable(Object instance, String prefix) {
             this.instance = instance;
             this.prefix = prefix;

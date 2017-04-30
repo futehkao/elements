@@ -18,6 +18,11 @@ package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.notification.NotificationCenter;
 
+import java.lang.reflect.Field;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+
 /**
  * Created by futeh.
  */
@@ -61,4 +66,26 @@ public interface ResourcePool {
         }
     }
 
+    /**
+     * This method should be implemented by a subclass that is capable of finding an object by id.  It is
+     * typically used by database aware resources.
+     * @param cls
+     * @param id
+     * @param <T>
+     * @return
+     */
+    default <T> T findById(Class<T> cls, Object id) {
+        return null;
+    }
+
+    /**
+     * This method is used to map entity found by id into something else.
+     * @param cls
+     * @param id
+     * @param <T>
+     * @return
+     */
+    default <T, U> U mapById(Class<T> cls, Object id, Function<T, U> mapper) {
+        return Optional.ofNullable(findById(cls, id)).map(mapper).orElse(null);
+    }
 }

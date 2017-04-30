@@ -23,10 +23,8 @@ import net.e6tech.elements.common.resources.plugin.Pluggable;
 import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.util.ExceptionMapper;
 
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -49,6 +47,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     private static final String TIMEOUT_EXTENSION = Resources.class.getName() + ".timeout.extension";
 
     private static Logger logger = Logger.getLogger(Resources.class);
+    private static final Map<Class, ClassInjectionInfo> injections = new HashMap<>();
 
     @Inject
     private ResourceManager resourceManager;
@@ -204,6 +203,18 @@ public class Resources implements AutoCloseable, ResourcePool {
         return resourceManager;
     }
 
+    /**
+     * Plugins are identified by class, a name and then a particular plugin class.  The argument are injected into the plugin.
+     * For example, let say there is a class called Partner and it may be associated with several plugin types.  Furthermore,
+     * the plugins associated with a Partner may vary based on the partner.  To create the plugin, one may search based on
+     * Partner.class, partner name, plugin class and a list of arguments to be injected into the plugin.
+     * @param c1
+     * @param n1
+     * @param c2
+     * @param args
+     * @param <T>
+     * @return
+     */
     public <T extends Pluggable> T getPlugin(Class c1, String n1, Class c2, Object ... args) {
         return (T) getPlugin(Path.of(c1, n1).and(c2), args);
     }
@@ -319,8 +330,60 @@ public class Resources implements AutoCloseable, ResourcePool {
         return getModule().getBoundNamedInstance(name);
     }
 
+
     public <T> T inject(T object) {
-        return state.inject(this, object);
+        return inject(object, new HashSet<>());
+    }
+
+    private <T> T inject(T object, Set<Object> seen) {
+        if (object == null) return null;
+        // the commented out line indicates that we cannot use seen.contains(object)
+        // because it is being injected and its hashCode may not be ready to be computed
+        // so that the object should not be added to seen.
+        // if (seen.contains(System.identityHashCode(object)) && seen.contains(object))
+        // as a compromise, we use identifyHashCode
+        if (seen.contains(System.identityHashCode(object)))
+            return object;  // already been injected.
+        T injected = state.inject(this, object);
+        seen.add(System.identityHashCode(object));
+        // seen.add(object);  object may not be initialized fully to compute hashCode.
+
+        ClassInjectionInfo info;
+        synchronized (injections) {
+            info = injections.get(object.getClass());
+            if (info == null) {
+                info = new ClassInjectionInfo();
+                injections.put(object.getClass(), info);
+                Class cls = object.getClass();
+                Package p = cls.getPackage();
+                if (p == null
+                        || (!p.getName().startsWith("java.")
+                        && !p.getName().startsWith("javax."))) {
+                    while (cls != null && !cls.equals(Object.class)) {
+                        for (Field f : cls.getDeclaredFields()) {
+                            if (f.getAnnotation(Injectable.class) != null
+                                    || f.getType().getAnnotation(Injectable.class) != null) {
+                                f.setAccessible(true);
+                                info.addInjectableField(f);
+                            }
+                        }
+                        cls = cls.getSuperclass();
+                    }
+                }
+            }
+        }
+
+        for (Field f : info.getInjectableFields()) {
+            try {
+                Object injectField = f.get(object);
+                if (injectField != null) {
+                    inject(injectField, seen);
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return injected;
     }
 
     public boolean hasInstance(Class cls) {
@@ -569,6 +632,20 @@ public class Resources implements AutoCloseable, ResourcePool {
             } else {
                 return function.apply(res);
             }
+        }
+    }
+
+    private static class ClassInjectionInfo {
+        private static final List<Field> emptyFields = Collections.unmodifiableList(new ArrayList<>());
+        private List<Field> injectableFields = emptyFields;
+
+        void addInjectableField(Field field) {
+            if (injectableFields == emptyFields) injectableFields = new ArrayList<>();
+            injectableFields.add(field);
+        }
+
+        List<Field> getInjectableFields() {
+            return injectableFields;
         }
     }
 }
