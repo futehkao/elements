@@ -23,6 +23,7 @@ import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.interceptor.InterceptorListener;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.ExceptionMapper;
+import net.e6tech.elements.common.util.datastructure.Pair;
 
 import javax.ws.rs.*;
 import java.io.IOException;
@@ -44,6 +45,7 @@ public class RestfulProxy {
     private Interceptor interceptor;
     private Map<String, String> requestProperties = new LinkedHashMap<>();
     private PrintWriter printer;
+    private Response lastResponse;
 
     public RestfulProxy(String hostAddress) {
         this.hostAddress = hostAddress;
@@ -113,6 +115,10 @@ public class RestfulProxy {
         requestProperties.clear();
     }
 
+    public Response getLastResponse() {
+        return lastResponse;
+    }
+
     private static class InvocationHandler implements InterceptorHandler {
         private RestfulProxy proxy;
         private String context;
@@ -159,7 +165,11 @@ public class RestfulProxy {
 
             final String ctx = fullContext;
             MethodForwarder forwarder = methodForwarders.computeIfAbsent(thisMethod, (key) ->  new MethodForwarder(ctx, key) );
-            return forwarder.forward(request, args);
+            Pair<Response, Object> pair = forwarder.forward(request, args);
+            synchronized (proxy) {
+                proxy.lastResponse = pair.key();
+            }
+            return pair.value();
         }
 
         String methodSignature(Method method) {
@@ -237,7 +247,7 @@ public class RestfulProxy {
             }
         }
 
-        Object forward(Request request, Object[] args) throws Throwable {
+        Pair<Response, Object> forward(Request request, Object[] args) throws Throwable {
 
             List<Param> paramList = new ArrayList<>();
             Object postData = null;
@@ -272,7 +282,7 @@ public class RestfulProxy {
 
             if (javax.ws.rs.core.Response.class.isAssignableFrom(returnType)) {
                 WSResponseImpl impl = new WSResponseImpl(response);
-                return impl;
+                return new Pair<>(response, impl);
             } else if (returnType.equals(Void.TYPE)) {
                 return null;
             } else {
@@ -283,11 +293,11 @@ public class RestfulProxy {
                         if (Collection.class.isAssignableFrom(encloseType)) {
                             Class elementType = (Class) parameterizedReturnType.getActualTypeArguments()[0];
                             CollectionType ctype = TypeFactory.defaultInstance().constructCollectionType(encloseType, elementType);
-                            return response.mapper.readValue(response.getResult(), ctype);
+                            return new Pair<>(response, response.mapper.readValue(response.getResult(), ctype));
                         }
                     }
                 }
-                return response.read(returnType);
+                return new Pair<>(response, response.read(returnType));
             }
         }
 
@@ -299,7 +309,6 @@ public class RestfulProxy {
 
             return null;
         }
-
     }
 
 }

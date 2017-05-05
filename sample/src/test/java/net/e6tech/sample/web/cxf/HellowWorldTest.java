@@ -17,6 +17,7 @@
 package net.e6tech.sample.web.cxf;
 
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.network.restful.Response;
 import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.sample.BaseCase;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +52,8 @@ public class HellowWorldTest extends BaseCase {
 
         response = helloWorld.sayHello2("hello2", "blah");
         System.out.println(response);
+
+        Response resp = proxy.getLastResponse();
 
         assertThrows(BadRequestException.class, () -> helloWorld.sayHello2("elements", "  "));
     }
