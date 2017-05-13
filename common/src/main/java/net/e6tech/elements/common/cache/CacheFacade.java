@@ -89,7 +89,6 @@ public abstract class CacheFacade<K, V> {
         if (pool == null) {
             pool = new CachePool();
             pool.setExpiry(expiry);
-            pool.initialize(null);
             pool.setStoreByValue(storeByValue);
         }
         return this;
@@ -154,7 +153,6 @@ public abstract class CacheFacade<K, V> {
         if (cache != null) return cache;
         if (pool == null) {
             pool = new CachePool();
-            pool.initialize(null);
         }
         cache = pool.getCache(name, keyClass, valueClass);
         return cache;

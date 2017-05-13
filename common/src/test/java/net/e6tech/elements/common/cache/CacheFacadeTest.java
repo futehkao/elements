@@ -36,6 +36,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Tests for ehcache and CacheFacade.
  * Created by futeh.
@@ -86,7 +88,6 @@ public class CacheFacadeTest {
         CacheFacade<Long, Map<String, String>> facade = new CacheFacade<Long, Map<String, String>>() {};
         System.out.println(facade.getClass());
         facade.pool = new CachePool();
-        facade.pool.initialize(null);
 
         Map<String, String> value = facade.get(1L, ()-> new HashMap<String, String>());
         System.out.println(value);
@@ -95,5 +96,19 @@ public class CacheFacadeTest {
         TypeLiteral typeLiteral2 = new TypeLiteral<CacheFacade<Long, Map<String, String>>>(){};
         System.out.println(typeLiteral);
         System.out.println(typeLiteral2);
+    }
+
+    @Test
+    public void shareCache() {
+        CacheFacade<String, String> cache1 = new CacheFacade<String, String>("cache") {};
+        cache1.initPool(5 * 60 * 1000L);
+        CacheFacade<String, String> cache2 = new CacheFacade<String, String>("cache") {};
+        cache2.initPool(5 * 60 * 1000L);
+        cache1.put("a", "b");
+        String v = cache2.get("a");
+        assertTrue(v.equals("b"));
+        cache1.remove("a");
+        v = cache2.get("a");
+        assertTrue(v == null);
     }
 }

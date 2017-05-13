@@ -25,25 +25,37 @@ import javax.cache.Caching;
 import javax.cache.configuration.MutableConfiguration;
 import javax.cache.expiry.TouchedExpiryPolicy;
 import javax.cache.spi.CachingProvider;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Created by futeh.
  */
-public class CachePool implements Initializable {
+public class CachePool {
 
     public static final long defaultExpiry = 15 * 60 * 1000L;
 
-    protected String provider = "org.ehcache.jsr107.EhcacheCachingProvider";
-    protected CacheManager cacheManager;
+    private static Map<String, CacheManager> managers = new HashMap<>();
+
+    private String provider = "org.ehcache.jsr107.EhcacheCachingProvider";
     protected long expiry = defaultExpiry;
     protected boolean storeByValue = false;
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
 
     public long getExpiry() {
         return expiry;
     }
 
     public void setExpiry(long expiry) {
+        if (expiry <= 0) throw new IllegalArgumentException();
         this.expiry = expiry;
     }
 
@@ -55,17 +67,12 @@ public class CachePool implements Initializable {
         this.storeByValue = storeByValue;
     }
 
-    @Override
-    public void initialize(Resources resources) {
-        CachingProvider cachingProvider = Caching.getCachingProvider(provider);
-        cacheManager = cachingProvider.getCacheManager();
+    protected synchronized CacheManager getCacheManager() {
+        return managers.computeIfAbsent(provider, key -> Caching.getCachingProvider(key).getCacheManager());
     }
 
     public <K,V> Cache<K,V> getCache(String name, Class<K> keyClass, Class<V> valueClass) {
-        if (cacheManager == null) {
-            initialize(null);
-        }
-
+        CacheManager cacheManager = getCacheManager();
         Cache<K, V> cache = cacheManager.getCache(name, keyClass, valueClass);
         if (cache != null) return cache;
         MutableConfiguration<K, V> configuration = new MutableConfiguration<>();

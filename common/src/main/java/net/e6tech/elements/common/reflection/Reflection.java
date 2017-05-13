@@ -374,12 +374,18 @@ public class Reflection {
 
             T target = null;
             if (toType instanceof Class) {
-                try {
-                    target = (T) ((Class) toType).newInstance();
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                if (Enum.class.isAssignableFrom((Class)toType)) {
+                    target = (T) Enum.valueOf((Class)toType, object.toString());
+                } else if (Enum.class.isAssignableFrom(object.getClass()) && String.class.isAssignableFrom((Class) toType)) {
+                    target = (T) ((Enum) object).name();
+                } else {
+                    try {
+                        target = (T) ((Class) toType).newInstance();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    copy(target, object, seen, listener);
                 }
-                copy(target, object, seen, listener);
             } else {
                 ParameterizedType parametrized = (ParameterizedType) toType;
                 Class enclosedType = (Class) parametrized.getRawType();

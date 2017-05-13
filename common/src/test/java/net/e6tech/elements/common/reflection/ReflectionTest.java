@@ -33,4 +33,44 @@ public class ReflectionTest {
         };
         runnable.run();
     }
+
+    @Test
+    public void copyEnum() {
+        Y y = new Y();
+        y.setType("a");
+        X x = new X();
+        Reflection.copyInstance(x, y);
+        assertTrue(x.getType() == X.Type.a);
+
+        x.setType(X.Type.b);
+        Reflection.copyInstance(y, x);
+        assertTrue(y.getType().equals("b"));
+    }
+
+    public static class X {
+        enum Type {
+            a, b
+        }
+        private Type type;
+
+        public Type getType() {
+            return type;
+        }
+
+        public void setType(Type type) {
+            this.type = type;
+        }
+    }
+
+    public static class Y {
+        String type;
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+    }
 }
