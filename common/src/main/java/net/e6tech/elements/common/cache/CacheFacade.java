@@ -43,8 +43,17 @@ public abstract class CacheFacade<K, V> {
         this(null);
     }
 
+    public CacheFacade(long expiry) {
+        this(null, expiry);
+    }
+
     public CacheFacade(String name) {
         this(Reflection.getCallingClass(), name);
+    }
+
+    public CacheFacade(String name, long expiry) {
+        this(Reflection.getCallingClass(), name);
+        initPool(expiry);
     }
 
     public CacheFacade(Class cls, String name) {

@@ -41,9 +41,20 @@ public class ChangePINTest {
 
     @Test
     public void ibm3624() throws Exception {
-        AKB decTab = simulator.importKey(simulator.DEC);
-        AKB kpe = simulator.importKey(simulator.KPE_INTERCHANGE);
-        AKB kpv3 = simulator.importKey("1V3NE000,3333 3333 3333 3333");
+        Message message = ibm3624(simulator.DEC, "1PUNE000,1111 1111 1111 1111", "1V3NE000,3333 3333 3333 3333", "3053");
+        assertTrue("6140".equals(message.getField(2)));  // this is based on sample
+    }
+
+    @Test
+    public void ibm3624_2() throws Exception {
+        Message message = ibm3624(simulator.DEC, simulator.KPE_INTERCHANGE, simulator.KPV_IBM3624, "1104");
+        assertTrue("4291".equals(message.getField(2)));
+    }
+
+    public Message ibm3624(String decPlain, String kpePlain, String kpvPlain, String offset) throws Exception {
+        AKB decTab = simulator.importKey(decPlain);
+        AKB kpe = simulator.importKey(kpePlain);
+        AKB kpv3 = simulator.importKey(kpvPlain);
 
         String partialPan = "123456123456";
         AnsiPinBlock oldPinBlock = new AnsiPinBlock(partialPan, "1234");
@@ -55,7 +66,7 @@ public class ChangePINTest {
         fields[3] = Hex.toString(simulator.encrypt(kpe, oldPinBlock.getEncoding()));  // old pin block (opt)
         fields[4] = kpe.getKeyBlock();  // kpe
         fields[5] = decTab.getKeyBlock();  // decTab
-        fields[6] = "3053";  // offset (opt)
+        fields[6] = offset;  // offset (opt)
         fields[7] = partialPan;  // partial pan
         fields[8] = "F"; // pad
         fields[9] = "4"; // check length 4
@@ -63,7 +74,6 @@ public class ChangePINTest {
         fields[11] = Hex.toString(simulator.encrypt(kpe, pinBlock.getEncoding())); // new pin block
         fields[12] = partialPan; // partial pan
         generate.fields = fields;
-        Message message = generate.process();
-        assertTrue("6140".equals(message.getField(2)));
+        return generate.process();
     }
 }

@@ -25,6 +25,7 @@ import net.e6tech.elements.security.Hex;
 public class AnsiPinBlock {
     byte[] encoding;
     String pin;
+    boolean sanityCheck = true;
 
     public AnsiPinBlock(String partialPan, String pin) {
         if (partialPan.length() != 12) throw new IllegalArgumentException("invalid partial pan length, must be 12");
@@ -50,6 +51,18 @@ public class AnsiPinBlock {
         String pinStr = Hex.toString(pinBytes);
         int pinLen = Integer.parseInt(pinStr.substring(1, 2));
         pin = pinStr.substring(2, pinLen + 2);
+        String leftOver = pinStr.substring(pinLen + 2);
+        for (int i = 0; i < leftOver.length(); i++) {
+            char ch = leftOver.charAt(i);
+            if (ch != 'F') {
+                sanityCheck = false;
+                break;
+            }
+        }
+    }
+
+    public boolean isSanityCheck() {
+        return sanityCheck;
     }
 
     public String getPIN() {

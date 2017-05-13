@@ -52,6 +52,8 @@ public class VerifyPIN extends Command {
         String pad = getField(8);
 
         AnsiPinBlock ansiPinBlock = getPinBlock(4, 3, 7);
+        if (!ansiPinBlock.isSanityCheck()) return "42#S#";
+
         byte[] pvvKey = decryptKey(10);
 
         String computedOffset = null;
@@ -73,6 +75,7 @@ public class VerifyPIN extends Command {
         String partialPan = getField(9);
 
         AnsiPinBlock ansiPinBlock = getPinBlock(4, 3, 10);
+        if (!ansiPinBlock.isSanityCheck()) return "42#S#";
         int pvki = new Integer(pvkiStr);
 
         String computedOffset = null;

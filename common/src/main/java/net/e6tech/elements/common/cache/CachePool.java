@@ -70,7 +70,7 @@ public class CachePool implements Initializable {
         if (cache != null) return cache;
         MutableConfiguration<K, V> configuration = new MutableConfiguration<>();
         configuration.setTypes(keyClass, valueClass);
-        configuration.setExpiryPolicyFactory(TouchedExpiryPolicy.factoryOf(new javax.cache.expiry.Duration(TimeUnit.SECONDS, 10)));
+        configuration.setExpiryPolicyFactory(TouchedExpiryPolicy.factoryOf(new javax.cache.expiry.Duration(TimeUnit.MILLISECONDS, expiry)));
         // configuration.setReadThrough(true);
         // configuration.setWriteThrough(true);
         configuration.setStoreByValue(storeByValue);

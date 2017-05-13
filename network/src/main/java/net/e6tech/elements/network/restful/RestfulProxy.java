@@ -284,7 +284,7 @@ public class RestfulProxy {
                 WSResponseImpl impl = new WSResponseImpl(response);
                 return new Pair<>(response, impl);
             } else if (returnType.equals(Void.TYPE)) {
-                return null;
+                return new Pair<>(response, null);
             } else {
                 if (parameterizedReturnType != null) {
                     Type type = parameterizedReturnType.getRawType();
