@@ -34,6 +34,8 @@ import java.util.Map;
  */
 public class SymmetricCipher {
 
+    public static final String ALGORITHM_AES = "AES";
+
     static volatile boolean initialized = false;
 
     static final Logger logger = Logger.getLogger();
@@ -48,8 +50,8 @@ public class SymmetricCipher {
     }
 
     public static SymmetricCipher getInstance(String algorithm) {
-        if ("AES".equalsIgnoreCase(algorithm)) {
-            return new SymmetricCipher("AES");
+        if (ALGORITHM_AES.equalsIgnoreCase(algorithm)) {
+            return new SymmetricCipher(ALGORITHM_AES);
         } else {
             throw new IllegalArgumentException(algorithm + " is not supported");
         }
@@ -127,6 +129,7 @@ public class SymmetricCipher {
     protected SymmetricCipher(String algorithm) {
         this.algorithm = algorithm;
         this.transformation = algorithm + "/CBC/PKCS7PADDING";
+        generateKeySpec(); // prime the pump
     }
 
     public String encrypt(SecretKey key, byte[] plain, String iv) throws GeneralSecurityException {

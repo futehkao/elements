@@ -16,8 +16,11 @@ limitations under the License.
 
 package net.e6tech.elements.common.resources;
 
+import java.lang.annotation.Annotation;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -51,8 +54,12 @@ public class UnitOfWork implements Transactional {
     }
 
     public <Res extends Resources> Res open() {
+        return open(null);
+    }
+
+    public <Res extends Resources> Res open(Map configuration) {
         if (resources != null && resources.isOpened()) return (Res) resources;
-        resources = resourceManager.open((r) -> {
+        resources = resourceManager.open(configuration, (r) -> {
             if (preOpen != null) preOpen.accept(r);
             for (ResourceProvider p : resourceProviders) {
                 r.addResourceProvider(p);

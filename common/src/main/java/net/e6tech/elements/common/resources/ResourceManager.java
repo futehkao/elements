@@ -31,6 +31,7 @@ import org.apache.logging.log4j.ThreadContext;
 import javax.script.ScriptException;
 import java.io.File;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.*;
@@ -558,13 +559,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         }
     }
 
-    public <Res extends Resources> Res open() {
-        return open((resources) -> {
+    public <Res extends Resources> Res open(Map configuration) {
+        return open(configuration, (resources) -> {
         });
     }
 
-    public <Res extends Resources> Res open(Consumer<Res> preOpen) {
+    public <Res extends Resources> Res open(Map configuration, Consumer<Res> preOpen) {
         Res resources = newResources();
+        resources.addConfiguration(configuration);
 
         inject(resources);
 
@@ -573,11 +575,26 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             preOpen.accept(resources);  // before resourceProviders in order to set configuration
         }
 
+        List<ResourceProvider> list = new LinkedList<>();
         synchronized (resourceProviders) {
-            for (ResourceProvider p : resourceProviders) {
+            list.addAll(resourceProviders);
+        }
+
+        List<ResourceProvider> openList = new LinkedList<>();
+        for (ResourceProvider p : list) {
+            try {
                 p.onOpen(resources);
+                openList.add(p);
+            } catch (NotAvailableException ex) {
+            } catch (Throwable th) {
+                resources.setExternalResourceProviders(openList);
+                resources.onOpen();
+                resources.abort();
+                throw th;
             }
         }
+
+        resources.setExternalResourceProviders(openList);
         resources.onOpen();
 
 
@@ -603,14 +620,6 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         inject(p);
         resourceProviders.add(p);
         listeners.forEach(l -> l.resourceProviderAdded(p));
-    }
-
-    protected List<ResourceProvider> getResourceProviders() {
-        return resourceProviders;
-    }
-
-    protected void setResourceProviders(List<ResourceProvider> resourceProviders) {
-        this.resourceProviders = resourceProviders;
     }
 
     public <T extends Resources> T newResources() {

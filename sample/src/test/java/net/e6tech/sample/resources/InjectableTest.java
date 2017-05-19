@@ -32,7 +32,7 @@ public class InjectableTest extends BaseCase {
 
     @Test
     public void basic() {
-        Resources resources =provision.getResourceManager().open();
+        Resources resources =provision.getResourceManager().open(null);
         X x = new X();
         x.y.x = x;
         resources.inject(x);

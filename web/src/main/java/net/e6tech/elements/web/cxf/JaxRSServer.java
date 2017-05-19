@@ -49,13 +49,12 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Proxy;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -372,25 +371,20 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
                     resources.rebind((Class<ExceptionMapper>) exceptionMapper.getClass(), exceptionMapper);
                 }
                 }).onOpen((resources) -> {
-                    // call header observer
+                    // call header observer.
+                    // exception is automatically handled by ResourceManager.  It will kill the resources and throw an exception.
                     if (cloneObserver !=  null) {
                         HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
                         resources.inject(cloneObserver);
-                        try {
-                            cloneObserver.service(request);
-                        } catch (Throwable ex) {
-                            abort(message);
-                            throw ex;
-                        }
+                        cloneObserver.service(request);
                     }
 
                     // copy from prototype properties to instance.
                     // Reflection.copyInstance(instance, prototype);
                     resources.inject(instance);
                 });
-            uow.open();
             message.getExchange().put(UnitOfWork.class, uow);
-            return interceptor.newInterceptor(instance, new Handler(map, methods, cloneObserver, message));
+            return interceptor.newInterceptor(instance, new Handler(instance, uow, map, methods, cloneObserver, message));
         }
 
         public void releaseInstance(Message m, Object o) {
@@ -403,16 +397,28 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
     }
 
     private class Handler implements InterceptorHandler {
+        UnitOfWork uow;
+        Object instance;
         Message message;
         Observer observer;
         Map<String, Object> map;  // map is the Map<String, Object> in JaxRSServer's resources. It's used to record measurement
         Map<Method, String> methods;
 
-        public Handler(Map<String, Object> map, Map<Method, String> methods, Observer observer, Message message) {
+        public Handler(Object instance, UnitOfWork uow, Map<String, Object> map, Map<Method, String> methods, Observer observer, Message message) {
+            this.instance = instance;
+            this.uow = uow;
             this.message = message;
             this.observer = observer;
             this.map = map;
             this.methods = methods;
+        }
+
+        private void open(Method method) {
+            Class cls = instance.getClass();
+            Map annotations = new HashMap();
+            for (Annotation annotation : cls.getAnnotations()) annotations.put(annotation.annotationType(), annotation);
+            for (Annotation annotation : method.getAnnotations()) annotations.put(annotation.annotationType(), annotation);
+            uow.open(annotations);
         }
 
         @Override
@@ -421,12 +427,21 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
             UnitOfWork uow = null;
             Object result = null;
             boolean ignored = false;
+
+            // Note PostConstruct is handled by CXF during createInstance
+            if (thisMethod.getAnnotation(PreDestroy.class) != null) ignored = true;
+            else {
+                try {
+                    open(thisMethod);
+                } catch (Throwable th) {
+                    message.getExchange().remove(UnitOfWork.class);
+                    logger.debug(th.getMessage(), th);
+                    handleException(target, thisMethod, args, th);
+                }
+            }
+
             try {
-                // Note PostConstruct is handled by CXF during createInstance
-                if (thisMethod.getAnnotation(PreDestroy.class) != null) ignored = true;
-
                 checkInvocation(thisMethod, args);
-
                 if (!ignored) {
                     uow = message.getExchange().get(UnitOfWork.class);
                     if (uow.getResources() != null) // could be null when PreDestroy is called.
@@ -618,7 +633,7 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
                 }
             }
         } finally {
-            message.getExchange().remove(UnitOfWork.class.getName(), null);
+            message.getExchange().remove(UnitOfWork.class);
         }
     }
 

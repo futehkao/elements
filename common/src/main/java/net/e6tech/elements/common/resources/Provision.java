@@ -23,11 +23,13 @@ import net.e6tech.elements.common.resources.plugin.Pluggable;
 import net.e6tech.elements.common.resources.plugin.Plugin;
 
 import javax.inject.Inject;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -113,7 +115,11 @@ public class Provision implements Transactional {
     }
 
     public <Res extends Resources> Res open() {
-        return resourceManager.open();
+        return resourceManager.open(null);
+    }
+
+    public <Res extends Resources> Res open(Map configuration) {
+        return resourceManager.open(configuration);
     }
 
     public Class<? extends Resources> getResourcesClass() {

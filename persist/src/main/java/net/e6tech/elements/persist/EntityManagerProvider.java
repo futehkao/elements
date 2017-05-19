@@ -18,9 +18,7 @@ package net.e6tech.elements.persist;
 import com.google.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationCenter;
-import net.e6tech.elements.common.resources.Initializable;
-import net.e6tech.elements.common.resources.ResourceProvider;
-import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.subscribe.Broadcast;
 
 import javax.persistence.EntityManager;
@@ -64,7 +62,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private boolean monitoring = false;
 
     public void monitorTransaction(Resources resources, boolean monitor) {
-        resources.setConfiguration(MONITOR_TRANSACTION, monitor);
+        resources.addConfiguration(MONITOR_TRANSACTION, monitor);
     }
 
     public boolean monitorTransaction(Resources resources) {
@@ -72,7 +70,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     }
 
     public void setLongTransaction(Resources resources, long longTransaction) {
-        resources.setConfiguration(LONG_TRANSACTION, longTransaction);
+        resources.addConfiguration(LONG_TRANSACTION, longTransaction);
     }
 
     public long getLongTransaction(Resources resources) {
@@ -187,9 +185,17 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
     @Override
     public void onOpen(Resources resources) {
+        EntityManagerConfig config = resources.getConfiguration(EntityManagerConfig.class);
+        if (config != null && config.disable()) throw new NotAvailableException();
+
         long timeout = transactionTimeout;
+        if (config != null && config.timeout() != 0L) timeout = config.timeout();
         if (resources.getTimeout() != 0L) timeout = resources.getTimeout();
-        timeout += resources.getTimeoutExtension();
+        if (resources.getTimeoutExtension() != 0L) {
+            timeout += resources.getTimeoutExtension();
+        } else if (config != null && config.timeoutExtension() != 0L) {
+            timeout += config.timeoutExtension();
+        }
 
         boolean monitor = monitorTransaction(resources);
 
@@ -314,11 +320,15 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
     @Override
     public void onCommit(Resources resources) {
-        EntityManager em = resources.getInstance(EntityManager.class);
-        em.getTransaction().commit();
-        em.close();
-        // to break out the
-        monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
+        try {
+            EntityManager em = resources.getInstance(EntityManager.class);
+            em.getTransaction().commit();
+            em.close();
+            // to break out the
+            monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
+        } catch (InstanceNotFoundException ex) {
+
+        }
     }
 
     @Override

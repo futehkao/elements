@@ -34,7 +34,7 @@ public class ResourcesFactory {
 
     public void addConfiguration(String configName, Object object) {
         add((resources) -> {
-            resources.setConfiguration(configName, object); // add 15 sec to tx timeout
+            resources.addConfiguration(configName, object); // add 15 sec to tx timeout
         });
     }
 

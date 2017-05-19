@@ -327,23 +327,21 @@ public class Reflection {
     }
 
     public static class Instance {
-        Map<Class, Map<String, Method>> setters = new HashMap<>();
-        Map<Class, PropertyDescriptor[]> propertyDescriptors = new HashMap<>();
+        private Map<Class, Map<String, PropertyDescriptor>> targetPropertiesDescriptor = new HashMap<>();
+        private Map<Class, PropertyDescriptor[]> propertyDescriptors = new HashMap<>();
 
-        private Map<String, Method> getSetters(Class cls) {
-            return setters.computeIfAbsent(cls, (key) -> {
-                HashMap<String, Method> methods = new HashMap<>();
+        private synchronized Map<String, PropertyDescriptor> getTargetProperties(Class cls) {
+            return targetPropertiesDescriptor.computeIfAbsent(cls, (key) -> {
+                HashMap<String, PropertyDescriptor> propertyDescriptors = new HashMap<>();
                 PropertyDescriptor[] props = getBeanInfo(key).getPropertyDescriptors();
                 for (PropertyDescriptor prop : props) {
-                    if (prop.getWriteMethod() != null) {
-                        methods.put(prop.getName(), prop.getWriteMethod());
-                    }
+                    propertyDescriptors.put(prop.getName(), prop);
                 }
-                return methods;
+                return propertyDescriptors;
             });
         }
 
-        private PropertyDescriptor[] getPropertyDescriptors(Class cls) {
+        private synchronized PropertyDescriptor[] getPropertyDescriptors(Class cls) {
             return propertyDescriptors.computeIfAbsent(cls, key -> getBeanInfo(key).getPropertyDescriptors());
         }
 
@@ -353,6 +351,22 @@ public class Reflection {
             } catch (IntrospectionException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        public synchronized Map<Class, Map<String, PropertyDescriptor>> getTargetPropertiesDescriptor() {
+            return targetPropertiesDescriptor;
+        }
+
+        public synchronized void setTargetPropertiesDescriptor(Map<Class, Map<String, PropertyDescriptor>> targetPropertiesDescriptor) {
+            this.targetPropertiesDescriptor = targetPropertiesDescriptor;
+        }
+
+        public synchronized Map<Class, PropertyDescriptor[]> getPropertyDescriptors() {
+            return propertyDescriptors;
+        }
+
+        public synchronized void setPropertyDescriptors(Map<Class, PropertyDescriptor[]> propertyDescriptors) {
+            this.propertyDescriptors = propertyDescriptors;
         }
 
         public <T> T newInstance(Class<T> cls, Object object) {
@@ -438,7 +452,10 @@ public class Reflection {
 
             for (PropertyDescriptor prop : getPropertyDescriptors(object.getClass())) {
                 if (prop.getReadMethod() != null) {
-                    Method setter = getSetters(target.getClass()).get(prop.getName());
+                    PropertyDescriptor targetDesc = getTargetProperties(target.getClass()).get(prop.getName());
+                    if (targetDesc == null) continue;
+
+                    Method setter = targetDesc.getWriteMethod();
                     if (setter == null) continue;
                     try {
                         boolean annotated = (prop.getReadMethod().getAnnotation(DoNotCopy.class) != null);
@@ -446,11 +463,13 @@ public class Reflection {
                             annotated = (prop.getWriteMethod().getAnnotation(DoNotCopy.class) != null);
                         }
                         if (!annotated) {
-                            Object value = prop.getReadMethod().invoke(object);
                             try {
                                 boolean handled = false;
-                                if (copyListener != null) handled = copyListener.copy(target, setter, setter.getParameterTypes()[0], value);
+                                if (copyListener != null) {
+                                    handled = copyListener.copy(target, targetDesc, object, prop);
+                                }
                                 if (!handled) {
+                                    Object value = prop.getReadMethod().invoke(object);
                                     if (setter.getParameterTypes()[0].isAssignableFrom(prop.getReadMethod().getReturnType())) {
                                         setter.invoke(target, value);
                                     } else {

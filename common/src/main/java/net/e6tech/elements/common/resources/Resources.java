@@ -23,6 +23,7 @@ import net.e6tech.elements.common.resources.plugin.Pluggable;
 import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.util.ExceptionMapper;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -48,6 +49,8 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     private static Logger logger = Logger.getLogger(Resources.class);
     private static final Map<Class, ClassInjectionInfo> injections = new HashMap<>();
+    private static final Map<Class<? extends Annotation>, Annotation> emptyAnnotations = Collections.unmodifiableMap(new HashMap<>());
+    private static final List<ResourceProvider> emptyResourceProviders = Collections.unmodifiableList(new ArrayList<>());
 
     @Inject
     private ResourceManager resourceManager;
@@ -56,6 +59,8 @@ public class Resources implements AutoCloseable, ResourcePool {
     private Retry retry;
 
     protected ResourcesState state = new ResourcesState();
+    protected Map configuration = new HashMap();
+    private List<ResourceProvider> externalResourceProviders;
     private Consumer<? extends Resources> preOpen;
     private List<Replay<? extends Resources, ?>> unitOfWork = new LinkedList<>();
     Object lastResult;
@@ -70,7 +75,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public void setTimeout(long timeout) {
-        setConfiguration(TIMEOUT, timeout);
+        addConfiguration(TIMEOUT, timeout);
     }
 
     public long getTimeoutExtension() {
@@ -78,7 +83,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public void setTimeoutExtension(long timeout) {
-        setConfiguration(TIMEOUT_EXTENSION, timeout);
+        addConfiguration(TIMEOUT_EXTENSION, timeout);
     }
 
     void setPreOpen(Consumer<? extends Resources> preOpen) {
@@ -115,6 +120,15 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     public synchronized boolean isDiscarded() {
         return resourceManager == null;
+    }
+
+    List<ResourceProvider> getExternalResourceProviders() {
+        if (externalResourceProviders == null) return emptyResourceProviders;
+        return externalResourceProviders;
+    }
+
+    void setExternalResourceProviders(List<ResourceProvider> externalResourceProviders) {
+        this.externalResourceProviders = externalResourceProviders;
     }
 
     private List<ResourceProvider> getResourceProviders() {
@@ -395,11 +409,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     protected Map<String, Object> getConfiguration() {
-        return state.getConfiguration();
-    }
-
-    public void setConfiguration(Map<String, Object> configuration) {
-        state.setConfiguration(configuration);
+        return configuration;
     }
 
     public <T> T getConfiguration(String key) {
@@ -412,8 +422,23 @@ public class Resources implements AutoCloseable, ResourcePool {
         return value;
     }
 
-    public void setConfiguration(String key, Object object) {
+    public <T> T getConfiguration(Class<T> key) {
+        return (T) getConfiguration().get(key);
+    }
+
+    public <T> T getConfiguration(Class<T> key, T defaultValue) {
+        T value =  (T) getConfiguration().get(key);
+        if (value == null) return defaultValue;
+        return value;
+    }
+
+    public void addConfiguration(String key, Object object) {
         getConfiguration().put(key, object);
+    }
+
+    public void addConfiguration(Map configuration) {
+        if (configuration == null) return;
+        getConfiguration().putAll(configuration);
     }
 
     public synchronized void onOpen() {
@@ -451,8 +476,8 @@ public class Resources implements AutoCloseable, ResourcePool {
 
                 try { abort(); } catch (Throwable th2) {}
 
-                Res retryResources = (Res) resourceManager.open(preOpen);
-                // copy retryResources to this
+                Res retryResources = (Res) resourceManager.open(null, preOpen);
+                // copy retryResources to this.  retryResources is not used.  We only need to create a new ResourcesState.
                 state = retryResources.state;
                 Iterator<Replay<? extends Resources, ?>> iterator = unitOfWork.iterator();
                 while (iterator.hasNext()) {
@@ -535,7 +560,7 @@ public class Resources implements AutoCloseable, ResourcePool {
             }
         }
 
-        for (ResourceProvider p : resourceManager.getResourceProviders()) {
+        for (ResourceProvider p : getExternalResourceProviders()) {
             p.onCommit(this);
         }
 
@@ -564,7 +589,7 @@ public class Resources implements AutoCloseable, ResourcePool {
                     } catch (Throwable th) {
                     }
                 }
-                for (ResourceProvider p : resourceManager.getResourceProviders()) {
+                for (ResourceProvider p : getExternalResourceProviders()) {
                     try {
                         p.onAbort(this);
                     } catch (Throwable th) {
@@ -597,7 +622,7 @@ public class Resources implements AutoCloseable, ResourcePool {
             for (ResourceProvider resourceProvider : state.getResourceProviders()) {
                 resourceProvider.onClosed(this);
             }
-            for (ResourceProvider p : resourceManager.getResourceProviders()) {
+            for (ResourceProvider p : getExternalResourceProviders()) {
                 p.onClosed(this);
             }
         } catch (Exception ex) {

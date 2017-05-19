@@ -16,8 +16,10 @@
 
 package net.e6tech.sample.web.cxf;
 
+import net.e6tech.elements.common.resources.InstanceNotFoundException;
 import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.persist.EntityManagerConfig;
 
 import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
@@ -50,7 +52,13 @@ public class HelloWorld{
     @GET
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello")
+    @EntityManagerConfig(disable = true)
     public String ping() {
+        try {
+            resources.getInstance(EntityManager.class);
+        } catch (InstanceNotFoundException ex) {
+            System.out.println("No transaction");
+        }
         return "ping ...";
     }
 

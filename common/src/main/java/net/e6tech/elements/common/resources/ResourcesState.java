@@ -35,7 +35,6 @@ class ResourcesState {
     private boolean aborted = false;
     private boolean committed = false;
     private boolean dirty = false; // dirty if not open and bind is call.
-    private Map<String, Object> configuration = new LinkedHashMap<>();
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private LinkedList<Object> injectionList = new LinkedList<>();
     private List<Module> modules;
@@ -110,14 +109,6 @@ class ResourcesState {
 
     public void setDirty(boolean dirty) {
         this.dirty = dirty;
-    }
-
-    public Map<String, Object> getConfiguration() {
-        return configuration;
-    }
-
-    public void setConfiguration(Map<String, Object> configuration) {
-        this.configuration = configuration;
     }
 
     public List<ResourceProvider> getResourceProviders() {

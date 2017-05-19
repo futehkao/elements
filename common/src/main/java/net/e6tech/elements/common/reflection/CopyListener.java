@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.reflection;
 
+import java.beans.PropertyDescriptor;
 import java.beans.PropertyVetoException;
 import java.lang.reflect.Method;
 
@@ -23,5 +24,17 @@ import java.lang.reflect.Method;
  * Created by futeh on 11/25/15.
  */
 public interface CopyListener {
-    boolean copy(Object target, Method setter, Class copyType, Object copyValue) throws PropertyVetoException;
+    /**
+     *
+     * @param target the target to be copied
+     * @param targetDescriptor  The PropertyDescriptor of the property to be copied.
+     *                          Typically, one may use its write method to set the target
+     * @param owner             The owner which has the properties to be copied over to the target.
+     * @param ownerDescriptor   The PropertyDescriptor of the owner's property to be copied over to the target.
+     *                          One may use its read method to retrieve the property's value.
+     * @return
+     * @throws PropertyVetoException
+     */
+    boolean copy(Object target, PropertyDescriptor targetDescriptor,
+                 Object owner, PropertyDescriptor ownerDescriptor) throws PropertyVetoException;
 }

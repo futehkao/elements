@@ -70,7 +70,7 @@ public class Atom implements Map<String, Object> {
             if (value != null) {
                 configuration = new Configuration(resourceManager.getScripting().getProperties());
                 configuration.load(value.toString());
-                resources.setConfiguration(configuration);
+                resources.addConfiguration(configuration);
             }
         });
         directives.put(WAIT_FOR, (key, value) -> {
@@ -343,7 +343,7 @@ public class Atom implements Map<String, Object> {
     public Atom open(Consumer<Resources> consumer) {
         Resources resources = null;
         try {
-            resources = resourceManager.open();
+            resources = resourceManager.open(null);
             consumer.accept(resources);
         } finally {
             if (resources != null) try {
@@ -587,7 +587,7 @@ public class Atom implements Map<String, Object> {
                 configure(instance, key);
             } else if (value instanceof Configuration) {
                 instance = value;
-                resources.setConfiguration((Configuration) value);
+                resources.addConfiguration((Configuration) value);
                 configuration = (Configuration) value;
             } else if (isDirective(key)) {
                 return processDirective(key, value);
