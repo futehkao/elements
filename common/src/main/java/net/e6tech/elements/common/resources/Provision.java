@@ -18,18 +18,16 @@ package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
-import net.e6tech.elements.common.resources.plugin.Path;
-import net.e6tech.elements.common.resources.plugin.Pluggable;
+import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.resources.plugin.Plugin;
+import net.e6tech.elements.common.resources.plugin.PluginManager;
 
 import javax.inject.Inject;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -126,16 +124,16 @@ public class Provision implements Transactional {
         return Resources.class;
     }
 
-    public <T extends Pluggable> T getPlugin(Class c1, String n1, Class c2, Object ... args) {
-        return (T) getPlugin(Path.of(c1, n1).and(c2), args);
+    public <S, T extends Plugin> T getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
+        return (T) getPlugin(PluginPath.of(c1, n1).and(c2), args);
     }
 
-    public <T extends Pluggable> T getPlugin(Class c1, String n1, Class c2, String n2, Class c3, Object ... args) {
-        return (T) getPlugin(Path.of(c1, n1).and(c2, n2).and(c3), args);
+    public <R,S,T extends Plugin> T getPlugin(Class<R> c1, String n1, Class<S> c2, String n2, Class<T> c3, Object ... args) {
+        return (T) getPlugin(PluginPath.of(c1, n1).and(c2, n2).and(c3), args);
     }
 
-    public <T extends Pluggable> T getPlugin(Path<T> path, Object ... args) {
-        return (T) getInstance(Plugin.class).get(path, args);
+    public <T extends Plugin> T getPlugin(PluginPath<T> path, Object ... args) {
+        return (T) getInstance(PluginManager.class).get(path, args);
     }
 
     // used for configuring resourcesManager's resourceProviders before Resources is open

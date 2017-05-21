@@ -23,7 +23,7 @@ import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.logging.TimedLogger;
 import net.e6tech.elements.common.notification.NotificationCenter;
-import net.e6tech.elements.common.resources.plugin.Plugin;
+import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.script.AbstractScriptShell;
 import net.e6tech.elements.common.util.monitor.AllocationMonitor;
 import org.apache.logging.log4j.ThreadContext;
@@ -31,7 +31,6 @@ import org.apache.logging.log4j.ThreadContext;
 import javax.script.ScriptException;
 import java.io.File;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.*;
@@ -55,7 +54,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private Map<String, Atom> atoms = new LinkedHashMap<>();
     private NotificationCenter notificationCenter = new NotificationCenter();
     private BeanLifecycle beanLifecycle = new BeanLifecycle();
-    private Plugin plugin = new Plugin(this);
+    private PluginManager pluginManager = new PluginManager(this);
     private List<ResourceManagerListener> listeners = new LinkedList<>();
 
     public ResourceManager() {
@@ -63,7 +62,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public ResourceManager(Provision provision) {
-        initialize(plugin.getPluginClassLoader(), provision.getProperties());
+        initialize(pluginManager.getPluginClassLoader(), provision.getProperties());
         _initialize(provision.getProperties());
 
         Provision myProvision = loadProvision(provision.getClass());
@@ -71,7 +70,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public ResourceManager(Properties properties) {
-        initialize(plugin.getPluginClassLoader(), updateProperties(properties));
+        initialize(pluginManager.getPluginClassLoader(), updateProperties(properties));
         _initialize(properties);
     }
 
@@ -89,15 +88,15 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         module.bindInstance(NotificationCenter.class, notificationCenter);
         module.bindInstance(Interceptor.class, Interceptor.getInstance());
         module.bindInstance(InstanceFactory.class, instanceFactory);
-        module.bindInstance(Plugin.class, plugin);
+        module.bindInstance(PluginManager.class, pluginManager);
         injector = Guice.createInjector(module);
 
         getScripting().put("notificationCenter", notificationCenter);
         getScripting().put("interceptor", Interceptor.getInstance());
         getScripting().put("instanceFactory", instanceFactory);
-        getScripting().put("plugin", plugin);
+        getScripting().put("pluginManager", pluginManager);
 
-        Thread.currentThread().setContextClassLoader(plugin.getPluginClassLoader());
+        Thread.currentThread().setContextClassLoader(pluginManager.getPluginClassLoader());
     }
 
     public void addListener(ResourceManagerListener listener) {
@@ -108,8 +107,8 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         listeners.remove(listener);
     }
 
-    public Plugin getPlugin() {
-        return plugin;
+    public PluginManager getPluginManager() {
+        return pluginManager;
     }
 
     public NotificationCenter getNotificationCenter() {

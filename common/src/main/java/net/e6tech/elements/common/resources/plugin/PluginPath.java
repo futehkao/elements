@@ -22,16 +22,16 @@ import java.util.List;
 /**
  * Created by futeh.
  */
-public class Path<T> {
-    private Path parent;
+public class PluginPath<T> {
+    private PluginPath parent;
     private Class<T> type;
     private String name;
 
-    public static <T> Path<T> of(Class<T> cls, String name) {
-        return new Path(cls, name);
+    public static <T> PluginPath<T> of(Class<T> cls, String name) {
+        return new PluginPath<T>(cls, name);
     }
 
-    protected Path(Class<T> cls, String name) {
+    protected PluginPath(Class<T> cls, String name) {
         this.type = cls;
         this.name = name;
     }
@@ -52,21 +52,21 @@ public class Path<T> {
         this.name = name;
     }
 
-    public <R> Path<R> and(Class<R> cls, String name) {
-        Path<R> child = new Path(cls, name);
+    public <R> PluginPath<R> and(Class<R> cls, String name) {
+        PluginPath<R> child = new PluginPath<R>(cls, name);
         child.parent = this;
         return child;
     }
 
-    public <R> Path<R> and(Class<R> cls) {
-        Path<R> child = new Path(cls, null);
+    public <R> PluginPath<R> and(Class<R> cls) {
+        PluginPath<R> child = new PluginPath<R>(cls, null);
         child.parent = this;
         return child;
     }
 
-    public List<Path> list() {
+    public List<PluginPath> list() {
         LinkedList list = new LinkedList();
-        Path path = this;
+        PluginPath path = this;
         while (path != null) {
             list.addFirst(path);
             path = path.parent;
@@ -76,9 +76,9 @@ public class Path<T> {
 
     public String path() {
         StringBuilder builder = new StringBuilder();
-        List<Path> list = list();
+        List<PluginPath> list = list();
         boolean first = true;
-        for (Path p : list) {
+        for (PluginPath p : list) {
             if (first) {
                 first  = false;
             } else {

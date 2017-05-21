@@ -300,33 +300,33 @@ public class Reflection {
 
         List<T> list = new ArrayList<>();
         for (Object o : objectList) {
-            T target = (new Instance()).newInstance(cls, o, listener);
+            T target = (new Replicator()).newInstance(cls, o, listener);
             list.add(target);
         }
         return list;
     }
 
     public static <T> T newInstance(Class<T> cls, Object object) {
-        return (new Instance()).newInstance(cls, object, new HashMap<>(), null);
+        return (new Replicator()).newInstance(cls, object, new HashMap<>(), null);
     }
 
     public static <T> T newInstance(Class<T> cls, Object object, CopyListener listener) {
-        return (new Instance()).newInstance(cls, object, new HashMap<>(), listener);
+        return (new Replicator()).newInstance(cls, object, new HashMap<>(), listener);
     }
 
     public static void copyInstance(Object target, Object object) {
-        (new Instance()).copy(target, object, new HashMap<>(), null);
+        (new Replicator()).copy(target, object, new HashMap<>(), null);
     }
 
     public static void copyInstance(Object target, Object object, CopyListener listener) {
-        (new Instance()).copy(target, object, new HashMap<>(), listener);
+        (new Replicator()).copy(target, object, new HashMap<>(), listener);
     }
 
     public static boolean compare(Object target, Object object) {
-        return (new Instance()).compare(target, object);
+        return (new Replicator()).compare(target, object);
     }
 
-    public static class Instance {
+    public static class Replicator {
         private Map<Class, Map<String, PropertyDescriptor>> targetPropertiesDescriptor = new HashMap<>();
         private Map<Class, PropertyDescriptor[]> propertyDescriptors = new HashMap<>();
 
@@ -370,11 +370,11 @@ public class Reflection {
         }
 
         public <T> T newInstance(Class<T> cls, Object object) {
-            return (new Instance()).newInstance(cls, object, new HashMap<>(), null);
+            return (new Replicator()).newInstance(cls, object, new HashMap<>(), null);
         }
 
         public <T> T newInstance(Class<T> cls, Object object, CopyListener listener) {
-            return (new Instance()).newInstance(cls, object, new HashMap<>(), listener);
+            return (new Replicator()).newInstance(cls, object, new HashMap<>(), listener);
         }
 
         private <T> T newInstance(Type toType, Object object, Map<Integer, Object> seen, CopyListener listener) {

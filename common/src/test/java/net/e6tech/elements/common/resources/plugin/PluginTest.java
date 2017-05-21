@@ -28,19 +28,22 @@ public class PluginTest {
 
     @Test
     public void defaultPlugin() {
-        Plugin plugin = new Plugin(new ResourceManager());
-        plugin.add(PluginTest.class, "1", PluginX.class, new DefaultPluginX("1"));
+        PluginManager plugin = new PluginManager(new ResourceManager());
+        plugin.add(PluginPath.of(PluginTest.class, "1").and(PluginX.class), new DefaultPluginX("1"));
 
-        DefaultPluginX x1 = plugin.get(PluginTest.class, "1", PluginX.class);
-        assertTrue(x1.name.equals("1"));
+        PluginX x1 = plugin.get(PluginPath.of(PluginTest.class, "1").and(PluginX.class));
+        assertTrue(x1.name().equals("1"));
 
         // using default
-        DefaultPluginX x2 = plugin.get(PluginTest.class, "abc", PluginX.class);
-        assertTrue(x2.name.equals("default"));
+        PluginX x2 = plugin.get(PluginPath.of(PluginTest.class, "abc").and(PluginX.class)); // abc doesn't exist, so default is return.
+        assertTrue(x2.name().equals("default"));
     }
 
-    interface  PluginX extends Pluggable {
+    interface  PluginX extends Plugin {
         static Class defaultPlugin = DefaultPluginX.class;
+
+        String name();
+
     }
 
     private static class DefaultPluginX implements PluginX {
@@ -52,6 +55,10 @@ public class PluginTest {
 
         DefaultPluginX(String name) {
             this.name = name;
+        }
+
+        public String name() {
+            return name;
         }
 
         @Override

@@ -18,9 +18,9 @@ package net.e6tech.elements.common.resources;
 import com.google.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
-import net.e6tech.elements.common.resources.plugin.Path;
-import net.e6tech.elements.common.resources.plugin.Pluggable;
+import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.resources.plugin.Plugin;
+import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.util.ExceptionMapper;
 
 import java.lang.annotation.Annotation;
@@ -229,16 +229,16 @@ public class Resources implements AutoCloseable, ResourcePool {
      * @param <T>
      * @return
      */
-    public <T extends Pluggable> T getPlugin(Class c1, String n1, Class c2, Object ... args) {
-        return (T) getPlugin(Path.of(c1, n1).and(c2), args);
+    public <S, T extends Plugin> T getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
+        return (T) getPlugin(PluginPath.of(c1, n1).and(c2), args);
     }
 
-    public <T extends Pluggable> T getPlugin(Class c1, String n1, Class c2, String n2, Class c3, Object ... args) {
-        return (T) getPlugin(Path.of(c1, n1).and(c2, n2).and(c3), args);
+    public <R,S,T extends Plugin> T getPlugin(Class<R> c1, String n1, Class<S> c2, String n2, Class<T> c3, Object ... args) {
+        return (T) getPlugin(PluginPath.of(c1, n1).and(c2, n2).and(c3), args);
     }
 
-    public <T extends Pluggable> T getPlugin(Path<T> path, Object ... args) {
-        Plugin plugin = getInstance(Plugin.class);
+    public <T extends Plugin> T getPlugin(PluginPath<T> path, Object ... args) {
+        PluginManager plugin = getInstance(PluginManager.class);
         return (T) plugin.from(this).get(path, args);
     }
 

@@ -17,9 +17,15 @@ limitations under the License.
 package net.e6tech.elements.common.resources;
 
 
+import net.e6tech.elements.common.reflection.Annotator;
+
 import javax.inject.Inject;
+import java.lang.annotation.Annotation;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -28,44 +34,42 @@ import java.util.function.Consumer;
 public class ResourcesFactory {
 
     @Inject
-    Provision provision;
+    protected Provision provision;
+
+    private ResourceProviderConfigurator configurator = new ResourceProviderConfigurator();
 
     List<Consumer<Resources>> configurations = new LinkedList<>();
 
-    public void addConfiguration(String configName, Object object) {
-        add((resources) -> {
-            resources.addConfiguration(configName, object); // add 15 sec to tx timeout
-        });
+    public ResourceProviderConfigurator configurator() {
+        return configurator;
     }
 
-    /*
-    public <Res extends Resources, T> T commit(Commitable<Res, T> consumer) {
-        if (configurations == null) {
-            provision.commit(Resources.class, resources -> {
-                return consumer.call((Res) resources);
-            });
-        }
-        return provision.preOpen(config()).commit(Resources.class, resouces -> {
-            return consumer.call((Res) resouces);
-        });
-    }*/
+    // for programmatic configuration
+    public <T extends Annotation> ResourcesFactory configure(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {
+        configurator.configure(cls, consumer);
+        return this;
+    }
+
+    // for programmatic configuration
+    public <T extends Annotation> ResourcesFactory configure(String key, Object value) {
+        configurator.configure(key, value);
+        return this;
+    }
+
+    // for groovy configuration
+    public ResourcesFactory add(Consumer<Resources> consumer) {
+        configurations.add(consumer);
+        return this;
+    }
 
     public UnitOfWork open() {
-        return provision.preOpen((resources) -> {
+        UnitOfWork uow = provision.preOpen((resources) -> {
             if (configurations != null) {
                 for (Consumer<Resources> c : configurations) c.accept(resources);
             }
         });
-    }
-
-    private Consumer<Resources> config() {
-        return (resources) -> {
-            for (Consumer<Resources> c : configurations) c.accept(resources);
-        };
-    }
-
-    public void add(Consumer<Resources> consumer) {
-        configurations.add(consumer);
+        uow.open(configurator.configuration());
+        return uow;
     }
 
     public Provision getProvision() {
