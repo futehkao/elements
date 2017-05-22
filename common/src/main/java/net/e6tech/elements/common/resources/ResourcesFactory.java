@@ -17,68 +17,44 @@ limitations under the License.
 package net.e6tech.elements.common.resources;
 
 
-import net.e6tech.elements.common.reflection.Annotator;
-
 import javax.inject.Inject;
-import java.lang.annotation.Annotation;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
  * Created by futeh on 12/19/15.
  */
-public class ResourcesFactory {
+public class ResourcesFactory implements Configurable<ResourcesFactory> {
 
     @Inject
     protected Provision provision;
 
-    private ResourceProviderConfigurator configurator = new ResourceProviderConfigurator();
+    private Configurator configurator = new Configurator();
 
-    List<Consumer<Resources>> configurations = new LinkedList<>();
+    Consumer<Resources> preOpen;
 
-    public ResourceProviderConfigurator configurator() {
+    @Override
+    public Configurator configurator() {
         return configurator;
     }
 
-    // for programmatic configuration
-    public <T extends Annotation> ResourcesFactory configure(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {
-        configurator.configure(cls, consumer);
-        return this;
-    }
-
-    // for programmatic configuration
-    public <T extends Annotation> ResourcesFactory configure(String key, Object value) {
-        configurator.configure(key, value);
+    @Override
+    public ResourcesFactory configurable() {
         return this;
     }
 
     // for groovy configuration
-    public ResourcesFactory add(Consumer<Resources> consumer) {
-        configurations.add(consumer);
+    public ResourcesFactory preOpen(Consumer<Resources> consumer) {
+        preOpen = consumer;
         return this;
     }
 
     public UnitOfWork open() {
-        UnitOfWork uow = provision.preOpen((resources) -> {
-            if (configurations != null) {
-                for (Consumer<Resources> c : configurations) c.accept(resources);
-            }
-        });
-        uow.open(configurator.configuration());
+        UnitOfWork uow = provision.preOpen(preOpen);
+        uow.configurator().putAll(configurator);
         return uow;
     }
 
     public Provision getProvision() {
         return provision;
-    }
-
-    @Merge
-    public ResourcesFactory merge(ResourcesFactory instance) {
-        configurations.addAll(instance.configurations);
-        return this;
     }
 }

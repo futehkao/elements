@@ -41,9 +41,7 @@ import org.apache.cxf.transport.http.AbstractHTTPDestination;
 import javax.annotation.Nonnull;
 import javax.annotation.PreDestroy;
 import javax.management.JMException;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
-import javax.management.ObjectName;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -52,7 +50,6 @@ import javax.ws.rs.ext.Provider;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -415,10 +412,9 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
 
         private void open(Method method) {
             Class cls = instance.getClass();
-            Map annotations = new HashMap();
-            for (Annotation annotation : cls.getAnnotations()) annotations.put(annotation.annotationType(), annotation);
-            for (Annotation annotation : method.getAnnotations()) annotations.put(annotation.annotationType(), annotation);
-            uow.open(annotations);
+            for (Annotation annotation : cls.getAnnotations()) uow.put(annotation.annotationType(), annotation);
+            for (Annotation annotation : method.getAnnotations()) uow.put(annotation.annotationType(), annotation);
+            uow.open();
         }
 
         @Override

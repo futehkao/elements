@@ -40,7 +40,7 @@ public class Annotator implements InvocationHandler {
     private String toString;
 
     @SuppressWarnings("unchecked")
-    public static <T extends Annotation> T create(Class<T> cls, BiConsumer<AnnotationValue, T> consumer) {
+    public static <T extends Annotation> T create(Class<? extends Annotation> cls, BiConsumer<AnnotationValue, T> consumer) {
         Map<Method, Object> values = new LinkedHashMap<>();
         for (Method method : cls.getDeclaredMethods()) {
             if (method.getName().equals("hashCode") && method.getParameterCount() == 0) {
@@ -58,9 +58,8 @@ public class Annotator implements InvocationHandler {
         }
 
         Annotator annotator = new Annotator(cls, values);
-        T t = (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, annotator);
         AnnotationValue annotationValue = new AnnotationValue(annotator);
-        consumer.accept(annotationValue, t);
+        if (consumer != null) consumer.accept(annotationValue, (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, annotator));
         return (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, new Annotator(cls, values));
     }
 

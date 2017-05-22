@@ -16,21 +16,19 @@ limitations under the License.
 
 package net.e6tech.elements.common.resources;
 
-import java.lang.annotation.Annotation;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 /**
  * Created by futeh.
  */
-public class UnitOfWork implements Transactional {
+public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
     ResourceManager resourceManager;
     List<ResourceProvider> resourceProviders = new LinkedList<>();
     Consumer<Resources> preOpen;
+    private Configurator configurator = new Configurator();
     Resources resources;
     List<ConsumerWithException<? extends Resources>> unitOfWork = new LinkedList<>();
 
@@ -53,13 +51,15 @@ public class UnitOfWork implements Transactional {
         return resources;
     }
 
-    public <Res extends Resources> Res open() {
-        return open(null);
+    public Configurator configurator() {
+        return configurator;
     }
 
-    public <Res extends Resources> Res open(Map configuration) {
+    public UnitOfWork configurable() { return  this; }
+
+    public <Res extends Resources> Res open() {
         if (resources != null && resources.isOpened()) return (Res) resources;
-        resources = resourceManager.open(configuration, (r) -> {
+        resources = resourceManager.open(this.configurator, (r) -> {
             if (preOpen != null) preOpen.accept(r);
             for (ResourceProvider p : resourceProviders) {
                 r.addResourceProvider(p);

@@ -70,7 +70,7 @@ public class Atom implements Map<String, Object> {
             if (value != null) {
                 configuration = new Configuration(resourceManager.getScripting().getProperties());
                 configuration.load(value.toString());
-                resources.addConfiguration(configuration);
+                resources.configurator.putAll(configuration);
             }
         });
         directives.put(WAIT_FOR, (key, value) -> {
@@ -171,9 +171,9 @@ public class Atom implements Map<String, Object> {
         }
 
         if (obj != null)
-            boundInstances.put(prefix, obj); // needed here because configure may execute a script that requires the instance.
+            boundInstances.put(prefix, obj); // needed here because annotate may execute a script that requires the instance.
         // when a config string begin with ^, it is turned into a closure.  The expression is
-        // then executed in configuration.configure.
+        // then executed in configuration.annotate.
         configuration.configure(obj, prefix,
                 (str) -> {
                     try {
@@ -587,7 +587,7 @@ public class Atom implements Map<String, Object> {
                 configure(instance, key);
             } else if (value instanceof Configuration) {
                 instance = value;
-                resources.addConfiguration((Configuration) value);
+                resources.configurator.putAll((Configuration) value);
                 configuration = (Configuration) value;
             } else if (isDirective(key)) {
                 return processDirective(key, value);

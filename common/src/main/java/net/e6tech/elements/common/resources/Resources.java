@@ -32,7 +32,7 @@ import java.util.function.Function;
 
 /**
  * A Resources instance is use to manage resource level injection and resources.
- * Rules for injection.  Only configure injection for instances that are configured
+ * Rules for injection.  Only annotate injection for instances that are configured
  * during program start up.  During runtime, it is better to store resources via put.
  * This prevents a overly complicated dependency wiring.  For dynamically created
  * instances, really the only needed injected resource is the Resources instance and
@@ -43,9 +43,6 @@ import java.util.function.Function;
  */
 @BindClass(Resources.class)
 public class Resources implements AutoCloseable, ResourcePool {
-
-    private static final String TIMEOUT =  Resources.class.getName() + ".timeout";
-    private static final String TIMEOUT_EXTENSION = Resources.class.getName() + ".timeout.extension";
 
     private static Logger logger = Logger.getLogger(Resources.class);
     private static final Map<Class, ClassInjectionInfo> injections = new HashMap<>();
@@ -59,7 +56,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     private Retry retry;
 
     protected ResourcesState state = new ResourcesState();
-    protected Map configuration = new HashMap();
+    protected Configurator configurator = new Configurator();
     private List<ResourceProvider> externalResourceProviders;
     private Consumer<? extends Resources> preOpen;
     private List<Replay<? extends Resources, ?>> unitOfWork = new LinkedList<>();
@@ -68,22 +65,6 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     protected Resources() {
         getModule().bindInstance(getClass(), this);
-    }
-
-    public long getTimeout() {
-        return getConfiguration(TIMEOUT, 0L);
-    }
-
-    public void setTimeout(long timeout) {
-        addConfiguration(TIMEOUT, timeout);
-    }
-
-    public long getTimeoutExtension() {
-        return getConfiguration(TIMEOUT_EXTENSION, 0L);
-    }
-
-    public void setTimeoutExtension(long timeout) {
-        addConfiguration(TIMEOUT_EXTENSION, timeout);
     }
 
     void setPreOpen(Consumer<? extends Resources> preOpen) {
@@ -408,37 +389,12 @@ public class Resources implements AutoCloseable, ResourcePool {
         return state.getInstance(this, cls);
     }
 
-    protected Map<String, Object> getConfiguration() {
-        return configuration;
+    public Configurator configurator() {
+        return configurator;
     }
 
-    public <T> T getConfiguration(String key) {
-        return (T) getConfiguration().get(key);
-    }
-
-    public <T> T getConfiguration(String key, T defaultValue) {
-        T value =  (T) getConfiguration().get(key);
-        if (value == null) return defaultValue;
-        return value;
-    }
-
-    public <T> T getConfiguration(Class<T> key) {
-        return (T) getConfiguration().get(key);
-    }
-
-    public <T> T getConfiguration(Class<T> key, T defaultValue) {
-        T value =  (T) getConfiguration().get(key);
-        if (value == null) return defaultValue;
-        return value;
-    }
-
-    public void addConfiguration(String key, Object object) {
-        getConfiguration().put(key, object);
-    }
-
-    public void addConfiguration(Map configuration) {
-        if (configuration == null) return;
-        getConfiguration().putAll(configuration);
+    public void configure(Configurator configurator) {
+        this.configurator.putAll(configurator);
     }
 
     public synchronized void onOpen() {

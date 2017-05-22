@@ -16,20 +16,14 @@ limitations under the License.
 
 package net.e6tech.elements.common.resources;
 
-import java.lang.annotation.Annotation;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.function.Consumer;
 
 /**
  * Created by futeh.
  */
 public interface Transactional {
-    
-    <Res extends Resources> Res open();
 
-    <Res extends Resources> Res open(Map configuration);
+    <Res extends Resources> Res open();
 
     default <R> R commit(Callable<R> callable) {
         Resources resources = open();

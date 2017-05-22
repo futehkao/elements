@@ -308,7 +308,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
             for (String key : setters.keySet()) {
                 PropertyDescriptor desc = setters.get(key);
                 Object value = get(key);
-                // configure substitution
+                // annotate substitution
                 value = converter.convert(value, desc.getWriteMethod(), listener);
                 Method method = desc.getWriteMethod();
                 method.invoke(object, value);

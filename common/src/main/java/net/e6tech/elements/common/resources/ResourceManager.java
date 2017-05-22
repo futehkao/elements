@@ -558,14 +558,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         }
     }
 
-    public <Res extends Resources> Res open(Map configuration) {
-        return open(configuration, (resources) -> {
+    public <Res extends Resources> Res open(Configurator configurator) {
+        return open(configurator, (resources) -> {
         });
     }
 
-    public <Res extends Resources> Res open(Map configuration, Consumer<Res> preOpen) {
+    public <Res extends Resources> Res open(Configurator configurator, Consumer<Res> preOpen) {
         Res resources = newResources();
-        resources.addConfiguration(configuration);
+        resources.configure(configurator);
 
         inject(resources);
 

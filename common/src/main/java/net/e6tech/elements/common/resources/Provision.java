@@ -116,10 +116,6 @@ public class Provision implements Transactional {
         return resourceManager.open(null);
     }
 
-    public <Res extends Resources> Res open(Map configuration) {
-        return resourceManager.open(configuration);
-    }
-
     public Class<? extends Resources> getResourcesClass() {
         return Resources.class;
     }

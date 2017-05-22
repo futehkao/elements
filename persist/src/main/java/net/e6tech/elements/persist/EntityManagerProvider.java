@@ -61,22 +61,6 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private long monitorIdle = 60000;
     private boolean monitoring = false;
 
-    public void monitorTransaction(Resources resources, boolean monitor) {
-        resources.addConfiguration(MONITOR_TRANSACTION, monitor);
-    }
-
-    public boolean monitorTransaction(Resources resources) {
-        return resources.getConfiguration(MONITOR_TRANSACTION, monitorTransaction);
-    }
-
-    public void setLongTransaction(Resources resources, long longTransaction) {
-        resources.addConfiguration(LONG_TRANSACTION, longTransaction);
-    }
-
-    public long getLongTransaction(Resources resources) {
-        return resources.getConfiguration(LONG_TRANSACTION, longTransaction);
-    }
-
     public long getMonitorIdle() {
         return monitorIdle;
     }
@@ -185,28 +169,24 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
     @Override
     public void onOpen(Resources resources) {
-        EntityManagerConfig config = resources.getConfiguration(EntityManagerConfig.class);
-        if (config != null && config.disable()) throw new NotAvailableException();
+        EntityManagerConfig config = resources.configurator().annotation(EntityManagerConfig.class);
+        if (config.disable()) throw new NotAvailableException();
 
         long timeout = transactionTimeout;
-        if (config != null && config.timeout() != 0L) timeout = config.timeout();
-        if (resources.getTimeout() != 0L) timeout = resources.getTimeout();
-        if (resources.getTimeoutExtension() != 0L) {
-            timeout += resources.getTimeoutExtension();
-        } else if (config != null && config.timeoutExtension() != 0L) {
-            timeout += config.timeoutExtension();
-        }
+        if (config.timeout() > 0L) timeout = config.timeout();
+        timeout += config.timeoutExtension();
 
-        boolean monitor = monitorTransaction(resources);
+        boolean monitor = monitorTransaction;
+        monitor = config.monitor();
 
-        long longQuery = getLongTransaction(resources);
+        long longQuery = longTransaction;
+        if (config.longTransaction() != 0L) longTransaction = config.longTransaction();
         if (firstQuery) {
             firstQuery = false;
             if (longQuery < 1000L) longQuery = 1000L;
         }
 
         EntityManager em = emf.createEntityManager();
-
         monitor(new EntityManagerMonitor(em, System.currentTimeMillis() + timeout, new Throwable()));
 
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);

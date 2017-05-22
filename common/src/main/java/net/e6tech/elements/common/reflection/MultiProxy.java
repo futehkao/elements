@@ -24,10 +24,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The usage pattern is createProxy().configure()
+ * The usage pattern is createProxy().annotate()
  *
  * This initial createProxy configures a handler associated with a cls and a list of
- * methods that the handler wishes to intercept.  Subsequent configure calls can be
+ * methods that the handler wishes to intercept.  Subsequent annotate calls can be
  * made to add more classes and handlers.
  *
  * The main purpose of this class is to intercept certain methods from a class and calls
@@ -43,7 +43,7 @@ public class MultiProxy {
     Map<Class, Map<String, InvocationHandler>> handlers = new HashMap<>();
 
     /**
-     * Create a MultiProxy object to configure InvocationHandlers.
+     * Create a MultiProxy object to annotate InvocationHandlers.
      *
      * @param cls Root class to be proxied
      * @param handler an InvocationHandler to handle method calls
