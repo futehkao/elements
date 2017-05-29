@@ -21,6 +21,7 @@ import net.e6tech.elements.common.reflection.Annotator;
 import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 /**
  * Created by futeh.
@@ -52,13 +53,16 @@ public interface Configurable<U> {
         return configurator().get(key);
     }
 
-    default <T extends Annotation> U annotate(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {
-        configurator().annotate(cls, consumer);
-        return configurable();
+    default <T> T computeIfAbsent(String key, Function<String, T> mappingFunction) {
+        return (T) configurator().computeIfAbsent(key, mappingFunction);
     }
 
-    default <T extends Annotation> U put(Class<? extends Annotation> cls, T instance) {
-        configurator().put(cls, instance);
+    default <T> T computeIfAbsent(Class<T> key, Function<Class<T>, T> mappingFunction) {
+        return (T) configurator().computeIfAbsent(key, mappingFunction);
+    }
+
+    default <T extends Annotation> U annotate(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {
+        configurator().annotate(cls, consumer);
         return configurable();
     }
 

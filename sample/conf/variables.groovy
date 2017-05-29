@@ -21,7 +21,9 @@ entityManagerMonitorTransaction = true
 hibernateShowSQL = false
 hibernateGenerateStatistics = false
 hibernateCacheUseSecondLevelCache = false
-
+clusterName = 'h3_cluster'
+clusterPort = 2552
+clusterSeeds = "[\"akka.tcp://${clusterName}@127.0.0.1:${clusterPort}\"]"
 
 // setting System properties
 systemProperties {

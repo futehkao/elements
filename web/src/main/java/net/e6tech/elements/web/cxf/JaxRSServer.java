@@ -412,8 +412,8 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
 
         private void open(Method method) {
             Class cls = instance.getClass();
-            for (Annotation annotation : cls.getAnnotations()) uow.put(annotation.annotationType(), annotation);
-            for (Annotation annotation : method.getAnnotations()) uow.put(annotation.annotationType(), annotation);
+            for (Annotation annotation : cls.getAnnotations()) uow.put((Class) annotation.annotationType(), annotation);
+            for (Annotation annotation : method.getAnnotations()) uow.put((Class) annotation.annotationType(), annotation);
             uow.open();
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,37 @@
  * limitations under the License.
  */
 
-
-package net.e6tech.elements.common.subscribe;
+package net.e6tech.elements.network.cluster.simple;
 
 import java.io.Serializable;
 
 /**
  * Created by futeh.
  */
-public interface Broadcast {
+public class SimpleMessage implements Serializable {
+    private static final long serialVersionUID = 1435538750870003284L;
 
-    void subscribe(String topic, Subscriber subscriber);
+    public static final String REGISTRATION = "Registration";
 
-    <T extends Serializable> void subscribe(Class<T> topic, Subscriber<T> subscriber);
+    private String message;
 
-    void unsubscribe(String topic, Subscriber subscriber);
+    public SimpleMessage() {
 
-    void unsubscribe(Class topic, Subscriber subscriber);
+    }
 
-    void publish(String topic, Serializable object);
+    public SimpleMessage(String message) {
+        this.message = message;
+    }
 
-    <T extends Serializable> void publish(Class<T> cls, T object);
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public String toString() {
+        return message;
+    }
 }

@@ -33,7 +33,7 @@ import java.util.function.Consumer;
 /**
  * Created by futeh.
  */
-public class Provision implements Transactional {
+public class Provision {
 
     @Inject
     private ResourceManager resourceManager;
@@ -112,10 +112,6 @@ public class Provision implements Transactional {
         return resourceManager.inject(obj);
     }
 
-    public <Res extends Resources> Res open() {
-        return resourceManager.open(null);
-    }
-
     public Class<? extends Resources> getResourcesClass() {
         return Resources.class;
     }
@@ -130,6 +126,11 @@ public class Provision implements Transactional {
 
     public <T extends Plugin> T getPlugin(PluginPath<T> path, Object ... args) {
         return (T) getInstance(PluginManager.class).get(path, args);
+    }
+
+    public UnitOfWork open() {
+        UnitOfWork unitOfWork = new UnitOfWork(resourceManager);
+        return unitOfWork.preOpen(null);
     }
 
     // used for configuring resourcesManager's resourceProviders before Resources is open

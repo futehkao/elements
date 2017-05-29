@@ -41,6 +41,11 @@ public class Annotator implements InvocationHandler {
 
     @SuppressWarnings("unchecked")
     public static <T extends Annotation> T create(Class<? extends Annotation> cls, BiConsumer<AnnotationValue, T> consumer) {
+        return create(cls, null, consumer);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends Annotation> T create(Class<? extends Annotation> cls, T original, BiConsumer<AnnotationValue, T> consumer) {
         Map<Method, Object> values = new LinkedHashMap<>();
         for (Method method : cls.getDeclaredMethods()) {
             if (method.getName().equals("hashCode") && method.getParameterCount() == 0) {
@@ -58,9 +63,10 @@ public class Annotator implements InvocationHandler {
         }
 
         Annotator annotator = new Annotator(cls, values);
+        annotator.copy(original);
         AnnotationValue annotationValue = new AnnotationValue(annotator);
         if (consumer != null) consumer.accept(annotationValue, (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, annotator));
-        return (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, new Annotator(cls, values));
+        return (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, annotator);
     }
 
     protected Annotator(Class type, Map<Method, Object> values) {
@@ -91,6 +97,22 @@ public class Annotator implements InvocationHandler {
         }
     }
 
+    private <T extends Annotation> void copy(T original) {
+        if (original == null) return;
+        Iterator<Map.Entry<Method, Object>> iterator = values.entrySet().iterator();
+        while(iterator.hasNext()) {
+            Map.Entry<Method, Object> entry = iterator.next();
+            Method method = entry.getKey();
+            Object value1 = entry.getValue();
+            try {
+                entry.setValue(entry.getKey().invoke(original));
+            } catch (Throwable e) {
+            }
+        }
+        hashCode = null;
+        toString = null;
+    }
+
     private int hashCodeImpl() {
         int hash = 0;
         Map.Entry<Method, Object> entry;
@@ -110,11 +132,9 @@ public class Annotator implements InvocationHandler {
             Iterator<Map.Entry<Method, Object>> iterator = values.entrySet().iterator();
             while(iterator.hasNext()) {
                 Map.Entry<Method, Object> entry = iterator.next();
-                Method method = entry.getKey();
-                Object value1 = entry.getValue();
                 try {
-                    Object value2 = method.invoke(object);
-                    if (! Primitives.equals(value1, value2)) return false;
+                    Object value2 = entry.getKey().invoke(object);
+                    if (! Primitives.equals(entry.getValue(), value2)) return false;
                 } catch (Throwable e) {
                     return false;
                 }

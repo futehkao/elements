@@ -56,54 +56,57 @@ public class Wait<K, V> {
             table.notifyAll();
         }
 
-        if (thread == null) {
-            // cleanup thread
-            thread = new Thread(()->{
-                List<K> list = new LinkedList<>();
-                while (true) {
-                    long waitTime = 0;
-                    list.clear();
-                    synchronized (table) {
-                        for (K k : table.keySet()) {
-                            Entry<V> e = table.get(k);
-                            if (e != null) { // can be checkout by a different thread
-                                if (e.start + e.expired < System.currentTimeMillis()) {
-                                    list.add(k);
-                                } else {
-                                    long exp = e.start + e.expired - System.currentTimeMillis();
-                                    if (exp > 0) {
-                                        if (waitTime == 0 || waitTime > exp) waitTime = exp;
+        synchronized (table) {
+            if (thread == null) {
+                // start cleanup thread
+                thread = new Thread(()->{
+                    List<K> list = new LinkedList<>();
+                    while (true) {
+                        long waitTime = 0;
+                        list.clear();
+                        synchronized (table) {
+                            for (K k : table.keySet()) {
+                                Entry<V> e = table.get(k);
+                                if (e != null) { // can be checkout by a different thread
+                                    if (e.start + e.expired < System.currentTimeMillis()) {
+                                        list.add(k);
+                                    } else {
+                                        long exp = e.start + e.expired - System.currentTimeMillis();
+                                        if (exp > 0) {
+                                            if (waitTime == 0 || waitTime > exp) waitTime = exp;
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    for (K k : list) {
-                        Entry<V> e = table.get(k);
-                        if (e.start + e.expired < System.currentTimeMillis()) {
-                            table.remove(k);
+                        for (K k : list) {
+                            Entry<V> e = table.get(k);
+                            // we check for e != null because some other thread can remove it.
+                            if (e != null && e.start + e.expired < System.currentTimeMillis()) {
+                                table.remove(k);
+                            }
                         }
-                    }
 
-                    if (waitTime > 0) {
-                        try {
-                            Thread.sleep(waitTime);
-                        } catch (InterruptedException e) {
-                        }
-                    }
-                    synchronized (table) {
-                        while (table.size() == 0) {
+                        if (waitTime > 0) {
                             try {
-                                table.wait();
+                                Thread.sleep(waitTime);
                             } catch (InterruptedException e) {
                             }
                         }
+                        synchronized (table) {
+                            while (table.size() == 0) {
+                                try {
+                                    table.wait();
+                                } catch (InterruptedException e) {
+                                }
+                            }
+                        }
                     }
-                }
-            });
-            thread.setDaemon(true);
-            thread.start();
+                });
+                thread.setDaemon(true);
+                thread.start();
+            }
         }
     }
 

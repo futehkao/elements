@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,12 @@
  * limitations under the License.
  */
 
-
-package net.e6tech.elements.common.subscribe;
-
-import java.io.Serializable;
+package net.e6tech.elements.network.cluster;
 
 /**
  * Created by futeh.
  */
-public interface Broadcast {
-
-    void subscribe(String topic, Subscriber subscriber);
-
-    <T extends Serializable> void subscribe(Class<T> topic, Subscriber<T> subscriber);
-
-    void unsubscribe(String topic, Subscriber subscriber);
-
-    void unsubscribe(Class topic, Subscriber subscriber);
-
-    void publish(String topic, Serializable object);
-
-    <T extends Serializable> void publish(Class<T> cls, T object);
+interface MemberListener {
+    void memberUp();
+    void memberDown();
 }

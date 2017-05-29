@@ -191,7 +191,7 @@ public class CXFServer implements Initializable, Startable {
 
     public void start() {
         if (!initialized) {
-            provision.commit(Resources.class, res -> { initialize(res); });
+            initialize(null);
         }
 
         if (started) return;

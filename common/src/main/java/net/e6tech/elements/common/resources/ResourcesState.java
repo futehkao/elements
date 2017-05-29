@@ -40,9 +40,6 @@ class ResourcesState {
     private List<Module> modules;
     private boolean useChildInjector = false;
 
-    // context is used to stored relevant information with the Resources instance.
-    private  Map<String, Object> context = new LinkedHashMap<>();
-
     ResourcesState() {
         module = new InjectionModule();
     }
@@ -50,7 +47,6 @@ class ResourcesState {
     protected void cleanup() {
         modules = null;
         module = new InjectionModule();
-        context.clear();
         resourceProviders.clear();
         opened = false;
         aborted = false;
@@ -59,7 +55,6 @@ class ResourcesState {
 
     void discard() {
         module = null;
-        context = null;
         resourceProviders = null;
     }
 
@@ -133,14 +128,6 @@ class ResourcesState {
 
     public void setModules(List<Module> modules) {
         this.modules = modules;
-    }
-
-    public Map<String, Object> getContext() {
-        return context;
-    }
-
-    public void setContext(Map<String, Object> context) {
-        this.context = context;
     }
 
     public void addModule(InjectionModule module) {

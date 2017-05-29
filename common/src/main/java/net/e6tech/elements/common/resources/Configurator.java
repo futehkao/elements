@@ -22,6 +22,7 @@ import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 /**
  * Created by futeh.
@@ -34,7 +35,7 @@ public class Configurator {
         return configurator.annotate(cls, consumer);
     }
 
-    public <T extends Annotation> T annotation(Class<? extends Annotation> key) {
+    public <T extends Annotation> T annotation(Class<T> key) {
         T t = (T) configuration.get(key);
         if (t == null) {
             t = Annotator.create((Class<Annotation>)key, null);
@@ -62,13 +63,17 @@ public class Configurator {
         return (t == null) ? defval : t;
     }
 
-    public <T extends Annotation> Configurator annotate(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {
-        configuration.put(cls, Annotator.create(cls, consumer));
-        return this;
+    public <T> T computeIfAbsent(String key, Function<String, T> mappingFunction) {
+        return (T) configuration.computeIfAbsent(key, mappingFunction);
     }
 
-    public <T extends Annotation> Configurator put(Class<? extends Annotation> cls, T instance) {
-        configuration.put(cls, instance);
+    public <T> T computeIfAbsent(Class<T> key, Function<Class<T>, T> mappingFunction) {
+        return (T) configuration.computeIfAbsent(key, mappingFunction);
+    }
+
+    public <T extends Annotation> Configurator annotate(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {
+        T existing = (T) configuration.get(cls);
+        configuration.put(cls, Annotator.create(cls, existing, consumer));
         return this;
     }
 

@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * A Resources instance is use to manage resource level injection and resources.
@@ -223,51 +224,8 @@ public class Resources implements AutoCloseable, ResourcePool {
         return (T) plugin.from(this).get(path, args);
     }
 
-    private Map<String, Object> getContext() {
-        return state.getContext();
-    }
-
-    // saving info with resources.  This should simple objects that
-    // do not required injection of wiring
-    public <T> Resources put(Class<T> cls, T obj) {
-        getContext().put(cls.getName(), obj);
-        return this;
-    }
-
-    public <T> Resources put(String name, T obj) {
-        if (obj == null) return this;
-        getContext().put(name, obj);
-        return this;
-    }
-
-    public <T> Resources put(Enum value) {
-        if (value == null) return this;
-        getContext().put(value.getClass() + "::" + value.name(), value);
-        return this;
-    }
-
-    public <T> T computeIfAbsent(String key, Function<String, T> mappingFunction) {
-        return (T) getContext().computeIfAbsent(key, mappingFunction);
-    }
-
-    public <T> T computeIfAbsent(Class<T> key, Function<String, T> mappingFunction) {
-        return (T) getContext().computeIfAbsent(key.getName(), mappingFunction);
-    }
-
     public <T> T getVariable(String variable) {
         return resourceManager.getVariable(variable);
-    }
-
-    public <T> T get(Class<T> cls) {
-        return (T) getContext().get(cls.getName());
-    }
-
-    public <T> T get(String name) {
-        return (T) getContext().get(name);
-    }
-
-    public <T> T get(Enum value) {
-        return (T) getContext().get(value.getClass() + "::" + value.name());
     }
 
     public InjectionModule getModule() {
@@ -387,6 +345,14 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     public <T> T getInstance(Class<T> cls) throws InstanceNotFoundException {
         return state.getInstance(this, cls);
+    }
+
+    public <T> T getInstance(Class<T> cls, Supplier<T> call) {
+        try {
+            return state.getInstance(this, cls);
+        } catch (InstanceNotFoundException ex) {
+            return call.get();
+        }
     }
 
     public Configurator configurator() {

@@ -51,21 +51,21 @@ public class PersistenceTest extends BaseCase {
 
     @Test
     public void testInsert() {
-        provision.commit(EntityManager.class, (em) -> {
+        provision.open().commit(EntityManager.class, (em) -> {
             em.persist(employee);
         });
 
-        provision.commit(EntityManager.class, (em) -> {
+        provision.open().commit(EntityManager.class, (em) -> {
             Employee e = em.find(Employee.class, employee.getId());
             assertTrue(e != null);
         });
 
         employee.setId(null);
-        provision.commit(EntityManager.class, (em) -> {
+        provision.open().commit(EntityManager.class, (em) -> {
             em.persist(employee);
         });
 
-        provision.commit(EntityManager.class, (em) -> {
+        provision.open().commit(EntityManager.class, (em) -> {
             Employee e = em.find(Employee.class, employee.getId());
             assertTrue(e != null);
             e.setHireDate("20170401");
@@ -75,7 +75,7 @@ public class PersistenceTest extends BaseCase {
     @Test
     public void testInsertDepartment() {
 
-        provision.commit(EntityManager.class, (em) -> {
+        provision.open().commit(EntityManager.class, (em) -> {
             try {
                 Department d = (Department) em.createQuery("select d from Department d where d.name = :name")
                         .setParameter("name", department.getName())
@@ -86,14 +86,14 @@ public class PersistenceTest extends BaseCase {
             }
         });
 
-        int size = provision.commit(EntityManager.class, (em) -> {
+        int size = provision.open().commit(EntityManager.class, (em) -> {
             em.persist(employee);
             Department d = em.find(Department.class, department.getId());
             d.getEmployees().add(employee);
             return d.getEmployees().size();
         });
 
-        provision.commit(EntityManager.class, (em) -> {
+        provision.open().commit(EntityManager.class, (em) -> {
             Department d = em.find(Department.class, department.getId());
             assertTrue(d.getEmployees().size() == size);
         });

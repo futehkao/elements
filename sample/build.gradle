@@ -21,6 +21,7 @@ dependencies {
     compile project(':persist-hibernate')
     compile project(':jobs')
     compile project(':security')
+    compile project(':network')
     compile project(':web')
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")

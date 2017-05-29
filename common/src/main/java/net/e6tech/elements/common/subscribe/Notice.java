@@ -48,4 +48,8 @@ public class Notice<T extends Serializable> implements Serializable {
     public void setUserObject(T content) {
         this.userObject = userObject;
     }
+
+    public String toString() {
+        return "Topic=" + topic + ", Data=" + userObject.toString();
+    }
 }
