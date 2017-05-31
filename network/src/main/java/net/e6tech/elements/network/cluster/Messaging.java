@@ -39,6 +39,7 @@ public class Messaging implements Broadcast, Startable {
     ActorSystem system;
 
     ActorRef messaging;
+    String name = "messaging";
     Map<String, Map<Subscriber, ActorRef>> subscribers = new HashMap<>();
 
     public Messaging() {
@@ -48,9 +49,17 @@ public class Messaging implements Broadcast, Startable {
         this.system = system;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     @Override
     public void start() {
-        messaging = system.actorOf(Props.create(MessagingActor.class, () -> new MessagingActor()), "messaging");
+        messaging = system.actorOf(Props.create(MessagingActor.class, () -> new MessagingActor()), name);
     }
 
     public void shutdown() {

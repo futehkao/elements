@@ -22,8 +22,9 @@ hibernateShowSQL = false
 hibernateGenerateStatistics = false
 hibernateCacheUseSecondLevelCache = false
 clusterName = 'h3_cluster'
+clusterHost = '127.0.0.1'
 clusterPort = 2552
-clusterSeeds = "[\"akka.tcp://${clusterName}@127.0.0.1:${clusterPort}\"]"
+clusterSeeds = "[\"akka.tcp://${clusterName}@${clusterHost}:${clusterPort}\"]"
 
 // setting System properties
 systemProperties {

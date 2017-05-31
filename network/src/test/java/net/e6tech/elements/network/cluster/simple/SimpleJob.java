@@ -43,7 +43,7 @@ public class SimpleJob extends AbstractActor {
                 actors.remove(terminated.getActor());
             })
             .match(SimpleMessage.class, message -> actors.isEmpty(), message -> {
-                getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")), getSender());
+                getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")), getSelf());
 
             })
             .match(SimpleMessage.class,  message -> {

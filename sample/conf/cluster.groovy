@@ -27,7 +27,7 @@ akka {
   remote {
     log-remote-lifecycle-events = off
     netty.tcp {
-      hostname = "127.0.0.1"
+      hostname = "${clusterHost}"
       port = ${clusterPort}
     }
   }

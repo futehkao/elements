@@ -25,12 +25,14 @@ import akka.pattern.Patterns;
 import akka.util.Timeout;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import scala.compat.java8.FutureConverters;
 import scala.concurrent.ExecutionContext;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 
 import java.io.File;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -54,6 +56,15 @@ public class SimpleClusterApp {
         system.scheduler().schedule(interval, interval, new Runnable() {
             public void run() {
                 Future<Object> future = Patterns.ask(job, new SimpleMessage("job"), timeout);
+                CompletionStage<Object> stage = FutureConverters.toJava(future);
+                stage.thenAccept(result -> {
+                    System.out.println(result);
+                }).exceptionally(error -> {
+                    System.out.println("Failed: " + error.getMessage());
+                    return null;
+                });
+
+                /*
                 future.onSuccess(new OnSuccess<Object>() {
                     public void onSuccess(Object result) {
                         System.out.println(result);
@@ -64,7 +75,7 @@ public class SimpleClusterApp {
                     public void onFailure(Throwable throwable) throws Throwable {
                         System.out.println("Failed: " + throwable.getMessage());
                     }
-                }, ec);
+                }, ec); */
             }
         }, ec);
     }

@@ -31,6 +31,8 @@ import java.util.function.Function;
 
 /**
  * Created by futeh.
+ * This class is used to create an instance of Annotation and setting its values.
+ * See AnnotationTest for an example
  */
 public class Annotator implements InvocationHandler {
     private Map<Method, Object> values;

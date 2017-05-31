@@ -30,6 +30,9 @@ import java.util.Map;
  */
 public class MessagingActor extends AbstractActor {
 
+    private static final String SUBSCRIBER_PREFIX = "subscriber-";
+    private static final String DESTINATION_PREFIX = "destination-";
+
     // activate the extension
     ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
     Map<String, Map<Subscriber, ActorRef>> subscribers = new HashMap<>();
@@ -60,7 +63,7 @@ public class MessagingActor extends AbstractActor {
                     Map<Subscriber, ActorRef> map = subscribers.computeIfAbsent(event.topic, (topic) -> new HashMap<>());
                     map.computeIfAbsent(event.subscriber,
                             (sub) -> getContext().actorOf(Props.create(SubscriberActor.class,
-                                    () -> new SubscriberActor(event.topic, event.subscriber)), event.topic + System.identityHashCode(event.subscriber)));
+                                    () -> new SubscriberActor(event.topic, event.subscriber)), SUBSCRIBER_PREFIX + event.topic + System.identityHashCode(event.subscriber)));
                 })
                 .match(Events.Unsubscribe.class, event -> {
                     Map<Subscriber, ActorRef> map = subscribers.get(event.topic);
@@ -77,7 +80,7 @@ public class MessagingActor extends AbstractActor {
                     if (destinations.get(event.destination) != null) {
                         getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")), getSender());
                     } else {
-                        ActorRef dest = getContext().actorOf(Props.create(DestinationActor.class, () -> new DestinationActor(event.subscriber)), event.destination);
+                        ActorRef dest = getContext().actorOf(Props.create(DestinationActor.class, () -> new DestinationActor(event.subscriber)), DESTINATION_PREFIX + event.destination);
                         destinations.put(event.destination, dest);
                     }
                 })
@@ -86,15 +89,14 @@ public class MessagingActor extends AbstractActor {
                     if (child != null) {
                         mediator.tell(new DistributedPubSubMediator.Remove(child.path().name()), getSelf());
                         child.tell(PoisonPill.getInstance(), getSender());
-                        destinations.remove("/user/messaging/" + event.destination);
+                        destinations.remove("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + event.destination);
                     }
                 })
                 .match(Events.Publish.class, publish -> {
                     mediator.tell(new DistributedPubSubMediator.Publish(publish.topic, publish), getSelf());
                 })
                 .match(Events.Send.class, send -> {
-                    // getContext().actorSelection("/user/messaging/" + send.destination).tell(send, getSelf());
-                    mediator.tell(new DistributedPubSubMediator.Send("/user/messaging/" + send.destination, send, true), getSender());
+                    mediator.tell(new DistributedPubSubMediator.Send("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + send.destination, send, true), getSender());
                 })
                 .build();
     }

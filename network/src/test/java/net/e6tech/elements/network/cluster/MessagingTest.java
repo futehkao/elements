@@ -17,6 +17,7 @@
 package net.e6tech.elements.network.cluster;
 
 import akka.actor.ActorSystem;
+import akka.testkit.javadsl.TestKit;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.Test;
@@ -36,31 +37,35 @@ public class MessagingTest {
 
         // Create an Akka system
         ActorSystem system = ActorSystem.create("ClusterSystem", config);
-        Messaging messaging = new Messaging(system);
-        messaging.system = system;
-        messaging.start();
 
-        messaging.subscribe("conversation", (notice) -> {
-            System.out.println(notice);
-        });
+        new TestKit(system) {{
 
-        messaging.destination("x", (notice) -> {
-            System.out.println(notice);
-        });
+            Messaging messaging = new Messaging(system);
+            messaging.start();
 
-        Thread.sleep(1000L);
+            messaging.subscribe("conversation",(notice)-> {
+                    System.out.println(notice);
+            });
 
-        messaging.publish("conversation", "Hello world.");
+            messaging.destination("x",(notice)-> {
+                    System.out.println(notice);
+            });
 
-        messaging.send("x", "New world.");
+            Thread.sleep(1000L);
 
-        Thread.sleep(5000L);
+            messaging.publish("conversation","Hello world.");
 
-        messaging.publish("conversation", "Hello world.");
+            messaging.send("x","New world.");
 
-        messaging.shutdown();
+            Thread.sleep(5000L);
 
-        Thread.sleep(5000L);
+            messaging.publish("conversation","Hello world.");
+
+            messaging.shutdown();
+
+            Thread.sleep(5000L);
+        }};
+
     }
 
     @Test

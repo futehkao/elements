@@ -28,6 +28,9 @@ import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import net.e6tech.elements.network.cluster.Response;
+
+import java.util.Optional;
 
 public class SimpleActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
@@ -60,7 +63,7 @@ public class SimpleActor extends AbstractActor {
             }).match(MemberRemoved.class, member -> {
                 log.info("Member is Removed: {}", member.member());
             }).match(SimpleMessage.class, message -> {
-                getSender().tell(message, getSelf());
+                getSender().tell(new Response(message), getSelf());
         })
             .build();
     }

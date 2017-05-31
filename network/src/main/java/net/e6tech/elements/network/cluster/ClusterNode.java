@@ -19,6 +19,7 @@ package net.e6tech.elements.network.cluster;
 import akka.actor.*;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
+import akka.cluster.MemberStatus;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.resources.Initializable;
@@ -43,6 +44,7 @@ public class ClusterNode implements Initializable {
     private ActorRef membership;
     private Map<Address, Member> members = new HashMap<>();
     private Messaging broadcast;
+    private Registry registry;
 
     public String getName() {
         return name;
@@ -64,6 +66,14 @@ public class ClusterNode implements Initializable {
         return broadcast;
     }
 
+    public Registry getRegistry() {
+        return registry;
+    }
+
+    public Map<Address, Member> getMembers() {
+        return members;
+    }
+
     public void initialize(Resources resources) {
         Config config = ConfigFactory.parseString(configuration);
 
@@ -76,6 +86,8 @@ public class ClusterNode implements Initializable {
         resources.bind(ActorSystem.class, system);
         broadcast = resources.newInstance(Messaging.class);
         broadcast.start();
+        registry = resources.newInstance(Registry.class);
+        registry.start();
     }
 
     class Membership extends AbstractActor {
@@ -98,7 +110,11 @@ public class ClusterNode implements Initializable {
             return receiveBuilder().match(ClusterEvent.MemberUp.class, member -> {
                 members.put(member.member().address(), member.member());
             }).match(ClusterEvent.CurrentClusterState.class, state -> {
-
+                for (Member member : state.getMembers()) {
+                    if (member.status().equals(MemberStatus.up())) {
+                        members.put(member.address(), member);
+                    }
+                }
             }).match(ClusterEvent.UnreachableMember.class, member -> {
                 members.remove(member.member().address());
             }).match(ClusterEvent.MemberRemoved.class, member -> {
