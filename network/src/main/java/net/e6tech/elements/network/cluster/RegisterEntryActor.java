@@ -26,6 +26,7 @@ import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
+import java.io.Serializable;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -39,7 +40,7 @@ import java.util.concurrent.CompletableFuture;
  * In addition, during registration, it sends its location to RegistraraActor
  * so that callers can find it.
  */
-public class RegisterEntryActor extends AbstractActor {
+class RegisterEntryActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     Cluster cluster = Cluster.get(getContext().system());
     Events.Registration registration;
@@ -79,10 +80,10 @@ public class RegisterEntryActor extends AbstractActor {
             log.info("Member is Removed: {}", member.member());
         }).match(Events.Invocation.class, message -> {
             final ActorRef sender = getSender();
-            CompletableFuture.runAsync(() -> {
+            getContext().dispatcher().execute(() -> {
                 try {
                     Object ret = registration.function().apply(message.message());
-                    sender.tell(new Response<>(ret), getSelf());
+                    sender.tell(new Events.Response(ret), getSelf());
                 } catch (RuntimeException ex) {
                     Throwable throwable = ex.getCause();
                     if (throwable == null) throwable = ex;

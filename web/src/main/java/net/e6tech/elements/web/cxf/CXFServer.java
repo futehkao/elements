@@ -141,7 +141,7 @@ public class CXFServer implements Initializable, Startable {
         tlsParams.setKeyManagers(keyManagers);
         tlsParams.setTrustManagers(trustManagers);
 
-/*        FiltersType filter = new FiltersType();
+/*      FiltersType filter = new FiltersType();
         filter.getInclude().add(".*_EXPORT_.*");
         filter.getInclude().add(".*_EXPORT1024_.*");
         filter.getInclude().add(".*_WITH_DES_.*");

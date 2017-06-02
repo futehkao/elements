@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.github.romix.akka:akka-kryo-serialization_2.12:0.5.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.romix.akka/akka-kryo-serialization_2.12/0.5.2/b52fd90e82ce700168d505f8437a57717327e4ea/akka-kryo-serialization_2.12-0.5.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.romix.akka/akka-kryo-serialization_2.12/0.5.2/6e787b5751d31ac1632cb56a84cce84c3a71ea55/akka-kryo-serialization_2.12-0.5.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

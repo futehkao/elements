@@ -18,12 +18,16 @@ package net.e6tech.elements.network.cluster;
 
 import akka.actor.ActorSystem;
 import akka.testkit.javadsl.TestKit;
+import com.sun.org.apache.regexp.internal.RE;
+import com.sun.tools.internal.ws.processor.model.Response;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -39,8 +43,8 @@ public class RegistryTest {
 
         // Create an Akka system
         ActorSystem system = ActorSystem.create("ClusterSystem", config);
-        Registry registry = new Registry(system);
-        registry.start();
+        Registry registry = new Registry();
+        registry.start(system);
         return registry;
     }
 
@@ -96,6 +100,13 @@ public class RegistryTest {
             @Override
             public void returnsVoid(int x) {
             }
+
+            @Override
+            public Response request(Request request) {
+                Response response = new Response();
+                response.map = request.map;
+                return response;
+            }
         });
         Thread.sleep(100L);
 
@@ -120,11 +131,18 @@ public class RegistryTest {
         registry.register("blah", X.class, new X() {
             @Override
             public int doSomething(int x) {
-                return 0;
+                return x * x;
             }
 
             @Override
             public void returnsVoid(int x) {
+            }
+
+            @Override
+            public Response request(Request request) {
+                Response response = new Response();
+                response.map = request.map;
+                return response;
             }
         });
         synchronized (this) {
@@ -141,10 +159,10 @@ public class RegistryTest {
         registry.addRouteListener(new RouteListener() {
             @Override
             public void onAnnouncement(String path) {
-                synchronized (member) {
-                    member.incrementAndGet();
-                    member.notifyAll();
-                }
+            synchronized (member) {
+                member.incrementAndGet();
+                member.notifyAll();
+            }
             }
         });
 
@@ -161,6 +179,13 @@ public class RegistryTest {
                     System.out.println(result);
                 });
 
+        Request request = new Request();
+        request.map.put("key", "value");
+        async.apply(p -> p::request, request)
+                .thenAccept(result -> {
+                    System.out.println(result);
+                });
+
         async.accept(p -> p::returnsVoid, 5)
                 .thenAccept(result -> {
                     System.out.println(result);
@@ -171,6 +196,15 @@ public class RegistryTest {
     interface X {
         int doSomething(int x);
         void returnsVoid(int x);
+        Response request(Request request);
+    }
+
+    public static class Request {
+        Map map = new HashMap();
+    }
+
+    public static class Response {
+        Map map = new HashMap();
     }
 
 }

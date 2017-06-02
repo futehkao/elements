@@ -25,7 +25,6 @@ import net.e6tech.elements.common.resources.Startable;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
-import javax.inject.Inject;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,21 +32,10 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
-public class Messaging implements Broadcast, Startable {
+class Messaging implements Broadcast {
 
-    @Inject
-    ActorSystem system;
-
-    ActorRef messaging;
-    String name = "messaging";
-    Map<String, Map<Subscriber, ActorRef>> subscribers = new HashMap<>();
-
-    public Messaging() {
-    }
-
-    public Messaging(ActorSystem system) {
-        this.system = system;
-    }
+    private ActorRef messaging;
+    private String name = "messaging";
 
     public String getName() {
         return name;
@@ -57,8 +45,7 @@ public class Messaging implements Broadcast, Startable {
         this.name = name;
     }
 
-    @Override
-    public void start() {
+    public void start(ActorSystem system) {
         messaging = system.actorOf(Props.create(MessagingActor.class, () -> new MessagingActor()), name);
     }
 

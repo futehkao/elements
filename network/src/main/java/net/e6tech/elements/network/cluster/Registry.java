@@ -16,27 +16,25 @@
 
 package net.e6tech.elements.network.cluster;
 
-import akka.actor.Actor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
+import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.pattern.Patterns;
-import net.e6tech.elements.common.resources.Startable;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 
-import javax.inject.Inject;
-import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 /**
  * Created by futeh.
  */
-public class Registry implements Startable {
+public class Registry {
 
     private static String PATH = "registry";
 
@@ -48,18 +46,9 @@ public class Registry implements Startable {
         Registry.PATH = PATH;
     }
 
-    @Inject
     ActorSystem system;
-
     ActorRef registrar;
     List<RouteListener> listeners = new ArrayList<>();
-
-    public Registry() {
-    }
-
-    public Registry(ActorSystem system) {
-        this.system = system;
-    }
 
     public void addRouteListener(RouteListener listener) {
         listeners.add(listener);
@@ -87,9 +76,13 @@ public class Registry implements Startable {
         });
     }
 
-    @Override
-    public void start() {
+    public void start(ActorSystem system) {
+        this.system = system;
         registrar = system.actorOf(Props.create(RegistrarActor.class, () -> new RegistrarActor(this)), PATH);
+    }
+
+    public void shutdown() {
+        Patterns.ask(registrar, PoisonPill.getInstance(), 5000L);
     }
 
     public <T, R> void register(String qualifier, Class<T> messageType, Class<R> returnType, Function<T, R> function) {
@@ -99,8 +92,7 @@ public class Registry implements Startable {
     public <T> void register(String qualifier, Class<T> interfaceClass, T implementation) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
-        Map<Class, Method> callTypes = new HashMap<>();
-        List<Method> methods = new ArrayList<>();
+        qualifier = (qualifier == null) ? "" : qualifier.trim();
         for (Method method : interfaceClass.getMethods()) {
             if (method.getName().equals("hashCode") && method.getParameterCount() == 0
                     || method.getName().equals("equals") && method.getParameterCount() == 1
@@ -108,39 +100,37 @@ public class Registry implements Startable {
                 // ignored
             } else {
                 if (method.getParameterCount() == 1) {
-                    Class paramType = method.getParameterTypes()[0];
-                    if (callTypes.get(paramType) != null
-                            && callTypes.get(paramType).getReturnType().equals(method.getReturnType())) {
-                        // two methods have the same argument and return type!
-                        throw new IllegalArgumentException("Methods have the same argument and return type: "
-                                + callTypes.get(paramType).getName() + ", " + method.getName());
-                    }
-                    callTypes.put(paramType, method);
-                    methods.add(method);
+                    register(fullyQualify(qualifier, interfaceClass, method), method.getParameterTypes()[0], (Class) method.getReturnType(),
+                            t -> {
+                                try {
+                                    return method.invoke(implementation, t);
+                                } catch (IllegalAccessException e) {
+                                    throw new RuntimeException();
+                                } catch (InvocationTargetException e) {
+                                    throw new RuntimeException(e.getCause());
+                                }
+                            });
                 }
             }
-        }
-
-        for (Method method : methods) {
-            register(qualifier, method.getParameterTypes()[0], (Class) method.getReturnType(),
-                    t -> {
-                        try {
-                            return method.invoke(implementation, t);
-                        } catch (IllegalAccessException e) {
-                            throw new RuntimeException();
-                        } catch (InvocationTargetException e) {
-                            throw new RuntimeException(e.getCause());
-                        }
-                    });
         }
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Serializable, R> Function<T, CompletionStage<R>> route(String qualifier, Class<T> messageClass, Class<R> returnType, long timeout) {
+    Function route(String qualifier, Class interfaceClass, Method method, long timeout) {
+        return route(fullyQualify(qualifier, interfaceClass, method), (Class) method.getParameterTypes()[0], method.getReturnType(), timeout);
+    }
+
+    private String fullyQualify(String qualifier, Class interfaceClass, Method method) {
+        qualifier = (qualifier == null) ? "" : qualifier.trim();
+        return qualifier + "@" + interfaceClass.getName() + "." +  method.getName();
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T, R> Function<T, CompletionStage<R>> route(String qualifier, Class<T> messageClass, Class<R> returnType, long timeout) {
         Function<T, CompletionStage<R>> function = (message) -> {
             Future future = Patterns.ask(registrar, new Events.Invocation(qualifier, messageClass, message, returnType), timeout);
             return FutureConverters.toJava(future).thenApply((ret) -> {
-                Response response = (Response) ret;
+                Events.Response response = (Events.Response) ret;
                 return response.getValue();
             });
         };

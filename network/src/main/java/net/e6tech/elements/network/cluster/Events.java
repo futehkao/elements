@@ -97,8 +97,8 @@ public class Events {
         }
 
         public String path() {
-            if (qualifier == null) return messageType.getName() + ":" + returnType.getName() ;
-            else return messageType.getName() + ":" + returnType.getName()+ ":" + qualifier;
+            if (qualifier == null) return "(" + messageType.getName() + "):" + returnType.getName();
+            else return qualifier + "(" + messageType.getName() + "):" + returnType.getName();
         }
     }
 
@@ -145,6 +145,25 @@ public class Events {
 
         public String path() {
             return reference.path();
+        }
+    }
+
+    public static class Response implements Serializable {
+        private Object value;
+
+        public Response() {
+        }
+
+        public Response(Object value) {
+            this.value = value;
+        }
+
+        public Object getValue() {
+            return value;
+        }
+
+        public void setValue(Object value) {
+            this.value = value;
         }
     }
 }

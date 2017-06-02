@@ -32,7 +32,7 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
-public class RegistrarActor extends AbstractActor {
+class RegistrarActor extends AbstractActor {
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     private Cluster cluster = Cluster.get(getContext().system());
     private Map<String, Router> services = new HashMap<>();

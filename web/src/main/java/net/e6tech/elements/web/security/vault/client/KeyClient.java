@@ -55,7 +55,6 @@ public class KeyClient implements Startable {
     private boolean remoteEncryption = true;
     private CacheFacade<String, SecretKey> cachedSecretKeys;
     private CacheFacade<String, ClearText> cachedSecrets;
-    private String clusterAddress;
 
     private String token;
 
@@ -91,14 +90,6 @@ public class KeyClient implements Startable {
         this.remoteEncryption = remoteEncryption;
     }
 
-    public String getClusterAddress() {
-        return clusterAddress;
-    }
-
-    public void setClusterAddress(String clusterAddress) {
-        this.clusterAddress = clusterAddress;
-    }
-
     public void start() {
         if (started) return;
         started = true;
@@ -116,7 +107,6 @@ public class KeyClient implements Startable {
     private void initialAuthorization() {
         client = new RestfulClient();
         client.setAddress(address);
-        client.setClusterAddress(clusterAddress);
 
         try {
             net.e6tech.elements.network.restful.Response response = client.get("publicKey");
@@ -187,7 +177,7 @@ public class KeyClient implements Startable {
         }
     }
 
-    public void authorize(String user, char[] password) throws GeneralSecurityException {
+    protected void authorize(String user, char[] password) throws GeneralSecurityException {
         Authenticate auth = new Authenticate();
         auth.setUserName(user);
         auth.setPassword(password);
@@ -204,7 +194,7 @@ public class KeyClient implements Startable {
         return (token != null);
     }
 
-    public void renew() throws GeneralSecurityException {
+    protected void renew() throws GeneralSecurityException {
         checkToken();
         Renew request = new Renew();
         String ret = submit(request);

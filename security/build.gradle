@@ -19,7 +19,6 @@ dependencies {
     compile 'org.bouncycastle:bcpg-jdk15on:1.56'
     compile 'org.bouncycastle:bcpkix-jdk15on:1.56'
     compile 'org.bouncycastle:bcmail-jdk15on:1.56'
-    compile 'org.jgroups:jgroups:4.0.1.Final'
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")
     testCompile("org.junit.platform:junit-platform-launcher:1.0.0-M4")

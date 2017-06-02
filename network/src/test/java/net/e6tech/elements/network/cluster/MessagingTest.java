@@ -40,8 +40,8 @@ public class MessagingTest {
 
         new TestKit(system) {{
 
-            Messaging messaging = new Messaging(system);
-            messaging.start();
+            Messaging messaging = new Messaging();
+            messaging.start(system);
 
             messaging.subscribe("conversation",(notice)-> {
                     System.out.println(notice);
@@ -76,9 +76,8 @@ public class MessagingTest {
 
         // Create an Akka system
         ActorSystem system = ActorSystem.create("ClusterSystem", config);
-        Messaging messaging = new Messaging(system);
-        messaging.system = system;
-        messaging.start();
+        Messaging messaging = new Messaging();
+        messaging.start(system);
 
         messaging.subscribe("conversation", (notice) -> {
             System.out.println(notice);

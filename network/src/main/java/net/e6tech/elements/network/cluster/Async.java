@@ -32,6 +32,7 @@ import java.util.function.Function;
  */
 public class Async<U> {
 
+    Class<U> interfaceClass;
     Registry registry;
     String qualifier;
     long timeout = 5000L;
@@ -44,6 +45,7 @@ public class Async<U> {
         this.timeout = timeout;
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
+        this.interfaceClass = interfaceClass;
         proxy = (U) Proxy.newProxyInstance(interfaceClass.getClassLoader(), new Class[] {interfaceClass}, new MyHandler());
     }
 
@@ -51,20 +53,21 @@ public class Async<U> {
         return proxy;
     }
 
-    public <T extends Serializable, R> CompletionStage<R> apply(Function<U, Function<T,R>> function, T argument) {
+    public <T, R> CompletionStage<R> apply(Function<U, Function<T,R>> function, T argument) {
         completionStage = null;
         Function<T,R> function2 = function.apply(proxy);
         function2.apply(argument);
         return completionStage;
     }
 
-    public <T extends Serializable, R> CompletionStage<R> accept(Function<U, Consumer<T>> function, T argument) {
+    public <T, R> CompletionStage<R> accept(Function<U, Consumer<T>> function, T argument) {
         completionStage = null;
         Consumer<T> consumer = function.apply(proxy);
         consumer.accept(argument);
         return completionStage;
     }
 
+    @SuppressWarnings("unchecked")
     private class MyHandler implements InvocationHandler {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -77,8 +80,7 @@ public class Async<U> {
             }
 
             if (method.getParameterCount() == 1) {
-                Function<Object, CompletionStage> function = registry.route(qualifier, (Class) method.getParameterTypes()[0],
-                        (Class) method.getReturnType(), timeout);
+                Function<Object, CompletionStage> function = registry.route(qualifier, interfaceClass, method, timeout);
                 completionStage = function.apply(args[0]);
                 return Primitives.defaultValue(method.getReturnType());
             } else {

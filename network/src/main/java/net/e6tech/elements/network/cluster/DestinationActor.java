@@ -26,12 +26,11 @@ import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by futeh.
  */
-public class DestinationActor extends AbstractActor {
+class DestinationActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     private Subscriber subscriber;
 
@@ -44,7 +43,7 @@ public class DestinationActor extends AbstractActor {
     @Override
     public AbstractActor.Receive createReceive() {
         return receiveBuilder()
-                .match(Events.Send.class, send -> CompletableFuture.runAsync(() -> subscriber.receive(new Notice(send.destination, (Serializable) send.message))))
+                .match(Events.Send.class, send -> getContext().dispatcher().execute(() -> subscriber.receive(new Notice(send.destination, (Serializable) send.message))))
                 .match(DistributedPubSubMediator.SubscribeAck.class, msg ->
                         log.info("subscribing"))
                 .build();

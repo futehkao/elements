@@ -14,12 +14,20 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.common.notification;
 
 /**
  * Created by futeh.
  */
-interface MemberListener {
-    void memberUp(String address);
-    void memberDown(String address);
+public class ShutdownNotification implements Notification {
+    private static final long serialVersionUID = -725815273801217208L;
+
+    Object source;
+    public ShutdownNotification(Object source) {
+        this.source = source;
+    }
+
+    public Object getSource() {
+        return source;
+    }
 }

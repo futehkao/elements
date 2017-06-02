@@ -28,7 +28,7 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
-public class MessagingActor extends AbstractActor {
+class MessagingActor extends AbstractActor {
 
     private static final String SUBSCRIBER_PREFIX = "subscriber-";
     private static final String DESTINATION_PREFIX = "destination-";

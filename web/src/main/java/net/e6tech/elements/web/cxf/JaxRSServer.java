@@ -21,12 +21,11 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import com.google.inject.Inject;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.jmx.JMXService;
 import net.e6tech.elements.jmx.stat.Measurement;
-import net.e6tech.elements.network.clustering.Cluster;
-import net.e6tech.elements.network.clustering.ClusterService;
 import net.e6tech.elements.web.JaxExceptionHandler;
 import org.apache.cxf.interceptor.LoggingInInterceptor;
 import org.apache.cxf.interceptor.LoggingOutInterceptor;
@@ -59,7 +58,7 @@ import java.util.concurrent.ExecutorService;
  *
  * code is based on http://cxf.apache.org/docs/jaxrs-services-configuration.html#JAXRSServicesConfiguration-JAX-RSRuntimeDelegateandApplications
  */
-public class JaxRSServer extends CXFServer implements ClassBeanListener {
+public class JaxRSServer extends CXFServer {
 
     static {
         System.setProperty("org.apache.cxf.useSpringClassHelpers", "false");
@@ -154,6 +153,10 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
         if (getURLs().size() == 0) {
             throw new IllegalStateException("address not set");
         }
+
+        res.getNotificationCenter().addNotificationListener(ShutdownNotification.class, (notification) -> {
+            stop();
+        });
 
         List<ServerFactorBeanEntry> entryList = new ArrayList<>();
         synchronized (entries) {
@@ -301,30 +304,6 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
                 threadPool.execute(runnable);
             } else {
                 runnable.run();
-            }
-        }
-    }
-
-    @Override
-    public Class[] listenFor() {
-        return new Class[] {Cluster.class};
-    }
-
-    @Override
-    public void initialized(Object bean) {
-        if (bean instanceof Cluster) {
-            try {
-                Cluster cluster = (Cluster) bean;
-                for (URL url : getURLs()) {
-                    for (Map<String, Object> map : resources) {
-                        String resourceClassName = (String) map.get("class");
-                        ClusterService service = ClusterService.newInstance(resourceClassName, url.toExternalForm());
-                        cluster.addClusterService(service);
-                        map.put("clusterService", service);
-                    }
-                }
-            } catch (Exception ex) {
-                logger.warn(ex.getMessage(), ex);
             }
         }
     }
@@ -502,7 +481,6 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
             }
             if (proxy == null) {
                 proxy = interceptor.newInterceptor(super.getInstance(m), (target, thisMethod, args) -> {
-                    ClusterService service = (ClusterService) map.get("clusterService");
                     try {
                         checkInvocation(thisMethod, args);
                         if (cloneObserver != null) {
@@ -512,7 +490,6 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
                         Object result = thisMethod.invoke(target, args);
                         long duration = System.currentTimeMillis() - start;
                         computePerformance(thisMethod, methods, map, duration);
-                        if (service != null) service.getMeasurement().add(duration);
                         if (cloneObserver != null) {
                             cloneObserver.afterInvocation(result);
                         }
@@ -598,6 +575,14 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
             Object response;
             if (exception instanceof InvocationException) {
                 response = ((InvocationException) exception).getResponse();
+            } else if (exception instanceof StatusException) {
+                StatusException statusException = (StatusException) exception;
+                status = statusException.getStatus();
+                if (mapper != null) {
+                    response = mapper.toResponse(statusException.getCause());
+                } else {
+                    response = statusException.getCause().getMessage();
+                }
             } else {
                 if (mapper != null) {
                     response = mapper.toResponse(exception);
@@ -641,9 +626,6 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
         } catch (Exception e) {
             logger.debug("Unable to record measurement for " + method, e);
         }
-
-        ClusterService service = (ClusterService) map.get("clusterService");
-        if (service != null) service.getMeasurement().add(duration);
     }
 
     private static void recordFailure(Method method, Map<Method,String> methods,  Map<String, Object> map) {
@@ -654,9 +636,6 @@ public class JaxRSServer extends CXFServer implements ClassBeanListener {
         } catch (Exception e) {
             logger.debug("Unable to record fail measurement for " + method, e);
         }
-
-        ClusterService service = (ClusterService) map.get("clusterService");
-        if (service != null) service.getMeasurement().fail();
     }
 
     private static ObjectInstance getMeasurement(Method method, Map<Method, String> methods) throws JMException {

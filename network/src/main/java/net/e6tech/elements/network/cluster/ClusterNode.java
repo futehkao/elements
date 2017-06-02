@@ -20,15 +20,16 @@ import akka.actor.*;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
+import akka.pattern.Patterns;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.resources.Initializable;
-import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
 
-import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,8 +37,6 @@ import java.util.Map;
  */
 public class ClusterNode implements Initializable {
 
-    @Inject
-    private Provision provision;
     private String name;
     private String configuration;
     private ActorSystem system;
@@ -45,6 +44,8 @@ public class ClusterNode implements Initializable {
     private Map<Address, Member> members = new HashMap<>();
     private Messaging broadcast;
     private Registry registry;
+    private List<MemberListener> memberListeners = new ArrayList<>();
+    private boolean started = false;
 
     public String getName() {
         return name;
@@ -74,20 +75,46 @@ public class ClusterNode implements Initializable {
         return members;
     }
 
+    public ClusterNode() {
+    }
+
+    public ClusterNode(ActorSystem system) {
+        this.system = system;
+    }
+
     public void initialize(Resources resources) {
         Config config = ConfigFactory.parseString(configuration);
 
         // Create an Akka system
         system = ActorSystem.create(name, config);
-        membership = system.actorOf(Props.create(Membership.class,() -> {
-            return new Membership();
-        }));
-        provision.getResourceManager().bind(ActorSystem.class, system);
-        resources.bind(ActorSystem.class, system);
-        broadcast = resources.newInstance(Messaging.class);
-        broadcast.start();
-        registry = resources.newInstance(Registry.class);
-        registry.start();
+        start();
+    }
+
+    public ActorSystem getSystem() {
+        return system;
+    }
+
+    public void start() {
+        if (started) return;
+        if (membership == null) {
+            membership = system.actorOf(Props.create(Membership.class,() -> {
+                return new Membership();
+            }));
+        }
+        if (broadcast == null) broadcast = new Messaging();
+        if (registry == null) registry = new Registry();
+        broadcast.start(system);
+        registry.start(system);
+        started = true;
+    }
+
+    public void shutdown() {
+        Patterns.ask(membership, PoisonPill.getInstance(), 5000L);
+        broadcast.shutdown();
+        registry.shutdown();
+        system.terminate();
+        members.clear();
+        started = false;
     }
 
     class Membership extends AbstractActor {
@@ -109,16 +136,20 @@ public class ClusterNode implements Initializable {
         public AbstractActor.Receive createReceive() {
             return receiveBuilder().match(ClusterEvent.MemberUp.class, member -> {
                 members.put(member.member().address(), member.member());
+                memberListeners.forEach(listener -> listener.memberUp(member.member().address().toString()));
             }).match(ClusterEvent.CurrentClusterState.class, state -> {
                 for (Member member : state.getMembers()) {
                     if (member.status().equals(MemberStatus.up())) {
                         members.put(member.address(), member);
+                        memberListeners.forEach(listener -> listener.memberUp(member.address().toString()));
                     }
                 }
             }).match(ClusterEvent.UnreachableMember.class, member -> {
                 members.remove(member.member().address());
+                memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
             }).match(ClusterEvent.MemberRemoved.class, member -> {
                 members.remove(member.member().address());
+                memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
             }).build();
         }
     }

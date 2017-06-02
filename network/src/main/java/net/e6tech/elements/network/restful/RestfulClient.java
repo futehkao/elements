@@ -21,8 +21,6 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.ExceptionMapper;
-import net.e6tech.elements.network.clustering.ClusterClient;
-import net.e6tech.elements.network.clustering.ClusterService;
 import net.e6tech.elements.security.JCEKS;
 
 import javax.net.ssl.*;
@@ -45,7 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import static java.net.HttpURLConnection.*;
+import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 
 /**
  * Created by futeh.
@@ -63,16 +61,11 @@ public class RestfulClient {
     private boolean skipHostnameCheck = false;
     private boolean skipCertCheck = false;
     private SSLSocketFactory sslSocketFactory;
-    private String clusterAddress;
-    private long clusterRenewalPeriod = 5 * 60 * 1000L;
     private int connectionTimeout = -1;
     private int readTimeout = -1;
 
     @Inject(optional = true)
     private PrintWriter printer;
-    
-    @Inject(optional = true)
-    private ClusterClient clusterClient;
 
     public RestfulClient() {}
 
@@ -138,26 +131,6 @@ public class RestfulClient {
 
     public void setPrinter(PrintWriter printer) {
         this.printer = printer;
-    }
-
-    public ClusterClient getClusterClient() {
-        return clusterClient;
-    }
-
-    public void setClusterClient(ClusterClient clusterClient) {
-        if (this.clusterClient != null) this.clusterClient.stop();
-        this.clusterClient = clusterClient;
-    }
-
-    public String getClusterAddress() {
-        return clusterAddress;
-    }
-
-    public void setClusterAddress(String clusterAddress) {
-        if (this.clusterClient != null) this.clusterClient.stop();
-        else clusterClient = new ClusterClient();
-        clusterClient.setRenewalPeriod(clusterRenewalPeriod);
-        clusterClient.connect(clusterAddress);
     }
 
     public int getConnectionTimeout() {
@@ -289,58 +262,7 @@ public class RestfulClient {
     }
 
     protected Response submit(String context, String method, Properties requestProperties, Object data, Param ... params) throws Throwable {
-        while (true) {
-            Destination dest = selectAddress();
-            try {
-                return _submit(dest.address, context, method, requestProperties, data, params);
-            } catch (IOException | NotFoundException ex) {
-                if (dest.service != null) {
-                    dest.service.setReachable(dest.url, false);
-                    if (!dest.service.hasReachableURLs()) {
-                        dest.service.setHealthy(false);
-                    }
-                }
-                else throw ex;
-            }
-        }
-    }
-    
-    protected synchronized Destination selectAddress() {
-        Destination dest = new Destination();
-
-        URL staticURL = null;
-        try {
-            staticURL = new URL(getAddress());
-        } catch (MalformedURLException ex) {
-            throw new RuntimeException(ex);
-        }
-        if (clusterClient != null) {
-            while (true) {
-                dest.service = clusterClient.select();
-                if (dest.service == null) break;
-                URL[] urls = dest.service.getUrls();
-                if (urls != null && urls.length > 0) {
-                    URL clusterURL = dest.service.getReachableURL();
-                    if (clusterURL != null) {
-                        try {
-                            URL newUrl = new URL(staticURL.getProtocol(), clusterURL.getHost(), clusterURL.getPort(), staticURL.getFile());
-                            dest.address = newUrl.toString();
-                            dest.url = clusterURL;
-                            break;
-                        } catch (MalformedURLException e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-                        dest.service.setHealthy(false);
-                    }
-                } else {
-                    dest.service.setHealthy(false);
-                }
-                if (dest.address != null) break;
-            }
-        }
-        if (dest.service == null) dest.address = staticAddress;
-        return dest;
+        return _submit(staticAddress, context, method, requestProperties, data, params);
     }
 
     protected Response _submit(String dest, String context, String method, Properties requestProperties, Object data, Param ... params) throws Throwable {
@@ -588,12 +510,6 @@ public class RestfulClient {
         } catch (Exception e) {
             throw logger.runtimeException(e);
         }
-    }
-
-    private static class Destination {
-        String address;
-        ClusterService service;
-        URL url;
     }
 
     public class AcceptAllTrustManager implements X509TrustManager {

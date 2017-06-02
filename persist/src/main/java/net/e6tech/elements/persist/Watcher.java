@@ -152,7 +152,7 @@ public class Watcher implements InvocationHandler {
         Throwable th = new Throwable();
         StackTraceElement[] trace = th.getStackTrace();
         StringBuilder builder = new StringBuilder();
-        builder.append("Long transaction: " + duration + "m. Method called=" + method.getName() + "\n");
+        builder.append("Long transaction: " + duration + "ms. Method called=" + method.getName() + "\n");
 
         for (int i = 3; i < 20; i++) {
             if (i == trace.length) break;

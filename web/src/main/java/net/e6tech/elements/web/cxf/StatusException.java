@@ -14,28 +14,22 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.web.cxf;
 
-import java.io.Serializable;
+import javax.ws.rs.core.Response;
 
 /**
  * Created by futeh.
  */
-public class Response<T> implements Serializable {
-    private T value;
+public class StatusException extends RuntimeException {
+    private Response.Status status = Response.Status.BAD_REQUEST;
 
-    public Response() {
+    public StatusException(Response.Status status, Throwable exception) {
+        super(exception);
+        this.status = status;
     }
 
-    public Response(T value) {
-        this.value = value;
-    }
-
-    public T getValue() {
-        return value;
-    }
-
-    public void setValue(T value) {
-        this.value = value;
+    public Response.Status getStatus() {
+        return status;
     }
 }
