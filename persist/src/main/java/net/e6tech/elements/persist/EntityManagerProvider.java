@@ -180,7 +180,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         monitor = config.monitor();
 
         long longQuery = longTransaction;
-        if (config.longTransaction() != 0L) longTransaction = config.longTransaction();
+        if (config.longTransaction() != 0L) longQuery = config.longTransaction();
         if (firstQuery) {
             firstQuery = false;
             if (longQuery < 1000L) longQuery = 1000L;

@@ -31,5 +31,5 @@ dependencies {
     testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")
     testCompile("org.junit.platform:junit-platform-launcher:1.0.0-M4")
     testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.0-M4")
-    testCompile group: 'com.typesafe.akka', name: 'akka-testkit_2.11', version: '2.5.2'
+    testCompile group: 'com.typesafe.akka', name: 'akka-testkit_2.12', version: '2.5.2'
 }
