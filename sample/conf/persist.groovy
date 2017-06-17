@@ -15,11 +15,13 @@
  */
 
 import com.zaxxer.hikari.HikariDataSource
+import com.mchange.v2.c3p0.ComboPooledDataSource
 import javax.persistence.EntityManager
 import net.e6tech.elements.persist.hibernate.HibernateEntityManagerProvider
 import net.e6tech.elements.persist.hibernate.TableIdGenerator
 
 atom("datasource") {
+    /*
     configuration = """
         dataSource:
             driverClassName: org.mariadb.jdbc.Driver
@@ -28,7 +30,20 @@ atom("datasource") {
             jdbcUrl: "jdbc:mariadb://127.0.0.1:3306/sample"
             maximumPoolSize: $dataSourceMaxPoolSize
     """
-    delegate["dataSource"] = HikariDataSource  // or dataSource = HikariDataSource
+    */
+
+    configuration = """
+        dataSource:
+            driverClassName: org.mariadb.jdbc.Driver
+            user: sample
+            password: password
+            jdbcUrl: "jdbc:mariadb://127.0.0.1:3306/sample"
+            maxPoolSize: $dataSourceMaxPoolSize
+            checkoutTimeout: 30000
+            autoCommitOnClose: false
+    """
+    // delegate["dataSource"] = HikariDataSource or dataSource = HikariDataSource
+    dataSource = ComboPooledDataSource
 }
 
 atom("persist") {

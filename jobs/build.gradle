@@ -16,8 +16,14 @@ limitations under the License.
 dependencies {
     compile project(':common')
     compile project(':jmx')
-    compile('org.quartz-scheduler:quartz:2.2.3') { exclude group: 'org.slf4j'}
-    compile('org.quartz-scheduler:quartz-jobs:2.2.3') { exclude group: 'org.slf4j'}
+    compile('org.quartz-scheduler:quartz:2.2.3') {
+        exclude group: 'org.slf4j'
+        exclude group: 'c3p0'
+
+    }
+    compile('org.quartz-scheduler:quartz-jobs:2.2.3') {
+        exclude group: 'org.slf4j'
+    }
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")
     testCompile("org.junit.platform:junit-platform-launcher:1.0.0-M4")
