@@ -98,13 +98,17 @@ public class ClusterNode implements Initializable {
             genesis = new Genesis();
             genesis.setName(getName());
             genesis.setConfiguration(getConfiguration());
+            genesis.setTimeout(getTimeout());
             genesis.initialize(resources);
-            initialize(genesis);
         }
+        initialize(genesis);
     }
 
     public void initialize(Genesis genesis) {
         this.genesis = genesis;
+        setName(genesis.getName());
+        setTimeout(genesis.getTimeout());
+        setConfiguration(genesis.getConfiguration());
         start();
     }
 
