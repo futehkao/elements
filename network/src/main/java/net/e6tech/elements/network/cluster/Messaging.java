@@ -36,6 +36,7 @@ class Messaging implements Broadcast {
 
     private ActorRef messaging;
     private String name = "messaging";
+    private long timeout = 5000L;
 
     public String getName() {
         return name;
@@ -45,19 +46,27 @@ class Messaging implements Broadcast {
         this.name = name;
     }
 
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
+
     public void start(ActorSystem system) {
         messaging = system.actorOf(Props.create(MessagingActor.class, () -> new MessagingActor()), name);
     }
 
     public void shutdown() {
         if (messaging != null) {
-            Patterns.ask(messaging, PoisonPill.getInstance(), 5000L);
+            Patterns.ask(messaging, PoisonPill.getInstance(), timeout);
         }
     }
 
     @Override
     public void subscribe(String topic, Subscriber subscriber) {
-        Patterns.ask(messaging, new Events.Subscribe(topic, subscriber), 5000L);
+        Patterns.ask(messaging, new Events.Subscribe(topic, subscriber), timeout);
     }
 
     @Override
@@ -67,7 +76,7 @@ class Messaging implements Broadcast {
 
     @Override
     public void unsubscribe(String topic, Subscriber subscriber) {
-        Patterns.ask(messaging, new Events.Unsubscribe(topic, subscriber), 5000L);
+        Patterns.ask(messaging, new Events.Unsubscribe(topic, subscriber), timeout);
     }
 
     @Override
@@ -77,7 +86,7 @@ class Messaging implements Broadcast {
 
     @Override
     public void publish(String topic, Serializable object) {
-        Patterns.ask(messaging, new Events.Publish(topic, object), 5000L);
+        Patterns.ask(messaging, new Events.Publish(topic, object), timeout);
     }
 
     @Override
@@ -86,11 +95,11 @@ class Messaging implements Broadcast {
     }
 
     public void destination(String destination, Subscriber subscriber) {
-        Patterns.ask(messaging, new Events.NewDestination(destination, subscriber), 5000L);
+        Patterns.ask(messaging, new Events.NewDestination(destination, subscriber), timeout);
     }
 
     public void send(String destination, Serializable object) {
-         Patterns.ask(messaging, new Events.Send(destination, object), 5000L);
+         Patterns.ask(messaging, new Events.Send(destination, object), timeout);
     }
 
 }

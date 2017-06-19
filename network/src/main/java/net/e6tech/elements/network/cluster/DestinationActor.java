@@ -28,6 +28,8 @@ import net.e6tech.elements.common.subscribe.Subscriber;
 import java.io.Serializable;
 
 /**
+ * This is a bridge class to propagate Send event to other cluster member.
+ *
  * Created by futeh.
  */
 class DestinationActor extends AbstractActor {

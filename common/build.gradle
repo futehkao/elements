@@ -35,6 +35,9 @@ dependencies {
     compile 'org.ehcache:ehcache:3.3.0'
     compile 'javax.cache:cache-api:1.0.0'
 
+    // akka core
+    compile group: 'com.typesafe.akka', name: 'akka-actor_2.12', version: '2.5.2'
+
     testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")
     testCompile("org.junit.platform:junit-platform-launcher:1.0.0-M4")
     testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.0-M4")

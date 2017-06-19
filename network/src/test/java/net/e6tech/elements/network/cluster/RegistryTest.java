@@ -21,6 +21,7 @@ import com.sun.org.apache.regexp.internal.RE;
 import com.sun.tools.internal.ws.processor.model.Response;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import net.e6tech.elements.common.actor.Genesis;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -35,24 +36,28 @@ import java.util.function.Function;
  */
 public class RegistryTest {
 
-    Registry create(int port) {
+    ClusterNode create(int port) {
         String userDir = System.getProperty("user.dir");
         File file = new File(userDir + "/src/test/resources/akka.conf");
         Config config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).withFallback(ConfigFactory.parseFile(file));
 
         // Create an Akka system
-        ActorSystem system = ActorSystem.create("ClusterSystem", config);
-        Registry registry = new Registry();
-        registry.start(system);
-        return registry;
+        Genesis genesis = new Genesis();
+        genesis.setName("ClusterSystem");
+        genesis.initialize(config);
+        ClusterNode clusterNode = new ClusterNode();
+        clusterNode.initialize(genesis);
+        return clusterNode;
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void simple1() throws Exception {
-        Registry registry = create(2552);
+        ClusterNode clusterNode = create(2552);
+        Registry registry = clusterNode.getRegistry();
 
-        registry.register("blah", ServiceMessage.class, String.class, (sv) -> {
-            return sv.message.toUpperCase();
+        registry.register("blah", (sv) -> {
+            return ((String)sv[0]).toUpperCase();
         });
         Thread.sleep(100L);
 
@@ -60,8 +65,8 @@ public class RegistryTest {
         ServiceMessage msg = new ServiceMessage();
         msg.message = "Hello world!";
         long start = System.currentTimeMillis();
-        registry.route("blah", ServiceMessage.class, String.class, 5000L)
-                .apply(msg)
+        registry.route("blah", 5000L)
+                .apply(new Object[] { "hello world!"})
                 .thenAccept(result -> {
                     System.out.println(result);
                     System.out.println("duration: " + (System.currentTimeMillis() - start));
@@ -72,8 +77,8 @@ public class RegistryTest {
                 });
 
         long start2 = System.currentTimeMillis();
-        registry.route("blah", ServiceMessage.class, String.class, 5000L)
-                .apply(msg)
+        registry.route("blah", 5000L)
+                .apply(new Object[] { "goodbye!" })
                 .thenAccept(result -> {
                     System.out.println(result);
                     System.out.println("duration: " + (System.currentTimeMillis() - start2));
@@ -84,11 +89,16 @@ public class RegistryTest {
 
     static class ServiceMessage implements Serializable {
         String message;
+
+        public String test(String message) {
+            return message.toUpperCase();
+        }
     }
 
     @Test
     public void async() throws Exception {
-        Registry registry = create(2552);
+        ClusterNode clusterNode = create(2552);
+        Registry registry = clusterNode.getRegistry();
 
         registry.register("blah", X.class, new X() {
             @Override
@@ -110,12 +120,12 @@ public class RegistryTest {
         Thread.sleep(100L);
 
         Async<X> async = registry.async("blah", X.class, 5000L);
-        async.apply(p -> p::doSomething, 5)
+        async.apply(p -> p.doSomething(5))
                 .thenAccept(result -> {
                     System.out.println(result);
                 });
 
-        async.accept(p -> p::returnsVoid, 5)
+        async.accept(p -> p.returnsVoid(5))
                 .thenAccept(result -> {
                     System.out.println(result);
                 });
@@ -125,7 +135,8 @@ public class RegistryTest {
 
     @Test
     public void asyncVM1() throws Exception {
-        Registry registry = create(2551);
+        ClusterNode clusterNode = create(2551);
+        Registry registry = clusterNode.getRegistry();
 
         registry.register("blah", X.class, new X() {
             @Override
@@ -151,7 +162,8 @@ public class RegistryTest {
 
     @Test
     public void asyncVM2() throws Exception {
-        Registry registry = create(2552);
+        ClusterNode clusterNode = create(2552);
+        Registry registry = clusterNode.getRegistry();
         long start = System.currentTimeMillis();
         AtomicInteger member = new AtomicInteger(0);
 
@@ -173,21 +185,22 @@ public class RegistryTest {
         System.out.println("Detected announcement in " + (System.currentTimeMillis() - start) + "ms");
 
         Async<X> async = registry.async("blah", X.class, 5000L);
-        async.apply(p -> p::doSomething, 5)
+        async.apply(p -> p.doSomething(6))
                 .thenAccept(result -> {
                     System.out.println(result);
                 });
 
         Request request = new Request();
         request.map.put("key", "value");
-        async.apply(p -> p::request, request)
+        async.apply(p -> p.request(request))
                 .thenAccept(result -> {
-                    System.out.println(result);
+                    System.out.println(((Response) result).map);
                 });
 
-        async.accept(p -> p::returnsVoid, 5)
-                .thenAccept(result -> {
-                    System.out.println(result);
+        long callVoidStart = System.currentTimeMillis();
+        async.accept(p -> p.returnsVoid(7) )
+                .thenRun(() -> {
+                    System.out.println("Got response: " + (System.currentTimeMillis() - callVoidStart) + "ms");
                 });
         Thread.sleep(2000L);
     }

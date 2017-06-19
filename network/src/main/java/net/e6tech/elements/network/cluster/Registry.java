@@ -21,6 +21,7 @@ import akka.actor.ActorSystem;
 import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.pattern.Patterns;
+import net.e6tech.elements.common.actor.pool.WorkerPool;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 
@@ -48,7 +49,17 @@ public class Registry {
 
     ActorSystem system;
     ActorRef registrar;
+    ActorRef workerPool;
+    long timeout = 5000L;
     List<RouteListener> listeners = new ArrayList<>();
+
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
 
     public void addRouteListener(RouteListener listener) {
         listeners.add(listener);
@@ -76,60 +87,81 @@ public class Registry {
         });
     }
 
+    public ActorRef getWorkerPool() {
+        return workerPool;
+    }
+
+    public void setWorkerPool(ActorRef workerPool) {
+        this.workerPool = workerPool;
+    }
+
     public void start(ActorSystem system) {
         this.system = system;
-        registrar = system.actorOf(Props.create(RegistrarActor.class, () -> new RegistrarActor(this)), PATH);
+        if (workerPool == null) workerPool = system.actorOf(Props.create(WorkerPool.class));
+        registrar = system.actorOf(Props.create(RegistrarActor.class, () -> new RegistrarActor(this, workerPool)), PATH);
     }
 
     public void shutdown() {
-        Patterns.ask(registrar, PoisonPill.getInstance(), 5000L);
+        Patterns.ask(registrar, PoisonPill.getInstance(), timeout);
     }
 
-    public <T, R> void register(String qualifier, Class<T> messageType, Class<R> returnType, Function<T, R> function) {
-        Patterns.ask(registrar, new Events.Registration(qualifier, messageType, returnType, function), 5000L);
+    public <R> void register(String path, Function<Object[], R> function) {
+        Patterns.ask(registrar, new Events.Registration(path, function), timeout);
     }
 
     public <T> void register(String qualifier, Class<T> interfaceClass, T implementation) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
-        qualifier = (qualifier == null) ? "" : qualifier.trim();
         for (Method method : interfaceClass.getMethods()) {
             if (method.getName().equals("hashCode") && method.getParameterCount() == 0
                     || method.getName().equals("equals") && method.getParameterCount() == 1
                     || method.getName().equals("toString") && method.getParameterCount() == 0) {
                 // ignored
             } else {
-                if (method.getParameterCount() == 1) {
-                    register(fullyQualify(qualifier, interfaceClass, method), method.getParameterTypes()[0], (Class) method.getReturnType(),
-                            t -> {
-                                try {
-                                    return method.invoke(implementation, t);
-                                } catch (IllegalAccessException e) {
-                                    throw new RuntimeException();
-                                } catch (InvocationTargetException e) {
-                                    throw new RuntimeException(e.getCause());
-                                }
-                            });
-                }
+                register(fullyQualify(qualifier, interfaceClass, method),
+                        t -> {
+                            try {
+                                return method.invoke(implementation, t);
+                            } catch (IllegalAccessException e) {
+                                throw new RuntimeException();
+                            } catch (InvocationTargetException e) {
+                                throw new RuntimeException(e.getCause());
+                            }
+                        });
             }
         }
     }
 
-    @SuppressWarnings("unchecked")
-    Function route(String qualifier, Class interfaceClass, Method method, long timeout) {
-        return route(fullyQualify(qualifier, interfaceClass, method), (Class) method.getParameterTypes()[0], method.getReturnType(), timeout);
-    }
-
-    private String fullyQualify(String qualifier, Class interfaceClass, Method method) {
+    String fullyQualify(String qualifier, Class interfaceClass, Method method) {
+        StringBuilder builder = new StringBuilder();
         qualifier = (qualifier == null) ? "" : qualifier.trim();
-        return qualifier + "@" + interfaceClass.getName() + "." +  method.getName();
+        if (qualifier != null && qualifier.length() > 0) {
+            builder.append(qualifier);
+            builder.append("@");
+        }
+        builder.append(method.getName());
+        builder.append("(");
+        boolean first = true;
+        for (Class param : method.getParameterTypes()) {
+            if (first) first = false;
+            else {
+                builder.append(",");
+            }
+            builder.append(param.getTypeName());
+        }
+        builder.append(")");
+        return builder.toString();
     }
 
     @SuppressWarnings("unchecked")
-    public <T, R> Function<T, CompletionStage<R>> route(String qualifier, Class<T> messageClass, Class<R> returnType, long timeout) {
-        Function<T, CompletionStage<R>> function = (message) -> {
-            Future future = Patterns.ask(registrar, new Events.Invocation(qualifier, messageClass, message, returnType), timeout);
-            return FutureConverters.toJava(future).thenApply((ret) -> {
+    public Function<Object[], CompletionStage> route(String qualifier, Class interfaceClass, Method method, long timeout) {
+        return route(fullyQualify(qualifier, interfaceClass, method), timeout);
+    }
+
+    public Function<Object[], CompletionStage> route(String path, long timeout) {
+        Function<Object[], CompletionStage> function = (arguments) -> {
+            Future future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
+            return FutureConverters.toJava(future).thenApplyAsync((ret) -> {
                 Events.Response response = (Events.Response) ret;
                 return response.getValue();
             });

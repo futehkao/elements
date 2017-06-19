@@ -21,11 +21,14 @@ import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import akka.pattern.Patterns;
+import com.google.inject.Inject;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
+import net.e6tech.elements.common.actor.pool.WorkerPool;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,13 +42,25 @@ public class ClusterNode implements Initializable {
 
     private String name;
     private String configuration;
-    private ActorSystem system;
+    @Inject(optional = true)
+    private Genesis genesis;
     private ActorRef membership;
     private Map<Address, Member> members = new HashMap<>();
     private Messaging broadcast;
     private Registry registry;
     private List<MemberListener> memberListeners = new ArrayList<>();
     private boolean started = false;
+    private long timeout = 5000L;
+
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+        if (broadcast != null) broadcast.setTimeout(timeout);
+        if (registry != null) registry .setTimeout(timeout);
+    }
 
     public String getName() {
         return name;
@@ -78,33 +93,39 @@ public class ClusterNode implements Initializable {
     public ClusterNode() {
     }
 
-    public ClusterNode(ActorSystem system) {
-        this.system = system;
-    }
-
     public void initialize(Resources resources) {
-        Config config = ConfigFactory.parseString(configuration);
-
-        // Create an Akka system
-        system = ActorSystem.create(name, config);
-        start();
+        if (genesis == null) {
+            genesis = new Genesis();
+            genesis.setName(getName());
+            genesis.setConfiguration(getConfiguration());
+            genesis.initialize(resources);
+            initialize(genesis);
+        }
     }
 
-    public ActorSystem getSystem() {
-        return system;
+    public void initialize(Genesis genesis) {
+        this.genesis = genesis;
+        start();
     }
 
     public void start() {
         if (started) return;
         if (membership == null) {
-            membership = system.actorOf(Props.create(Membership.class,() -> {
+            membership = genesis.getSystem().actorOf(Props.create(Membership.class,() -> {
                 return new Membership();
             }));
         }
-        if (broadcast == null) broadcast = new Messaging();
-        if (registry == null) registry = new Registry();
-        broadcast.start(system);
-        registry.start(system);
+        if (broadcast == null) {
+            broadcast = new Messaging();
+            broadcast.setTimeout(timeout);
+        }
+        if (registry == null) {
+            registry = new Registry();
+            registry.setTimeout(timeout);
+        }
+        registry.setWorkerPool(genesis.getWorkerPool());
+        broadcast.start(genesis.getSystem());
+        registry.start(genesis.getSystem());
         started = true;
     }
 
@@ -112,7 +133,7 @@ public class ClusterNode implements Initializable {
         Patterns.ask(membership, PoisonPill.getInstance(), 5000L);
         broadcast.shutdown();
         registry.shutdown();
-        system.terminate();
+        genesis.getSystem().terminate();
         members.clear();
         started = false;
     }

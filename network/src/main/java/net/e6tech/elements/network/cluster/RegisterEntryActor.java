@@ -37,16 +37,20 @@ import java.util.concurrent.CompletableFuture;
  * It is created with a callback function in Events.Register.  When
  * messages are send to it the function is invoked.
  *
- * In addition, during registration, it sends its location to RegistraraActor
+ * In addition, during registration, it sends its location to RegistrarActor
  * so that callers can find it.
+ *
+ * Each entry corresponds to a method.
  */
 class RegisterEntryActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     Cluster cluster = Cluster.get(getContext().system());
     Events.Registration registration;
+    ActorRef workers;
 
-    public RegisterEntryActor(Events.Registration registration) {
+    public RegisterEntryActor(Events.Registration registration, ActorRef workers) {
         this.registration = registration;
+        this.workers = workers;
     }
 
     //subscribe to cluster changes
@@ -80,16 +84,20 @@ class RegisterEntryActor extends AbstractActor {
             log.info("Member is Removed: {}", member.member());
         }).match(Events.Invocation.class, message -> {
             final ActorRef sender = getSender();
-            getContext().dispatcher().execute(() -> {
-                try {
-                    Object ret = registration.function().apply(message.message());
-                    sender.tell(new Events.Response(ret), getSelf());
-                } catch (RuntimeException ex) {
-                    Throwable throwable = ex.getCause();
-                    if (throwable == null) throwable = ex;
-                    sender.tell(new Status.Failure(throwable), getSelf());
+            final ActorRef self = getSelf();
+            workers.tell(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Object ret = registration.function().apply(message.arguments());
+                        sender.tell(new Events.Response(ret), self);
+                    } catch (RuntimeException ex) {
+                        Throwable throwable = ex.getCause();
+                        if (throwable == null) throwable = ex;
+                        sender.tell(new Status.Failure(throwable), self);
+                    }
                 }
-            });
+            }, getSender());
         }).build();
     }
 

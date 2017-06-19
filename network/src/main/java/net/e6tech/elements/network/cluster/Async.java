@@ -53,17 +53,23 @@ public class Async<U> {
         return proxy;
     }
 
-    public <T, R> CompletionStage<R> apply(Function<U, Function<T,R>> function, T argument) {
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
+
+    public <R> CompletionStage<R> apply(Function<U, R> function) {
         completionStage = null;
-        Function<T,R> function2 = function.apply(proxy);
-        function2.apply(argument);
+        function.apply(proxy);
         return completionStage;
     }
 
-    public <T, R> CompletionStage<R> accept(Function<U, Consumer<T>> function, T argument) {
+    public CompletionStage<Void> accept(Consumer<U> consumer) {
         completionStage = null;
-        Consumer<T> consumer = function.apply(proxy);
-        consumer.accept(argument);
+        consumer.accept(proxy);
         return completionStage;
     }
 
@@ -79,13 +85,10 @@ public class Async<U> {
                 return Async.this.toString();
             }
 
-            if (method.getParameterCount() == 1) {
-                Function<Object, CompletionStage> function = registry.route(qualifier, interfaceClass, method, timeout);
-                completionStage = function.apply(args[0]);
-                return Primitives.defaultValue(method.getReturnType());
-            } else {
-                throw new NotSupportedException();
-            }
+            Function<Object[], CompletionStage> function = registry.route(qualifier, interfaceClass, method, timeout);
+            completionStage = function.apply(args);
+            return Primitives.defaultValue(method.getReturnType());
+
         }
     }
 }

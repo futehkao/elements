@@ -1,0 +1,175 @@
+/*
+ * Copyright 2017 Futeh Kao
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.e6tech.elements.common.actor.pool;
+
+import akka.actor.*;
+import scala.concurrent.duration.Duration;
+import scala.concurrent.duration.FiniteDuration;
+
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Worker pool.  This can only be used within a JVM.
+ * <p>
+ * Created by futeh.
+ */
+public class WorkerPool extends AbstractActor {
+    private int initialCapacity = 1;
+    private int maxCapacity = Integer.MAX_VALUE;  // ie unlimited
+    private long idleTimeout = 10000L;
+    private boolean cleanupScheduled = false;
+    private Set<ActorRef> workers = new LinkedHashSet<>();
+    private Set<ActorRef> idleWorkers = new LinkedHashSet<>();
+    private LinkedList<Task> waiting = new LinkedList<>();
+
+    public static ActorRef newPool(ActorSystem system, int initialCapacity, int maxCapacity, long idleTimeout) {
+        return system.actorOf(Props.create(WorkerPool.class, () -> {
+            WorkerPool instance = new WorkerPool();
+            instance.setInitialCapacity(initialCapacity);
+            instance.setMaxCapacity(maxCapacity);
+            instance.setIdleTimeout(idleTimeout);
+            return instance;
+        }));
+    }
+
+    public int getInitialCapacity() {
+        return initialCapacity;
+    }
+
+    public void setInitialCapacity(int initialCapacity) {
+        this.initialCapacity = initialCapacity;
+    }
+
+    public int getMaxCapacity() {
+        return maxCapacity;
+    }
+
+    public void setMaxCapacity(int maxCapacity) {
+        this.maxCapacity = maxCapacity;
+    }
+
+    public long getIdleTimeout() {
+        return idleTimeout;
+    }
+
+    public void setIdleTimeout(long idleTimeout) {
+        if (idleTimeout < 0) {
+            throw new IllegalArgumentException();
+        } else {
+            this.idleTimeout = idleTimeout;
+        }
+    }
+
+    @Override
+    public void preStart() {
+        for (int i = 0; i < initialCapacity; i++) {
+            newWorker();
+        }
+    }
+
+    @Override
+    public Receive createReceive() {
+        return receiveBuilder()
+                .match(Events.IdleWorker.class, event -> {
+                    idle(event.getWorker());
+                })
+                .match(Terminated.class, event -> {
+                    workers.remove(event.actor());
+                    idleWorkers.remove(event.actor());
+                })
+                .match(Runnable.class, event -> {
+                    if (idleWorkers.size() > 0) {
+                        Iterator<ActorRef> iterator = idleWorkers.iterator();
+                        ActorRef worker = iterator.next();
+                        iterator.remove();
+                        worker.forward(event, getContext());
+                    } else if (workers.size() < maxCapacity) {
+                        waiting.add(new Task(getSender(), event));
+                        newWorker();
+                    } else {
+                        waiting.add(new Task(getSender(), event));
+                    }
+                })
+                .match(Events.Cleanup.class, events -> {
+                    if (idleWorkers.size() > initialCapacity) {
+                        Iterator<ActorRef> iterator = idleWorkers.iterator();
+                        int removeCount = idleWorkers.size() - initialCapacity;
+                        for (int i = 0; i < removeCount; i++) {
+                            ActorRef worker = iterator.next();
+                            iterator.remove();
+                            workers.remove(worker);
+                            worker.tell(PoisonPill.getInstance(), getSelf());
+                        }
+                    }
+                    cleanupScheduled = false;
+                })
+                .build();
+    }
+
+    private void newWorker() {
+        ActorRef worker = getContext().actorOf(Props.create(Worker.class, getSelf()));
+        workers.add(worker);
+        getContext().watch(worker);
+        idle(worker);
+    }
+
+    private void idle(ActorRef worker) {
+        if (waiting.size() > 0) {
+            Task task = waiting.removeFirst();
+            worker.tell(task.getRunnable(), task.getSender());
+        } else {
+            idleWorkers.add(worker);
+            cleanup();
+        }
+    }
+
+    private void cleanup() {
+        if (cleanupScheduled) return;
+        if (idleTimeout == 0) return;
+        final FiniteDuration interval = Duration.create(idleTimeout, TimeUnit.MILLISECONDS);
+        getContext().getSystem().scheduler().scheduleOnce(interval,
+                new Runnable() {
+                    public void run() {
+                        getSelf().tell(new Events.Cleanup(), getSelf());
+                    }
+                },
+                getContext().dispatcher()
+        );
+    }
+
+    private class Task {
+        ActorRef sender;
+        Runnable runnable;
+
+        public Task(ActorRef sender, Runnable runnable) {
+            this.sender = sender;
+            this.runnable = runnable;
+        }
+
+        public ActorRef getSender() {
+            return sender;
+        }
+
+        public Runnable getRunnable() {
+            return runnable;
+        }
+    }
+}

@@ -19,6 +19,7 @@ package net.e6tech.elements.network.cluster;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.function.Function;
 
 /**
@@ -86,19 +87,14 @@ public class Events {
 
     private static class RegisterReference implements Serializable {
         private static final long serialVersionUID = 6460401252394771795L;
-        private String qualifier;
-        private Class messageType;
-        private Class returnType;
+        private String path;
 
-        public RegisterReference(String qualifier, Class messageType, Class returnType) {
-            this.qualifier = qualifier;
-            this.messageType = messageType;
-            this.returnType = returnType;
+        public RegisterReference(String path) {
+            this.path = path;
         }
 
         public String path() {
-            if (qualifier == null) return "(" + messageType.getName() + "):" + returnType.getName();
-            else return qualifier + "(" + messageType.getName() + "):" + returnType.getName();
+            return path;
         }
     }
 
@@ -117,14 +113,14 @@ public class Events {
 
     public static class Registration {
         private RegisterReference reference;
-        private Function function;
+        private Function<Object[], ?> function;
 
-        public Registration(String qualifier, Class messageType, Class returnType, Function function) {
-            this.reference = new RegisterReference(qualifier, messageType, returnType);
+        public Registration(String path, Function<Object[], ?> function) {
+            this.reference = new RegisterReference(path);
             this.function = function;
         }
 
-        public Function function() {
+        public Function<Object[], ?> function() {
             return function;
         }
     }
@@ -132,15 +128,15 @@ public class Events {
     public static class Invocation implements Serializable {
         private static final long serialVersionUID = -264975294117974773L;
         private RegisterReference reference;
-        private Object message;
+        private Object[] arguments;
 
-        public <T> Invocation(String qualifier, Class<? super T> messageType, T message, Class returnType) {
-            this.reference = new RegisterReference(qualifier, messageType, returnType);
-            this.message = message;
+        public Invocation(String path, Object[] arguments) {
+            this.reference = new RegisterReference(path);
+            this.arguments = arguments;
         }
 
-        public Object message() {
-            return message;
+        public Object[] arguments() {
+            return arguments;
         }
 
         public String path() {

@@ -35,25 +35,27 @@ import java.util.Map;
 class RegistrarActor extends AbstractActor {
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     private Cluster cluster = Cluster.get(getContext().system());
-    private Map<String, Router> services = new HashMap<>();
+    private Map<String, Router> routes = new HashMap<>();
     private Map<ActorRef, List<String>> actors = new HashMap<>();
     private Registry registry;
+    private ActorRef workerPool;
 
-    public RegistrarActor(Registry registry) {
+    public RegistrarActor(Registry registry, ActorRef workerPool) {
         this.registry = registry;
+        this.workerPool = workerPool;
     }
 
     @Override
     public Receive createReceive() {
         return receiveBuilder()
                 .match(Events.Registration.class, message -> { // come from Registry.register
-                    ActorRef entry = getContext().actorOf(Props.create(RegisterEntryActor.class, () -> new RegisterEntryActor(message)));
+                    ActorRef entry = getContext().actorOf(Props.create(RegisterEntryActor.class, () -> new RegisterEntryActor(message, workerPool)));
                 })
                 .match(Events.Announcement.class, message -> { // Receiving an announce event from a newly created RegisterEntry actor.
                     getContext().watch(getSender()); // watch for Terminated event
-                    Router router = services.computeIfAbsent(message.path(), (cls) -> new Router(new RoundRobinRoutingLogic()));
+                    Router router = routes.computeIfAbsent(message.path(), (cls) -> new Router(new RoundRobinRoutingLogic()));
                     router = router.addRoutee(getSender());
-                    services.put(message.path(), router);
+                    routes.put(message.path(), router);
                     List<String> paths = actors.computeIfAbsent(getSender(), (ref) -> new ArrayList<>());
                     paths.add(message.path());
                     registry.onAnnouncement(message.path());
@@ -63,11 +65,11 @@ class RegistrarActor extends AbstractActor {
                     List<String> paths = actors.get(actor);
                     if (paths != null) {
                         for (String path : paths) {
-                            Router router = services.get(path);
+                            Router router = routes.get(path);
                             if (router != null) {
                                 registry.onTerminated(path, actor);
                                 router = router.removeRoutee(getSender());
-                                services.put(path, router);
+                                routes.put(path, router);
                                 if (router.routees().length() == 0) {
                                     registry.onRouteRemoved(path);
                                 }
@@ -78,7 +80,7 @@ class RegistrarActor extends AbstractActor {
 
                 })
                 .match(Events.Invocation.class, invocation -> { // from Registry.route().apply(r)
-                    Router router = services.get(invocation.path());
+                    Router router = routes.get(invocation.path());
                     if (router == null || router.routees().length() == 0) {
                         getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")), getSelf());
                     } else {
