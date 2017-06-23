@@ -22,18 +22,21 @@ import akka.actor.Props;
 import akka.pattern.Patterns;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import net.e6tech.elements.common.actor.pool.Events;
 import net.e6tech.elements.common.actor.pool.WorkerPool;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
 
 /**
  * Created by futeh.
  */
 public class Genesis implements Initializable {
+    public static final String WorkerPoolDispatcher = "worker-pool-dispatcher";
     private String name;
     private String configuration;
     private ActorSystem system;
@@ -86,19 +89,38 @@ public class Genesis implements Initializable {
         Config config = null;
         if (configuration != null) {
             config = ConfigFactory.parseString(configuration);
+        } else {
+            config = ConfigFactory.defaultApplication();
         }
         initialize(config);
     }
 
     public void initialize(Config config) {
         if (name == null) throw new IllegalStateException("name is null");
-        // Create an Akka system
-        if (config != null) {
-            system = ActorSystem.create(name, config);
-        } else {
-            system = ActorSystem.create(name);
+
+        if (config == null) config = ConfigFactory.defaultApplication();
+
+        if (!config.hasPath(WorkerPoolDispatcher)) {
+            config = config.withFallback(ConfigFactory.parseString(
+                    WorkerPoolDispatcher + " {\n" +
+                            "  type = Dispatcher\n" +
+                            "  thread-pool-executor {\n" +
+                            "      keep-alive-time = 60s\n" +
+                            "      core-pool-size-min = 8\n" +
+                            "      core-pool-size-factor = 5.0\n" +
+                            "      # unbounded so that max-pool-size-factor has no effect.\n" +
+                            "      task-queue-size = -1\n" +
+                            "      allow-core-timeout = on\n" +
+                            "    }\n" +
+                            "  throughput = 1\n" +
+                            "}"
+            ));
         }
 
+        // Create an Akka system
+        system = ActorSystem.create(name, config);
+
+        // Create a worker pool
         workerPool =  WorkerPool.newPool(system, initialCapacity, maxCapacity, idleTimeout);
     }
 
@@ -130,8 +152,25 @@ public class Genesis implements Initializable {
         return system;
     }
 
+    public CompletionStage<Void> async(Runnable runnable) {
+        return async(runnable, getTimeout());
+    }
+
     public CompletionStage<Void> async(Runnable runnable, long timeout) {
         Future future = Patterns.ask(workerPool, runnable, timeout);
-        return FutureConverters.toJava(future);
+        return FutureConverters.toJava(future).thenAcceptAsync((ret) -> {
+        });
+    }
+
+    public <R> CompletionStage<R> async(Callable<R> callable) {
+        return async(callable, getTimeout());
+    }
+
+    public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
+        Future future = Patterns.ask(workerPool, callable, timeout);
+        return FutureConverters.toJava(future).thenApplyAsync((ret) -> {
+            Events.Response response = (Events.Response) ret;
+            return (R) response.getValue();
+        });
     }
 }

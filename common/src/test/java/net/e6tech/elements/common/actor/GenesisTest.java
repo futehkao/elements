@@ -16,7 +16,10 @@
 
 package net.e6tech.elements.common.actor;
 
+import net.e6tech.elements.common.resources.Resources;
 import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Created by futeh.
@@ -24,19 +27,47 @@ import org.junit.jupiter.api.Test;
 public class GenesisTest {
 
     @Test
-    public void basic() throws Exception {
+    public void runnable() throws Exception {
         Genesis genesis = new Genesis();
         genesis.setName("Genesis");
-        genesis.initialize(null);
+        genesis.initialize((Resources) null);
+
+        for (int i = 0; i < 100; i++){
+            final int id = i;
+            AtomicLong start = new AtomicLong(0L);
+            genesis.async(() -> {
+                System.out.println("Genesis " + id + " " + System.currentTimeMillis());
+                System.out.println("Request: " + id + " " + Thread.currentThread());
+                start.set(System.currentTimeMillis());
+            }, 1000L).thenRunAsync(() -> {
+                System.out.println("Response: " + id + " " + Thread.currentThread());
+                System.out.println("Done Genesis " + id + " " + (System.currentTimeMillis() - start.get()) + "ms");
+            });
+        }
+        System.out.println("finished sending");
+
+        Thread.sleep(2000L);
+    }
+
+    @Test
+    public void callable() throws Exception {
+        Genesis genesis = new Genesis();
+        genesis.setName("Genesis");
+        genesis.initialize((Resources) null);
 
         for (int i = 0; i < 100; i++){
             final int id = i;
             genesis.async(() -> {
-                System.out.println("Genesis " + id);
-            }, 1000L);
+                System.out.println("Genesis " + id + " " + System.currentTimeMillis());
+                System.out.println("Request: " + id + " " + Thread.currentThread());
+                return System.currentTimeMillis();
+            }, 1000L).thenAccept((start) -> {
+                System.out.println("Response: " + id + " " + Thread.currentThread());
+                System.out.println("Done Genesis " + id + " " + (System.currentTimeMillis() - start) + "ms");
+            });
         }
         System.out.println("finished sending");
 
-        Thread.sleep(5000L);
+        Thread.sleep(2000L);
     }
 }

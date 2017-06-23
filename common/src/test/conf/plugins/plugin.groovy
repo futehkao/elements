@@ -15,4 +15,4 @@
  */
 
 pluginDirectories = ["$__dir/**"]
-resourceManager.plugin.loadPlugins(pluginDirectories as String[])
+resourceManager.pluginManager.loadPlugins(pluginDirectories as String[])

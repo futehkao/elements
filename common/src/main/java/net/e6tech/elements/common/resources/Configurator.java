@@ -21,7 +21,9 @@ import net.e6tech.elements.common.reflection.Annotator;
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -35,13 +37,21 @@ public class Configurator {
         return configurator.annotate(cls, consumer);
     }
 
-    public <T extends Annotation> T annotation(Class<T> key) {
+    public <T extends Annotation> Configurator annotate(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {
+        T existing = (T) configuration.get(cls);
+        configuration.put(cls, Annotator.create(cls, existing, consumer));
+        return this;
+    }
+
+    public <T extends Annotation, R> R annotatedValue(Class<T> key, Function<T, R> function) {
         T t = (T) configuration.get(key);
-        if (t == null) {
-            t = Annotator.create((Class<Annotation>)key, null);
-            configuration.put(key, t);
-        }
-        return t;
+        if (t == null) t = Annotator.create((Class<Annotation>)key, null);
+        return function.apply(t);
+    }
+
+    public <T extends Annotation> Optional<T> annotation(Class<T> key) {
+        T t = (T) configuration.get(key);
+        return Optional.ofNullable(t);
     }
 
     public <T> T get(String key) {
@@ -69,12 +79,6 @@ public class Configurator {
 
     public <T> T computeIfAbsent(Class<T> key, Function<Class<T>, T> mappingFunction) {
         return (T) configuration.computeIfAbsent(key, mappingFunction);
-    }
-
-    public <T extends Annotation> Configurator annotate(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {
-        T existing = (T) configuration.get(cls);
-        configuration.put(cls, Annotator.create(cls, existing, consumer));
-        return this;
     }
 
     public <T> Configurator put(Class<T> cls, T instance) {

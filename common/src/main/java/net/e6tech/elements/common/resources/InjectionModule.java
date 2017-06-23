@@ -34,7 +34,7 @@ import java.util.function.BiConsumer;
 /**
  * Created by futeh.
  */
-public class InjectionModule extends AbstractModule {
+public class InjectionModule extends AbstractModule implements Cloneable {
 
     private static Logger logger = Logger.getLogger();
 
@@ -42,6 +42,20 @@ public class InjectionModule extends AbstractModule {
     Map<String, Entry> bindNamedInstances = new HashMap<>();
     Map<Type, Class> bindClasses = new HashMap<>();
     Map<Type, InjectionListener> listeners = new LinkedHashMap<>();
+
+    @SuppressWarnings("unchecked")
+    public InjectionModule clone() {
+        try {
+            InjectionModule clone = (InjectionModule) super.clone();
+            clone.bindInstances = (Map) ((HashMap) bindInstances).clone();
+            clone.bindNamedInstances = (Map) ((HashMap) bindNamedInstances).clone();
+            clone.bindClasses = (Map) ((HashMap) bindClasses).clone();
+            clone.listeners = (Map) ((LinkedHashMap) listeners).clone();
+            return clone;
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     private static Type[] getBindClass(Class cls) {
         Class c = cls;

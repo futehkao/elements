@@ -33,11 +33,14 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 /**
+ * A registry that contains cluster wide services.
+ *
  * Created by futeh.
  */
 public class Registry {
 
     private static String PATH = "registry";
+    public static String RegistryDispatcher = "registry-dispatcher";
 
     public static String getPath() {
         return PATH;
@@ -167,6 +170,10 @@ public class Registry {
             });
         };
         return function;
+    }
+
+    public <T> Async<T> async(String qualifier, Class<T> interfaceClass) {
+        return new Async<>(this, qualifier, interfaceClass, getTimeout());
     }
 
     public <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout) {

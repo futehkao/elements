@@ -22,6 +22,7 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.routing.RoundRobinRoutingLogic;
 import akka.routing.Router;
+import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.NotAvailableException;
 
 import java.util.ArrayList;
@@ -49,7 +50,15 @@ class RegistrarActor extends AbstractActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(Events.Registration.class, message -> { // come from Registry.register
-                    ActorRef entry = getContext().actorOf(Props.create(RegisterEntryActor.class, () -> new RegisterEntryActor(message, workerPool)));
+                    String dispatcher;
+                    if (getContext().getSystem().dispatchers().hasDispatcher(Registry.RegistryDispatcher)) {
+                        dispatcher = Registry.RegistryDispatcher;
+                    } else {
+                        dispatcher = Genesis.WorkerPoolDispatcher;
+                    }
+                    Props props = Props.create(RegistryEntryActor.class, () -> new RegistryEntryActor(message, workerPool))
+                            .withDispatcher(dispatcher);
+                    ActorRef entry = getContext().actorOf(props);
                 })
                 .match(Events.Announcement.class, message -> { // Receiving an announce event from a newly created RegisterEntry actor.
                     getContext().watch(getSender()); // watch for Terminated event
@@ -77,7 +86,6 @@ class RegistrarActor extends AbstractActor {
                         }
                         actors.remove(actor);
                     }
-
                 })
                 .match(Events.Invocation.class, invocation -> { // from Registry.route().apply(r)
                     Router router = routes.get(invocation.path());

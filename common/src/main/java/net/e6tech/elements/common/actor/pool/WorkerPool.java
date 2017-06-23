@@ -17,6 +17,10 @@
 package net.e6tech.elements.common.actor.pool;
 
 import akka.actor.*;
+import akka.dispatch.Dispatcher;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import scala.concurrent.ExecutionContext;
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 
@@ -24,6 +28,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -96,17 +101,10 @@ public class WorkerPool extends AbstractActor {
                     idleWorkers.remove(event.actor());
                 })
                 .match(Runnable.class, event -> {
-                    if (idleWorkers.size() > 0) {
-                        Iterator<ActorRef> iterator = idleWorkers.iterator();
-                        ActorRef worker = iterator.next();
-                        iterator.remove();
-                        worker.forward(event, getContext());
-                    } else if (workers.size() < maxCapacity) {
-                        waiting.add(new Task(getSender(), event));
-                        newWorker();
-                    } else {
-                        waiting.add(new Task(getSender(), event));
-                    }
+                    newTask(event);
+                })
+                .match(Callable.class, event -> {
+                    newTask(event);
                 })
                 .match(Events.Cleanup.class, events -> {
                     if (idleWorkers.size() > initialCapacity) {
@@ -124,8 +122,22 @@ public class WorkerPool extends AbstractActor {
                 .build();
     }
 
+    private void newTask(Object event) {
+        if (idleWorkers.size() > 0) {
+            Iterator<ActorRef> iterator = idleWorkers.iterator();
+            ActorRef worker = iterator.next();
+            iterator.remove();
+            worker.forward(event, getContext());
+        } else if (workers.size() < maxCapacity) {
+            waiting.add(new Task(getSender(), event));
+            newWorker();
+        } else {
+            waiting.add(new Task(getSender(), event));
+        }
+    }
+
     private void newWorker() {
-        ActorRef worker = getContext().actorOf(Props.create(Worker.class, getSelf()));
+        ActorRef worker = getContext().actorOf(Props.create(Worker.class, getSelf()).withDispatcher("worker-pool-dispatcher"));
         workers.add(worker);
         getContext().watch(worker);
         idle(worker);
@@ -134,7 +146,7 @@ public class WorkerPool extends AbstractActor {
     private void idle(ActorRef worker) {
         if (waiting.size() > 0) {
             Task task = waiting.removeFirst();
-            worker.tell(task.getRunnable(), task.getSender());
+            worker.tell(task.getWork(), task.getSender());
         } else {
             idleWorkers.add(worker);
             cleanup();
@@ -157,19 +169,19 @@ public class WorkerPool extends AbstractActor {
 
     private class Task {
         ActorRef sender;
-        Runnable runnable;
+        Object work;
 
-        public Task(ActorRef sender, Runnable runnable) {
+        public Task(ActorRef sender, Object work) {
             this.sender = sender;
-            this.runnable = runnable;
+            this.work = work;
         }
 
         public ActorRef getSender() {
             return sender;
         }
 
-        public Runnable getRunnable() {
-            return runnable;
+        public Object getWork() {
+            return work;
         }
     }
 }

@@ -40,4 +40,23 @@ public class Events {
     public static class Cleanup implements Serializable {
         private static final long serialVersionUID = 1391045696378516373L;
     }
+
+    public static class Response {
+        Object value;
+
+        public Response() {
+        }
+
+        public Response(Object value) {
+            this.value = value;
+        }
+
+        public Object getValue() {
+            return value;
+        }
+
+        public void setValue(Object value) {
+            this.value = value;
+        }
+    }
 }

@@ -135,7 +135,7 @@ public class PluginManager {
             List<Module> modules = new ArrayList<>();
             modules.add(module);
             if (resources != null) modules.add(resources.getModule());
-            modules.add(resourceManager.getModule());
+            modules.add(resourceManager.getModule().clone()); // clone so that we don't have thread contention
             Injector injector = Guice.createInjector(modules);
             if (plugin instanceof InjectionListener) {
                 ((InjectionListener) plugin).preInject(resources);

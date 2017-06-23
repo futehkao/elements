@@ -17,3 +17,5 @@
 import net.e6tech.elements.common.resources.plugin.TestPlugin
 
 def var = new TestPlugin()
+
+println(var)

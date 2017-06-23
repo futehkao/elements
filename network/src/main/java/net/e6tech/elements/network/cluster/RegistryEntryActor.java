@@ -23,8 +23,10 @@ import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
+import akka.dispatch.Futures;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import scala.concurrent.ExecutionContext;
 
 import java.io.Serializable;
 import java.util.Optional;
@@ -42,13 +44,13 @@ import java.util.concurrent.CompletableFuture;
  *
  * Each entry corresponds to a method.
  */
-class RegisterEntryActor extends AbstractActor {
+class RegistryEntryActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     Cluster cluster = Cluster.get(getContext().system());
     Events.Registration registration;
     ActorRef workers;
 
-    public RegisterEntryActor(Events.Registration registration, ActorRef workers) {
+    public RegistryEntryActor(Events.Registration registration, ActorRef workers) {
         this.registration = registration;
         this.workers = workers;
     }
@@ -85,19 +87,14 @@ class RegisterEntryActor extends AbstractActor {
         }).match(Events.Invocation.class, message -> {
             final ActorRef sender = getSender();
             final ActorRef self = getSelf();
-            workers.tell(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Object ret = registration.function().apply(message.arguments());
-                        sender.tell(new Events.Response(ret), self);
-                    } catch (RuntimeException ex) {
-                        Throwable throwable = ex.getCause();
-                        if (throwable == null) throwable = ex;
-                        sender.tell(new Status.Failure(throwable), self);
-                    }
-                }
-            }, getSender());
+            try {
+                Object ret = registration.function().apply(message.arguments());
+                sender.tell(new Events.Response(ret), self);
+            } catch (RuntimeException ex) {
+                Throwable throwable = ex.getCause();
+                if (throwable == null) throwable = ex;
+                sender.tell(new Status.Failure(throwable), self);
+            }
         }).build();
     }
 

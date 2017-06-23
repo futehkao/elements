@@ -141,7 +141,7 @@ class ResourcesState {
             modules = new ArrayList<>();
             modules.add(getModule());
             if (resources.getResourceManager() != null) {
-                modules.add(resources.getResourceManager().getModule());
+                modules.add(resources.getResourceManager().getModule().clone());  // clone so that we don't have thread contention
             }
         }
 

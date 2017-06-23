@@ -169,25 +169,27 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
     @Override
     public void onOpen(Resources resources) {
-        EntityManagerConfig config = resources.configurator().annotation(EntityManagerConfig.class);
-        if (config.disable()) throw new NotAvailableException();
+        Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
+        if (config.isPresent() && config.get().disable()) throw new NotAvailableException();
 
-        long timeout = transactionTimeout;
-        if (config.timeout() > 0L) timeout = config.timeout();
-        timeout += config.timeoutExtension();
+        long timeout = config.map(c -> c.timeout()).orElse(transactionTimeout);
+        if (timeout == 0L) timeout = transactionTimeout;
+        long timeoutExt = config.map(c -> c.timeoutExtension()).orElse(0L);
+        timeout += timeoutExt;
 
-        boolean monitor = monitorTransaction;
-        monitor = config.monitor();
+        boolean monitor = config.map(c -> c.monitor()).orElse(monitorTransaction);
 
-        long longQuery = longTransaction;
-        if (config.longTransaction() != 0L) longQuery = config.longTransaction();
+        long longQuery = config.map(c -> c.longTransaction()).orElse(longTransaction);
+        if (longQuery == 0L) longQuery = longTransaction;
+
         if (firstQuery) {
             firstQuery = false;
             if (longQuery < 1000L) longQuery = 1000L;
         }
 
         EntityManager em = emf.createEntityManager();
-        monitor(new EntityManagerMonitor(em, System.currentTimeMillis() + timeout, new Throwable()));
+        if (monitor)
+            monitor(new EntityManagerMonitor(em, System.currentTimeMillis() + timeout, new Throwable()));
 
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
         emHandler.setLongTransaction(longQuery);
@@ -265,7 +267,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                         if (sleep == 0) {
                             newMonitor = monitorQueue.poll(monitorIdle, TimeUnit.MILLISECONDS);
                         } else {
-                            // What is an EntityManager closed during the sleep?
+                            // What if an EntityManager closed during the sleep?
                             newMonitor = monitorQueue.poll(sleep, TimeUnit.MILLISECONDS);
                         }
                     } catch (InterruptedException e) {
@@ -305,7 +307,9 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             em.getTransaction().commit();
             em.close();
             // to break out the
-            monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
+            Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
+            boolean monitor = config.map(c -> c.monitor()).orElse(monitorTransaction);
+            if (monitor) monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
         } catch (InstanceNotFoundException ex) {
 
         }
@@ -321,6 +325,9 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             EntityManager em = resources.getInstance(EntityManager.class);
             em.getTransaction().rollback();
             em.close();
+            Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
+            boolean monitor = config.map(c -> c.monitor()).orElse(monitorTransaction);
+            if (monitor) monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
             monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
         } catch (Throwable th) {
 
