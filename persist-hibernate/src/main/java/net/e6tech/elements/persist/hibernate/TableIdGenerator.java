@@ -21,6 +21,7 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.QualifiedName;
 import org.hibernate.boot.model.relational.QualifiedNameParser;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
+import org.hibernate.id.enhanced.StandardOptimizerDescriptor;
 import org.hibernate.id.enhanced.TableGenerator;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.service.ServiceRegistry;
@@ -100,5 +101,13 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
 
     protected int determineIncrementSize(Properties params) {
         return ConfigurationHelper.getInt( INCREMENT_PARAM, params, defaultIncrementSize );
+    }
+
+    @Override
+    public void configure(Type type, Properties params, ServiceRegistry serviceRegistry) throws MappingException {
+        if (params.getProperty(OPT_PARAM) == null) {
+            params.setProperty(OPT_PARAM, StandardOptimizerDescriptor.POOLED_LO.getExternalName());
+        }
+        super.configure(type, params, serviceRegistry);
     }
 }
