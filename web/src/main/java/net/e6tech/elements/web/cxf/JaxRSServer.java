@@ -21,6 +21,7 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import com.google.inject.Inject;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.ExceptionMapper;
@@ -154,9 +155,9 @@ public class JaxRSServer extends CXFServer {
             throw new IllegalStateException("address not set");
         }
 
-        res.getNotificationCenter().addNotificationListener(ShutdownNotification.class, (notification) -> {
-            stop();
-        });
+        res.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
+                NotificationListener.create("JaxRSServer" + getURLs(), (notification) -> stop())
+        );
 
         List<ServerFactorBeanEntry> entryList = new ArrayList<>();
         synchronized (entries) {

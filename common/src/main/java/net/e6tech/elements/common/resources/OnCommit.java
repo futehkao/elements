@@ -21,9 +21,5 @@ package net.e6tech.elements.common.resources;
  */
 @FunctionalInterface
 public interface OnCommit extends ResourceProvider {
-    default void onOpen(Resources resources) {}
     void onCommit(Resources resources);
-    default void afterCommit(Resources resources) {}
-    default void onAbort(Resources resources) {}
-    default void onClosed(Resources resources) {}
 }

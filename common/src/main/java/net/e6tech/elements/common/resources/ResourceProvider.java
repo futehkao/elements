@@ -15,13 +15,30 @@ limitations under the License.
 */
 package net.e6tech.elements.common.resources;
 
+import java.lang.reflect.Proxy;
+import java.util.function.Consumer;
+
 /**
  * Created by futeh.
  */
 public interface ResourceProvider {
-    void onOpen(Resources resources);
-    void onCommit(Resources resources);
-    void afterCommit(Resources resources);
-    void onAbort(Resources resources);
-    void onClosed(Resources resources);
+
+    static ResourceProvider wrap(String name, ResourceProvider resourceProvider) {
+        return (ResourceProvider) Proxy.newProxyInstance(resourceProvider.getClass().getClassLoader(), new Class[] { ResourceProvider.class},
+        (proxy, method, args) -> {
+            if (method.getName().equals("description") && (args == null || args.length == 0)) {
+                return name;
+            } else {
+                return method.invoke(resourceProvider, args);
+            }
+        });
+    }
+
+    default void onOpen(Resources resources) {}
+    default void onCommit(Resources resources) {}
+    default void afterCommit(Resources resources) {}
+    default void onAbort(Resources resources) {}
+    default void onClosed(Resources resources) {}
+    default void onShutdown() {}
+    default String description() { return getClass().getName(); }
 }

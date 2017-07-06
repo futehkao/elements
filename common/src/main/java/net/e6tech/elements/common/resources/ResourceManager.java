@@ -23,6 +23,8 @@ import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.logging.TimedLogger;
 import net.e6tech.elements.common.notification.NotificationCenter;
+import net.e6tech.elements.common.notification.NotificationListener;
+import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.script.AbstractScriptShell;
 import net.e6tech.elements.common.util.monitor.AllocationMonitor;
@@ -615,7 +617,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return resources;
     }
 
-    protected void addResourceProvider(ResourceProvider p) {
+    public void addResourceProvider(ResourceProvider p) {
         inject(p);
         resourceProviders.add(p);
         listeners.forEach(l -> l.resourceProviderAdded(p));
@@ -624,5 +626,21 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     public <T extends Resources> T newResources() {
         Provision provision = getInstance(Provision.class);
         return (T) newInstance(provision.getResourcesClass());
+    }
+
+    public void shutdown() {
+        ShutdownNotification notification = new ShutdownNotification(this);
+        getNotificationCenter().getNotificationListeners(notification)
+                .forEach(listener -> {
+                    logger.info("Shutting down " + listener.description() + " ...");
+                    listener.onEvent(notification);
+                    logger.info(listener.description() + " is down.");
+                });
+
+        resourceProviders.forEach(rp -> {
+            logger.info("Shutting down " + rp.description() + " ...");
+            rp.onShutdown();
+            logger.info(rp.description() + " is down.");
+        });
     }
 }

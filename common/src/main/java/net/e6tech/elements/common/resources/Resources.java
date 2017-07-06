@@ -28,7 +28,6 @@ import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -73,31 +72,20 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized boolean isCommitted() {
-        return state.isCommitted();
+        return state.getState() == ResourcesState.State.Committed;
     }
 
-    private void setCommitted(boolean committed) {
-        state.setCommitted(committed);
-    }
 
-    public synchronized boolean isOpened() {
-        return state.isOpened();
-    }
-
-    private void setOpened(boolean opened) {
-        state.setOpened(opened);
+    public synchronized boolean isOpen() {
+        return state.getState() == ResourcesState.State.Open;
     }
 
     public synchronized boolean isAborted() {
-        return state.isAborted();
-    }
-
-    private void setAborted(boolean aborted) {
-        state.setAborted(aborted);
+        return state.getState() == ResourcesState.State.Aborted;
     }
 
     public synchronized boolean isClosed() {
-        return !isOpened();
+        return !isOpen();
     }
 
     public synchronized boolean isDiscarded() {
@@ -119,7 +107,7 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     public synchronized void addResourceProvider(ResourceProvider resourceProvider) {
         getResourceProviders().add(resourceProvider);
-        if (isOpened() && !isAborted() && !isCommitted()) {
+        if (isOpen()) {
             resourceProvider.onOpen(this);
         }
 
@@ -364,14 +352,9 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized void onOpen() {
-        setAborted(false);
-        setCommitted(false);
-
-        long start = System.currentTimeMillis();
         state.initModules(this);
-
-        if (!isOpened()) {
-            setOpened(true);
+        if (!isOpen()) {
+            state.setState(ResourcesState.State.Open);
             // this loop can produce recursive onOpen call
             for (ResourceProvider resourceProvider : state.getResourceProviders()) {
                 resourceProvider.onOpen(this);
@@ -460,8 +443,10 @@ public class Resources implements AutoCloseable, ResourcePool {
         } catch (Throwable th) {
             ret = replay(th, new Replay<Resources, R>((res)-> {return _commit();}));
         } finally {
-            if (!isAborted()) {
+            if (isCommitted()) {
+                // commit successful
                 cleanup();
+                state.setState(ResourcesState.State.Committed);
             }
         }
         return ret;
@@ -471,7 +456,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         R ret = null;
         if (resourceManager == null) return null;
         if (isAborted()) return (R) lastResult;
-        if (!isOpened()) throw new IllegalStateException("Already closed");
+        if (!isOpen()) throw new IllegalStateException("Already closed");
 
         // use index because additional ResourceProviders may be added during the loop.
         for (int i = 0; i < state.getResourceProviders().size(); i++) {
@@ -493,7 +478,7 @@ public class Resources implements AutoCloseable, ResourcePool {
             } catch (Throwable th) {}
         }
 
-        setCommitted(true);
+        state.setState(ResourcesState.State.Committed);
         ret = (R) lastResult;
 
         return ret;
@@ -520,12 +505,12 @@ public class Resources implements AutoCloseable, ResourcePool {
             }
         } finally {
             cleanup();
-            setAborted(true);
+            state.setState(ResourcesState.State.Aborted);
         }
     }
 
     public void close() throws Exception {
-        if (!isOpened()) return;
+        if (!isOpen()) return;
 
         if (!isAborted()) {
             commit();

@@ -29,11 +29,17 @@ import java.util.concurrent.Callable;
  * Created by futeh.
  */
 class ResourcesState {
+
+    enum State {
+        Initial,
+        Open,
+        Committed,
+        Aborted,
+    }
+
     private InjectionModule module;
     private Injector injector;
-    private boolean opened = false;
-    private boolean aborted = false;
-    private boolean committed = false;
+    private State state = State.Initial;
     private boolean dirty = false; // dirty if not open and bind is call.
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private LinkedList<Object> injectionList = new LinkedList<>();
@@ -48,8 +54,7 @@ class ResourcesState {
         modules = null;
         module = new InjectionModule();
         resourceProviders.clear();
-        opened = false;
-        aborted = false;
+        state = State.Initial;
         dirty = false;
     }
 
@@ -74,28 +79,12 @@ class ResourcesState {
         this.injector = injector;
     }
 
-    public boolean isOpened() {
-        return opened;
+    public State getState() {
+        return state;
     }
 
-    public void setOpened(boolean opened) {
-        this.opened = opened;
-    }
-
-    public boolean isAborted() {
-        return aborted;
-    }
-
-    public void setAborted(boolean aborted) {
-        this.aborted = aborted;
-    }
-
-    public boolean isCommitted() {
-        return committed;
-    }
-
-    public void setCommitted(boolean committed) {
-        this.committed = committed;
+    public void setState(State state) {
+        this.state = state;
     }
 
     public boolean isDirty() {

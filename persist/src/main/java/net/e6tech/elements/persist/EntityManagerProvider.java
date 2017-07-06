@@ -334,8 +334,16 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         }
     }
 
+    @Override
     public void onClosed(Resources resources) {
 
+    }
+
+    @Override
+    public void onShutdown() {
+        if (emf.isOpen()) {
+            emf.close();
+        }
     }
 
     private static class EntityManagerMonitor {

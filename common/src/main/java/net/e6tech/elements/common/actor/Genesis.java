@@ -24,18 +24,21 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.pool.Events;
 import net.e6tech.elements.common.actor.pool.WorkerPool;
+import net.e6tech.elements.common.notification.NotificationListener;
+import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import scala.compat.java8.FutureConverters;
+import scala.concurrent.Await;
 import scala.concurrent.Future;
+import scala.concurrent.duration.Duration;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.*;
 
 /**
  * Created by futeh.
  */
-public class Genesis implements Initializable {
+public class Genesis implements Initializable, NotificationListener<ShutdownNotification> {
     public static final String WorkerPoolDispatcher = "worker-pool-dispatcher";
     private String name;
     private String configuration;
@@ -122,6 +125,17 @@ public class Genesis implements Initializable {
 
         // Create a worker pool
         workerPool =  WorkerPool.newPool(system, initialCapacity, maxCapacity, idleTimeout);
+    }
+
+    @Override
+    public void onEvent(ShutdownNotification notification) {
+        try {
+            Await.ready(system.terminate(), Duration.create(30, TimeUnit.SECONDS));
+        } catch (TimeoutException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public String getName() {

@@ -16,7 +16,12 @@
 
 package net.e6tech.elements.common.launch;
 
+import net.e6tech.elements.common.notification.NotificationListener;
+import net.e6tech.elements.common.notification.ShutdownNotification;
+import net.e6tech.elements.common.resources.OnShutdown;
 import net.e6tech.elements.common.resources.ResourceManager;
+import net.e6tech.elements.common.resources.ResourceProvider;
+import net.e6tech.elements.common.resources.Resources;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -58,9 +63,21 @@ class Launcher {
                 System.exit(1);
             }
             latch.countDown();
+
+            // if ShutdownNotification is detected, this code will call resourceManager.notifyAll in order
+            // to break out of the next synchronized block that contains resourceManager.wait.
+            resourceManager.addResourceProvider(ResourceProvider.wrap("Launcher", (OnShutdown) () -> {
+                synchronized (resourceManager) {
+                    resourceManager.notifyAll();;
+                }
+            }));
+
+            // wait on resourceManager ... if ShutdownNotification is detected, the code just above will break out of
+            // the wait.
             synchronized (resourceManager) {
                 try {
                     resourceManager.wait();
+                    System.out.println("Launcher thread stopped");
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 import net.e6tech.elements.network.cluster.ClusterNode
+import net.e6tech.elements.common.actor.Genesis
+
 
 atom("cluster") {
 
-    myCluster = ClusterNode
-    myCluster.name = clusterName
-    myCluster.configuration = """
+    configuration = """
+        genesis:
+            name: ${clusterName}
+            initialCapacity: 5
+           
+"""
+    genesis = Genesis
+    genesis.configuration = """
 akka {
   actor {
     provider = "cluster"
@@ -53,6 +60,7 @@ akka.cluster.metrics.enabled=off
 # akka.cluster.metrics.native-library-extract-folder=${home}/target/native
 
 """
+    myCluster = ClusterNode
     postInit {
         notificationCenter.addBroadcast(myCluster.broadcast)
     }

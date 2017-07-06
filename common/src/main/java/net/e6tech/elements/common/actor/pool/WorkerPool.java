@@ -20,6 +20,7 @@ import akka.actor.*;
 import akka.dispatch.Dispatcher;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import net.e6tech.elements.common.actor.Genesis;
 import scala.concurrent.ExecutionContext;
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
@@ -137,7 +138,7 @@ public class WorkerPool extends AbstractActor {
     }
 
     private void newWorker() {
-        ActorRef worker = getContext().actorOf(Props.create(Worker.class, getSelf()).withDispatcher("worker-pool-dispatcher"));
+        ActorRef worker = getContext().actorOf(Props.create(Worker.class, getSelf()).withDispatcher(Genesis.WorkerPoolDispatcher));
         workers.add(worker);
         getContext().watch(worker);
         idle(worker);

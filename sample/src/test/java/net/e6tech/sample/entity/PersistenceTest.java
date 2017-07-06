@@ -70,6 +70,8 @@ public class PersistenceTest extends BaseCase {
             assertTrue(e != null);
             e.setHireDate("20170401");
         });
+
+        provision.getResourceManager().shutdown();
     }
 
     @Test

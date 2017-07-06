@@ -1,0 +1,41 @@
+# <div style="text-align: center;">Resource Manger</div> #
+
+# Launching #
+
+# ResourceProvider #
+
+# Resources #
+
+# Atoms #
+
+### Instance Creation ###
+
+### Injection ###
+
+### Configuration via YAML ###
+
+### Notification Listener ###
+
+# PluginManager #
+
+
+### Shutdown ###
+When a ResourceManager's shutdown method is called, it fires a ShutdownNotification event so that listeners
+can close their resources. The ResourceManager needs to be able to orderly and sequentially shutting down each listener 
+and, therefore, each listener must handle the event within the calling thread.
+
+After each listener has handled the event, the ResourceManager proceeds to shutting down each ResourceProvider.
+
+To handle shutdown event, there are two options.  First, a class can implement the NotificationListener<ShutdownNotification> 
+interface and then be atomized so that the listener is automatically registered.
+
+    public class X implements NotificationListener<ShutdownNotification> {
+        
+        @Override
+        public void onEvent(ShutdownNotification notification) {
+            ...
+        }
+    }
+
+The second option is to explicitly register a listener with NotificationCenter.
+

@@ -18,11 +18,45 @@ package net.e6tech.elements.common.notification;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.function.Consumer;
 
 /**
  * Created by futeh on 1/21/16.
  */
 public interface NotificationListener<T extends Notification> {
+
+    static <R extends Notification> NotificationListener<R> create(String name, Consumer<R> consumer) {
+        return new NotificationListener<R>() {
+            @Override
+            public void onEvent(R notification) {
+                consumer.accept(notification);
+            }
+
+            @Override
+            public String description() {
+                return name;
+            }
+        };
+    }
+
+    static <R extends Notification> NotificationListener<R> create(String name, Class<? extends Notification>[] types,  Consumer<R> consumer) {
+        return new NotificationListener<R>() {
+            @Override
+            public Class<? extends Notification>[] getNotificationTypes() {
+                return types;
+            }
+
+            @Override
+            public void onEvent(R notification) {
+                consumer.accept(notification);
+            }
+
+            @Override
+            public String description() {
+                return name;
+            }
+        };
+    }
 
     default Class<? extends Notification>[] getNotificationTypes() {
         Type[] genericInterfaces = getClass().getGenericInterfaces();
@@ -36,6 +70,10 @@ public interface NotificationListener<T extends Notification> {
             }
         }
         return new Class[0];
+    }
+
+    default String description() {
+        return getClass().getName();
     }
 
     void onEvent(T notification);
