@@ -17,6 +17,7 @@ limitations under the License.
 package net.e6tech.elements.common.notification;
 
 import com.google.inject.Inject;
+import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Startable;
 
@@ -33,6 +34,9 @@ import java.util.concurrent.ExecutorService;
 public class NotificationProcessor implements NotificationListener {
     @Inject(optional = true)
     protected ExecutorService threadPool;
+
+    @Inject(optional = true)
+    protected Genesis genesis;
 
     @Inject
     protected NotificationCenter notificationCenter;
@@ -102,7 +106,14 @@ public class NotificationProcessor implements NotificationListener {
     public void catchEvent(Notification notification) {
     }
 
-    public void run(Runnable runnable) {
-        threadPool.execute(runnable);
+    public void async(Runnable runnable) {
+        if (genesis != null) {
+            genesis.async(runnable);
+        } else if (threadPool != null) {
+            threadPool.execute(runnable);
+        } else {
+            Thread thread = new Thread(runnable);
+            thread.start();
+        }
     }
 }

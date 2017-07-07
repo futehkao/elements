@@ -632,15 +632,18 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         ShutdownNotification notification = new ShutdownNotification(this);
         getNotificationCenter().getNotificationListeners(notification)
                 .forEach(listener -> {
-                    logger.info("Shutting down " + listener.description() + " ...");
+                    logger.info("Shutting down " + listener.getDescription() + " ...");
                     listener.onEvent(notification);
-                    logger.info(listener.description() + " is down.");
+                    logger.info(listener.getDescription() + " is down.");
                 });
 
-        resourceProviders.forEach(rp -> {
-            logger.info("Shutting down " + rp.description() + " ...");
+        List<ResourceProvider> reversed = new ArrayList<>();
+        reversed.addAll(resourceProviders);
+        Collections.reverse(reversed);
+        reversed.forEach(rp -> {
+            logger.info("Shutting down " + rp.getDescription() + " ...");
             rp.onShutdown();
-            logger.info(rp.description() + " is down.");
+            logger.info(rp.getDescription() + " is down.");
         });
     }
 }

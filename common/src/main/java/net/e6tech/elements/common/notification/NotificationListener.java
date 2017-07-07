@@ -17,6 +17,7 @@ limitations under the License.
 package net.e6tech.elements.common.notification;
 
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.function.Consumer;
 
@@ -25,37 +26,28 @@ import java.util.function.Consumer;
  */
 public interface NotificationListener<T extends Notification> {
 
-    static <R extends Notification> NotificationListener<R> create(String name, Consumer<R> consumer) {
-        return new NotificationListener<R>() {
-            @Override
-            public void onEvent(R notification) {
-                consumer.accept(notification);
-            }
-
-            @Override
-            public String description() {
-                return name;
-            }
-        };
+    @SuppressWarnings("unchecked")
+    static <R extends Notification> NotificationListener<R> wrap(String description, NotificationListener<R> listener) {
+        return (NotificationListener<R>) Proxy.newProxyInstance(listener.getClass().getClassLoader(), new Class[] { NotificationListener.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getDescription") && (args == null || args.length == 0)) {
+                        return description;
+                    } else {
+                        return method.invoke(listener, args);
+                    }
+                });
     }
 
-    static <R extends Notification> NotificationListener<R> create(String name, Class<? extends Notification>[] types,  Consumer<R> consumer) {
-        return new NotificationListener<R>() {
-            @Override
-            public Class<? extends Notification>[] getNotificationTypes() {
-                return types;
-            }
-
-            @Override
-            public void onEvent(R notification) {
-                consumer.accept(notification);
-            }
-
-            @Override
-            public String description() {
-                return name;
-            }
-        };
+    @SuppressWarnings("unchecked")
+    static <R extends Notification> NotificationListener<R> wrap(Class<? extends Notification>[] types, NotificationListener<R> listener) {
+        return (NotificationListener<R>) Proxy.newProxyInstance(listener.getClass().getClassLoader(), new Class[] { NotificationListener.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getNotificationTypes") && (args == null || args.length == 0)) {
+                        return types;
+                    } else {
+                        return method.invoke(listener, args);
+                    }
+                });
     }
 
     default Class<? extends Notification>[] getNotificationTypes() {
@@ -72,7 +64,7 @@ public interface NotificationListener<T extends Notification> {
         return new Class[0];
     }
 
-    default String description() {
+    default String getDescription() {
         return getClass().getName();
     }
 

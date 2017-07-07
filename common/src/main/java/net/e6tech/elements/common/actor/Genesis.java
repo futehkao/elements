@@ -26,8 +26,7 @@ import net.e6tech.elements.common.actor.pool.Events;
 import net.e6tech.elements.common.actor.pool.WorkerPool;
 import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.notification.ShutdownNotification;
-import net.e6tech.elements.common.resources.Initializable;
-import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.resources.*;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
@@ -38,7 +37,7 @@ import java.util.concurrent.*;
 /**
  * Created by futeh.
  */
-public class Genesis implements Initializable, NotificationListener<ShutdownNotification> {
+public class Genesis implements Initializable {
     public static final String WorkerPoolDispatcher = "worker-pool-dispatcher";
     private String name;
     private String configuration;
@@ -96,6 +95,13 @@ public class Genesis implements Initializable, NotificationListener<ShutdownNoti
             config = ConfigFactory.defaultApplication();
         }
         initialize(config);
+
+        if (resources != null) {
+            final ResourceManager resourceManager = resources.getResourceManager();
+            resourceManager.addResourceProvider(ResourceProvider.wrap("Genesis", (OnShutdown) () -> {
+                shutdown();
+            }));
+        }
     }
 
     public void initialize(Config config) {
@@ -127,8 +133,7 @@ public class Genesis implements Initializable, NotificationListener<ShutdownNoti
         workerPool =  WorkerPool.newPool(system, initialCapacity, maxCapacity, idleTimeout);
     }
 
-    @Override
-    public void onEvent(ShutdownNotification notification) {
+    public void shutdown() {
         try {
             Await.ready(system.terminate(), Duration.create(30, TimeUnit.SECONDS));
         } catch (TimeoutException e) {

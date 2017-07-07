@@ -16,9 +16,7 @@ limitations under the License.
 
 package net.e6tech.elements.common.notification;
 
-import net.e6tech.elements.common.resources.BeanListener;
 import net.e6tech.elements.common.subscribe.Broadcast;
-import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
@@ -74,6 +72,7 @@ public class NotificationCenter implements Broadcast {
         }
         List<NotificationListener> list = notificationListeners.get(notification.getClass());
         if (list != null) listeners.addAll(list);
+
         return list;
     }
 

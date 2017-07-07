@@ -23,11 +23,11 @@ import java.util.function.Consumer;
  */
 public interface ResourceProvider {
 
-    static ResourceProvider wrap(String name, ResourceProvider resourceProvider) {
+    static ResourceProvider wrap(String description, ResourceProvider resourceProvider) {
         return (ResourceProvider) Proxy.newProxyInstance(resourceProvider.getClass().getClassLoader(), new Class[] { ResourceProvider.class},
         (proxy, method, args) -> {
-            if (method.getName().equals("description") && (args == null || args.length == 0)) {
-                return name;
+            if (method.getName().equals("getDescription") && (args == null || args.length == 0)) {
+                return description;
             } else {
                 return method.invoke(resourceProvider, args);
             }
@@ -40,5 +40,5 @@ public interface ResourceProvider {
     default void onAbort(Resources resources) {}
     default void onClosed(Resources resources) {}
     default void onShutdown() {}
-    default String description() { return getClass().getName(); }
+    default String getDescription() { return getClass().getName(); }
 }

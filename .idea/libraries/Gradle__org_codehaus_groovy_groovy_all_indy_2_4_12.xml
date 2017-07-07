@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.codehaus.groovy:groovy-all:indy:2.4.12">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.groovy/groovy-all/2.4.12/1d6efa16adb6b70fc37bc7e7715f0f890642e6e7/groovy-all-2.4.12-indy.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.groovy/groovy-all/2.4.12/aa7e9767f42085aa21c97131b515c88b9f215d82/groovy-all-2.4.12-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

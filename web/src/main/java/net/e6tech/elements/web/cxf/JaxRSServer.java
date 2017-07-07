@@ -156,7 +156,7 @@ public class JaxRSServer extends CXFServer {
         }
 
         res.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
-                NotificationListener.create("JaxRSServer" + getURLs(), (notification) -> stop())
+                NotificationListener.wrap("JaxRSServer" + getURLs(), (notification) -> stop())
         );
 
         List<ServerFactorBeanEntry> entryList = new ArrayList<>();
