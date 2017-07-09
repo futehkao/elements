@@ -124,7 +124,9 @@ class ResourcesState {
         setDirty(true);
     }
 
-    public void initModules(Resources resources) {
+    protected void createInjector(Resources resources) {
+        // this could be recursive so that we really only create injector
+        // if is dirty or not yet created.
 
         if (!useChildInjector && getModules() == null) {
             modules = new ArrayList<>();
@@ -134,12 +136,12 @@ class ResourcesState {
             }
         }
 
-        TimedLogger timed = new TimedLogger();
-        if (useChildInjector) injector = resources.getResourceManager().getInjector().createChildInjector(getModule());
-        else injector = Guice.createInjector(modules); // injector has to be created first because resourceProviders needs
-                                                  // use injection at this point.
+        if (useChildInjector)
+            injector = resources.getResourceManager().getInjector().createChildInjector(getModule());
+        else
+            injector = Guice.createInjector(modules); // injector has to be created first because resourceProviders needs
+        // use injection at this point.
 
-        timed.log();
         setDirty(false);
 
         // we need to inject here for objects awaiting to be injected because
@@ -149,6 +151,34 @@ class ResourcesState {
             // onOpen will be call again.
             Object obj = injectionList.remove();
             _inject(resources, injector, obj);
+        }
+    }
+
+    public <T> T inject(Resources resources, T object) {
+        if (object == null) return object;
+
+        if (state == State.Initial) {
+            // to be inject when resources is opened.
+            injectionList.add(object);
+        } else {
+            if (isDirty() || injector == null) {
+                createInjector(resources);
+
+                // NOTE an item is added to injectionList during inject but removed during initModule
+            }
+            _inject(resources, injector, object);
+
+        }
+        return object;
+    }
+
+    protected void _inject(Resources resources, Injector injector, Object object) {
+        if (object instanceof InjectionListener) {
+            ((InjectionListener) object).preInject(resources);
+        }
+        injector.injectMembers(object);
+        if (object instanceof InjectionListener) {
+            ((InjectionListener) object).injected(resources);
         }
     }
 
@@ -235,34 +265,6 @@ class ResourcesState {
         return instance;
     }
 
-    public <T> T inject(Resources resources, T object) {
-        if (object == null) return object;
-        if (isDirty()) {
-            injectionList.add(object); // so that the object can be injected as part of onOpen
-            // This is critical because onOpen may call onOpen on
-            // the resources's additional resourceProviders and they may depending
-            // this object being already injected.
-            resources.onOpen();
-        }
-        if (injector != null) {
-            _inject(resources, injector, object);
-        } else {
-            //if (resourceManager != null) resourceManager.inject(object);
-            injectionList.add(object);
-        }
-        return object;
-    }
-
-    protected void _inject(Resources resources, Injector injector, Object object) {
-        if (object instanceof InjectionListener) {
-            ((InjectionListener) object).preInject(resources);
-        }
-        injector.injectMembers(object);
-        if (object instanceof InjectionListener) {
-            ((InjectionListener) object).injected(resources);
-        }
-    }
-
     public boolean hasInstance(Resources resources, Class cls) {
         if (cls.isAssignableFrom(Resources.class) || cls.isAssignableFrom(ResourceManager.class))
             return true;
@@ -287,13 +289,14 @@ class ResourcesState {
             return (T) resources.getResourceManager();
         }
 
-        if (getInjector() == null) {
-            if (!getModule().hasInstance(cls)) throw new InstanceNotFoundException("No instance for class " + cls.getName() +
-                    " Use newInstance if you meant to create an instance");
-            return (T) getModule().getInstance(cls);
+        if (state == State.Initial || isDirty()) {
+            if (getModule().hasInstance(cls)) return (T) getModule().getInstance(cls);
+            if (resources.getResourceManager().hasInstance(cls)) return (T) resources.getResourceManager().getInstance(cls);
+
+            // not found
+            createInjector(resources);
         }
 
-        if (isDirty()) resources.onOpen();
         try {
             return getInjector().getInstance(cls);
         } catch (ConfigurationException ex) {

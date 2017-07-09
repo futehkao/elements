@@ -352,7 +352,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized void onOpen() {
-        state.initModules(this);
+        // state.initModules(this); // MUST initialize injector first by calling initModules
         if (!isOpen()) {
             state.setState(ResourcesState.State.Open);
             // this loop can produce recursive onOpen call

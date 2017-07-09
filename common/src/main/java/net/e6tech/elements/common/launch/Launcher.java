@@ -68,9 +68,18 @@ class Launcher {
             // to break out of the next synchronized block that contains resourceManager.wait.
             resourceManager.addResourceProvider(ResourceProvider.wrap("Launcher", (OnShutdown) () -> {
                 synchronized (resourceManager) {
-                    resourceManager.notifyAll();;
+                    resourceManager.notifyAll();
                 }
             }));
+
+            /* Another way of doing it ...
+            resourceManager.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
+                NotificationListener.wrap(getClass().getName(), (notification) -> {
+                synchronized (resourceManager) {
+                    resourceManager.notifyAll();
+                }
+            }));
+            */
 
             // wait on resourceManager ... if ShutdownNotification is detected, the code just above will break out of
             // the wait.

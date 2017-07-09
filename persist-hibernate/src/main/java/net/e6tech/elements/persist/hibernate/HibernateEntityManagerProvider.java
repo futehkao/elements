@@ -116,7 +116,9 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         resources.bind(SessionFactoryImplementor.class, factory);
         if (session.getInterceptor() instanceof PersistenceInterceptor) {
             PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
-            resources.inject(interceptor);
+            // cannot inject, resources not yet open
+            // resources.inject(interceptor);
+            interceptor.setResources(resources);
         }
     }
 

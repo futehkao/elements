@@ -598,7 +598,6 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         resources.setExternalResourceProviders(openList);
         resources.onOpen();
 
-
         /** uncomment the following to detect resources leak
         long timeout = 10000;
         if (resources.getConfiguration(Resources.TIMEOUT) != null)
@@ -619,7 +618,9 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public void addResourceProvider(ResourceProvider p) {
         inject(p);
-        resourceProviders.add(p);
+        synchronized (resourceProviders) {
+            resourceProviders.add(p);
+        }
         listeners.forEach(l -> l.resourceProviderAdded(p));
     }
 
@@ -638,7 +639,9 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
                 });
 
         List<ResourceProvider> reversed = new ArrayList<>();
-        reversed.addAll(resourceProviders);
+        synchronized (resourceProviders) {
+            reversed.addAll(resourceProviders);
+        }
         Collections.reverse(reversed);
         reversed.forEach(rp -> {
             logger.info("Shutting down " + rp.getDescription() + " ...");

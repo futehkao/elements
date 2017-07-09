@@ -101,6 +101,10 @@ public class Genesis implements Initializable {
             resourceManager.addResourceProvider(ResourceProvider.wrap("Genesis", (OnShutdown) () -> {
                 shutdown();
             }));
+            /* resourceManager.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
+            NotificationListener.wrap(getClass().getName(), (notification) -> {
+                shutdown();
+            })); */
         }
     }
 
