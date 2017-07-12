@@ -91,7 +91,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         module.bindInstance(Interceptor.class, Interceptor.getInstance());
         module.bindInstance(InstanceFactory.class, instanceFactory);
         module.bindInstance(PluginManager.class, pluginManager);
-        injector = Guice.createInjector(module);
+        injector = module.createInjector();
 
         getScripting().put("notificationCenter", notificationCenter);
         getScripting().put("interceptor", Interceptor.getInstance());
@@ -245,6 +245,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         Provision provision = null;
         try {
             provision = (Provision) cls.newInstance();
+            inject(provision);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -307,7 +308,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         Object o = module.getBoundInstance(cls);
         if (o != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + o);
         module.bindInstance(cls, resource);
-        injector = Guice.createInjector(module);
+        injector = module.createInjector();
         T instance = getInstance(cls);
         listeners.forEach(l -> l.bound(cls, instance));
         return instance;
@@ -315,7 +316,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T rebind(Class<T> cls, T resource) {
         module.bindInstance(cls, resource);
-        injector = Guice.createInjector(module);
+        injector = module.createInjector();
         T instance = getInstance(cls);
         listeners.forEach(l -> l.bound(cls, instance));
         return instance;
@@ -323,7 +324,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T unbind(Class<T> cls) {
         T instance = (T) module.unbindInstance(cls);
-        injector = Guice.createInjector(module);
+        injector = module.createInjector();
         listeners.forEach(l -> l.unbound(cls, instance));
         return instance;
     }
@@ -343,7 +344,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         } else {
             module.bindInstance(cls, null);
         }
-        injector = Guice.createInjector(module);
+        injector = module.createInjector();
 
         if (service != null) {
             listeners.forEach(l -> l.classBound(cls, service));
@@ -377,14 +378,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
             if (merged != null) {
                 module.bindNamedInstance(name, a, b);
-                injector = Guice.createInjector(module);
+                injector = module.createInjector();
                 listeners.forEach(l -> l.namedInstanceBound(name, a, b));
             } else {
                 throw new AlreadyBoundException("Instance named " + name + " is already bound to " + instance);
             }
         } else {
             module.bindNamedInstance(name, a, b);
-            injector = Guice.createInjector(module);
+            injector = module.createInjector();
             listeners.forEach(l -> l.namedInstanceBound(name, a, b));
         }
         return instance;
@@ -392,7 +393,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T rebindNamedInstance(String name, Class<T> cls, T resource) {
         T instance = (T) module.bindNamedInstance(name, cls, resource);
-        injector = Guice.createInjector(module);
+        injector = module.createInjector();
         listeners.forEach(l -> l.namedInstanceBound(name, cls, instance));
         return instance;
     }

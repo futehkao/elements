@@ -15,8 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.common.resources;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.TypeLiteral;
+import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.name.Names;
 import com.google.inject.spi.InjectionListener;
@@ -26,9 +25,7 @@ import net.e6tech.elements.common.logging.Logger;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 
 /**
@@ -38,10 +35,10 @@ public class InjectionModule extends AbstractModule implements Cloneable {
 
     private static Logger logger = Logger.getLogger();
 
-    Map<Type, Entry> bindInstances = new HashMap<>();
-    Map<String, Entry> bindNamedInstances = new HashMap<>();
-    Map<Type, Class> bindClasses = new HashMap<>();
-    Map<Type, InjectionListener> listeners = new LinkedHashMap<>();
+    private Map<Type, Entry> bindInstances = new HashMap<>();
+    private Map<String, Entry> bindNamedInstances = new HashMap<>();
+    private Map<Type, Class> bindClasses = new HashMap<>();
+    private Map<Type, InjectionListener> listeners = new LinkedHashMap<>();
 
     @SuppressWarnings("unchecked")
     public InjectionModule clone() {
@@ -172,7 +169,6 @@ public class InjectionModule extends AbstractModule implements Cloneable {
     }
 
     public synchronized void add(InjectionModule module) {
-
         BiConsumer<Map, Map> copy = (from, to) -> {
             for (Object key: from.keySet()) {
                 if (!to.containsKey(key)) {
@@ -187,8 +183,61 @@ public class InjectionModule extends AbstractModule implements Cloneable {
         copy.accept(module.listeners, listeners);
     }
 
+    public Injector createInjector(InjectionModule ... additional) {
+        List<InjectionModule> moduleList = new ArrayList<>();
+        if (additional != null) {
+            for (InjectionModule m : additional) moduleList.add(m);
+        }
+        return createInjector(moduleList);
+    }
+
+    public Injector createInjector(Iterable<? extends InjectionModule> additional) {
+        // need to remove duplicate
+        List<InjectionModule> moduleList = new ArrayList<>();
+        moduleList.add(this);
+        additional.forEach(m -> moduleList.add(m));
+        Collections.reverse(moduleList);
+
+        Map<Type, Entry> bindInstances = new HashMap<>();
+        Map<String, Entry> bindNamedInstances = new HashMap<>();
+        Map<Type, Class> bindClasses = new HashMap<>();
+
+        for (InjectionModule m : moduleList) {
+            bindInstances.putAll(m.bindInstances);
+            bindNamedInstances.putAll(m.bindNamedInstances);
+            bindClasses.putAll(m.bindClasses);
+        }
+
+        InjectionModule resultingModule = new InjectionModule();
+        resultingModule.bindInstances = bindInstances;
+        resultingModule.bindNamedInstances = bindNamedInstances;
+        resultingModule.bindClasses = bindClasses;
+        resultingModule.listeners = this.listeners;
+
+        Injector injector = Guice.createInjector(resultingModule);
+        inject(injector);
+        return injector;
+    }
+
+    private void inject(Injector injector) {
+        for (String name : this.bindNamedInstances.keySet()) {
+            Entry entry = bindNamedInstances.get(name);
+            if (entry.instance != null) injector.injectMembers(entry.instance);
+        }
+
+        for (Type type : this.bindInstances.keySet()) {
+            Entry entry = bindInstances.get(type);
+            if (entry != null && entry.instance != null) injector.injectMembers(entry.instance);
+        }
+    }
+
+    /**
+     * We replaced toInstance with toProvider because for singletons Guice uses a global lock during configure.
+     * The instance would have SingletonScope and during injection in configure a global lock is acquired.
+     * This kills performance if we have to create a lot of injectors.
+     */
     @Override
-    protected synchronized void configure() {
+    protected void configure() {
 
         binder().requireExplicitBindings();
 
@@ -204,9 +253,11 @@ public class InjectionModule extends AbstractModule implements Cloneable {
             Entry entry = bindNamedInstances.get(name);
             for (Type type : entry.types) {
                 if (type instanceof Class) {
-                    bind((Class) type).annotatedWith(Names.named(name)).toInstance(entry.instance);
+                    bind((Class) type).annotatedWith(Names.named(name)).toProvider(newInstanceProvider(entry.instance));
+                    // bind((Class) type).annotatedWith(Names.named(name)).toInstance(entry.instance);
                 } else {
-                    bind((TypeLiteral<Object>) TypeLiteral.get(type)).annotatedWith(Names.named(name)).toInstance(entry.instance);
+                    bind((TypeLiteral<Object>) TypeLiteral.get(type)).annotatedWith(Names.named(name)).toProvider(newInstanceProvider(entry.instance));
+                    // bind((TypeLiteral<Object>) TypeLiteral.get(type)).annotatedWith(Names.named(name)).toInstance(entry.instance);
                 }
             }
         }
@@ -216,17 +267,23 @@ public class InjectionModule extends AbstractModule implements Cloneable {
             try {
                 if (type instanceof Class) {
                     if (entry != null) {
-                        if (entry.instance != null) bind((Class) type).toInstance(entry.instance);
+                        if (entry.instance != null) {
+                            bind((Class) type).toProvider(newInstanceProvider(entry.instance));
+                            // bind((Class) type).toInstance(entry.instance);
+                        }
                         else bind((Class) type).toProvider(() -> null);
                     } else {
                         bind((Class) type).toProvider(() -> null);
                     }
                 } else {
                     if (entry != null) {
-                        if (entry.instance != null) bind((TypeLiteral<Object>) TypeLiteral.get(type)).toInstance(entry.instance);
-                        else  bind((TypeLiteral<Object>) TypeLiteral.get(type)).toProvider(() -> null);
+                        if (entry.instance != null) {
+                            bind((TypeLiteral<Object>) TypeLiteral.get(type)).toProvider(newInstanceProvider(entry.instance));
+                            // bind((TypeLiteral<Object>) TypeLiteral.get(type)).toInstance(entry.instance);
+                        }
+                        else  bind((TypeLiteral<Object>) TypeLiteral.get(type)).toProvider(newInstanceProvider(null));
                     } else {
-                        bind((TypeLiteral<Object>) TypeLiteral.get(type)).toProvider(() -> null);
+                        bind((TypeLiteral<Object>) TypeLiteral.get(type)).toProvider(newInstanceProvider(null));
                     }
                 }
             } catch (Throwable th) {
@@ -262,6 +319,20 @@ public class InjectionModule extends AbstractModule implements Cloneable {
         Entry (Type[] c, Object i) {
             types = c;
             instance = i;
+        }
+    }
+
+    private Provider newInstanceProvider(Object instance) {
+        InstanceProvider provider = new InstanceProvider();
+        provider.instance = instance;
+        return provider;
+    }
+
+    static class InstanceProvider implements Provider {
+        Object instance;
+        @Override
+        public Object get() {
+            return instance;
         }
     }
 }

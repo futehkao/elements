@@ -43,15 +43,12 @@ class ResourcesState {
     private boolean dirty = false; // dirty if not open and bind is call.
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private LinkedList<Object> injectionList = new LinkedList<>();
-    private List<Module> modules;
-    private boolean useChildInjector = false;
 
     ResourcesState() {
         module = new InjectionModule();
     }
 
     protected void cleanup() {
-        modules = null;
         module = new InjectionModule();
         resourceProviders.clear();
         state = State.Initial;
@@ -111,36 +108,21 @@ class ResourcesState {
         this.injectionList = injectionList;
     }
 
-    public List<Module> getModules() {
-        return modules;
-    }
-
-    public void setModules(List<Module> modules) {
-        this.modules = modules;
-    }
-
     public void addModule(InjectionModule module) {
         this.module.add(module);
         setDirty(true);
     }
 
-    protected void createInjector(Resources resources) {
-        // this could be recursive so that we really only create injector
-        // if is dirty or not yet created.
-
-        if (!useChildInjector && getModules() == null) {
-            modules = new ArrayList<>();
-            modules.add(getModule());
-            if (resources.getResourceManager() != null) {
-                modules.add(resources.getResourceManager().getModule().clone());  // clone so that we don't have thread contention
-            }
+    protected void onOpen(Resources resources) {
+        if (injectionList.size() > 0) {
+            createInjector(resources);
         }
+    }
 
-        if (useChildInjector)
-            injector = resources.getResourceManager().getInjector().createChildInjector(getModule());
-        else
-            injector = Guice.createInjector(modules); // injector has to be created first because resourceProviders needs
-        // use injection at this point.
+    protected void createInjector(Resources resources) {
+        injector = (resources.getResourceManager() != null) ?
+                getModule().createInjector(resources.getResourceManager().getModule())
+                : getModule().createInjector();
 
         setDirty(false);
 
@@ -163,8 +145,6 @@ class ResourcesState {
         } else {
             if (isDirty() || injector == null) {
                 createInjector(resources);
-
-                // NOTE an item is added to injectionList during inject but removed during initModule
             }
             _inject(resources, injector, object);
 
@@ -186,11 +166,6 @@ class ResourcesState {
         T o = getModule().getBoundInstance(cls);
         if (o != null) return o;
 
-        if (useChildInjector) {
-            o = resources.getResourceManager().getModule().getBoundInstance(cls);
-            if (o != null) return o;
-        }
-
         T instance = null;
         try {
             instance = (T) getModule().bindInstance(cls, callable.call());
@@ -205,12 +180,6 @@ class ResourcesState {
         Object o = getModule().getBoundInstance(cls);
         if (o != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + o);
 
-        if (useChildInjector) {
-            o = resources.getResourceManager().getModule().getBoundInstance(cls);
-            if (o != null)
-                throw new AlreadyBoundException("Class " + cls + " is already bound in ResourceManager to " + o);
-        }
-
         T instance = (T) getModule().bindInstance(cls, resource);
         setDirty(true);
         return instance;
@@ -218,11 +187,6 @@ class ResourcesState {
 
     public <T> T rebind(Resources resources, Class<T> cls, T resource) {
         T instance = null;
-
-        if (useChildInjector) {
-            resources.getResourceManager().getModule().getBoundInstance(cls);
-            if (instance != null) throw new AlreadyBoundException("Class " + cls + " is already bound in ResourceManager to " + instance);
-        }
 
         try {
             instance = (T) getModule().bindInstance(cls, resource);

@@ -18,6 +18,7 @@ package net.e6tech.sample.entity;
 
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.sample.BaseCase;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -51,7 +52,8 @@ public class PersistenceTest extends BaseCase {
 
     @Test
     public void testInsert() {
-        provision.open().commit(EntityManager.class, (em) -> {
+        provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
+            res.inject(new Object());
             em.persist(employee);
         });
 

@@ -41,37 +41,42 @@ public class Reflection {
 
     private static final PrivateSecurityManager securityManager = new PrivateSecurityManager();
 
-    private static CacheFacade<Class, Type[]> parametrizedTypes = new CacheFacade<Class, Type[]>("parameterizedTypes") {};
+    private static Map<Method, PropertyDescriptor> methodPropertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
+    private static Map<String, PropertyDescriptor> propertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
+    private static Map<Class, Type[]> parametrizedTypes = Collections.synchronizedMap(new WeakHashMap<>());
+
+    // private static CacheFacade<Class, Type[]> parametrizedTypes = new CacheFacade<Class, Type[]>("parameterizedTypes") {};
 
     static Logger logger = Logger.getLogger();
 
+    // should use weak hash map
     public static PropertyDescriptor propertyDescriptor(Method method) {
-        String name = method.getName();
+        return methodPropertyDescriptors.computeIfAbsent(method, m -> {
+            try {
+                String name = method.getName();
+                Parameter[] parameters = method.getParameters();
+                String property ;
+                if (name.startsWith("set")) {
+                    if (parameters.length != 1) throw new IllegalArgumentException("" + method.getName() + " is not a setter");
+                    property = name.substring(3);
+                } else if (name.startsWith("get")) {
+                    if (parameters.length != 0) throw new IllegalArgumentException("" + method.getName() + " is not a getter");
+                    property = name.substring(3);
+                } else if (name.startsWith("is")) {
+                    if (parameters.length != 0) throw new IllegalArgumentException("" + method.getName() + " is not a getter");
+                    property = name.substring(2);
+                } else {
+                    throw new IllegalArgumentException("" + method.getName() + " is not an property accessor");
+                }
 
-        Parameter[] parameters = method.getParameters();
-
-        String property ;
-        if (name.startsWith("set")) {
-            if (parameters.length != 1) throw new IllegalArgumentException("" + method.getName() + " is not a setter");
-            property = name.substring(3);
-        } else if (name.startsWith("get")) {
-            if (parameters.length != 0) throw new IllegalArgumentException("" + method.getName() + " is not a getter");
-            property = name.substring(3);
-        } else if (name.startsWith("is")) {
-            if (parameters.length != 0) throw new IllegalArgumentException("" + method.getName() + " is not a getter");
-            property = name.substring(2);
-        } else {
-            throw new IllegalArgumentException("" + method.getName() + " is not an property accessor");
-        }
-
-        boolean lowerCase = true;
-        if (property.length() > 1 && Character.isUpperCase(property.charAt(1))) lowerCase = false;
-        if (lowerCase) property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
-        try {
-            return new PropertyDescriptor(property, method.getDeclaringClass());
-        } catch (IntrospectionException e) {
-            throw new RuntimeException(e);
-        }
+                boolean lowerCase = true;
+                if (property.length() > 1 && Character.isUpperCase(property.charAt(1))) lowerCase = false;
+                if (lowerCase) property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
+                return new PropertyDescriptor(property, method.getDeclaringClass());
+            } catch (IntrospectionException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public static Class getCallingClass() {
@@ -194,9 +199,16 @@ public class Reflection {
             } else {
                 cls = object.getClass();
             }
-            PropertyDescriptor desc = new PropertyDescriptor(property, object.getClass(),
-                   "is" + TextSubstitution.capitalize(property), null);
-            if (desc == null || desc.getReadMethod() == null) return null;
+
+            PropertyDescriptor desc = propertyDescriptors.computeIfAbsent(object.getClass().getName() + "." + property, fullName -> {
+                try {
+                    return new PropertyDescriptor(property, object.getClass(),
+                            "is" + TextSubstitution.capitalize(property), null);
+                } catch (IntrospectionException e) {
+                    throw new RuntimeException(object.getClass().getName() + "." + property, e);
+                }
+            });
+            if (desc.getReadMethod() == null) return null;
             return (V) desc.getReadMethod().invoke(object);
         } catch (Throwable e) {
             throw new RuntimeException(object.getClass().getName() + "." + property, e);
@@ -240,8 +252,7 @@ public class Reflection {
 
     public static Class getParametrizedType(Class clazz, int index) {
 
-        Type[] pTypes = parametrizedTypes.get(clazz, ()-> {
-            Class cls = clazz;
+        Type[] pTypes = parametrizedTypes.computeIfAbsent(clazz, cls -> {
             while (!cls.equals(Object.class)) {
                 try {
                     Type genericSuper = cls.getGenericSuperclass();

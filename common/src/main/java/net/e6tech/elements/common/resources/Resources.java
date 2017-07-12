@@ -45,7 +45,7 @@ import java.util.function.Supplier;
 public class Resources implements AutoCloseable, ResourcePool {
 
     private static Logger logger = Logger.getLogger(Resources.class);
-    private static final Map<Class, ClassInjectionInfo> injections = new HashMap<>();
+    private static final Map<Class, ClassInjectionInfo> injections = new Hashtable<>();
     private static final Map<Class<? extends Annotation>, Annotation> emptyAnnotations = Collections.unmodifiableMap(new HashMap<>());
     private static final List<ResourceProvider> emptyResourceProviders = Collections.unmodifiableList(new ArrayList<>());
 
@@ -290,28 +290,27 @@ public class Resources implements AutoCloseable, ResourcePool {
         // seen.add(object);  object may not be initialized fully to compute hashCode.
 
         ClassInjectionInfo info;
-        synchronized (injections) {
-            info = injections.get(object.getClass());
-            if (info == null) {
-                info = new ClassInjectionInfo();
-                injections.put(object.getClass(), info);
-                Class cls = object.getClass();
-                Package p = cls.getPackage();
-                if (p == null
-                        || (!p.getName().startsWith("java.")
-                        && !p.getName().startsWith("javax."))) {
-                    while (cls != null && !cls.equals(Object.class)) {
-                        for (Field f : cls.getDeclaredFields()) {
-                            if (f.getAnnotation(Injectable.class) != null
-                                    || f.getType().getAnnotation(Injectable.class) != null) {
-                                f.setAccessible(true);
-                                info.addInjectableField(f);
-                            }
+        info = injections.get(object.getClass());
+
+        if (info == null) {
+            info = new ClassInjectionInfo();
+            Class cls = object.getClass();
+            Package p = cls.getPackage();
+            if (p == null
+                    || (!p.getName().startsWith("java.")
+                    && !p.getName().startsWith("javax."))) {
+                while (cls != null && !cls.equals(Object.class)) {
+                    for (Field f : cls.getDeclaredFields()) {
+                        if (f.getAnnotation(Injectable.class) != null
+                                || f.getType().getAnnotation(Injectable.class) != null) {
+                            f.setAccessible(true);
+                            info.addInjectableField(f);
                         }
-                        cls = cls.getSuperclass();
                     }
+                    cls = cls.getSuperclass();
                 }
             }
+            injections.put(object.getClass(), info);
         }
 
         for (Field f : info.getInjectableFields()) {
@@ -359,6 +358,7 @@ public class Resources implements AutoCloseable, ResourcePool {
             for (ResourceProvider resourceProvider : state.getResourceProviders()) {
                 resourceProvider.onOpen(this);
             }
+            state.onOpen(this);
         }
     }
 
