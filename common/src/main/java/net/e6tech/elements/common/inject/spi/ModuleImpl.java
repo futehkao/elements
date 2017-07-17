@@ -129,7 +129,6 @@ public class ModuleImpl implements Module {
                 }
             }
         }
-
         return null;
     }
 
@@ -214,13 +213,11 @@ public class ModuleImpl implements Module {
 
         void bindClass(Class implementation) {
             Binding binding = new Binding(implementation);
-            binding.setSingleton(false);
             unnamedBinding = binding;
         }
 
         void bindInstance(String name, Object instance) {
             Binding binding = new Binding(instance);
-            binding.setSingleton(true);
             if (name == null) {
                 unnamedBinding = binding;
             }  else {

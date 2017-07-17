@@ -20,12 +20,10 @@ package net.e6tech.elements.common.inject.spi;
  * Created by futeh.
  */
 class Binding implements Cloneable {
-    private boolean singleton;
     private Class implementation;
     private Object value;
 
     public Binding() {
-
     }
 
     public Binding(Object value) {
@@ -37,11 +35,7 @@ class Binding implements Cloneable {
     }
 
     public boolean isSingleton() {
-        return singleton;
-    }
-
-    public void setSingleton(boolean singleton) {
-        this.singleton = singleton;
+        return implementation == null; // value can be null
     }
 
     public Class getImplementation() {

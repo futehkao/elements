@@ -67,9 +67,12 @@ public class Resources implements AutoCloseable, ResourcePool, InjectionListener
     protected Resources() {
     }
 
+    @Override
     public void injected(ResourcePool r) {
-        state = new ResourcesState(this);
-        getModule().bindInstance(getClass(), this);
+        if (state == null) {
+            state = new ResourcesState(this);
+            getModule().bindInstance(getClass(), this);
+        }
     }
 
     void setPreOpen(Consumer<? extends Resources> preOpen) {

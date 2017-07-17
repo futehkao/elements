@@ -52,35 +52,37 @@ public class InjectorImpl implements Injector {
 
     @Override
     public <T> T getNamedInstance(Class<T> boundClass, String name) {
-        return _getNamedInstance(boundClass, name);
+        return _getNamedInstance(boundClass, name).<T>map(entry -> (T) entry.value).orElse(null);
     }
 
-    protected <T> T _getNamedInstance(Type boundClass, String name) {
+    private Optional<Entry> _getNamedInstance(Type boundClass, String name) {
         BoundInstances boundInstances = instances.get(boundClass);
-        Object instance = null;
+        Entry entry = null;
 
         if (boundInstances == null && boundClass instanceof ParameterizedType) {
             boundInstances = instances.get(((ParameterizedType) boundClass).getRawType());
         }
 
         if (boundInstances != null) {
-            instance = (T) boundInstances.getInstance(name);
+            entry = boundInstances.getInstance(name);
         }
 
         // need to get from module
-        if (instance == null) {
+        if (entry == null) {
             Type type = boundClass;
             Binding binding = module.getBinding(type, name);
             if (binding == null && type instanceof ParameterizedType) {
-                type = ((ParameterizedType) boundClass).getRawType();
+                type = ((ParameterizedType) type).getRawType();
                 binding = module.getBinding(type, name);
             }
 
             if (binding != null) {
                 if (boundInstances == null) {
                     boundInstances = new BoundInstances();
-                    instances.put(boundClass, boundInstances);
+                    instances.put(type, boundInstances);
                 }
+
+                Object instance = null;
                 if (binding.isSingleton()) {
                     instance = binding.getValue();
                 } else {
@@ -92,7 +94,7 @@ public class InjectorImpl implements Injector {
                     }
                 }
 
-                boundInstances.put(name, instance);
+                entry = boundInstances.put(name, instance);
 
                 // only inject for non-singleton, this needs to be call after boundInstances has been
                 // updated to avoid infinite injection cycle.
@@ -100,11 +102,11 @@ public class InjectorImpl implements Injector {
                     inject(instance);
                 }
             } else if (parentInjector != null) {
-                instance = parentInjector._getNamedInstance(boundClass, name);
+                entry = parentInjector._getNamedInstance(boundClass, name).orElse(null);
             }
         }
 
-        return (T) instance;
+        return Optional.ofNullable(entry);
     }
 
     public void inject(Object instance) {
@@ -121,9 +123,10 @@ public class InjectorImpl implements Injector {
 
     protected boolean inject(InjectionPoint point, Object instance) {
         boolean injected = false;
-        if (parentInjector != null) injected = parentInjector.inject(point, instance);
         boolean myAttempt = point.inject(this, instance);
-        return myAttempt || injected;
+        if (myAttempt) return true;
+        if (parentInjector != null) return parentInjector.inject(point, instance);
+        return false;
     }
 
     List<InjectionPoint> parseInjectionPoints(Class instanceClass) {
@@ -178,17 +181,31 @@ public class InjectorImpl implements Injector {
     }
 
     private static class BoundInstances {
-        Map<String, Object> namedInstances = new HashMap<>();
-        Object unnamedInstance;
+        Map<String, Entry> namedInstances = new HashMap<>();
+        Entry unnamedInstance;
 
-        Object getInstance(String name) {
+        Entry getInstance(String name) {
             if (name == null) return unnamedInstance;
             return namedInstances.get(name);
         }
 
-        void put(String name, Object instance) {
-            if (name == null) unnamedInstance = instance;
-            else namedInstances.put(name, instance);
+        Entry put(String name, Object instance) {
+            Entry entry = new Entry(instance);
+            if (name == null) unnamedInstance = entry;
+            else namedInstances.put(name, entry);
+            return entry;
+        }
+    }
+
+    private static class Entry {
+        Object value;
+
+        Entry(Object value) {
+            this.value = value;
+        }
+
+        Object value() {
+            return value;
         }
     }
 
@@ -198,18 +215,19 @@ public class InjectorImpl implements Injector {
         private boolean optional;
 
         public boolean inject(InjectorImpl injector, Object target) {
-            Object value = injector._getNamedInstance(field.getGenericType(), name);
-            if (value == null && !optional) {
+            Optional<Entry> opt = injector._getNamedInstance(field.getGenericType(), name);
+
+            if (!opt.isPresent() && !optional) {
                 return false;
             }
 
-            if (value != null) {
+            opt.ifPresent(entry -> {
                 try {
-                    field.set(target, value);
+                    field.set(target, entry.value());
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
-            }
+            });
             return true;
         }
     }
