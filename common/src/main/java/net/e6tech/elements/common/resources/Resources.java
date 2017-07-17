@@ -16,6 +16,7 @@ limitations under the License.
 package net.e6tech.elements.common.resources;
 
 import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.plugin.PluginPath;
@@ -42,7 +43,7 @@ import java.util.function.Supplier;
  * Created by futeh.
  */
 @BindClass(Resources.class)
-public class Resources implements AutoCloseable, ResourcePool {
+public class Resources implements AutoCloseable, ResourcePool, InjectionListener {
 
     private static Logger logger = Logger.getLogger(Resources.class);
     private static final Map<Class, ClassInjectionInfo> injections = new Hashtable<>();
@@ -55,7 +56,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     @Inject(optional = true)
     private Retry retry;
 
-    protected ResourcesState state = new ResourcesState();
+    protected ResourcesState state;
     protected Configurator configurator = new Configurator();
     private List<ResourceProvider> externalResourceProviders;
     private Consumer<? extends Resources> preOpen;
@@ -64,6 +65,10 @@ public class Resources implements AutoCloseable, ResourcePool {
     boolean submitting = false;
 
     protected Resources() {
+    }
+
+    public void injected(ResourcePool r) {
+        state = new ResourcesState(this);
         getModule().bindInstance(getClass(), this);
     }
 
@@ -216,11 +221,11 @@ public class Resources implements AutoCloseable, ResourcePool {
         return resourceManager.getVariable(variable);
     }
 
-    public InjectionModule getModule() {
+    public Module getModule() {
         return state.getModule();
     }
 
-    public void addModule(InjectionModule module) {
+    public void addModule(Module module) {
         state.addModule(module);
     }
 
@@ -259,16 +264,16 @@ public class Resources implements AutoCloseable, ResourcePool {
         state.bindClass(cls, service);
     }
 
-    public <T> T bindNamedInstance(String name, Class<T> cls, T resource) {
-        return state.bindNamedInstance(name, cls, resource);
+    public <T> T bindNamedInstance(Class<T> cls, String name, T resource) {
+        return state.bindNamedInstance(cls, name, resource);
     }
 
-    public <T> T rebindNamedInstance(String name, Class<T> cls, T resource) {
-        return state.rebindNamedInstance(name, cls, resource);
+    public <T> T rebindNamedInstance(Class<T> cls, String name, T resource) {
+        return state.rebindNamedInstance(cls, name, resource);
     }
 
-    public <T> T getBoundNamedInstance(String name) {
-        return getModule().getBoundNamedInstance(name);
+    public <T> T getNamedInstance(Class<T> cls, String name) {
+        return getModule().getBoundNamedInstance(cls, name);
     }
 
 

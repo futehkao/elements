@@ -15,15 +15,14 @@ limitations under the License.
 */
 package net.e6tech.elements.common.resources;
 
-import com.google.inject.ConfigurationException;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
+import net.e6tech.elements.common.inject.Injector;
+import net.e6tech.elements.common.inject.Module;
+import net.e6tech.elements.common.inject.ModuleFactory;
 import net.e6tech.elements.common.instance.InstanceFactory;
 import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.logging.TimedLogger;
 import net.e6tech.elements.common.notification.NotificationCenter;
-import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.script.AbstractScriptShell;
@@ -49,7 +48,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     private String name;
     private Injector injector;
-    private InjectionModule module = new InjectionModule();
+    private Module module = ModuleFactory.getInstance().create();
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private AllocationMonitor allocation = new AllocationMonitor();
     private Map<String, ResourceManager> resourceManagers;
@@ -83,22 +82,30 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             logDir = properties.getProperty(Logger.logDir);
             if (logDir != null) ThreadContext.put("logDir", logDir);
         }
+
         name = properties.getProperty("name");
 
+        setModuleFactory(ModuleFactory.getInstance());
+
+        Thread.currentThread().setContextClassLoader(pluginManager.getPluginClassLoader());
+    }
+
+    public void setModuleFactory(ModuleFactory factory) {
+        module = factory.create();
+
         InstanceFactory instanceFactory = new InstanceFactory();
+        module.bindInstance(ModuleFactory.class, factory);
         module.bindInstance(ResourceManager.class, this);
         module.bindInstance(NotificationCenter.class, notificationCenter);
         module.bindInstance(Interceptor.class, Interceptor.getInstance());
         module.bindInstance(InstanceFactory.class, instanceFactory);
         module.bindInstance(PluginManager.class, pluginManager);
-        injector = module.createInjector();
+        injector = module.build();
 
         getScripting().put("notificationCenter", notificationCenter);
         getScripting().put("interceptor", Interceptor.getInstance());
         getScripting().put("instanceFactory", instanceFactory);
         getScripting().put("pluginManager", pluginManager);
-
-        Thread.currentThread().setContextClassLoader(pluginManager.getPluginClassLoader());
     }
 
     public void addListener(ResourceManagerListener listener) {
@@ -284,31 +291,26 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         if (Provision.class.isAssignableFrom(clazz)) {
             return true;
         }
-        try {
-            injector.getInstance(clazz);
-            return true;
-        } catch (ConfigurationException ex) {
-            return false;
-        }
+        return injector.getInstance(clazz) != null;
     }
 
     public <T> T getInstance(Class<T> clazz) throws InstanceNotFoundException {
-        try {
-            return injector.getInstance(clazz);
-        } catch (ConfigurationException ex) {
+        T value = injector.getInstance(clazz);
+        if (value == null) {
             if (Provision.class.isAssignableFrom(clazz)) {
-                return (T) loadProvision((Class<Provision>) clazz);
+                value = (T) loadProvision((Class<Provision>) clazz);
             } else {
-                throw new InstanceNotFoundException("No instance for class " + clazz.getName(), ex);
+                throw new InstanceNotFoundException("No instance for class " + clazz.getName());
             }
         }
+        return value;
     }
 
     public <T> T bind(Class<T> cls, T resource) {
         Object o = module.getBoundInstance(cls);
         if (o != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + o);
         module.bindInstance(cls, resource);
-        injector = module.createInjector();
+        injector = module.build();
         T instance = getInstance(cls);
         listeners.forEach(l -> l.bound(cls, instance));
         return instance;
@@ -316,7 +318,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T rebind(Class<T> cls, T resource) {
         module.bindInstance(cls, resource);
-        injector = module.createInjector();
+        injector = module.build();
         T instance = getInstance(cls);
         listeners.forEach(l -> l.bound(cls, instance));
         return instance;
@@ -324,7 +326,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T unbind(Class<T> cls) {
         T instance = (T) module.unbindInstance(cls);
-        injector = module.createInjector();
+        injector = module.build();
         listeners.forEach(l -> l.unbound(cls, instance));
         return instance;
     }
@@ -344,7 +346,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         } else {
             module.bindInstance(cls, null);
         }
-        injector = module.createInjector();
+        injector = module.build();
 
         if (service != null) {
             listeners.forEach(l -> l.classBound(cls, service));
@@ -353,72 +355,23 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         }
     }
 
-    public <T> T bindNamedInstance(String name, Class<T> a, T b) {
-        T instance = module.getBoundNamedInstance(name);
+    public <T> T bindNamedInstance(Class<T> a, String name, T b) {
+        T instance = module.getBoundNamedInstance(a, name);
         if (instance != null) {
-            Class argType = null;
-            if (b != null) argType = b.getClass();
-            Method found = getMergeMethod(instance.getClass(), argType);
-
-            Object merged = null;
-            if (found != null) {
-                try {
-                    merged = found.invoke(instance, b);
-                } catch (Throwable e) {
-
-                }
-            } else if (b != null) {
-                found = getMergeMethod(b.getClass(), instance.getClass());
-                try {
-                    merged = found.invoke(instance, b);
-                } catch (Throwable e) {
-
-                }
-            }
-
-            if (merged != null) {
-                module.bindNamedInstance(name, a, b);
-                injector = module.createInjector();
-                listeners.forEach(l -> l.namedInstanceBound(name, a, b));
-            } else {
-                throw new AlreadyBoundException("Instance named " + name + " is already bound to " + instance);
-            }
+            throw new AlreadyBoundException("Instance named " + name + " is already bound to " + instance);
         } else {
-            module.bindNamedInstance(name, a, b);
-            injector = module.createInjector();
+            module.bindNamedInstance(a, name, b);
+            injector = module.build();
             listeners.forEach(l -> l.namedInstanceBound(name, a, b));
         }
         return instance;
     }
 
-    public <T> T rebindNamedInstance(String name, Class<T> cls, T resource) {
-        T instance = (T) module.bindNamedInstance(name, cls, resource);
-        injector = module.createInjector();
+    public <T> T rebindNamedInstance(Class<T> cls, String name, T resource) {
+        T instance = (T) module.bindNamedInstance(cls, name, resource);
+        injector = module.build();
         listeners.forEach(l -> l.namedInstanceBound(name, cls, instance));
         return instance;
-    }
-
-    private Method getMergeMethod(Class cls, Class argType) {
-        Method found = null;
-        while (found == null && !cls.equals(Object.class)) {
-            Method[] methods = cls.getDeclaredMethods();
-            for (Method m : methods) {
-                if (m.getAnnotation(Merge.class) != null && m.getParameterCount() == 1 && !m.getReturnType().equals(Void.class)) {
-                    if (argType == null) {
-                        found = m;
-                        break;
-                    } else {
-                        Class paramType = m.getParameterTypes()[0];
-                        if (paramType.isAssignableFrom(argType)) {
-                            found = m;
-                            break;
-                        }
-                    }
-                }
-            }
-            cls = cls.getSuperclass();
-        }
-        return found;
     }
 
     public <T> T inject(T obj) {
@@ -426,7 +379,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         if (obj instanceof InjectionListener) {
             ((InjectionListener) obj).preInject(this);
         }
-        injector.injectMembers(obj);
+        injector.inject(obj);
         if (obj instanceof InjectionListener) {
             ((InjectionListener) obj).injected(this);
         }
@@ -509,7 +462,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return Collections.unmodifiableList(list);
     }
 
-    public InjectionModule getModule() {
+    public Module getModule() {
         return module;
     }
 

@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationListener;
@@ -326,11 +327,11 @@ public class JaxRSServer extends CXFServer {
     private class InstanceResourceProvider extends PerRequestResourceProvider {
         private Provision provision;
         private Observer observer;
-        private InjectionModule module;
+        private Module module;
         private Map<String, Object> map;  // map is the Map<String, Object> in JaxRSServer's resources. It's used to record measurement
         private Map<Method, String> methods = new Hashtable<>();
 
-        public InstanceResourceProvider(Map<String, Object> map, Class resourceClass, InjectionModule module, Provision provision, Observer observer) {
+        public InstanceResourceProvider(Map<String, Object> map, Class resourceClass, Module module, Provision provision, Observer observer) {
             super(resourceClass);
             this.provision = provision;
             this.observer = observer;

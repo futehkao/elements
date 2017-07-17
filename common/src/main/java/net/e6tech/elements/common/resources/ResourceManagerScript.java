@@ -83,12 +83,12 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
 
     public <T> T bindNamedInstance(String name, Class<T> a, T b) {
         ResourceManager resourceManager =  getVariable("resourceManager");
-        return resourceManager.bindNamedInstance(name, a, b);
+        return resourceManager.bindNamedInstance(a, name, b);
     }
 
     public <T> T bindNamedInstance(String name, T b) {
         ResourceManager resourceManager =  getVariable("resourceManager");
-        return resourceManager.bindNamedInstance(name, (Class<T>) b.getClass(), b);
+        return resourceManager.bindNamedInstance((Class<T>) b.getClass(), name, b);
     }
 
     public <T> T registerBean(String name, Object instance) {

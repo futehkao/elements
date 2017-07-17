@@ -16,9 +16,9 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Module;
+import net.e6tech.elements.common.inject.Injector;
+import net.e6tech.elements.common.inject.Module;
+import net.e6tech.elements.common.inject.ModuleFactory;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.InitialContextFactory;
 import net.e6tech.elements.common.util.file.FileUtil;
@@ -118,12 +118,14 @@ public class PluginManager {
         }
 
         if (args != null && args.length > 0) {
-            InjectionModule module = new InjectionModule();
+            ModuleFactory factory = (resources != null) ? resources.getModule().getFactory() :
+                    resourceManager.getModule().getFactory();
+            Module module = factory.create();
             for (Object arg : args) {
                 if (arg instanceof  Binding) {
                     Binding binding = (Binding) arg;
                     if (binding.getName() != null) {
-                        module.bindNamedInstance(binding.getName(), binding.getBoundClass(), binding.get());
+                        module.bindNamedInstance(binding.getBoundClass(), binding.getName(), binding.get());
                     } else {
                         module.bindInstance(binding.getBoundClass(), binding.get());
                     }
@@ -133,12 +135,12 @@ public class PluginManager {
             }
 
             Injector injector = (resources != null) ?
-                    module.createInjector(resources.getModule(), resourceManager.getModule())
-                    : module.createInjector(resourceManager.getModule());
+                    module.build(resources.getModule(), resourceManager.getModule())
+                    : module.build(resourceManager.getModule());
             if (plugin instanceof InjectionListener) {
                 ((InjectionListener) plugin).preInject(resources);
             }
-            injector.injectMembers(plugin);
+            injector.inject(plugin);
             if (plugin instanceof InjectionListener) {
                 ((InjectionListener) plugin).injected(resources);
             }

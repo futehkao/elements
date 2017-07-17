@@ -16,11 +16,9 @@
 
 package net.e6tech.elements.common.resources;
 
-import com.google.inject.ConfigurationException;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import net.e6tech.elements.common.logging.TimedLogger;
+import net.e6tech.elements.common.inject.Injector;
+import net.e6tech.elements.common.inject.Module;
+import net.e6tech.elements.common.inject.ModuleFactory;
 
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -37,19 +35,21 @@ class ResourcesState {
         Aborted,
     }
 
-    private InjectionModule module;
+    private ModuleFactory factory;
+    private Module module;
     private Injector injector;
     private State state = State.Initial;
     private boolean dirty = false; // dirty if not open and bind is call.
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private LinkedList<Object> injectionList = new LinkedList<>();
 
-    ResourcesState() {
-        module = new InjectionModule();
+    ResourcesState(Resources resources) {
+        factory = resources.getResourceManager().getModule().getFactory();
+        module = factory.create();
     }
 
     protected void cleanup() {
-        module = new InjectionModule();
+        module = factory.create();
         resourceProviders.clear();
         state = State.Initial;
         dirty = false;
@@ -60,12 +60,8 @@ class ResourcesState {
         resourceProviders = null;
     }
 
-    public InjectionModule getModule() {
+    public Module getModule() {
         return module;
-    }
-
-    public void setModule(InjectionModule module) {
-        this.module = module;
     }
 
     public Injector getInjector() {
@@ -108,7 +104,7 @@ class ResourcesState {
         this.injectionList = injectionList;
     }
 
-    public void addModule(InjectionModule module) {
+    public void addModule(Module module) {
         this.module.add(module);
         setDirty(true);
     }
@@ -121,8 +117,8 @@ class ResourcesState {
 
     protected void createInjector(Resources resources) {
         injector = (resources.getResourceManager() != null) ?
-                getModule().createInjector(resources.getResourceManager().getModule())
-                : getModule().createInjector();
+                getModule().build(resources.getResourceManager().getModule())
+                : getModule().build();
 
         setDirty(false);
 
@@ -156,7 +152,7 @@ class ResourcesState {
         if (object instanceof InjectionListener) {
             ((InjectionListener) object).preInject(resources);
         }
-        injector.injectMembers(object);
+        injector.inject(object);
         if (object instanceof InjectionListener) {
             ((InjectionListener) object).injected(resources);
         }
@@ -217,14 +213,14 @@ class ResourcesState {
         setDirty(true);
     }
 
-    public <T> T bindNamedInstance(String name, Class<T> cls, T resource) {
-        Object o = getModule().getBoundNamedInstance(name);
+    public <T> T bindNamedInstance(Class<T> cls, String name, T resource) {
+        Object o = getModule().getBoundNamedInstance(cls, name);
         if (o != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + o);
-        return rebindNamedInstance(name, cls, resource);
+        return rebindNamedInstance(cls, name, resource);
     }
 
-    public <T> T rebindNamedInstance(String name, Class<T> cls, T resource) {
-        T instance = (T) getModule().bindNamedInstance(name, cls, resource);
+    public <T> T rebindNamedInstance(Class<T> cls, String name, T resource) {
+        T instance = (T) getModule().bindNamedInstance(cls, name, resource);
         setDirty(true);
         return instance;
     }
@@ -235,14 +231,9 @@ class ResourcesState {
 
         if (getInjector() == null) {
             if (resources.getResourceManager().hasInstance(cls)) return true;
-            return getModule().hasInstance(cls);
+            return getModule().getBoundInstance(cls) != null;
         } else {
-            try {
-                getInjector().getInstance(cls);
-                return true;
-            } catch (ConfigurationException ex) {
-                return false;
-            }
+            return getInjector().getInstance(cls) != null;
         }
     }
 
@@ -254,18 +245,18 @@ class ResourcesState {
         }
 
         if (state == State.Initial || isDirty()) {
-            if (getModule().hasInstance(cls)) return (T) getModule().getInstance(cls);
+            if (getModule().getBoundInstance(cls) != null) return (T) getModule().getBoundInstance(cls);
             if (resources.getResourceManager().hasInstance(cls)) return (T) resources.getResourceManager().getInstance(cls);
 
             // not found
             createInjector(resources);
         }
 
-        try {
-            return getInjector().getInstance(cls);
-        } catch (ConfigurationException ex) {
+        T instance = getInjector().getInstance(cls);
+        if (instance == null) {
             throw new InstanceNotFoundException("No instance for class " + cls.getName() +
-                    ". Use newInstance if you meant to create an instance", ex);
+                    ". Use newInstance if you meant to create an instance.");
         }
+        return instance;
     }
 }

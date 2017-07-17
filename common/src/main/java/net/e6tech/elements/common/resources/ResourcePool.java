@@ -50,9 +50,9 @@ public interface ResourcePool {
 
     void bindClass(Class cls, Class service);  // 1
 
-    <T> T bindNamedInstance(String name, Class<T> cls, T resources); // 1
+    <T> T bindNamedInstance(Class<T> cls, String name, T resources); // 1
 
-    <T> T rebindNamedInstance(String name, Class<T> cls, T resource);
+    <T> T rebindNamedInstance(Class<T> cls, String name, T resource);
 
     <T> T inject(T obj) ;
 
