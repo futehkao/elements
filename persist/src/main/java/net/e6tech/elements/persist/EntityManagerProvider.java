@@ -188,8 +188,9 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         }
 
         EntityManager em = emf.createEntityManager();
-        if (monitor)
+        if (monitor) {
             monitor(new EntityManagerMonitor(em, System.currentTimeMillis() + timeout, new Throwable()));
+        }
 
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
         emHandler.setLongTransaction(longQuery);
@@ -305,13 +306,18 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         try {
             EntityManager em = resources.getInstance(EntityManager.class);
             em.getTransaction().commit();
+            em.clear();
             em.close();
             // to break out the
             Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
             boolean monitor = config.map(c -> c.monitor()).orElse(monitorTransaction);
-            if (monitor) monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
+            if (monitor) {
+                monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
+            }
         } catch (InstanceNotFoundException ex) {
 
+        } finally {
+            cleanup(resources);
         }
     }
 
@@ -324,14 +330,22 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         try {
             EntityManager em = resources.getInstance(EntityManager.class);
             em.getTransaction().rollback();
+            em.clear();
             em.close();
             Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
             boolean monitor = config.map(c -> c.monitor()).orElse(monitorTransaction);
-            if (monitor) monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
-            monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
+            if (monitor) {
+                monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
+            }
         } catch (Throwable th) {
 
+        }  finally {
+            cleanup(resources);
         }
+    }
+
+    protected void cleanup(Resources resources) {
+
     }
 
     @Override

@@ -43,7 +43,7 @@ public class GenerateCVVTest {
         String header = headerAndKey[0];
         byte[] key = Hex.toBytes(headerAndKey[1]);
 
-        AKB akb = simulator.importKey(header, key);
+        AKB akb = simulator.asAKB(header, key);
         String[] fields = new String[5];
         fields[0] = "5D";
         fields[1] = "3";

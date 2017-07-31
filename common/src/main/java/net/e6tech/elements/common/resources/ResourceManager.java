@@ -32,6 +32,8 @@ import org.apache.logging.log4j.ThreadContext;
 import javax.script.ScriptException;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.*;
@@ -57,6 +59,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private BeanLifecycle beanLifecycle = new BeanLifecycle();
     private PluginManager pluginManager = new PluginManager(this);
     private List<ResourceManagerListener> listeners = new LinkedList<>();
+    private Map<Class, ClassInjectionInfo> injections = new Hashtable<>(); // a cache to be used by Resources.
 
     public ResourceManager() {
         this(new Properties());
@@ -446,11 +449,11 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return getBeans(null);
     }
 
-    public Map<String, Object> getBeans(Class cls) {
-        Map<String, Object> map = new HashMap<>();
+    public <T> Map<String, T> getBeans(Class<T> cls) {
+        Map<String, T> map = new HashMap<>();
         getScripting().getVariables().forEach((key, value)-> {
             if (cls == null || (value != null && cls.isAssignableFrom(value.getClass())))
-                map.put(key, value);
+                map.put(key, (T) value);
         });
         return Collections.unmodifiableMap(map);
     }
@@ -580,7 +583,15 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T extends Resources> T newResources() {
         Provision provision = getInstance(Provision.class);
-        return (T) newInstance(provision.getResourcesClass());
+        Class clazz = provision.getResourcesClass();
+        try {
+            Constructor constructor = clazz.getDeclaredConstructor(ResourceManager.class);
+            constructor.setAccessible(true);
+            T resources = (T) constructor.newInstance(this);
+            return inject(resources);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void shutdown() {
@@ -602,5 +613,23 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             rp.onShutdown();
             logger.info(rp.getDescription() + " is down.");
         });
+    }
+
+    Map<Class, ClassInjectionInfo> getInjections() {
+        return injections;
+    }
+
+    static class ClassInjectionInfo {
+        private static final List<Field> emptyFields = Collections.unmodifiableList(new ArrayList<>());
+        private List<Field> injectableFields = emptyFields;
+
+        void addInjectableField(Field field) {
+            if (injectableFields == emptyFields) injectableFields = new ArrayList<>();
+            injectableFields.add(field);
+        }
+
+        List<Field> getInjectableFields() {
+            return injectableFields;
+        }
     }
 }

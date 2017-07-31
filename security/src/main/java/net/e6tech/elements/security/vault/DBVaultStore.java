@@ -288,7 +288,10 @@ public class DBVaultStore implements VaultStore {
                     } finally {
                         if ( rs != null) try { rs.close(); } catch (SQLException ex) {}
                         if ( select != null) try { select.close(); } catch (SQLException ex) {}
-                        if ( connection != null) try { connection.close(); } catch (SQLException ex) {}
+                        if ( connection != null) try {
+                            connection.commit();
+                            connection.close();
+                        } catch (SQLException ex) {}
                     }
                     return ret;
                 });

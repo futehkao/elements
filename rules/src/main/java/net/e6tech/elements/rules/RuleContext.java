@@ -24,6 +24,7 @@ import org.codehaus.groovy.runtime.InvokerHelper;
 import static net.e6tech.elements.rules.ControlFlow.*;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -38,11 +39,12 @@ public class RuleContext implements GroovyObject {
     boolean completed = false;
     private transient Object delegate;
     private Map<String, Object> properties = new HashMap<>();
-    private Map<String, Rule> rulesHalted = new HashMap<>();
-    private Map<String, Rule> rulesExecuted = new HashMap<>();
+    private Map<String, Rule> rulesHalted = new LinkedHashMap<>();
+    private Map<String, Rule> rulesExecuted = new LinkedHashMap<>();
     private Rule ruleFailed;
     private String failedMessage;
     private Throwable exception;
+    private RuleSet ruleSet;
 
     public RuleContext() {
     }
@@ -126,6 +128,14 @@ public class RuleContext implements GroovyObject {
 
     public Throwable getException() {
         return exception;
+    }
+
+    public RuleSet getRuleSet() {
+        return ruleSet;
+    }
+
+    public void setRuleSet(RuleSet ruleSet) {
+        this.ruleSet = ruleSet;
     }
 
     protected ControlFlow verifyObject(Object object) {

@@ -100,6 +100,8 @@ public class JaxRSServer extends CXFServer {
 
     private boolean corsFilter = false;
 
+    private boolean measurement = false;
+
     @Inject(optional = true)
     private SecurityAnnotationEngine securityAnnotationEngine;
 
@@ -149,6 +151,14 @@ public class JaxRSServer extends CXFServer {
 
     public void setSecurityAnnotationEngine(SecurityAnnotationEngine securityAnnotationEngine) {
         this.securityAnnotationEngine = securityAnnotationEngine;
+    }
+
+    public boolean isMeasurement() {
+        return measurement;
+    }
+
+    public void setMeasurement(boolean measurement) {
+        this.measurement = measurement;
     }
 
     public void initialize(Resources res) {
@@ -620,7 +630,7 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
-    private static void computePerformance(Method method, Map<Method,String> methods,  Map<String, Object> map, long duration) {
+    private void computePerformance(Method method, Map<Method,String> methods,  Map<String, Object> map, long duration) {
         ObjectInstance instance = null;
         try {
             instance = getMeasurement(method, methods);
@@ -630,7 +640,7 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
-    private static void recordFailure(Method method, Map<Method,String> methods,  Map<String, Object> map) {
+    private void recordFailure(Method method, Map<Method,String> methods,  Map<String, Object> map) {
         ObjectInstance instance = null;
         try {
             instance = getMeasurement(method, methods);
@@ -640,7 +650,7 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
-    private static ObjectInstance getMeasurement(Method method, Map<Method, String> methods) throws JMException {
+    private ObjectInstance getMeasurement(Method method, Map<Method, String> methods) throws JMException {
         String methodName = methods.computeIfAbsent(method, m ->{
             StringBuilder builder = new StringBuilder();
             builder.append(m.getDeclaringClass().getTypeName());
@@ -656,7 +666,7 @@ public class JaxRSServer extends CXFServer {
         });
 
         String objectName = "net.e6tech:type=Restful,name=" + methodName;
-        return JMXService.registerIfAbsent(objectName, () -> new Measurement(methodName, "ms"));
+        return JMXService.registerIfAbsent(objectName, () -> new Measurement(methodName, "ms", measurement));
     }
 
     private static void checkInvocation(Method method, Object[] args) {

@@ -25,9 +25,7 @@ import net.e6tech.elements.common.resources.plugin.PluginManager;
 import javax.inject.Inject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -98,6 +96,18 @@ public class Provision {
 
     public <T> T getBean(Class<T> cls) {
         return resourceManager.getBean(cls);
+    }
+
+    public Map<String, Object> getBeans() {
+        return resourceManager.getBeans();
+    }
+
+    public <T> Map<String, T> getBeans(Class<T> cls) {
+        return resourceManager.getBeans(cls);
+    }
+
+    public List listBeans() {
+        return resourceManager.listBeans();
     }
 
     public <T> T getInstance(Class<T> cls) throws InstanceNotFoundException {

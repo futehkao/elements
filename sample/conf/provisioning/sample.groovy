@@ -19,7 +19,6 @@ import net.e6tech.elements.jobs.JobServer
 registerBean('jobServer', JobServer)
 exec "$__dir/../variables.groovy",
         "$__dir/../cluster.groovy",
-        "$__dir/../shell.groovy",
         "$__dir/../persist.groovy",
         "$__dir/../notification.groovy",
         "$__dir/../prototype/concrete.groovy",

@@ -246,7 +246,7 @@ public class Atom implements Map<String, Object> {
 
         // running object that implements Startable
         if (boundInstances.size() > 0) {
-            RunStartable runStartable = new RunStartable();
+            RunStartable runStartable = new RunStartable(resourceManager);
             runStartable.name = getName();
             for (String key : boundInstances.keySet()) {
                 Object value = boundInstances.get(key);
@@ -258,8 +258,8 @@ public class Atom implements Map<String, Object> {
         }
 
         // running object that implements OnLaunched
+        RunLaunched runLaunched = new RunLaunched(resourceManager.getInstance(Provision.class));
         if (boundInstances.size() > 0) {
-            RunLaunched runLaunched = new RunLaunched(resourceManager.getInstance(Provision.class));
             runLaunched.name = getName();
             for (String key : boundInstances.keySet()) {
                 Object value = boundInstances.get(key);
@@ -267,20 +267,29 @@ public class Atom implements Map<String, Object> {
                     runLaunched.add(key, (LaunchListener) value);
                 }
             }
+            /* runLaunched.add(getName(), (provision) -> {
+                cleanup();
+            }); */
             if (runLaunched.listeners.size() > 0) resourceManager.runLaunched(runLaunched);
         }
 
-        // this only applies when the Component is created outside of loading a script.
+        // this only applies when the Atom is created outside of loading a script.
         resourceManager.runAfterIfNotLoading();
 
         logger.info("Atom " + getName() + " loaded in " + (System.currentTimeMillis() - start) + "ms");
+
         return this;
     }
 
     // not using closure to minimize Component reference
-    class RunStartable implements Runnable {
+    static class RunStartable implements Runnable {
         Map<String, Startable> startables = new LinkedHashMap<>();
         String name;
+        ResourceManager resourceManager;
+
+        RunStartable(ResourceManager resourceManager) {
+            this.resourceManager = resourceManager;
+        }
 
         void add(String key, Startable listener) {
             startables.put(key, listener);
@@ -290,11 +299,11 @@ public class Atom implements Map<String, Object> {
             try {
                 for (String key : startables.keySet()) {
                     Startable startable = startables.get(key);
-                    if (!beanLifecycle.isBeanStarted(startable)) {
+                    if (!resourceManager.getBeanLifecycle().isBeanStarted(startable)) {
                         long s = System.currentTimeMillis();
                         startable.start();
-                        logger.info("Class " + startable.getClass() + " started in " + (System.currentTimeMillis() - s));
-                        beanLifecycle.fireBeanStarted(key, startable);
+                        logger.info("Class " + startable.getClass() + " started in " + (System.currentTimeMillis() - s) + "ms");
+                        resourceManager.getBeanLifecycle().fireBeanStarted(key, startable);
                     }
                 }
             } catch (RuntimeException ex) {
@@ -304,7 +313,7 @@ public class Atom implements Map<String, Object> {
         }
     }
 
-    class RunLaunched implements Runnable {
+    static class RunLaunched implements Runnable {
         Map<String, LaunchListener> listeners = new LinkedHashMap<>();
         String name;
         Provision provision;
@@ -321,9 +330,9 @@ public class Atom implements Map<String, Object> {
             try {
                 for (String key : listeners.keySet()) {
                     LaunchListener listener = listeners.get(key);
-                    if (!beanLifecycle.isBeanLaunched(listener)) {
+                    if (!provision.getResourceManager().getBeanLifecycle().isBeanLaunched(listener)) {
                         listener.launched(provision);
-                        beanLifecycle.fireBeanLaunched(key, listener);
+                        provision.getResourceManager().getBeanLifecycle().fireBeanLaunched(key, listener);
                     }
                 }
             } catch (RuntimeException ex) {
@@ -333,11 +342,15 @@ public class Atom implements Map<String, Object> {
         }
     }
 
-    public void discard() {
-        resources.discard();
+    protected void cleanup() {
+        resources.cleanup();
         configuration = null;
         configurables = null;
         boundInstances = null;
+        resources = null;
+        resourceManager = null;
+        beanLifecycle = null;
+        directives = null;
     }
 
     public Atom open(Consumer<Resources> consumer) {
@@ -545,8 +558,11 @@ public class Atom implements Map<String, Object> {
                 } else if (ResourceProvider.class.isAssignableFrom((Class) value)) {
                     Class cls = (Class) value;
                     try {
-                        if (resourceManager.getBean(cls) != null && !key.startsWith("_")) {
-                            instance = resourceManager.getBean(cls);
+                        if (resourceManager.getBean(key) != null && !key.startsWith("_")) {
+                            instance = resourceManager.getBean(key);
+                            if (!cls.isAssignableFrom(instance.getClass())) {
+                                throw new IllegalArgumentException("key=" + key + " has already been registered with ResourceManager.");
+                            }
                         } else {
                             instance = cls.newInstance();
                             resourceManager.addResourceProvider((ResourceProvider) instance);
@@ -561,8 +577,11 @@ public class Atom implements Map<String, Object> {
                     // creating an instance from Class
                     Class cls = (Class) value;
                     try {
-                        if (resourceManager.getBean(cls) != null && !key.startsWith("_")) {
-                            instance = resourceManager.getBean(cls);
+                        if (resourceManager.getBean(key) != null && !key.startsWith("_")) {
+                            instance = resourceManager.getBean(key);
+                            if (!cls.isAssignableFrom(instance.getClass())) {
+                                throw new IllegalArgumentException("key=" + key + " has already been registered with ResourceManager.");
+                            }
                         } else {
                             instance = cls.newInstance();
                         }

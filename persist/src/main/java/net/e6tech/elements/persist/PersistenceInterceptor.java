@@ -22,4 +22,5 @@ import net.e6tech.elements.common.resources.Resources;
  */
 public interface PersistenceInterceptor {
     void setResources(Resources resources);
+    void cleanup(Resources resources);
 }

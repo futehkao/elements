@@ -100,4 +100,9 @@ public class Configurator {
         if (map != null) configuration.putAll(map);
         return this;
     }
+
+    public Configurator clear() {
+        configuration.clear();
+        return this;
+    }
 }

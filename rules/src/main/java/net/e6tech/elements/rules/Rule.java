@@ -136,6 +136,10 @@ public class Rule {
         return measurement;
     }
 
+    protected void measurement(boolean b) {
+        measurement.setEnabled(b);
+    }
+
     public Rule rule(String name, Closure closure) {
         Rule rule = ruleSet.createRule(name, closure, true);
         addChild(rule);

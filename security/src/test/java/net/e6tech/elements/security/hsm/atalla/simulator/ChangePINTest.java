@@ -52,9 +52,9 @@ public class ChangePINTest {
     }
 
     public Message ibm3624(String decPlain, String kpePlain, String kpvPlain, String offset) throws Exception {
-        AKB decTab = simulator.importKey(decPlain);
-        AKB kpe = simulator.importKey(kpePlain);
-        AKB kpv3 = simulator.importKey(kpvPlain);
+        AKB decTab = simulator.asAKB(decPlain);
+        AKB kpe = simulator.asAKB(kpePlain);
+        AKB kpv3 = simulator.asAKB(kpvPlain);
 
         String partialPan = "123456123456";
         AnsiPinBlock oldPinBlock = new AnsiPinBlock(partialPan, "1234");

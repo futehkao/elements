@@ -63,6 +63,12 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
         this.resources = resources;
     }
 
+    public void cleanup(Resources resources) {
+        this.resources = null;
+        this.sessionFactory = null;
+        this.center = null;
+    }
+
     @Override
     public boolean onFlushDirty(
             Object entity,

@@ -22,6 +22,7 @@ import net.e6tech.elements.common.util.lambda.Each;
 
 import java.beans.*;
 import java.lang.annotation.Annotation;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Consumer;
@@ -41,9 +42,9 @@ public class Reflection {
 
     private static final PrivateSecurityManager securityManager = new PrivateSecurityManager();
 
-    private static Map<Method, PropertyDescriptor> methodPropertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
-    private static Map<String, PropertyDescriptor> propertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
-    private static Map<Class, Type[]> parametrizedTypes = Collections.synchronizedMap(new WeakHashMap<>());
+    private static Map<Method, WeakReference<PropertyDescriptor>> methodPropertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
+    private static Map<String, WeakReference<PropertyDescriptor>> propertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
+    private static Map<Class, WeakReference<Type[]>> parametrizedTypes = Collections.synchronizedMap(new WeakHashMap<>());
 
     // private static CacheFacade<Class, Type[]> parametrizedTypes = new CacheFacade<Class, Type[]>("parameterizedTypes") {};
 
@@ -51,7 +52,9 @@ public class Reflection {
 
     // should use weak hash map
     public static PropertyDescriptor propertyDescriptor(Method method) {
-        return methodPropertyDescriptors.computeIfAbsent(method, m -> {
+        WeakReference<PropertyDescriptor> ref = methodPropertyDescriptors.get(method);
+        PropertyDescriptor descriptor =  (ref == null) ? null : ref.get();
+        if (descriptor == null) {
             try {
                 String name = method.getName();
                 Parameter[] parameters = method.getParameters();
@@ -72,11 +75,13 @@ public class Reflection {
                 boolean lowerCase = true;
                 if (property.length() > 1 && Character.isUpperCase(property.charAt(1))) lowerCase = false;
                 if (lowerCase) property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
-                return new PropertyDescriptor(property, method.getDeclaringClass());
+                descriptor = new PropertyDescriptor(property, method.getDeclaringClass());
+                methodPropertyDescriptors.put(method, new WeakReference<PropertyDescriptor>(descriptor));
             } catch (IntrospectionException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }
+        return descriptor;
     }
 
     public static Class getCallingClass() {
@@ -200,16 +205,21 @@ public class Reflection {
                 cls = object.getClass();
             }
 
-            PropertyDescriptor desc = propertyDescriptors.computeIfAbsent(object.getClass().getName() + "." + property, fullName -> {
+            String key = object.getClass().getName() + "." + property;
+            WeakReference<PropertyDescriptor> ref = propertyDescriptors.get(key);
+            PropertyDescriptor descriptor =  (ref == null) ? null : ref.get();
+            if (descriptor == null) {
                 try {
-                    return new PropertyDescriptor(property, object.getClass(),
+                    descriptor = new PropertyDescriptor(property, object.getClass(),
                             "is" + TextSubstitution.capitalize(property), null);
+                    propertyDescriptors.put(key, new WeakReference<PropertyDescriptor>(descriptor));
                 } catch (IntrospectionException e) {
                     throw new RuntimeException(object.getClass().getName() + "." + property, e);
                 }
-            });
-            if (desc.getReadMethod() == null) return null;
-            return (V) desc.getReadMethod().invoke(object);
+            }
+
+            if (descriptor.getReadMethod() == null) return null;
+            return (V) descriptor.getReadMethod().invoke(object);
         } catch (Throwable e) {
             throw new RuntimeException(object.getClass().getName() + "." + property, e);
         }
@@ -251,29 +261,35 @@ public class Reflection {
     }
 
     public static Class getParametrizedType(Class clazz, int index) {
+        WeakReference<Type[]> ref = parametrizedTypes.get(clazz);
+        Type[] types =  (ref == null) ? null : ref.get();
 
-        Type[] pTypes = parametrizedTypes.computeIfAbsent(clazz, cls -> {
+        if (types == null) {
+            Class cls = clazz;
             while (!cls.equals(Object.class)) {
                 try {
                     Type genericSuper = cls.getGenericSuperclass();
                     if (genericSuper instanceof ParameterizedType) {
                         ParameterizedType parametrizedType = (ParameterizedType) genericSuper;
-                        return parametrizedType.getActualTypeArguments();
+                        types = parametrizedType.getActualTypeArguments();
+                        break;
                     }
                 } catch (Throwable th) {
                     th.printStackTrace();
                 }
                 cls = cls.getSuperclass();
             }
-            return null;
-        });
+            if (types != null) {
+                parametrizedTypes.put(clazz, new WeakReference<Type[]>(types));
+            }
+        }
 
-        if (pTypes == null)
+        if (types == null)
             throw new IllegalArgumentException("No parametrized types found");
-        if (pTypes.length <= index)
+        if (types.length <= index)
             throw new IllegalArgumentException("No parametrized type at index=" + index);
-        if (pTypes[index] instanceof Class) {
-            return (Class) pTypes[index];
+        if (types[index] instanceof Class) {
+            return (Class) types[index];
         }
         return null;
 

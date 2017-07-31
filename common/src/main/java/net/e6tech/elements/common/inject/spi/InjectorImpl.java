@@ -20,6 +20,7 @@ import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Injector;
 
 import javax.inject.Named;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -30,7 +31,7 @@ import java.util.*;
  */
 public class InjectorImpl implements Injector {
 
-    private static Map<Class, List<InjectionPoint>> injectionPoints = Collections.synchronizedMap(new WeakHashMap<>());
+    private static Map<Class, WeakReference<List<InjectionPoint>>> injectionPoints = Collections.synchronizedMap(new WeakHashMap<>());
 
     private ModuleImpl module;
     private InjectorImpl parentInjector;
@@ -111,8 +112,14 @@ public class InjectorImpl implements Injector {
 
     public void inject(Object instance) {
         if (instance == null) return;
-        List<InjectionPoint> points = injectionPoints.computeIfAbsent(instance.getClass(),
-                instanceClass -> parseInjectionPoints(instanceClass));
+        Class instanceClass = instance.getClass();
+        WeakReference<List<InjectionPoint>> ref = injectionPoints.get(instanceClass);
+
+        List<InjectionPoint> points = (ref == null) ? null : ref.get();
+        if (points == null) {
+            points = parseInjectionPoints(instanceClass);
+            injectionPoints.put(instanceClass, new WeakReference<List<InjectionPoint>>(points));
+        }
         points.forEach(pt ->{
             boolean injected = inject(pt, instance);
             if (!injected) {

@@ -71,12 +71,20 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
     public void commit() {
         if (resources == null || !resources.isOpen()) throw new IllegalStateException("Resources not opened");
         resources.commit();
-        resources = null;
+        cleanup();
     }
 
     public void abort() {
         if (resources == null || !resources.isOpen()) return;
         resources.abort();
+        cleanup();
+    }
+
+    protected void cleanup() {
+        resourceProviders.clear();
+        resources = null;
+        configurator.clear();
+        preOpen = null;
     }
 
     public void submit(Transactional.RunnableWithException work) {

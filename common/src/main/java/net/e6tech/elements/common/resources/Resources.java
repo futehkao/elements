@@ -19,12 +19,11 @@ import com.google.inject.Inject;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
-import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
+import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.util.ExceptionMapper;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -43,14 +42,11 @@ import java.util.function.Supplier;
  * Created by futeh.
  */
 @BindClass(Resources.class)
-public class Resources implements AutoCloseable, ResourcePool, InjectionListener {
+public class Resources implements AutoCloseable, ResourcePool {
 
     private static Logger logger = Logger.getLogger(Resources.class);
-    private static final Map<Class, ClassInjectionInfo> injections = new Hashtable<>();
-    private static final Map<Class<? extends Annotation>, Annotation> emptyAnnotations = Collections.unmodifiableMap(new HashMap<>());
     private static final List<ResourceProvider> emptyResourceProviders = Collections.unmodifiableList(new ArrayList<>());
 
-    @Inject
     private ResourceManager resourceManager;
 
     @Inject(optional = true)
@@ -64,15 +60,10 @@ public class Resources implements AutoCloseable, ResourcePool, InjectionListener
     Object lastResult;
     boolean submitting = false;
 
-    protected Resources() {
-    }
-
-    @Override
-    public void injected(ResourcePool r) {
-        if (state == null) {
-            state = new ResourcesState(this);
-            getModule().bindInstance(getClass(), this);
-        }
+    protected Resources(ResourceManager resourceManager) {
+        this.resourceManager = resourceManager;
+        state = new ResourcesState(this);
+        getModule().bindInstance(getClass(), this);
     }
 
     void setPreOpen(Consumer<? extends Resources> preOpen) {
@@ -82,7 +73,6 @@ public class Resources implements AutoCloseable, ResourcePool, InjectionListener
     public synchronized boolean isCommitted() {
         return state.getState() == ResourcesState.State.Committed;
     }
-
 
     public synchronized boolean isOpen() {
         return state.getState() == ResourcesState.State.Open;
@@ -297,11 +287,10 @@ public class Resources implements AutoCloseable, ResourcePool, InjectionListener
         seen.add(System.identityHashCode(object));
         // seen.add(object);  object may not be initialized fully to compute hashCode.
 
-        ClassInjectionInfo info;
-        info = injections.get(object.getClass());
+        ResourceManager.ClassInjectionInfo info = resourceManager.getInjections().get(object.getClass());
 
         if (info == null) {
-            info = new ClassInjectionInfo();
+            info = new ResourceManager.ClassInjectionInfo();
             Class cls = object.getClass();
             Package p = cls.getPackage();
             if (p == null
@@ -318,7 +307,7 @@ public class Resources implements AutoCloseable, ResourcePool, InjectionListener
                     cls = cls.getSuperclass();
                 }
             }
-            injections.put(object.getClass(), info);
+            resourceManager.getInjections().put(object.getClass(), info);
         }
 
         for (Field f : info.getInjectableFields()) {
@@ -527,12 +516,7 @@ public class Resources implements AutoCloseable, ResourcePool, InjectionListener
         }
     }
 
-    synchronized void discard() {
-        resourceManager = null;
-        state.discard();
-    }
-
-    private void cleanup() {
+    protected void cleanup() {
         try {
             for (ResourceProvider resourceProvider : state.getResourceProviders()) {
                 resourceProvider.onClosed(this);
@@ -544,8 +528,12 @@ public class Resources implements AutoCloseable, ResourcePool, InjectionListener
             // ignore everything.
         }
         state.cleanup();
-        getModule().bindInstance(Resources.class, this);
+        configurator.clear();
+        externalResourceProviders = null;
+        unitOfWork = null;
         lastResult = null;
+        submitting = false;
+        preOpen = null;
     }
 
     public <T extends Provision> T provision() {
@@ -572,20 +560,6 @@ public class Resources implements AutoCloseable, ResourcePool, InjectionListener
             } else {
                 return function.apply(res);
             }
-        }
-    }
-
-    private static class ClassInjectionInfo {
-        private static final List<Field> emptyFields = Collections.unmodifiableList(new ArrayList<>());
-        private List<Field> injectableFields = emptyFields;
-
-        void addInjectableField(Field field) {
-            if (injectableFields == emptyFields) injectableFields = new ArrayList<>();
-            injectableFields.add(field);
-        }
-
-        List<Field> getInjectableFields() {
-            return injectableFields;
         }
     }
 }

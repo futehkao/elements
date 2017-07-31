@@ -16,6 +16,8 @@ limitations under the License.
 package net.e6tech.elements.common;
 
 import net.e6tech.elements.common.interceptor.Interceptor;
+import net.e6tech.elements.common.resources.InjectionListener;
+import net.e6tech.elements.common.resources.ResourcePool;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -24,13 +26,14 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Created by futeh.
  */
 public class ScratchPad {
     @Test
     public void scratch() throws Exception {
-        Boolean b = Boolean.class.newInstance();
         String settlementDate = "20150911";
         LocalDate localDate = LocalDate.parse(settlementDate, DateTimeFormatter.BASIC_ISO_DATE);
         ZoneId id = ZoneId.of("UTC").normalized();
@@ -38,6 +41,23 @@ public class ScratchPad {
         System.out.println(time);
         System.out.println(time.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
         System.out.println(time.toEpochSecond() * 1000);
+
+        Class l1 = lambda();
+
+        Class l2 = lambda2();
+
+        assertTrue(!l1.equals(l2));
+
+    }
+
+    Class lambda() {
+        InjectionListener l = (r) -> {};
+        return l.getClass();
+    }
+
+    Class lambda2() {
+        InjectionListener l = (r) -> {};
+        return l.getClass();
     }
 
     @Test

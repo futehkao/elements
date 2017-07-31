@@ -20,6 +20,9 @@ import net.e6tech.elements.common.resources.BindClass;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Created by futeh.
@@ -30,11 +33,15 @@ public interface Module {
         Class c = cls;
         Class prev = cls;
         Class bindClass = cls;
+        List<Type> list = new ArrayList<>();
+        list.add(cls);
+        boolean found = false;
         while (c != null && !c.equals(Object.class)) {
             BindClass bind = (BindClass) c.getAnnotation(BindClass.class);
             if (bind != null) {
                 if (bind.generics()) {
-                    return new Type[] {cls, prev.getGenericSuperclass()};
+                    found = true;
+                    list.add(prev.getGenericSuperclass());
                 } else {
                     bindClass = bind.value();
                 }
@@ -44,16 +51,25 @@ public interface Module {
             c = c.getSuperclass();
         }
 
-        if (bindClass.getGenericSuperclass() instanceof ParameterizedType
-                && bindClass.getTypeParameters().length == 0
-                && bindClass.isAnonymousClass()) {
-            // this is for anonymous class
-            // for example, new CacheFacade<String, SecretKey>(KeyServer, "clientKeys") {}
-            return new Type[]{cls, bindClass.getGenericSuperclass()};
-        } else {
-            if (bindClass.equals(cls)) return new Type[] {cls};
-            return new Type[] {cls, bindClass};
+        if (!found) {
+            if (bindClass.getGenericSuperclass() instanceof ParameterizedType
+                    && bindClass.getTypeParameters().length == 0
+                    && bindClass.isAnonymousClass()) {
+                // this is for anonymous class
+                // for example, new CacheFacade<String, SecretKey>(KeyServer, "clientKeys") {}
+                list.add(bindClass.getGenericSuperclass());
+            } else {
+                if (!bindClass.equals(cls)) list.add(bindClass);
+            }
         }
+
+        Iterator<Type> iterator = list.iterator();
+        while (iterator.hasNext()) {
+            Type type = iterator.next();
+            if (type instanceof Class && ((Class) type).isSynthetic()) iterator.remove();
+        }
+
+        return list.toArray(new Type[list.size()]);
     }
 
     public ModuleFactory getFactory();

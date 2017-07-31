@@ -31,6 +31,10 @@ abstract public class RuleSetScript extends AbstractScriptBase<RuleSet> {
         return getShell().createRule(name, closure, false);
     }
 
+    public void measurement(boolean b) {
+        getShell().measurement(b);
+    }
+
     // called by Groovy config scripts
     public void root(String ruleName, Closure<String> closure) {
         // runAfter because we need to have all of the rules loaded.
@@ -38,6 +42,7 @@ abstract public class RuleSetScript extends AbstractScriptBase<RuleSet> {
             Configuration configuration = new Configuration(getShell().getProperties());
 
             Rule root = new Rule();
+            root.measurement(getShell().measurement());
             // switch closure's delegate to root
             Object delegate = closure.getDelegate();
             closure.setDelegate(root);

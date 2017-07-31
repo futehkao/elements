@@ -37,6 +37,7 @@ public class RuleSet extends AbstractScriptShell {
     private Rule root;  // this is only used during load and then set to null
     private Map<String, Rule> rootSet = new LinkedHashMap<>();
     private Map<String, Map<String, Rule>> rootRules = new LinkedHashMap<>();
+    private boolean measurement = false;
 
     public RuleSet(Properties properties) {
         super(properties);
@@ -84,6 +85,7 @@ public class RuleSet extends AbstractScriptShell {
         Rule rule = new Rule();
         rule.setRuleSet(this);
         rule.setName(name);
+        rule.measurement(measurement);
         closure.setDelegate(rule);
         closure.setResolveStrategy(Closure.DELEGATE_FIRST);
         closure.run();
@@ -126,7 +128,21 @@ public class RuleSet extends AbstractScriptShell {
             ruleSet = "default";
         }
         if (rootSet.get(ruleSet) == null) throw new RuntimeException("ruleSet " + ruleSet + " not found");
-        rootSet.get(ruleSet).run(context);
+        try {
+            context.setRuleSet(this);
+            rootSet.get(ruleSet).run(context);
+        } finally {
+            context.setRuleSet(null);
+        }
+    }
+
+    public RuleSet measurement(boolean b) {
+        measurement = b;
+        return this;
+    }
+
+    public boolean measurement() {
+       return measurement;
     }
 
     public String log() {

@@ -42,15 +42,21 @@ public class Measurement implements Serializable, MeasurementMXBean {
     private long lastUpdate = 0l;
     private long firstUpdate = 0l;
     private boolean dirty = false;
+    private boolean enabled = true;
     protected transient LinkedList<DataPoint> sortedByTime = new LinkedList<>(); // sorted by timestamp
     protected transient LinkedList<Long> failures = new LinkedList<>();
     protected transient BinarySearchList sortedByValue = new BinarySearchList(); // sorted by value
 
     public Measurement() {}
 
-    public Measurement(String name, String unit) {
+    public Measurement(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public Measurement(String name, String unit, boolean enabled) {
         this.name = name;
         this.unit = unit;
+        this.enabled = enabled;
     }
 
     public String getName() {
@@ -112,7 +118,16 @@ public class Measurement implements Serializable, MeasurementMXBean {
         return failures.size();
     }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
     public synchronized void fail() {
+        if (!isEnabled()) return;
         long now = System.currentTimeMillis();
         if (firstUpdate == 0L) firstUpdate = System.currentTimeMillis();
         failures.add(now);
@@ -125,16 +140,17 @@ public class Measurement implements Serializable, MeasurementMXBean {
      * @param value a measurement
      */
     public synchronized void add(double value) {
+        if (!isEnabled()) return;
         total ++;
         long now = System.currentTimeMillis();
         if (firstUpdate == 0L) {
             firstUpdate = System.currentTimeMillis();
         }
         add(new DataPoint(now, value));
-        if (System.currentTimeMillis() - firstUpdate > windowSize) recalculate();
     }
 
     public Measurement append(double value) {
+        if (!isEnabled()) return this;
         add(value);
         return this;
     }
@@ -200,12 +216,14 @@ public class Measurement implements Serializable, MeasurementMXBean {
     }
 
     protected void add(DataPoint dp) {
+        if (!isEnabled()) return;
         sortedByTime.add(dp);
         sortedByValue.add(dp);
         double value = dp.getValue();
         sum += value;
         sum_x_2 += (value * value);
         dirty = true;
+        if (System.currentTimeMillis() - firstUpdate > windowSize) recalculate();
     }
 
     protected DataPoint remove() {

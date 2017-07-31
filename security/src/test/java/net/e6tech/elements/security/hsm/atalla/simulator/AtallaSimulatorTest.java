@@ -34,7 +34,7 @@ public class AtallaSimulatorTest {
 
     @Test
     public void kek() throws Exception {
-        AKB akb = simulator.importKey(simulator.KEK_KPE);
+        AKB akb = simulator.asAKB(simulator.KEK_KPE);
         byte[] recovered = simulator.decryptKey(akb);
         String plainKey = simulator.KEK_KPE.split(",")[1];
         assertTrue(Hex.toString(Hex.toBytes(plainKey)).equals(Hex.toString(recovered)));
@@ -42,7 +42,7 @@ public class AtallaSimulatorTest {
 
     @Test
     public void kcvv() throws Exception {
-        AKB akb = simulator.importKey(simulator.KCVV);
+        AKB akb = simulator.asAKB(simulator.KCVV);
         byte[] recovered = simulator.decryptKey(akb);
         String plainKey = simulator.KCVV.split(",")[1];
         assertTrue(Hex.toString(Hex.toBytes(plainKey)).equals(Hex.toString(recovered)));
@@ -52,7 +52,7 @@ public class AtallaSimulatorTest {
     @Test
     public void dec() throws Exception {
         String decTab = "8351296477461538";
-        AKB akb = simulator.importKey("1nCNE000," + decTab);
+        AKB akb = simulator.asAKB("1nCNE000," + decTab);
         String recovered = Hex.toString(simulator.decryptKey(akb));
         assertTrue(recovered.equals(decTab));
         assertTrue(akb.getKeyBlock().equals("1nCNE000,2162CD77E8293FE4DC328EAB53BC3A2B0A3AFE1B299F07D2,111746BEB588C65B"));

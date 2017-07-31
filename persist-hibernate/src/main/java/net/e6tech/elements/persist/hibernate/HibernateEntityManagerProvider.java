@@ -122,4 +122,15 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         }
     }
 
+    @Override
+    public void cleanup(Resources resources) {
+        super.cleanup(resources);
+        EntityManager em = resources.getInstance(EntityManager.class);
+        SessionImpl session = (SessionImpl) em.getDelegate();
+        if (session.getInterceptor() instanceof PersistenceInterceptor) {
+            PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
+            interceptor.cleanup(resources);
+        }
+    }
+
 }

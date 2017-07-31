@@ -103,16 +103,16 @@ public class AtallaSimulator {
     public AKB getKey(String keyType) throws GeneralSecurityException {
         String key = keys.get(keyType);
         if (key == null) return null;
-        return importKey(key);
+        return asAKB(key);
     }
 
-    public AKB importKey(String headerAndKey) throws GeneralSecurityException {
+    public AKB asAKB(String headerAndKey) throws GeneralSecurityException {
         String[] fields = headerAndKey.split(",");
         AKB akb = new AKB(fields[0].trim(), masterKey, Hex.toBytes(fields[1]));
         return akb;
     }
 
-    public AKB importKey(String header, byte[] key) throws GeneralSecurityException {
+    public AKB asAKB(String header, byte[] key) throws GeneralSecurityException {
         AKB akb = new AKB(header, masterKey, key);
         return akb;
     }

@@ -52,12 +52,9 @@ class ResourcesState {
         module = factory.create();
         resourceProviders.clear();
         state = State.Initial;
+        injectionList.clear();
+        injector = null;
         dirty = false;
-    }
-
-    void discard() {
-        module = null;
-        resourceProviders = null;
     }
 
     public Module getModule() {
