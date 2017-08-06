@@ -38,7 +38,7 @@ public class HellowWorldTest extends BaseCase {
 
     @BeforeEach
     public void setup() {
-        proxy = new RestfulProxy("http://localhost:9001/restful");
+        proxy = new RestfulProxy("http://localhost:19001/restful");
         proxy.setSkipCertCheck(true);
         proxy.setPrinter(new PrintWriter(System.out, true));
         helloWorld = proxy.newProxy(HelloWorld.class);

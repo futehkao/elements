@@ -27,12 +27,17 @@ import java.util.*;
  */
 public class Converter {
 
+    private Converter() {
+    }
+
     public static List convert(TabularData table) {
         List rows = new ArrayList<>();
         Set<List<?>> keys = (Set<List<?>>) table.keySet();
         for (List<?> key : keys) {
             Map<String, Object> row = convert(table.get(key.toArray()));
-            if (row.size() == 2 && row.containsKey("key") && row.get("value") instanceof Map) {
+            if (row == null) {
+                // do nothing
+            } else if (row.size() == 2 && row.containsKey("key") && row.get("value") instanceof Map) {
                 LinkedHashMap m = new LinkedHashMap();
                 m.put("key", row.get("key"));
                 m.putAll((Map)row.get("value"));
@@ -45,7 +50,8 @@ public class Converter {
     }
 
     public static Map<String, Object> convert(CompositeData composite) {
-        if (composite == null) return null;
+        if (composite == null)
+            return null;
         Map<String, Object> map = new LinkedHashMap<>();
         CompositeType type = composite.getCompositeType();
         Set<String> keys = type.keySet();
@@ -58,8 +64,10 @@ public class Converter {
         return map;
     }
 
-    public static Object convert(Object object) {
-        if (object == null) return null;
+    public static Object convert(Object obj) {
+        if (obj == null)
+            return null;
+        Object object = obj;
         if (object.getClass().isArray()) {
             List list = new LinkedList();
             int length = Array.getLength(object);
@@ -68,8 +76,10 @@ public class Converter {
                 list.add(convert(item));
             }
             object = list.toArray();
-        } else if (object instanceof TabularData) return convert((TabularData) object);
-        else if (object instanceof CompositeData) return convert((CompositeData) object);
+        } else if (object instanceof TabularData)
+            return convert((TabularData) object);
+        else if (object instanceof CompositeData)
+            return convert((CompositeData) object);
         return object;
     }
 }

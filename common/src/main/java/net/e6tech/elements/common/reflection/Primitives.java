@@ -23,11 +23,12 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S00122", "squid:MethodCyclomaticComplexity", "squid:S1700"})
 public class Primitives {
-    public static Map<String, Class> primitives;
+    private static final  Map<String, Class> primitives;
 
     static {
-        primitives =new HashMap<>();
+        primitives = new HashMap<>();
         primitives.put(Boolean.TYPE.getName(),Boolean.TYPE);
         primitives.put(Byte.TYPE.getName(),Byte.TYPE);
         primitives.put(Character.TYPE.getName(),Character.TYPE);
@@ -36,6 +37,9 @@ public class Primitives {
         primitives.put(Integer.TYPE.getName(),Integer.TYPE);
         primitives.put(Long.TYPE.getName(),Long.TYPE);
         primitives.put(Short.TYPE.getName(),Short.TYPE);
+    }
+
+    private Primitives() {
     }
 
     public static boolean isPrimitive(String name) {
@@ -57,7 +61,7 @@ public class Primitives {
             else if (cls == Character.TYPE) return (char) 0;
             else if (cls == Double.TYPE) return 0d;
             else if (cls == Float.TYPE) return 0f;
-            else if (cls == Integer.TYPE) return (int) 0;
+            else if (cls == Integer.TYPE) return 0;
             else if (cls == Long.TYPE) return 0L;
             else if (cls == Short.TYPE) return (short) 0;
         } else {
@@ -66,7 +70,7 @@ public class Primitives {
             else if (cls == Character.class) return (char) 0;
             else if (cls == Double.class) return 0d;
             else if (cls == Float.class) return 0f;
-            else if (cls == Integer.class) return (int) 0;
+            else if (cls == Integer.class) return 0;
             else if (cls == Long.class) return 0L;
             else if (cls == Short.class) return (short) 0;
         }

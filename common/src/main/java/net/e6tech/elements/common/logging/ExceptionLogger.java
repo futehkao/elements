@@ -18,6 +18,7 @@ package net.e6tech.elements.common.logging;
 /**
  * Created by futeh.
  */
+@FunctionalInterface
 public interface ExceptionLogger {
     Logger exceptionLogger(LogLevel level);
 }

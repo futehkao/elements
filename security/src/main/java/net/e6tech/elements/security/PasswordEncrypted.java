@@ -55,8 +55,10 @@ public class PasswordEncrypted {
             iv = DatatypeConverter.parseHexBinary(components[1]);
             encrypted = DatatypeConverter.parseHexBinary(components[2]);
         }
-        if (components.length > 3) keyAlias = components[3];
-        if (components.length > 4) keyVersion = components[4];
+        if (components.length > 3)
+            keyAlias = components[3];
+        if (components.length > 4)
+            keyVersion = components[4];
     }
 
     public byte[] getIv() {
@@ -95,7 +97,7 @@ public class PasswordEncrypted {
         return DatatypeConverter.printHexBinary(salt);
     }
 
-    public String getBase64Encrypted(boolean base64) {
+    public String getBase64Encrypted() {
         return Base64.getEncoder().encodeToString(encrypted);
     }
 

@@ -17,7 +17,6 @@
 package net.e6tech.elements.common.subscribe;
 
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.util.concurrent.ThreadPool;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -93,7 +92,4 @@ public class DefaultBroadcast implements Broadcast {
         publish(cls.getName(), object);
     }
 
-    private ExecutorService getThreadPool() {
-        return ThreadPool.cachedThreadPool("Broadcast");
-    }
 }

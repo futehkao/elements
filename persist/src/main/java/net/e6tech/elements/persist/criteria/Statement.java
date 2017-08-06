@@ -32,9 +32,9 @@ import java.util.function.Consumer;
  */
 public class Statement<T> {
     Where<T> where;
-    From<?, T> from;
+    From<T, T> from;
 
-    public Statement(Where where, From<?, T> from) {
+    public Statement(Where where, From<T, T> from) {
         this.where = where;
         this.from = from;
     }
@@ -51,19 +51,19 @@ public class Statement<T> {
         return where.getTemplate();
     }
 
-    public From<?, T> getFrom() {
+    public From<T, T> getFrom() {
         return from;
     }
 
     public void or(Runnable runnable) {
-        Where where = new Where(this.where, this.where.getPath());
-        Interceptor.setInterceptorHandler(where.getTemplate(), where);
-        where.predicates = new ArrayList<>();
+        Where wh = new Where(this.where, this.where.getPath());
+        Interceptor.setInterceptorHandler(wh.getTemplate(), wh);
+        wh.predicates = new ArrayList<>();
         runnable.run();
-        Interceptor.setInterceptorHandler(where.getTemplate(), this.where);
+        Interceptor.setInterceptorHandler(wh.getTemplate(), this.where);
 
-        List<Predicate> predicates = where.getPredicates();
-        if (predicates.size() > 0) {
+        List<Predicate> predicates = wh.getPredicates();
+        if (!predicates.isEmpty()) {
             CriteriaBuilder builder = this.where.getBuilder();
             Predicate predicate = builder.or(predicates.toArray(new Predicate[predicates.size()]));
             this.where.getPredicates().add(predicate);
@@ -84,11 +84,10 @@ public class Statement<T> {
 
     public T in(List list) {
         Class<T> entityClass = Interceptor.getTargetClass(where.getTemplate());
-        T t = applyGetter(entityClass, path ->  {
+        return applyGetter(entityClass, path ->  {
             Predicate predicate = Comparison.in.compare(getBuilder(), path, list);
             where.getPredicates().add(predicate);
         });
-        return t;
     }
 
     public T lessThan() {
@@ -109,21 +108,18 @@ public class Statement<T> {
 
     protected T compare(T template, Comparison comparison) {
         Class<T> entityClass = Interceptor.getTargetClass(template);
-        T t = applySetter(entityClass, (path, args) ->  {
+        return applySetter(entityClass, (path, args) ->  {
             Predicate predicate = comparison.compare(getBuilder(), path, args[0]);
             where.getPredicates().add(predicate);
         });
-        return t;
     }
 
     protected  <R> R applySetter(Class<R> entityClass, BiConsumer<Path, Object[]> consumer) {
-        R r = Handler.interceptor.newInstance(entityClass, setter(consumer));
-        return r;
+        return Handler.interceptor.newInstance(entityClass, setter(consumer));
     }
 
     protected <R> R applyGetter(Class<R> entityClass,  Consumer<Path> consumer) {
-        R r = Handler.interceptor.newInstance(entityClass, getter(consumer));
-        return r;
+        return Handler.interceptor.newInstance(entityClass, getter(consumer));
     }
 
     protected InterceptorHandler getter(Consumer<Path> consumer) {

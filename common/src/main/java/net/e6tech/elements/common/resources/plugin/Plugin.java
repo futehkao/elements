@@ -19,6 +19,7 @@ package net.e6tech.elements.common.resources.plugin;
 /**
  * Created by futeh.
  */
+@FunctionalInterface
 public interface Plugin {
     void initialize();
 }

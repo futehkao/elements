@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.common.reflection;
 
+import net.e6tech.elements.common.logging.Logger;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -42,6 +44,8 @@ public class MultiProxy {
 
     Map<Class, Map<String, InvocationHandler>> handlers = new HashMap<>();
 
+    private MultiProxy() {}
+
     /**
      * Create a MultiProxy object to annotate InvocationHandlers.
      *
@@ -55,15 +59,15 @@ public class MultiProxy {
         return proxy.configure(cls, handler, methods);
     }
 
-    private MultiProxy() {}
-
     public MultiProxy configure(Class cls, InvocationHandler handler, String... methods) {
-        Map<String, InvocationHandler> methodMap = handlers.computeIfAbsent(cls, (key) -> new HashMap<>());
+        Map<String, InvocationHandler> methodMap = handlers.computeIfAbsent(cls, key -> new HashMap<>());
         if (methods != null) {
-            for (String method : methods) methodMap.put(method, handler);
+            for (String method : methods)
+                methodMap.put(method, handler);
         } else {
             if (cls.isInterface()) {
-                for (Method method : cls.getMethods()) methodMap.put(method.getName(), handler);
+                for (Method method : cls.getMethods())
+                    methodMap.put(method.getName(), handler);
             }
         }
         return this;
@@ -78,10 +82,8 @@ public class MultiProxy {
                 break;
             }
         }
-        if (!found) {
-            if (handlers.get(target.getClass()) == null) {
-                throw new IllegalArgumentException("Target class " + target.getClass() + " has no configuration entries");
-            }
+        if (!found && handlers.get(target.getClass()) == null) {
+            throw new IllegalArgumentException("Target clas " + target.getClass() + " has no configuration entries");
         }
 
         MultiInvocationHandler delegateHandler  = new MultiInvocationHandler();
@@ -98,6 +100,7 @@ public class MultiProxy {
         }
 
         @Override
+        @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity"})
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             Object ret = null;
 
@@ -109,7 +112,8 @@ public class MultiProxy {
                     Map<String, InvocationHandler> methods = handlers.get(intf);
                     if (methods != null) {
                         handler = methods.get(method.getName());
-                        if (handler != null) break;
+                        if (handler != null)
+                            break;
                     }
                 }
             }
@@ -120,11 +124,13 @@ public class MultiProxy {
                 }
             }
 
-            if (handler != null) ret = handler.invoke(target, method, args);
+            if (handler != null)
+                ret = handler.invoke(target, method, args);
             else {
                 try {
                     ret = method.invoke(target, args);
                 } catch (InvocationTargetException ex) {
+                    Logger.suppress(ex);
                     throw ex.getCause();
                 }
             }

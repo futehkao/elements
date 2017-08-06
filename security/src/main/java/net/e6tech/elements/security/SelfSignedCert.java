@@ -26,17 +26,14 @@ import java.security.GeneralSecurityException;
 public class SelfSignedCert {
 
     private String alias = "cert";
-    private String DN = "CN=localhost.net,OU=IT,O=Unemployed,L=Austin,ST=Texas,C=US";
+    private String dn = "CN=localhost.net,OU=IT,O=Unemployed,L=Austin,ST=Texas,C=US";
     private int expiration = 3; // 3 years
     private JCEKS jceks;
-
-    public SelfSignedCert() {
-    }
 
     public void init() throws GeneralSecurityException {
         char[] password = Password.generateRandomPassword(9, 15);
         jceks = new JCEKS();
-        jceks.createSelfSignedCertificate(alias, DN, password, expiration);
+        jceks.createSelfSignedCertificate(alias, dn, password, expiration);
         jceks.init(password);
     }
 
@@ -53,11 +50,11 @@ public class SelfSignedCert {
     }
 
     public String getDN() {
-        return DN;
+        return dn;
     }
 
-    public void setDN(String DN) {
-        this.DN = DN;
+    public void setDN(String dn) {
+        this.dn = dn;
     }
 
     public int getExpiration() {

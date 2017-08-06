@@ -21,5 +21,6 @@ package net.e6tech.elements.common.resources;
  */
 @FunctionalInterface
 public interface AfterCommit extends ResourceProvider {
+    @Override
     void afterCommit(Resources resources);
 }

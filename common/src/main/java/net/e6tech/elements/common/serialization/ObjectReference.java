@@ -16,6 +16,8 @@ limitations under the License.
 package net.e6tech.elements.common.serialization;
 
 
+import net.e6tech.elements.common.util.SystemException;
+
 import java.io.Serializable;
 
 /**
@@ -24,12 +26,12 @@ import java.io.Serializable;
 public class ObjectReference implements Serializable {
     private static final long serialVersionUID = -3574550643843044934L;
     private String type;
-    private Object id;
+    private Serializable id;
 
     public ObjectReference() {
     }
 
-    public ObjectReference(Class cls, Object id) {
+    public ObjectReference(Class cls, Serializable id) {
         this.type = cls.getName();
         this.id = id;
     }
@@ -46,7 +48,7 @@ public class ObjectReference implements Serializable {
         try {
             return ObjectReference.class.getClassLoader().loadClass(getType());
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -54,21 +56,25 @@ public class ObjectReference implements Serializable {
         return id;
     }
 
-    public void setId(Object id) {
+    public void setId(Serializable id) {
         this.id = id;
     }
 
     public boolean equals(Object ref) {
-        if (!(ref instanceof ObjectReference)) return false;
+        if (!(ref instanceof ObjectReference))
+            return false;
 
         ObjectReference oref = (ObjectReference) ref;
         return oref.type.equals(type) && oref.id.equals(id);
     }
 
     public int hashCode() {
-        if (type == null && id == null) return 0;
-        if (type != null && id == null) return type.hashCode();
-        if (type == null && id != null) return id.hashCode();
+        if (type == null && id == null)
+            return 0;
+        if (type != null && id == null)
+            return type.hashCode();
+        if (type == null && id != null)
+            return id.hashCode();
         return type.hashCode() & id.hashCode();
     }
 

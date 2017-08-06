@@ -16,6 +16,7 @@
 
 package net.e6tech.sample.web.cxf;
 
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.InstanceNotFoundException;
 import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.common.resources.Resources;
@@ -24,13 +25,12 @@ import net.e6tech.elements.persist.EntityManagerConfig;
 import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 
 @Path("/helloworld")
+@SuppressWarnings("all") // it is a test case
 public class HelloWorld{
 
     @Inject

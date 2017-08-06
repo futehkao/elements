@@ -16,6 +16,7 @@ limitations under the License.
 package net.e6tech.elements.rules;
 
 import groovy.lang.Closure;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.jmx.stat.Measurement;
 
 import java.util.ArrayList;
@@ -55,7 +56,8 @@ public class Rule {
         boolean removed = false;
         while (iterator.hasNext()) {
             Object object = iterator.next();
-            if (object.equals(rule)) iterator.remove();
+            if (object.equals(rule))
+                iterator.remove();
             removed = true;
         }
         return removed;
@@ -89,7 +91,8 @@ public class Rule {
 
     public void setName(String name) {
         this.name = name;
-        if (description == null) description = name;
+        if (description == null)
+            description = name;
     }
 
     public String getDescription() {
@@ -160,6 +163,7 @@ public class Rule {
         }
     }
 
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100"})
     private ControlFlow _run(RuleContext context, boolean root) {
         long start = System.currentTimeMillis();
         boolean cond = true;
@@ -172,13 +176,14 @@ public class Rule {
             c1.setDelegate(context);
             try {
                 Object obj = c1.call();
-                if (obj == null) cond = true; // this may be counter intuitive.  We should assume true, if there is no effort to return false.
+                if (obj == null)
+                    cond = true; // this may be counter intuitive.  We should assume true, if there is no effort to return false.
                 else if (obj.getClass().equals(Boolean.TYPE) || obj.getClass().equals(Boolean.class)) {
                     cond = (boolean) obj;
                 } else if (Failed == obj) {
                     cond = false;
                 }
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
                 return handleException(context, ex);
             }
         }
@@ -186,8 +191,7 @@ public class Rule {
         ControlFlow flow = Continue;
         if (cond) {
             // run children
-            Object failedObject = null;
-            Throwable exception = null;
+            Exception exception = null;
             for (Object object : verifies) {
                 context.setCurrentRule(this);
                 if (object instanceof Rule) {
@@ -197,12 +201,11 @@ public class Rule {
                     } else if (flow == Continue) {
                         try {
                             flow = child._run(context, false);
-                        } catch (Throwable ex) {
+                        } catch (Exception ex) {
                             context.ruleHalted(child);
                             flow = Failed;
                             exception = ex;
                         }
-                        if (flow == Failed) failedObject = object;
                     }
                 } else {
                     if (flow == Continue) { // only run if it is still Continue.
@@ -214,11 +217,10 @@ public class Rule {
                             } else {
                                 flow = context.verify(object); // either keep going or throws AssertionError
                             }
-                        } catch (Throwable ex) {
+                        } catch (Exception ex) {
                             flow = Failed;
                             exception = ex;
                         }
-                        if (flow == Failed) failedObject = object;
                     }
                 }
             }
@@ -226,10 +228,12 @@ public class Rule {
             try {
                 context.setCurrentRule(this); // because child rule changed it.
                 if (flow == Failed) {
-                    if (exception != null) handleException(context, exception);
+                    if (exception != null)
+                        handleException(context, exception);
                     else {
                         runClosure(context, failed);
-                        if(measurement != null) measurement.fail();
+                        if(measurement != null)
+                            measurement.fail();
                     }
                     context.setCompleted(false);
                     context.ruleHalted(this);
@@ -238,8 +242,9 @@ public class Rule {
 
                 runClosure(context, proceed);
                 context.ruleExecuted(this);
-                if(measurement != null) measurement.add(System.currentTimeMillis() - start);
-            } catch (Throwable ex) {
+                if(measurement != null)
+                    measurement.add((double)(System.currentTimeMillis() - start));
+            } catch (Exception ex) {
                 return handleException(context, ex);
             }
         } else {
@@ -247,7 +252,7 @@ public class Rule {
                 // halt just means the rule did not fired.
                 runClosure(context, halted);
                 context.ruleHalted(this);
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
                 return handleException(context, ex);
             }
         }
@@ -255,21 +260,24 @@ public class Rule {
         return flow;
     }
 
-    private ControlFlow handleException(RuleContext context, Throwable throwable) {
-        if(measurement != null) measurement.fail();
+    private ControlFlow handleException(RuleContext context, Exception throwable) {
+        if(measurement != null)
+            measurement.fail();
         context.setCurrentRule(this);
         try {
             runClosure(context, failed);
-        } catch (Throwable th) {
-            if (th instanceof  RuntimeException) throw (RuntimeException) th;
-            throw new RuntimeException(th);
+        } catch (RuntimeException ex) {
+            throw ex;
+        } catch (Exception th) {
+            throw new SystemException(th);
         }
         context.ruleFailed(this, throwable);
         return Failed;
     }
 
     private void runClosure(RuleContext context, Closure closure) {
-        if (closure == null) return;
+        if (closure == null)
+            return;
         Closure a1 = (Closure) closure.clone();
         a1.setResolveStrategy(Closure.DELEGATE_FIRST);
         a1.setDelegate(context);

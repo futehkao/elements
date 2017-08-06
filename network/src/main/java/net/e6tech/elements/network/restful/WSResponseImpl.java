@@ -16,6 +16,8 @@ limitations under the License.
 
 package net.e6tech.elements.network.restful;
 
+import net.e6tech.elements.common.util.SystemException;
+
 import javax.ws.rs.core.*;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -56,7 +58,7 @@ public class WSResponseImpl extends javax.ws.rs.core.Response {
         try {
             return response.read(entityType);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -89,7 +91,7 @@ public class WSResponseImpl extends javax.ws.rs.core.Response {
 
     @Override
     public void close() {
-
+        // do nothing
     }
 
     @Override

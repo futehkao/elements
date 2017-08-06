@@ -21,21 +21,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.io.IOException;
 import java.lang.reflect.*;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 
 /**
  * Created by futeh.
  */
 public class ObjectConverter {
 
-    public static ObjectMapper mapper = null;
-    public static Map<String,Class> primitives;
+    public static final  ObjectMapper mapper;
+
     static {
         mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
@@ -44,7 +44,8 @@ public class ObjectConverter {
     }
 
     public static Class loadClass(ClassLoader loader, String name) throws ClassNotFoundException {
-        if (Primitives.isPrimitive(name)) return Primitives.get(name);
+        if (Primitives.isPrimitive(name))
+            return Primitives.get(name);
         return loader.loadClass(name);
     }
 
@@ -69,6 +70,7 @@ public class ObjectConverter {
         return convert(from, field.getGenericType(), listener);
     }
 
+    @SuppressWarnings("squid:S134")
     public Object convert(Object from, Type toType, InstanceCreationListener listener) throws IOException {
         Object converted;
         if (toType instanceof Class) {
@@ -105,7 +107,9 @@ public class ObjectConverter {
         return converted;
     }
 
-    private Object convert(Object value, Class toType, InstanceCreationListener instanceCreation) throws IOException {
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    private Object convert(Object val, Class toType, InstanceCreationListener instanceCreation) throws IOException {
+        Object value = val;
         Class fromType = value.getClass();
 
         if (toType.isArray()) {
@@ -127,13 +131,16 @@ public class ObjectConverter {
             } else {
                 throw new IllegalArgumentException("Cannot convert " + fromType + " to " + toType);
             }
-        } if (toType.isPrimitive() || fromType.isPrimitive()) {
+        } else if (toType.isPrimitive() || fromType.isPrimitive()) {
             // converting primitive type
             boolean needConversion;
-            if (toType.equals(fromType)) needConversion = false;
-            else if (toType.isPrimitive()) needConversion = shouldConvertPrimitive(toType, fromType);
+            if (toType.equals(fromType))
+                needConversion = false;
+            else if (toType.isPrimitive())
+                needConversion = shouldConvertPrimitive(toType, fromType);
             else needConversion = shouldConvertPrimitive(fromType, toType);
-            if (!needConversion) return value;
+            if (!needConversion)
+                return value;
         } else if (toType.isAssignableFrom(fromType)) {
             // no conversion
             return value;
@@ -144,16 +151,18 @@ public class ObjectConverter {
                 String str = mapper.writeValueAsString(value);
                 value = mapper.readValue(str, toType);
                 return value;
-            } catch (Throwable e) {
+            } catch (Exception e) {
+                Logger.suppress(e);
                 // OK mapper cannot convert String directly so we assume the String is a full
                 // class name.  We load the class and create an instance.
                 try {
                     Class cls = getClass().getClassLoader().loadClass((String) value);
                     value = cls.newInstance();
-                    if (instanceCreation != null) instanceCreation.instanceCreated(value, toType, value);
+                    if (instanceCreation != null)
+                        instanceCreation.instanceCreated(value, toType, value);
                     return value;
-                } catch (Throwable e1) {
-                    throw new RuntimeException(e1);
+                } catch (Exception e1) {
+                    throw new SystemException(e1);
                 }
             }
         }
@@ -181,20 +190,19 @@ public class ObjectConverter {
         return converted;
     }
 
+    @SuppressWarnings({"squid:S1067", "squid:MethodCyclomaticComplexity"})
     protected boolean shouldConvertPrimitive(Class c1, Class c2) {
-        if ((c1.equals(Boolean.TYPE) && Boolean.class.equals(c2))
+        return ! ((c1.equals(Boolean.TYPE) && Boolean.class.equals(c2))
                 || (c1.equals(Character.TYPE) && Character.class.equals(c2))
                 || (c1.equals(Byte.TYPE) && Byte.class.equals(c2))
                 || (c1.equals(Short.TYPE) && Short.class.equals(c2))
                 || (c1.equals(Integer.TYPE) && Integer.class.equals(c2))
                 || (c1.equals(Long.TYPE) && Long.class.equals(c2))
                 || (c1.equals(Float.TYPE) && Float.class.equals(c2))
-                || (c1.equals(Double.TYPE) && Double.class.equals(c2))) {
-            return false;
-        }
-        return true;
+                || (c1.equals(Double.TYPE) && Double.class.equals(c2)));
     }
 
+    @FunctionalInterface
     public interface InstanceCreationListener {
         void instanceCreated(Object value, Class toType, Object instance);
     }

@@ -38,9 +38,6 @@ class MessagingActor extends AbstractActor {
     Map<String, Map<Subscriber, ActorRef>> subscribers = new HashMap<>();
     Map<String, ActorRef> destinations = new HashMap<>();
 
-    public MessagingActor() {
-    }
-
     @Override
     public void postStop() {
         for (Map<Subscriber, ActorRef> map : subscribers.values()) {
@@ -60,9 +57,9 @@ class MessagingActor extends AbstractActor {
     public AbstractActor.Receive createReceive() {
         return receiveBuilder()
                 .match(Events.Subscribe.class, event -> {
-                    Map<Subscriber, ActorRef> map = subscribers.computeIfAbsent(event.topic, (topic) -> new HashMap<>());
+                    Map<Subscriber, ActorRef> map = subscribers.computeIfAbsent(event.topic, topic -> new HashMap<>());
                     map.computeIfAbsent(event.subscriber,
-                            (sub) -> getContext().actorOf(Props.create(SubscriberActor.class,
+                            sub -> getContext().actorOf(Props.create(SubscriberActor.class,
                                     () -> new SubscriberActor(event.topic, event.subscriber)), SUBSCRIBER_PREFIX + event.topic + System.identityHashCode(event.subscriber)));
                 })
                 .match(Events.Unsubscribe.class, event -> {
@@ -92,12 +89,12 @@ class MessagingActor extends AbstractActor {
                         destinations.remove("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + event.destination);
                     }
                 })
-                .match(Events.Publish.class, publish -> {
-                    mediator.tell(new DistributedPubSubMediator.Publish(publish.topic, publish), getSelf());
-                })
-                .match(Events.Send.class, send -> {
-                    mediator.tell(new DistributedPubSubMediator.Send("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + send.destination, send, true), getSender());
-                })
+                .match(Events.Publish.class, publish -> mediator.tell(new DistributedPubSubMediator.Publish(publish.topic, publish), getSelf())
+                )
+                .match(Events.Send.class, send ->
+                    mediator.tell(new DistributedPubSubMediator.Send("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + send.destination,
+                            send, true), getSender())
+                )
                 .build();
     }
 

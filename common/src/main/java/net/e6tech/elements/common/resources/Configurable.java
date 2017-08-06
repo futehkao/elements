@@ -54,11 +54,11 @@ public interface Configurable<U> {
     }
 
     default <T> T computeIfAbsent(String key, Function<String, T> mappingFunction) {
-        return (T) configurator().computeIfAbsent(key, mappingFunction);
+        return configurator().computeIfAbsent(key, mappingFunction);
     }
 
     default <T> T computeIfAbsent(Class<T> key, Function<Class<T>, T> mappingFunction) {
-        return (T) configurator().computeIfAbsent(key, mappingFunction);
+        return configurator().computeIfAbsent(key, mappingFunction);
     }
 
     default <T extends Annotation> U annotate(Class<T> cls, BiConsumer<Annotator.AnnotationValue, T> consumer) {

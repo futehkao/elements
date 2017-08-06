@@ -15,6 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.common.util;
 
+import net.e6tech.elements.common.logging.Logger;
 import org.osjava.sj.memory.MemoryContext;
 
 import javax.naming.Context;
@@ -31,6 +32,7 @@ import java.util.List;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S2176", "squid:S1319", "squid:S1149"})
 public class InitialContextFactory implements javax.naming.spi.InitialContextFactory {
     static InheritableThreadLocal<Context> threadLocal = new InheritableThreadLocal<>();
 
@@ -63,7 +65,6 @@ public class InitialContextFactory implements javax.naming.spi.InitialContextFac
     }
 
     public static class ContextInvocationHandler implements InvocationHandler {
-
         Context ctx;
         List<Name> bound = new LinkedList<>();
 
@@ -80,6 +81,8 @@ public class InitialContextFactory implements javax.naming.spi.InitialContextFac
                     name = ctx.getNameParser("").parse((String) args[0]);
                 } else if (args[0] instanceof Name) {
                     name = (Name) args[0];
+                } else {
+                    throw new SystemException("Incompatible method argument[0]: expecting String of Name but got " + args[0]);
                 }
                 createContexts(name, ctx);
                 bound.add(name);
@@ -90,42 +93,39 @@ public class InitialContextFactory implements javax.naming.spi.InitialContextFac
                     name = ctx.getNameParser("").parse((String) args[0]);
                 } else if (args[0] instanceof Name) {
                     name = (Name) args[0];
+                }  else {
+                    throw new SystemException("Incompatible method argument[0]: expecting String of Name but got " + args[0]);
                 }
                 createContexts(name, ctx);
                 bound.add(name);
                 ctx.rebind(name, args[1]);
             } else if ("close".equals(methodName)) {
-                /* bound.forEach((name) -> {
-                    try {
-                        ctx.unbind(name);
-                    } catch (NamingException e) {
-
-                    }
-                }); */
                 return null;
             } else {
                 try {
                     return method.invoke(ctx, args);
                 } catch (InvocationTargetException e) {
+                    Logger.suppress(e);
                     throw e.getTargetException();
                 }
             }
             return null;
         }
 
-        private Context createContexts(Name name, Context ctx) throws NamingException {
+        private Context createContexts(Name name, Context context) throws NamingException {
+            Context subCtx = context;
             if (name.size() > 1) {
-                Object object = ctx.lookup(name.getPrefix(1));
+                Object object = subCtx.lookup(name.getPrefix(1));
                 if (object instanceof Context) {
                     return createContexts(name.getSuffix(1), (Context) object);
                 } else if (object != null) {
                     throw new NamingException("already bound");
                 } else {
-                    ctx = ctx.createSubcontext(name.getPrefix(1));
-                    return createContexts(name.getSuffix(1), ctx);
+                    subCtx = subCtx.createSubcontext(name.getPrefix(1));
+                    return createContexts(name.getSuffix(1), subCtx);
                 }
             }
-            return ctx;
+            return subCtx;
         }
     }
 

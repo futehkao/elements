@@ -15,8 +15,8 @@
  */
 package net.e6tech.elements.common.reflection;
 
-import net.e6tech.elements.common.cache.CacheFacade;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.TextSubstitution;
 import net.e6tech.elements.common.util.lambda.Each;
 
@@ -33,8 +33,11 @@ import static java.util.Locale.ENGLISH;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S134", "squid:S1149", "squid:S1141", "squid:MethodCyclomaticComplexity"})
 public class Reflection {
+    @SuppressWarnings("squid:S1185")
     static final class PrivateSecurityManager extends SecurityManager {
+        @Override
         protected Class<?>[] getClassContext() {
             return super.getClassContext();
         }
@@ -46,9 +49,10 @@ public class Reflection {
     private static Map<String, WeakReference<PropertyDescriptor>> propertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
     private static Map<Class, WeakReference<Type[]>> parametrizedTypes = Collections.synchronizedMap(new WeakHashMap<>());
 
-    // private static CacheFacade<Class, Type[]> parametrizedTypes = new CacheFacade<Class, Type[]>("parameterizedTypes") {};
-
     static Logger logger = Logger.getLogger();
+
+    private Reflection() {
+    }
 
     // should use weak hash map
     public static PropertyDescriptor propertyDescriptor(Method method) {
@@ -60,30 +64,36 @@ public class Reflection {
                 Parameter[] parameters = method.getParameters();
                 String property ;
                 if (name.startsWith("set")) {
-                    if (parameters.length != 1) throw new IllegalArgumentException("" + method.getName() + " is not a setter");
+                    if (parameters.length != 1)
+                        throw new IllegalArgumentException("" + method.getName() + " is not a setter");
                     property = name.substring(3);
                 } else if (name.startsWith("get")) {
-                    if (parameters.length != 0) throw new IllegalArgumentException("" + method.getName() + " is not a getter");
+                    if (parameters.length != 0)
+                        throw new IllegalArgumentException("" + method.getName() + " is not a getter");
                     property = name.substring(3);
                 } else if (name.startsWith("is")) {
-                    if (parameters.length != 0) throw new IllegalArgumentException("" + method.getName() + " is not a getter");
+                    if (parameters.length != 0)
+                        throw new IllegalArgumentException("" + method.getName() + " is not a getter");
                     property = name.substring(2);
                 } else {
                     throw new IllegalArgumentException("" + method.getName() + " is not an property accessor");
                 }
 
                 boolean lowerCase = true;
-                if (property.length() > 1 && Character.isUpperCase(property.charAt(1))) lowerCase = false;
-                if (lowerCase) property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
+                if (property.length() > 1 && Character.isUpperCase(property.charAt(1)))
+                    lowerCase = false;
+                if (lowerCase)
+                    property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
                 descriptor = new PropertyDescriptor(property, method.getDeclaringClass());
                 methodPropertyDescriptors.put(method, new WeakReference<PropertyDescriptor>(descriptor));
             } catch (IntrospectionException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         }
         return descriptor;
     }
 
+    @SuppressWarnings("squid:S1872")
     public static Class getCallingClass() {
         Class<?>[] trace = securityManager.getClassContext(); // trace[0]
                                                               // trace[1] is Reflection because of this call.
@@ -112,14 +122,16 @@ public class Reflection {
 
         int i;
         for (i = 0; i < trace.length; i++) {
-            if (thisClassName.equals(trace[i].getClassName())) break;
+            if (thisClassName.equals(trace[i].getClassName()))
+                break;
         }
 
         Each.Mutator<StackTraceElement, C> mutator = Each.create();
         for (int j = i + 2; j < trace.length; j++) {
             mutator.setValue(trace[j]);
             V v = mapper.apply(mutator.each());
-            if (v != null) return Optional.of(v);
+            if (v != null)
+                return Optional.of(v);
         }
 
         return Optional.empty();
@@ -130,7 +142,8 @@ public class Reflection {
         int i = start + 1; // skip 1 for this printStackTrace call
         while (i < end && i < elements.length) {
             builder.append("\n");
-            if (indent != null) builder.append(indent);
+            if (indent != null)
+                builder.append(indent);
             builder.append(elements[i].getClassName());
             builder.append(".");
             builder.append(elements[i].getMethodName());
@@ -147,11 +160,12 @@ public class Reflection {
         try {
             return (T) loadClass(className, loader).newInstance();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
-    public static Class loadClass(String className, ClassLoader loader) {
+    public static Class loadClass(String className, ClassLoader classLoader) {
+        ClassLoader loader = classLoader;
         if (loader == null) {
             loader = Thread.currentThread().getContextClassLoader();
         }
@@ -161,7 +175,7 @@ public class Reflection {
         try {
             return loader.loadClass(className);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -173,7 +187,7 @@ public class Reflection {
         try {
             beanInfo = Introspector.getBeanInfo(cls);
         } catch (IntrospectionException e) {
-            e.printStackTrace();
+            throw logger.systemException(e);
         }
         PropertyDescriptor[] props = beanInfo.getPropertyDescriptors();
         for (PropertyDescriptor prop : props) {
@@ -205,7 +219,7 @@ public class Reflection {
                 cls = object.getClass();
             }
 
-            String key = object.getClass().getName() + "." + property;
+            String key = cls.getName() + "." + property;
             WeakReference<PropertyDescriptor> ref = propertyDescriptors.get(key);
             PropertyDescriptor descriptor =  (ref == null) ? null : ref.get();
             if (descriptor == null) {
@@ -214,14 +228,15 @@ public class Reflection {
                             "is" + TextSubstitution.capitalize(property), null);
                     propertyDescriptors.put(key, new WeakReference<PropertyDescriptor>(descriptor));
                 } catch (IntrospectionException e) {
-                    throw new RuntimeException(object.getClass().getName() + "." + property, e);
+                    throw new SystemException(object.getClass().getName() + "." + property, e);
                 }
             }
 
-            if (descriptor.getReadMethod() == null) return null;
+            if (descriptor.getReadMethod() == null)
+                return null;
             return (V) descriptor.getReadMethod().invoke(object);
-        } catch (Throwable e) {
-            throw new RuntimeException(object.getClass().getName() + "." + property, e);
+        } catch (Exception e) {
+            throw new SystemException(object.getClass().getName() + "." + property, e);
         }
     }
 
@@ -243,17 +258,19 @@ public class Reflection {
         }
     }
 
-    public static Field getField(Class cls, String fieldName) {
-        while (cls != null || !cls.equals(Object.class)) {
+    public static Field getField(Class clazz, String fieldName) {
+        Class cls = clazz;
+        while (cls != null && !cls.equals(Object.class)) {
             try {
                 Field field = cls.getDeclaredField(fieldName);
                 field.setAccessible(true);
                 return field;
-            } catch (Throwable e) {
+            } catch (Exception e) {
+                Logger.suppress(e);
             }
             try {
                 cls = cls.getSuperclass();
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 throw new IllegalStateException(e);
             }
         }
@@ -274,8 +291,8 @@ public class Reflection {
                         types = parametrizedType.getActualTypeArguments();
                         break;
                     }
-                } catch (Throwable th) {
-                    th.printStackTrace();
+                } catch (Exception th) {
+                    logger.warn(th.getMessage(), th);
                 }
                 cls = cls.getSuperclass();
             }
@@ -292,38 +309,16 @@ public class Reflection {
             return (Class) types[index];
         }
         return null;
-
-        /*
-        Class entityType = null;
-
-        while (!clazz.equals(Object.class)) {
-            try {
-                Type genericSuper = clazz.getGenericSuperclass();
-                if (genericSuper instanceof ParameterizedType) {
-                    ParameterizedType parametrizedType = (ParameterizedType) genericSuper;
-                    if (parametrizedType.getActualTypeArguments().length <= index)
-                        throw new IllegalArgumentException("No parametrized type at index=" + index);
-                    Type type = parametrizedType.getActualTypeArguments()[index];
-                    if (type instanceof Class) {
-                        entityType = (Class) type;
-                        break;
-                    }
-                }
-            } catch (Throwable th) {
-                th.printStackTrace();
-            }
-            clazz = clazz.getSuperclass();
-        }
-        if (entityType == null) throw new IllegalStateException("Class " + clazz + " does not provided a generic type");
-        return entityType; */
     }
 
     public static <T> List<T> newInstance(Class<T> cls, List objectList) {
         return newInstance(cls, objectList, null);
     }
 
+    @SuppressWarnings("squid:S1168")
     public static <T> List<T> newInstance(Class<T> cls, List objectList, CopyListener listener) {
-        if (objectList == null) return null;
+        if (objectList == null)
+            return null;
 
         List<T> list = new ArrayList<>();
         for (Object o : objectList) {
@@ -358,13 +353,13 @@ public class Reflection {
         private Map<Class, PropertyDescriptor[]> propertyDescriptors = new HashMap<>();
 
         private synchronized Map<String, PropertyDescriptor> getTargetProperties(Class cls) {
-            return targetPropertiesDescriptor.computeIfAbsent(cls, (key) -> {
-                HashMap<String, PropertyDescriptor> propertyDescriptors = new HashMap<>();
+            return targetPropertiesDescriptor.computeIfAbsent(cls, key -> {
+                HashMap<String, PropertyDescriptor> descriptors = new HashMap<>();
                 PropertyDescriptor[] props = getBeanInfo(key).getPropertyDescriptors();
                 for (PropertyDescriptor prop : props) {
-                    propertyDescriptors.put(prop.getName(), prop);
+                    descriptors.put(prop.getName(), prop);
                 }
-                return propertyDescriptors;
+                return descriptors;
             });
         }
 
@@ -376,7 +371,7 @@ public class Reflection {
             try {
                 return Introspector.getBeanInfo(cls);
             } catch (IntrospectionException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         }
 
@@ -405,12 +400,14 @@ public class Reflection {
         }
 
         private <T> T newInstance(Type toType, Object object, Map<Integer, Object> seen, CopyListener listener) {
-            if (object == null) return null;
+            if (object == null)
+                return null;
 
             Integer hashCode = null;
             if (!object.getClass().isPrimitive()) {
                 hashCode = System.identityHashCode(object);
-                if (seen.get(hashCode) != null) return (T) seen.get(hashCode);
+                if (seen.get(hashCode) != null)
+                    return (T) seen.get(hashCode);
             }
 
             T target = null;
@@ -423,7 +420,7 @@ public class Reflection {
                     try {
                         target = (T) ((Class) toType).newInstance();
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        throw new SystemException(e);
                     }
                     copy(target, object, seen, listener);
                 }
@@ -456,13 +453,14 @@ public class Reflection {
                     try {
                         target = (T) enclosedType.newInstance();
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        throw new SystemException(e);
                     }
                     copy(target, object, seen, listener);
                 }
             }
 
-            if (hashCode != null) seen.put(hashCode, target);
+            if (hashCode != null)
+                seen.put(hashCode, target);
             return target;
         }
 
@@ -474,16 +472,20 @@ public class Reflection {
             copy(target, object, new HashMap<>(), null);
         }
 
+        @SuppressWarnings("squid:S135")
         private void copy(Object target, Object object, Map<Integer, Object> seen, CopyListener copyListener) {
-            if (target == null || object == null) return;
+            if (target == null || object == null)
+                return;
 
             for (PropertyDescriptor prop : getPropertyDescriptors(object.getClass())) {
                 if (prop.getReadMethod() != null) {
                     PropertyDescriptor targetDesc = getTargetProperties(target.getClass()).get(prop.getName());
-                    if (targetDesc == null) continue;
+                    if (targetDesc == null)
+                        continue;
 
                     Method setter = targetDesc.getWriteMethod();
-                    if (setter == null) continue;
+                    if (setter == null)
+                        continue;
                     try {
                         boolean annotated = (prop.getReadMethod().getAnnotation(DoNotCopy.class) != null);
                         if (!annotated && prop.getWriteMethod() != null) {
@@ -503,17 +505,17 @@ public class Reflection {
                                         try {
                                             Object converted = newInstance(setter.getGenericParameterTypes()[0], value, seen, copyListener);
                                             setter.invoke(target, converted);
-                                        } catch (Throwable ex) {
+                                        } catch (Exception ex) {
                                             logger.warn("Error copying " + value + " to " + setter.getDeclaringClass() + "::" + setter.getName(), ex);
                                         }
                                     }
                                 }
                             } catch (PropertyVetoException ex) {
-
+                                Logger.suppress(ex);
                             }
                         }
-                    } catch (Throwable e) {
-                        throw new RuntimeException(e);
+                    } catch (Exception e) {
+                        throw new SystemException(e);
                     }
                 }
             }
@@ -521,18 +523,22 @@ public class Reflection {
 
         public boolean compare(Object target, Object object) {
             Stack<String> stack = new Stack<>();
-            if (target != null) stack.push(target.getClass().getName());
+            if (target != null)
+                stack.push(target.getClass().getName());
             return compare(target, object, new HashSet<>(), stack);
         }
 
         private boolean compare(Object target, Object object, Set<String> seen, Stack<String> stack) {
-            if (target == null && object == null) return true;
-            if (target == null || object == null) return false;
+            if (target == null && object == null)
+                return true;
+            if (target == null || object == null)
+                return false;
             // at this point target and object are not null
             int hashCode = System.identityHashCode(target);
             int hashCode2 = System.identityHashCode(object);
-            String compared = "" + hashCode + ":" + hashCode2;
-            if (seen.contains(compared)) return true;
+            String compared = Integer.toString(hashCode) + ":" + hashCode2;
+            if (seen.contains(compared))
+                return true;
             if (target.getClass().isAssignableFrom(object.getClass())) {
                 if (!target.equals(object)) {
                     if (logger.isDebugEnabled()) {
@@ -540,8 +546,10 @@ public class Reflection {
                         builder.append("Comparison failed at ");
                         boolean first = true;
                         for (String element : stack) {
-                            if (first) first = false;
-                            else builder.append(".");
+                            if (first)
+                                first = false;
+                            else
+                                builder.append(".");
                             builder.append(element);
                         }
                         logger.debug(builder.toString());
@@ -556,7 +564,7 @@ public class Reflection {
             }
 
             for (PropertyDescriptor prop : getPropertyDescriptors(target.getClass())) {
-                if (prop.getReadMethod() != null && !prop.getName().equals("class")) {
+                if (prop.getReadMethod() != null && !"class".equals(prop.getName())) {
                     try {
                         boolean annotated = (prop.getReadMethod().getAnnotation(DoNotCopy.class) != null);
                         if (!annotated && prop.getWriteMethod() != null) {
@@ -569,8 +577,10 @@ public class Reflection {
                                         "is" + capitalize(prop.getName()), null);
                                 objectGetter = objectProp.getReadMethod();
                             } catch (IntrospectionException e) {
+                                Logger.suppress(e);
                             }
-                            if (objectGetter == null) continue;
+                            if (objectGetter == null)
+                                continue;
                             Object value = objectGetter.invoke(object);
                             Object targetFieldValue = prop.getReadMethod().invoke(target);
                             stack.push(prop.getName());
@@ -579,8 +589,8 @@ public class Reflection {
                             }
                             stack.pop();
                         }
-                    } catch (Throwable e) {
-                        throw new RuntimeException(e);
+                    } catch (Exception e) {
+                        throw new SystemException(e);
                     }
                 }
             }

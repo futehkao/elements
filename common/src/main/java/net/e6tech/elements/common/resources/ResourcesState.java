@@ -19,6 +19,7 @@ package net.e6tech.elements.common.resources;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -29,16 +30,18 @@ import java.util.concurrent.Callable;
 class ResourcesState {
 
     enum State {
-        Initial,
-        Open,
-        Committed,
-        Aborted,
+        INITIAL,
+        OPEN,
+        COMMITTED,
+        ABORTED,
     }
 
+    private static final String CLASS_MSG = "Class ";
+    private static final String BOUND_TO_MSG = " is already bound to ";
     private ModuleFactory factory;
     private Module module;
     private Injector injector;
-    private State state = State.Initial;
+    private State state = State.INITIAL;
     private boolean dirty = false; // dirty if not open and bind is call.
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private LinkedList<Object> injectionList = new LinkedList<>();
@@ -51,7 +54,7 @@ class ResourcesState {
     protected void cleanup() {
         module = factory.create();
         resourceProviders.clear();
-        state = State.Initial;
+        state = State.INITIAL;
         injectionList.clear();
         injector = null;
         dirty = false;
@@ -93,12 +96,13 @@ class ResourcesState {
         this.resourceProviders = resourceProviders;
     }
 
-    public LinkedList<Object> getInjectionList() {
+    public List<Object> getInjectionList() {
         return injectionList;
     }
 
-    public void setInjectionList(LinkedList<Object> injectionList) {
-        this.injectionList = injectionList;
+    public void setInjectionList(List<Object> injectionList) {
+        this.injectionList = new LinkedList<>();
+        this.injectionList.addAll(injectionList);
     }
 
     public void addModule(Module module) {
@@ -107,7 +111,7 @@ class ResourcesState {
     }
 
     protected void onOpen(Resources resources) {
-        if (injectionList.size() > 0) {
+        if (!injectionList.isEmpty()) {
             createInjector(resources);
         }
     }
@@ -121,31 +125,32 @@ class ResourcesState {
 
         // we need to inject here for objects awaiting to be injected because
         // resourceProviders may depend on these objects.
-        while (injectionList.size() > 0) {
+        while (!injectionList.isEmpty()) {
             // need to remove item because it may make resources dirty again calling bind or rebind.  In such a case
             // onOpen will be call again.
             Object obj = injectionList.remove();
-            _inject(resources, injector, obj);
+            privateInject(resources, injector, obj);
         }
     }
 
     public <T> T inject(Resources resources, T object) {
-        if (object == null) return object;
+        if (object == null)
+            return object;
 
-        if (state == State.Initial) {
+        if (state == State.INITIAL) {
             // to be inject when resources is opened.
             injectionList.add(object);
         } else {
             if (isDirty() || injector == null) {
                 createInjector(resources);
             }
-            _inject(resources, injector, object);
+            privateInject(resources, injector, object);
 
         }
         return object;
     }
 
-    protected void _inject(Resources resources, Injector injector, Object object) {
+    protected void privateInject(Resources resources, Injector injector, Object object) {
         if (object instanceof InjectionListener) {
             ((InjectionListener) object).preInject(resources);
         }
@@ -155,36 +160,38 @@ class ResourcesState {
         }
     }
 
-    public <T> T tryBind(Resources resources, Class<T> cls, Callable<T> callable) {
+    public <T> T tryBind(Class<T> cls, Callable<T> callable) {
         T o = getModule().getBoundInstance(cls);
-        if (o != null) return o;
+        if (o != null)
+            return o;
 
         T instance = null;
         try {
             instance = (T) getModule().bindInstance(cls, callable.call());
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
         setDirty(true);
         return instance;
     }
 
-    public <T> T bind(Resources resources, Class<T> cls, T resource) {
+    public <T> T bind(Class<T> cls, T resource) {
         Object o = getModule().getBoundInstance(cls);
-        if (o != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + o);
+        if (o != null)
+            throw new AlreadyBoundException(CLASS_MSG + cls + BOUND_TO_MSG + o);
 
         T instance = (T) getModule().bindInstance(cls, resource);
         setDirty(true);
         return instance;
     }
 
-    public <T> T rebind(Resources resources, Class<T> cls, T resource) {
+    public <T> T rebind(Class<T> cls, T resource) {
         T instance = null;
 
         try {
             instance = (T) getModule().bindInstance(cls, resource);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
         setDirty(true);
         return instance;
@@ -195,7 +202,7 @@ class ResourcesState {
         try {
             instance = (T) getModule().unbindInstance(cls);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
         setDirty(true);
         return instance;
@@ -203,16 +210,18 @@ class ResourcesState {
 
     public void bindClass(Class cls, Class service) {
         Class c = getModule().getBoundClass(cls);
-        if (c != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + c);
-        if (service != null) getModule().bindClass(cls, service);
+        if (c != null)
+            throw new AlreadyBoundException(CLASS_MSG + cls + BOUND_TO_MSG + c);
+        if (service != null)
+            getModule().bindClass(cls, service);
         else getModule().bindInstance(cls, null);
-        // if (opened) onOpen();
         setDirty(true);
     }
 
     public <T> T bindNamedInstance(Class<T> cls, String name, T resource) {
         Object o = getModule().getBoundNamedInstance(cls, name);
-        if (o != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + o);
+        if (o != null)
+            throw new AlreadyBoundException(CLASS_MSG + cls + BOUND_TO_MSG + o);
         return rebindNamedInstance(cls, name, resource);
     }
 
@@ -227,23 +236,26 @@ class ResourcesState {
             return true;
 
         if (getInjector() == null) {
-            if (resources.getResourceManager().hasInstance(cls)) return true;
+            if (resources.getResourceManager().hasInstance(cls))
+                return true;
             return getModule().getBoundInstance(cls) != null;
         } else {
             return getInjector().getInstance(cls) != null;
         }
     }
 
-    public <T> T getInstance(Resources resources, Class<T> cls) throws InstanceNotFoundException {
+    public <T> T getInstance(Resources resources, Class<T> cls) {
         if (cls.isAssignableFrom(Resources.class)) {
             return (T) resources;
         } else if (cls.isAssignableFrom(ResourceManager.class)) {
             return (T) resources.getResourceManager();
         }
 
-        if (state == State.Initial || isDirty()) {
-            if (getModule().getBoundInstance(cls) != null) return (T) getModule().getBoundInstance(cls);
-            if (resources.getResourceManager().hasInstance(cls)) return (T) resources.getResourceManager().getInstance(cls);
+        if (state == State.INITIAL || isDirty()) {
+            if (getModule().getBoundInstance(cls) != null)
+                return getModule().getBoundInstance(cls);
+            if (resources.getResourceManager().hasInstance(cls))
+                return resources.getResourceManager().getInstance(cls);
 
             // not found
             createInjector(resources);

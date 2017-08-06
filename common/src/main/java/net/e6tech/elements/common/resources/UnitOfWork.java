@@ -25,12 +25,12 @@ import java.util.function.Consumer;
  * Created by futeh.
  */
 public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
+    private static final String RESOURCES_NOT_OPEN = "Resources not open.";
     ResourceManager resourceManager;
     List<ResourceProvider> resourceProviders = new LinkedList<>();
     Consumer<Resources> preOpen;
     private Configurator configurator = new Configurator();
     Resources resources;
-    List<ConsumerWithException<? extends Resources>> unitOfWork = new LinkedList<>();
 
     public UnitOfWork(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
@@ -57,25 +57,28 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
 
     public UnitOfWork configurable() { return  this; }
 
-    public <Res extends Resources> Res open() {
-        if (resources != null && resources.isOpen()) return (Res) resources;
-        resources = resourceManager.open(this.configurator, (r) -> {
+    public <T extends Resources> T open() {
+        if (resources != null && resources.isOpen())
+            return (T) resources;
+        resources = resourceManager.open(this.configurator, r -> {
             if (preOpen != null) preOpen.accept(r);
             for (ResourceProvider p : resourceProviders) {
                 r.addResourceProvider(p);
             }
         });
-        return (Res) resources;
+        return (T) resources;
     }
 
     public void commit() {
-        if (resources == null || !resources.isOpen()) throw new IllegalStateException("Resources not opened");
+        if (resources == null || !resources.isOpen())
+            throw new IllegalStateException("Resources not opened");
         resources.commit();
         cleanup();
     }
 
     public void abort() {
-        if (resources == null || !resources.isOpen()) return;
+        if (resources == null || !resources.isOpen())
+            return;
         resources.abort();
         cleanup();
     }
@@ -88,32 +91,38 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
     }
 
     public void submit(Transactional.RunnableWithException work) {
-        if (resources == null || !resources.isOpen()) throw new IllegalStateException("Resources not opened");
-        resources.submit((Transactional.ConsumerWithException<Resources>)(res)-> work.run());
+        if (resources == null || !resources.isOpen())
+            throw new IllegalStateException(RESOURCES_NOT_OPEN);
+        resources.submit((Transactional.ConsumerWithException<Resources>)res -> work.run());
     }
 
-    public <Res extends Resources> void submit(Transactional.ConsumerWithException<Res> work) {
-        if (resources == null || !resources.isOpen()) throw new IllegalStateException("Resources not opened");
+    public <T extends Resources> void submit(Transactional.ConsumerWithException<T> work) {
+        if (resources == null || !resources.isOpen())
+            throw new IllegalStateException(RESOURCES_NOT_OPEN);
         resources.submit(work);
     }
 
-    public <R> R submit(Callable<R> work) {
-        if (resources == null || !resources.isOpen()) throw new IllegalStateException("Resources not opened");
-        return resources.submit(res-> { return work.call();});
+    public <T> T submit(Callable<T> work) {
+        if (resources == null || !resources.isOpen())
+            throw new IllegalStateException(RESOURCES_NOT_OPEN);
+        return resources.submit((Transactional.FunctionWithException<Resources, T>) res -> work.call());
     }
 
-    public <Res extends Resources, R> R submit(Transactional.FunctionWithException<Res, R> work) {
-        if (resources == null || !resources.isOpen()) throw new IllegalStateException("Resources not opened");
+    public <T extends Resources, R> R submit(Transactional.FunctionWithException<T, R> work) {
+        if (resources == null || !resources.isOpen())
+            throw new IllegalStateException(RESOURCES_NOT_OPEN);
         return resources.submit(work);
     }
 
     public boolean isOpened() {
-        if (resources == null) return false;
+        if (resources == null)
+            return false;
         return resources.isOpen();
     }
 
     public boolean isAborted() {
-        if (resources == null) return false;
+        if (resources == null)
+            return false;
         return resources.isAborted();
     }
 }

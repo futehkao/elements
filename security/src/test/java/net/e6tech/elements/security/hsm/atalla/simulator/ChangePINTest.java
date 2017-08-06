@@ -73,7 +73,7 @@ public class ChangePINTest {
         fields[10] = kpv3.getKeyBlock(); // kpv_3
         fields[11] = Hex.toString(simulator.encrypt(kpe, pinBlock.getEncoding())); // new pin block
         fields[12] = partialPan; // partial pan
-        generate.fields = fields;
+        generate.setFields(fields);
         return generate.process();
     }
 }

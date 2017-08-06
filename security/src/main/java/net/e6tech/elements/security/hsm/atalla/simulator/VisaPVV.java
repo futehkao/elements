@@ -28,6 +28,7 @@ import java.security.GeneralSecurityException;
  */
 public class VisaPVV {
 
+    @SuppressWarnings("all")
     public static void main(String ... args) throws Exception {
         VisaPVV visa = new VisaPVV();
 
@@ -43,11 +44,15 @@ public class VisaPVV {
         System.out.println(visa.generatePVV(kpv, partialPan, pvki, "4321"));  // should be 8449
     }
 
-    public String generatePVV(byte[] pvvKeyBytes, String partialPan, int pvki, String pin) throws GeneralSecurityException {
-        if (partialPan.length() != 11) throw new GeneralSecurityException("invalid partial pan length, must be 11");
-        if (pin.length() != 4) throw new GeneralSecurityException("invalid pin length, must be 4");
-        if (pvki > 9 || pvki < 0) throw new GeneralSecurityException("invalid pvki, must be greater than or equal to 0 and less than 10.");
-        pvvKeyBytes = AKB.normalizeKey(pvvKeyBytes);
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2131"})
+    public String generatePVV(byte[] pvvKey, String partialPan, int pvki, String pin) throws GeneralSecurityException {
+        if (partialPan.length() != 11)
+            throw new GeneralSecurityException("invalid partial pan length, must be 11");
+        if (pin.length() != 4)
+            throw new GeneralSecurityException("invalid pin length, must be 4");
+        if (pvki > 9 || pvki < 0)
+            throw new GeneralSecurityException("invalid pvki, must be greater than or equal to 0 and less than 10.");
+        byte[] pvvKeyBytes = AKB.normalizeKey(pvvKey);
         SecretKey pvv = new SecretKeySpec(pvvKeyBytes, "DESede");
         Cipher cipher = Cipher.getInstance("DESede/ECB/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, pvv);
@@ -60,11 +65,13 @@ public class VisaPVV {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < result.length(); i++) {
             char c = result.charAt(i);
-            if (c >= '0' && c <= '9') builder.append(c);
+            if (c >= '0' && c <= '9')
+                builder.append(c);
         }
         for (int i = 0; i < result.length(); i++) {
             char c = result.charAt(i);
-            if (c >= 'A' && c <= 'F') builder.append("" + (c - 'A')); // A becomes 0, B 1, C 2 etc.
+            if (c >= 'A' && c <= 'F')
+                builder.append("" + (c - 'A')); // A becomes 0, B 1, C 2 etc.
         }
         return builder.toString().substring(0, 4);
     }

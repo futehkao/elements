@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S2925")
 public class ClusterTest extends BaseCase {
     @Test
     public void broadcast() throws Exception {

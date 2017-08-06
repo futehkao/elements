@@ -45,7 +45,8 @@ public class TimestampDirectory {
         return directory;
     }
 
-    public void setDirectory(String outputDirectory) {
+    public void setDirectory(String outDir) {
+        String outputDirectory = outDir;
         while (outputDirectory.endsWith(File.separator) || outputDirectory.endsWith("/"))
             outputDirectory = outputDirectory.substring(0, outputDirectory.length() - 1);
         this.directory = outputDirectory;
@@ -142,14 +143,19 @@ public class TimestampDirectory {
             return getOutputPath(fileName, extension, null);
         }
 
+        @SuppressWarnings("squid:MethodCyclomaticComplexity")
         public Path getOutputPath(String file, String ext, ZonedDateTime timestamp) throws IOException {
-            if (file != null) fileName = file;
-            if (ext != null) fileExtension = ext;
+            if (file != null)
+                fileName = file;
+            if (ext != null)
+                fileExtension = ext;
 
-            if (fileName == null) throw new IOException("File name is not specified");
+            if (fileName == null)
+                throw new IOException("File name is not specified");
             String dir;
             String timestampDir = "";
-            if (directoryTimestampPattern != null && timestamp != null) timestampDir = "/" + timestamp.format(DateTimeFormatter.ofPattern(directoryTimestampPattern));
+            if (directoryTimestampPattern != null && timestamp != null)
+                timestampDir = "/" + timestamp.format(DateTimeFormatter.ofPattern(directoryTimestampPattern));
             if (baseDirectory != null) {
                 dir = rootDirectory + "/" + baseDirectory + timestampDir;
             } else {
@@ -165,7 +171,8 @@ public class TimestampDirectory {
             }
 
             if (fileExtension != null) {
-                if (!fileExtension.startsWith(".")) fileExtension = "." + fileExtension;
+                if (!fileExtension.startsWith("."))
+                    fileExtension = "." + fileExtension;
                 fullPath += fileExtension;
             }
 

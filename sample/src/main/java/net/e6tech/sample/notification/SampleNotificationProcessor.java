@@ -24,10 +24,10 @@ import net.e6tech.elements.common.notification.NotificationProcessor;
 public class SampleNotificationProcessor extends NotificationProcessor {
 
     protected void processEvent(SampleNotification1 notification) {
-
+        // just a test
     }
 
     protected void processEvent(SampleNotification2 notification) {
-
+        // just a test
     }
 }

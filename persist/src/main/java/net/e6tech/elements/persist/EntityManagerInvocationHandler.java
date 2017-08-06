@@ -16,6 +16,7 @@ limitations under the License.
 
 package net.e6tech.elements.persist;
 
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Resources;
 
 import javax.persistence.EntityManager;
@@ -23,7 +24,6 @@ import javax.persistence.Query;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by futeh.
@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class EntityManagerInvocationHandler extends Watcher {
 
     private Resources resources;
-    private AtomicInteger ignoreInitialLongTransaction;
 
     public EntityManagerInvocationHandler(Resources resources, EntityManager em) {
         super(em);
@@ -45,16 +44,12 @@ public class EntityManagerInvocationHandler extends Watcher {
     @Override
     public Object doInvoke(Object proxy, Method method, Object[] args) throws Throwable {
 
-        /*
-        if (method.getName().equals("persist")) {
-            if (resources != null && args[0] != null) resources.inject(args[0]);
-        } */
-
         long start = System.currentTimeMillis();
         Object ret = null;
         try {
             ret = method.invoke(getTarget(), args);
         } catch (InvocationTargetException ex) {
+            Logger.suppress(ex);
             throw ex.getCause();
         } finally {
             if (logger.isDebugEnabled() && isMonitorTransaction()) {

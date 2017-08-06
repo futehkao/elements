@@ -21,13 +21,15 @@ import java.util.concurrent.Callable;
 /**
  * Created by futeh.
  */
+@FunctionalInterface
+@SuppressWarnings({"squid:S00112", "squid:S1602"})
 public interface Transactional {
 
-    <Res extends Resources> Res open();
+    <T extends Resources> T open();
 
     default <R> R commit(Callable<R> callable) {
         Resources resources = open();
-        resources.submit((r) -> {
+        resources.submit(r -> {
             return callable.call();
         });
         return resources.commit();
@@ -35,7 +37,7 @@ public interface Transactional {
 
     default void commit(RunnableWithException runnable) {
         Resources resources = open();
-        resources.submit((r) -> {
+        resources.submit(r -> {
             runnable.run();
         });
         resources.commit();
@@ -43,7 +45,7 @@ public interface Transactional {
 
     default <T, R> R commit(Class<T> cls, FunctionWithException<T, R> function) {
         Resources resources = open();
-        resources.submit((r) -> {
+        resources.submit(r -> {
             return function.apply(r.getInstance(cls));
         });
         return resources.commit();
@@ -51,7 +53,7 @@ public interface Transactional {
 
     default <T> void commit(Class<T> cls, ConsumerWithException<T> consumer) {
         Resources resources = open();
-        resources.submit((r) -> {
+        resources.submit(r -> {
             consumer.accept(r.getInstance(cls));
         });
         resources.commit();
@@ -59,7 +61,7 @@ public interface Transactional {
 
     default <S, T, R> R commit(Class<S> cls, Class<T> cls2, BiFunctionWithException<S, T, R> function) {
         Resources resources = open();
-        resources.submit((r) -> {
+        resources.submit(r -> {
             return function.apply(r.getInstance(cls), r.getInstance(cls2));
         });
         return resources.commit();
@@ -67,7 +69,7 @@ public interface Transactional {
 
     default <S,T> void commit(Class<S> cls, Class<T> cls2, BiConsumerWithException<S,T> consumer) {
         Resources resources = open();
-        resources.submit((r) -> {
+        resources.submit(r -> {
             consumer.accept(r.getInstance(cls), r.getInstance(cls2));
         });
         resources.commit();
@@ -75,7 +77,7 @@ public interface Transactional {
 
     default <S, T, U, R> R commit(Class<S> cls, Class<T> cls2, Class<U> cls3, TriFunctionWithException<S, T, U, R> function) {
         Resources resources = open();
-        resources.submit((r) -> {
+        resources.submit(r -> {
             return function.apply(r.getInstance(cls), r.getInstance(cls2), r.getInstance(cls3));
         });
         return resources.commit();
@@ -83,7 +85,7 @@ public interface Transactional {
 
     default <S,T,U> void commit(Class<S> cls, Class<T> cls2, Class<U> cls3, TriConsumerWithException<S,T,U> consumer) {
         Resources resources = open();
-        resources.submit((r) -> {
+        resources.submit(r -> {
             consumer.accept(r.getInstance(cls), r.getInstance(cls2), r.getInstance(cls3));
         });
         resources.commit();
@@ -91,27 +93,27 @@ public interface Transactional {
 
     @FunctionalInterface
     public interface RunnableWithException {
-        void run() throws Throwable;
+        void run() throws Exception;
     }
 
     @FunctionalInterface
     interface ConsumerWithException<T> {
-        void accept(T t) throws Throwable;
+        void accept(T t) throws Exception;
     }
 
     @FunctionalInterface
     interface BiConsumerWithException<S,T> {
-        void accept(S s, T t) throws Throwable;
+        void accept(S s, T t) throws Exception;
     }
 
     @FunctionalInterface
     interface TriConsumerWithException<S, T, U> {
-        void accept(S s, T t, U u) throws Throwable ;
+        void accept(S s, T t, U u) throws Exception ;
     }
 
     @FunctionalInterface
     interface FunctionWithException<T, R> {
-        R apply(T t) throws Throwable;
+        R apply(T t) throws Exception;
     }
 
     @FunctionalInterface
@@ -121,6 +123,6 @@ public interface Transactional {
 
     @FunctionalInterface
     interface TriFunctionWithException<S, T, U, R> {
-        R apply(S s, T t, U u) throws Throwable;
+        R apply(S s, T t, U u) throws Exception;
     }
 }

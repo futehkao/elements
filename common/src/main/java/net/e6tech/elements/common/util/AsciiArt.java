@@ -17,12 +17,14 @@ package net.e6tech.elements.common.util;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 
 
 public class AsciiArt {
 
-    public static String generate(String text, int fontSize) throws IOException {
+    private AsciiArt() {
+    }
+
+    public static String generate(String text, int fontSize) {
         Graphics2D graphics = null;
         StringBuilder builder = new StringBuilder();
         try {
@@ -38,7 +40,8 @@ public class AsciiArt {
                 height = graphics.getFontMetrics().getHeight();
                 desc = graphics.getFontMetrics().getDescent();
             } finally {
-                if (graphics != null) graphics.dispose();
+                if (graphics != null)
+                    graphics.dispose();
                 graphics = null;
             }
 
@@ -66,7 +69,8 @@ public class AsciiArt {
             }
             graphics.dispose();
         } finally {
-            if (graphics != null) graphics.dispose();
+            if (graphics != null)
+                graphics.dispose();
         }
         return builder.toString();
 

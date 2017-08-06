@@ -16,6 +16,8 @@ limitations under the License.
 
 package net.e6tech.elements.common.resources;
 
+import net.e6tech.elements.common.logging.Logger;
+
 /**
  * Created by futeh.
  */
@@ -47,6 +49,7 @@ public class Binding<T> {
             oldValue = resources.getInstance(boundClass);
             oldValueExists = true;
         } catch (InstanceNotFoundException ex) {
+            Logger.suppress(ex);
             oldValueExists = false;
         }
         currentValue = oldValue;

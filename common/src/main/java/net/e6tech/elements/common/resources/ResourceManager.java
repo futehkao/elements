@@ -18,7 +18,6 @@ package net.e6tech.elements.common.resources;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
-import net.e6tech.elements.common.instance.InstanceFactory;
 import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.logging.TimedLogger;
@@ -26,6 +25,7 @@ import net.e6tech.elements.common.notification.NotificationCenter;
 import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.script.AbstractScriptShell;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.monitor.AllocationMonitor;
 import org.apache.logging.log4j.ThreadContext;
 
@@ -47,6 +47,8 @@ import java.util.function.Consumer;
 public class ResourceManager extends AbstractScriptShell implements ResourcePool {
 
     private static Logger logger = Logger.getLogger();
+    private static final String LOG_DIR_ABBREV = "logDir";
+    private static final String ALREADY_BOUND_MSG = "Class %s is already bound to %s";
 
     private String name;
     private Injector injector;
@@ -59,7 +61,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private BeanLifecycle beanLifecycle = new BeanLifecycle();
     private PluginManager pluginManager = new PluginManager(this);
     private List<ResourceManagerListener> listeners = new LinkedList<>();
-    private Map<Class, ClassInjectionInfo> injections = new Hashtable<>(); // a cache to be used by Resources.
+    private Map<Class, ClassInjectionInfo> injections = Collections.synchronizedMap(new HashMap<>()); // a cache to be used by Resources.
 
     public ResourceManager() {
         this(new Properties());
@@ -67,7 +69,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public ResourceManager(Provision provision) {
         initialize(pluginManager.getPluginClassLoader(), provision.getProperties());
-        _initialize(provision.getProperties());
+        privateInit(provision.getProperties());
 
         Provision myProvision = loadProvision(provision.getClass());
         myProvision.load(provision.getResourceManager().getScripting().getVariables());
@@ -75,15 +77,17 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public ResourceManager(Properties properties) {
         initialize(pluginManager.getPluginClassLoader(), updateProperties(properties));
-        _initialize(properties);
+        privateInit(properties);
     }
 
-    private void _initialize(Properties properties) {
-        String logDir = properties.getProperty("logDir");
-        if (logDir != null) ThreadContext.put("logDir", logDir);
+    private void privateInit(Properties properties) {
+        String logDir = properties.getProperty(LOG_DIR_ABBREV);
+        if (logDir != null)
+            ThreadContext.put(LOG_DIR_ABBREV, logDir);
         else {
             logDir = properties.getProperty(Logger.logDir);
-            if (logDir != null) ThreadContext.put("logDir", logDir);
+            if (logDir != null)
+                ThreadContext.put(LOG_DIR_ABBREV, logDir);
         }
 
         name = properties.getProperty("name");
@@ -96,18 +100,15 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     public void setModuleFactory(ModuleFactory factory) {
         module = factory.create();
 
-        InstanceFactory instanceFactory = new InstanceFactory();
         module.bindInstance(ModuleFactory.class, factory);
         module.bindInstance(ResourceManager.class, this);
         module.bindInstance(NotificationCenter.class, notificationCenter);
         module.bindInstance(Interceptor.class, Interceptor.getInstance());
-        module.bindInstance(InstanceFactory.class, instanceFactory);
         module.bindInstance(PluginManager.class, pluginManager);
         injector = module.build();
 
         getScripting().put("notificationCenter", notificationCenter);
         getScripting().put("interceptor", Interceptor.getInstance());
-        getScripting().put("instanceFactory", instanceFactory);
         getScripting().put("pluginManager", pluginManager);
     }
 
@@ -123,6 +124,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return pluginManager;
     }
 
+    @Override
     public NotificationCenter getNotificationCenter() {
         return notificationCenter;
     }
@@ -136,7 +138,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
                     name = Paths.get(new File(home).getCanonicalPath()).getFileName().toString();
                     properties.setProperty("name", name);
                 } catch (IOException e) {
-                    throw new RuntimeException("Invalid home location " + home);
+                    throw logger.systemException("Invalid home location " + home, e);
                 }
             }
             properties.setProperty(name, home);
@@ -149,7 +151,8 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public void setName(String name) {
-        if (this.name != null) getScripting().remove(this.name);
+        if (this.name != null)
+            getScripting().remove(this.name);
         this.name = name;
         getScripting().put(name, getProperties().getProperty("home"));
     }
@@ -188,19 +191,24 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
      * a thread.  In order for logging to work correctly, its ThreadContext needs to be populated.
      */
     public void createLoggerContext() {
-        if (ThreadContext.get("logDir") == null) {
+        if (ThreadContext.get(LOG_DIR_ABBREV) == null) {
             String logDir = null;
-            if (System.getProperty("logDir") != null) logDir = System.getProperty("logDir");
-            else if (System.getProperty(Logger.logDir) != null) logDir = System.getProperty(Logger.logDir);
+            if (System.getProperty(LOG_DIR_ABBREV) != null)
+                logDir = System.getProperty(LOG_DIR_ABBREV);
+            else if (System.getProperty(Logger.logDir) != null)
+                logDir = System.getProperty(Logger.logDir);
             else {
                 Properties properties = getProperties();
-                logDir = properties.getProperty("logDir");
-                if (logDir == null) logDir = properties.getProperty(Logger.logDir);
+                logDir = properties.getProperty(LOG_DIR_ABBREV);
+                if (logDir == null)
+                    logDir = properties.getProperty(Logger.logDir);
             }
-            if (logDir != null) ThreadContext.put("logDir", logDir);
+            if (logDir != null)
+                ThreadContext.put(LOG_DIR_ABBREV, logDir);
         }
     }
 
+    @Override
     protected void onLoaded() {
         // do nothing, clean up is done in onLaunched.  super.onLoaded will remove closures.
     }
@@ -221,8 +229,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return atoms.remove(name);
     }
 
+    @SuppressWarnings("squid:CommentedOutCodeLine")
     public Atom createAtom(String atomName, Consumer<Atom> consumer, Atom prototypeAtom, boolean prototype) {
-        if (name != null && atoms.get(atomName) != null) return atoms.get(atomName);
+        if (name != null && atoms.get(atomName) != null)
+            return atoms.get(atomName);
         Atom atom = new Atom(this, prototypeAtom);
         atom.setPrototype(prototype);
         atom.setName(atomName);
@@ -239,7 +249,8 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         if (atomName == null) {
             logger.warn("Atom name is null", new Throwable());
         } else {
-            if (!prototype) atoms.put(atomName, atom);
+            if (!prototype)
+                atoms.put(atomName, atom);
         }
         consumer.accept(atom);
         TimedLogger timed = new TimedLogger(0);
@@ -257,7 +268,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             provision = (Provision) cls.newInstance();
             inject(provision);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
 
         boolean alreadyBound = false;
@@ -265,6 +276,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             try {
                 bind((Class<Provision>) cls, provision);
             } catch (AlreadyBoundException ex) {
+                Logger.suppress(ex);
                 alreadyBound = true;
             }
             cls = cls.getSuperclass();
@@ -297,7 +309,8 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return injector.getInstance(clazz) != null;
     }
 
-    public <T> T getInstance(Class<T> clazz) throws InstanceNotFoundException {
+    @SuppressWarnings("squid:S1905")
+    public <T> T getInstance(Class<T> clazz) {
         T value = injector.getInstance(clazz);
         if (value == null) {
             if (Provision.class.isAssignableFrom(clazz)) {
@@ -311,7 +324,8 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T bind(Class<T> cls, T resource) {
         Object o = module.getBoundInstance(cls);
-        if (o != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + o);
+        if (o != null)
+            throw new AlreadyBoundException(String.format(ALREADY_BOUND_MSG, cls, o));
         module.bindInstance(cls, resource);
         injector = module.build();
         T instance = getInstance(cls);
@@ -338,12 +352,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         try {
             bindClass(cls, service);
         } catch (AlreadyBoundException ex) {
+            Logger.suppress(ex);
         }
     }
 
     public void bindClass(Class cls, Class service) {
         Class c = module.getBoundClass(cls);
-        if (c != null) throw new AlreadyBoundException("Class " + cls + " is already bound to " + c);
+        if (c != null)
+            throw new AlreadyBoundException(String.format(ALREADY_BOUND_MSG, cls, c));
         if (service != null) {
             module.bindClass(cls, service);
         } else {
@@ -378,7 +394,8 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public <T> T inject(T obj) {
-        if (obj == null) return obj;
+        if (obj == null)
+            return obj;
         if (obj instanceof InjectionListener) {
             ((InjectionListener) obj).preInject(this);
         }
@@ -406,13 +423,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     protected <T> T addBean(String name, Object instance) {
         if (getScripting().getVariables().get(name) != null) {
-            throw logger.runtimeException("bean with name=" + name + " already registered");
+            throw logger.systemException("bean with name=" + name + " already registered");
         }
 
         try {
             Method method = instance.getClass().getMethod("setName", String.class);
             method.invoke(instance, name);
-        } catch (Throwable e) {
+        } catch (Exception ex) {
+            Logger.suppress(ex);
         }
 
         getScripting().put(name, instance);
@@ -427,18 +445,22 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         listeners.forEach(l -> l.beanRemoved(name, instance));
     }
 
+    @Override
     public <T> T getBean(String name) {
         return (T) getScripting().getVariables().get(name);
     }
 
+    @Override
     public <T> T getBean(Class<T> cls) {
         T value = null;
         Map<String, Object> variables = getScripting().getVariables();
-        for (String key : variables.keySet()) {
-            Object obj = variables.get(key);
-            if (obj == null) continue;
+        for (Map.Entry<String, Object> entry : variables.entrySet()) {
+            Object obj = entry.getValue();
+            if (obj == null)
+                continue;
             if (cls.isAssignableFrom(obj.getClass())) {
-                if (value != null) throw new RuntimeException("Multiple objects can be assigned to " + cls);
+                if (value != null)
+                    throw new SystemException("Multiple objects can be assigned to " + cls);
                 value = (T) obj;
             }
         }
@@ -461,7 +483,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     public List listBeans() {
         Map<String, Object> variables = getScripting().getVariables();
         List list = new ArrayList(variables.size());
-        variables.values().forEach(b -> list.add(b));
+        list.addAll(variables.values());
         return Collections.unmodifiableList(list);
     }
 
@@ -474,6 +496,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         load(str, true);
     }
 
+    @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity"})
     public synchronized void load(String str, boolean logInfo) throws ScriptException {
         long start = System.currentTimeMillis();
         super.load(str);
@@ -487,16 +510,19 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             int i = 1;
             for (String atomName : atoms.keySet()) {
                 builder.append(atomName);
-                if (i != count) builder.append(", ");
+                if (i != count)
+                    builder.append(", ");
                 if (i % 5 == 0) {
                     String msg = builder.toString();
-                    if (len < msg.length()) len = msg.length();
+                    if (len < msg.length())
+                        len = msg.length();
                     atomString.add(builder.toString());
                     builder.setLength(0);
                     builder.append("    ");
                 } else if (i == count) {
                     String msg = builder.toString();
-                    if (len < msg.length()) len = msg.length();
+                    if (len < msg.length())
+                        len = msg.length();
                     atomString.add(builder.toString());
                 }
                 i++;
@@ -504,26 +530,30 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
             String message = "Done processing " + str;
             String message2 = "ResourceManager " + name + " loaded in " + (System.currentTimeMillis() - start) + "ms";
-            if (message.length() > len) len = message.length();
-            if (message2.length() > len) len = message2.length();
+            if (message.length() > len)
+                len = message.length();
+            if (message2.length() > len)
+                len = message2.length();
             char[] line = new char[len];
             Arrays.fill(line, '*');
             logger.info(new String(line));
             logger.info(message);
             logger.info(message2);
             logger.info("Loaded atoms:");
-            for (String msg : atomString) logger.info(msg);
+            for (String msg : atomString)
+                logger.info(msg);
             logger.info(new String(line));
         }
     }
 
-    public <Res extends Resources> Res open(Configurator configurator) {
-        return open(configurator, (resources) -> {
+    public <T extends Resources> T open(Configurator configurator) {
+        return open(configurator, resources -> {
+            // do nothing
         });
     }
 
-    public <Res extends Resources> Res open(Configurator configurator, Consumer<Res> preOpen) {
-        Res resources = newResources();
+    public <T extends Resources> T open(Configurator configurator, Consumer<T> preOpen) {
+        T resources = newResources();
         resources.configure(configurator);
 
         inject(resources);
@@ -544,7 +574,9 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
                 p.onOpen(resources);
                 openList.add(p);
             } catch (NotAvailableException ex) {
-            } catch (Throwable th) {
+                Logger.suppress(ex);
+            } catch (Exception th) {
+                Logger.suppress(th);
                 resources.setExternalResourceProviders(openList);
                 resources.onOpen();
                 resources.abort();
@@ -590,7 +622,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             T resources = (T) constructor.newInstance(this);
             return inject(resources);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -624,7 +656,8 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         private List<Field> injectableFields = emptyFields;
 
         void addInjectableField(Field field) {
-            if (injectableFields == emptyFields) injectableFields = new ArrayList<>();
+            if (injectableFields == emptyFields)
+                injectableFields = new ArrayList<>();
             injectableFields.add(field);
         }
 

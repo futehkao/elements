@@ -16,12 +16,9 @@
 
 package net.e6tech.elements.common.launch;
 
-import net.e6tech.elements.common.notification.NotificationListener;
-import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.OnShutdown;
 import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.common.resources.ResourceProvider;
-import net.e6tech.elements.common.resources.Resources;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -29,6 +26,9 @@ import java.util.concurrent.CountDownLatch;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S106", "squid:S1148", "squid:S1166", "squid:S1188", "squid:S2274",
+        "squid:S1147", "squid:CommentedOutCodeLine"})  // This is a launch class so a number of standard
+                        // coding practices don't apply.
 class Launcher {
     ResourceManager resourceManager;
     LaunchController controller;
@@ -50,7 +50,8 @@ class Launcher {
 
     public void launch(List<LaunchListener> listeners ) {
         String file = controller.getLaunchScript();
-        if (file == null) throw new IllegalArgumentException("launch file not specified, use launch=<file>");
+        if (file == null)
+            throw new IllegalArgumentException("launch file not specified, use launch=<file>");
 
         Thread thread = new Thread(() -> {
             resourceManager = new ResourceManager(controller.getProperties());
@@ -58,8 +59,8 @@ class Launcher {
             listeners.forEach(listener -> listener.created(resourceManager));
             try {
                 resourceManager.load(file);
-            } catch (Throwable e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace(); // we cannot use Logger yet
                 System.exit(1);
             }
             latch.countDown();
@@ -86,9 +87,9 @@ class Launcher {
             synchronized (resourceManager) {
                 try {
                     resourceManager.wait();
-                    System.out.println("Launcher thread stopped");
+                    System.out.println("Launcher thread stopped");  // we cannot use Logger yet
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
                 }
             }
         });

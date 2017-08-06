@@ -16,13 +16,12 @@
 
 package net.e6tech.elements.common.util.datastructure;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 /**
  * Created by futeh.
  */
-public class Triplet<U, D, S> implements Serializable {
+public class Triplet<U, D, S>  {
 
     private U x;
     private D y;
@@ -53,13 +52,15 @@ public class Triplet<U, D, S> implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
+        if (this == o)
+            return true;
         if (o instanceof Triplet) {
             Triplet t = (Triplet) o;
-            if (x != null ? !x.equals(t.x) : t.x != null) return false;
-            if (y != null ? !y.equals(t.y) : t.y != null) return false;
-            if (z != null ? !z.equals(t.z) : t.z != null) return false;
-            return true;
+            if (x != null ? !x.equals(t.x) : t.x != null)
+                return false;
+            if (y != null ? !y.equals(t.y) : t.y != null)
+                return false;
+            return !(z != null ? !z.equals(t.z) : t.z != null);
         }
         return false;
     }

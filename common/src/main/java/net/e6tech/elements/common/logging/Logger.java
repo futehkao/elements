@@ -29,17 +29,22 @@ import java.lang.reflect.Proxy;
  * Usage:
  * Logger logger = Logger.getLogger();
  * To throw a RuntimeException and to log it:
- * throw new logger.runtimeException(msg, ex);
+ * throw new logger.systemException(msg, ex);
  * The default log level is ERROR.
  *
  * To change the log level, e.g.
  * logger2 = logger.exceptionLogger(LogLevel.INFO)
- * logger2.runtimeException ...
+ * logger2.systemException ...
  *
  */
+@SuppressWarnings({"squid:S2176", "squid:S00115", "squid:S1214"})
 public interface Logger extends org.slf4j.Logger, ExceptionLogger, Rethrowable {
 
     public static final String logDir = "elements.common.logging.logDir";
+
+    static void suppress(Throwable th) {
+        // do nothing
+    }
 
     static void put(String name, String value) {
         ThreadContext.put(name, value);

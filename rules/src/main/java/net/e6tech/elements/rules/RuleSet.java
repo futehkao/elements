@@ -19,6 +19,7 @@ import groovy.lang.Closure;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.common.script.AbstractScriptShell;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.jmx.JMXService;
 
 import javax.script.ScriptException;
@@ -31,6 +32,7 @@ import java.util.Properties;
  */
 public class RuleSet extends AbstractScriptShell {
 
+    private static final String DEFAULT = "default";
     private static Logger logger = Logger.getLogger();
 
     private Map<String, Rule> rules;  // this is only used during load and then set to null
@@ -50,11 +52,13 @@ public class RuleSet extends AbstractScriptShell {
     public RuleSet(String beanName, ResourceManager resourceManager) {
         super(resourceManager.getProperties());
         setKnownEnvironments(resourceManager.getKnownEnvironments());
-        if (beanName != null) resourceManager.registerBean(beanName, this);
+        if (beanName != null)
+            resourceManager.registerBean(beanName, this);
     }
 
-    public void loadRoots(String ... roots) throws ScriptException {
-        for (String root : roots) load(root);
+    public void loadRoots(String ... rootSet) throws ScriptException {
+        for (String rt : rootSet)
+            load(rt);
     }
 
     // override load to clear out rules
@@ -75,9 +79,9 @@ public class RuleSet extends AbstractScriptShell {
             JMXService.registerMBean(rule.getMeasurement(), objectName);
         }
 
-        path += rule.getName() + ".";
+        String contextPath = path + rule.getName() + ".";
         for (Rule child : rule.getChildren()) {
-            registerMBean(path, child);
+            registerMBean(contextPath, child);
         }
     }
 
@@ -89,13 +93,15 @@ public class RuleSet extends AbstractScriptShell {
         closure.setDelegate(rule);
         closure.setResolveStrategy(Closure.DELEGATE_FIRST);
         closure.run();
-        if (!anonymous) addRule(rule);
+        if (!anonymous)
+            addRule(rule);
         return rule;
     }
 
-    public void addRoot(String ruleSet, Rule root) {
-        if (ruleSet == null || "default".equalsIgnoreCase(ruleSet.trim())) {
-            ruleSet = "default";
+    public void addRoot(String ruleSetName, Rule root) {
+        String ruleSet = ruleSetName;
+        if (ruleSet == null || DEFAULT.equalsIgnoreCase(ruleSet.trim())) {
+            ruleSet = DEFAULT;
         }
         rootSet.put(ruleSet, root);
         rootRules.put(ruleSet, rules);
@@ -104,7 +110,7 @@ public class RuleSet extends AbstractScriptShell {
 
     void addRule(Rule rule) {
         if (rules.get(rule.getName()) != null) {
-            throw new RuntimeException("Duplicate rule name: " + rule.getName());
+            throw new SystemException("Duplicate rule name: " + rule.getName());
         }
         rules.put(rule.getName(), rule);
     }
@@ -113,21 +119,27 @@ public class RuleSet extends AbstractScriptShell {
         return rules.get(key);
     }
 
-    public Rule getRoot(String ruleSet) {
-        if (rootSet.size() == 0) throw new RuntimeException("root not set");
-        if (ruleSet == null || "default".equalsIgnoreCase(ruleSet.trim())) {
-            ruleSet = "default";
+    public Rule getRoot(String ruleSetName) {
+        String ruleSet = ruleSetName;
+        if (rootSet.size() == 0)
+            throw new SystemException("root not set");
+        if (ruleSet == null || DEFAULT.equalsIgnoreCase(ruleSet.trim())) {
+            ruleSet = DEFAULT;
         }
-        if (rootSet.get(ruleSet) == null) throw new RuntimeException("ruleSet " + ruleSet + " not found");
+        if (rootSet.get(ruleSet) == null)
+            throw new SystemException("ruleSet " + ruleSet + " not found");
         return rootSet.get(ruleSet);
     }
 
-    public void runRule(String ruleSet, RuleContext context) {
-        if (rootSet.size() == 0) throw new RuntimeException("root not set");
-        if (ruleSet == null || "default".equalsIgnoreCase(ruleSet.trim())) {
-            ruleSet = "default";
+    public void runRule(String ruleSetName, RuleContext context) {
+        String ruleSet = ruleSetName;
+        if (rootSet.size() == 0)
+            throw new SystemException("root not set");
+        if (ruleSet == null || DEFAULT.equalsIgnoreCase(ruleSet.trim())) {
+            ruleSet = DEFAULT;
         }
-        if (rootSet.get(ruleSet) == null) throw new RuntimeException("ruleSet " + ruleSet + " not found");
+        if (rootSet.get(ruleSet) == null)
+            throw new SystemException("ruleSet " + ruleSet + " not found");
         try {
             context.setRuleSet(this);
             rootSet.get(ruleSet).run(context);
@@ -157,9 +169,11 @@ public class RuleSet extends AbstractScriptShell {
         return str;
     }
 
+    @SuppressWarnings({"squid:S134", "squid:S00100"})
     private void _log(Rule rule, StringBuilder builder, int indent) {
         for (Object object : rule.verifies) {
-            for (int i = 0; i < indent; i++) builder.append("  ");
+            for (int i = 0; i < indent; i++)
+                builder.append("  ");
             if (object instanceof Rule) {
                 builder.append("- ");
                 Rule child = (Rule) object;

@@ -16,6 +16,8 @@ limitations under the License.
 package net.e6tech.elements.common.util;
 
 
+import net.e6tech.elements.common.logging.Logger;
+
 import java.lang.reflect.Constructor;
 
 /**
@@ -23,40 +25,53 @@ import java.lang.reflect.Constructor;
  */
 public interface Rethrowable {
 
-    default RuntimeException runtimeException(Throwable e) {
-        return runtimeException(e.getMessage(), e);
+    /**
+     * Creates a SystemException to wrap a Throwable
+     * @param e
+     * @return
+     */
+    default SystemException systemException(Throwable e) {
+        return systemException(e.getMessage(), e);
     }
 
-    default RuntimeException runtimeException(String msg) {
-        return runtimeException(msg, null);
+    default SystemException systemException(String msg) {
+        return systemException(msg, null);
     }
 
-    default RuntimeException runtimeException(String msg, Throwable th) {
-        RuntimeException e = null;
-        if (th == null) e = new RuntimeException(msg);
-        if (th == null) return e;
-        return new RuntimeException(th);
+    default SystemException systemException(String msg, Throwable th) {
+        if (th == null)
+            return new SystemException(msg);
+        return new SystemException(msg, th);
     }
 
     default <T extends Throwable> T  exception(Class<T> exceptionClass, Throwable e) {
         return exception(exceptionClass, e.getMessage(), e);
     }
 
+    /**
+     * Creating a exception with msg and throwable
+     * @param exceptionClass
+     * @param msg
+     * @param e
+     * @param <T>
+     * @return
+     */
     default <T extends Throwable> T  exception(Class<T> exceptionClass, String msg, Throwable e) {
         Constructor constructor = null;
         T th = null;
         try {
             constructor = exceptionClass.getConstructor(Throwable.class);
             th = (T) constructor.newInstance(e);
-        } catch (Throwable ex) {
-            e.printStackTrace();
+        } catch (Exception ex) {
+            Logger.suppress(ex);
         }
 
         if (th == null) {
             try {
                 constructor = exceptionClass.getConstructor(String.class);
                 th = (T) constructor.newInstance(msg);
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
+                Logger.suppress(ex);
             }
         }
 
@@ -64,7 +79,8 @@ public interface Rethrowable {
             try {
                 constructor = exceptionClass.getConstructor();
                 th = (T) constructor.newInstance();
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
+                Logger.suppress(ex);
             }
         }
         return th;

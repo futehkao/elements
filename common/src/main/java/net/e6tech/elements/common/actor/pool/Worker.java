@@ -19,7 +19,6 @@ package net.e6tech.elements.common.actor.pool;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Status;
-import scala.concurrent.ExecutionContext;
 
 import java.util.concurrent.Callable;
 
@@ -29,7 +28,6 @@ import java.util.concurrent.Callable;
 public class Worker extends AbstractActor {
 
     private ActorRef pool;
-    private ExecutionContext ec;
 
     public Worker(ActorRef pool) {
         this.pool = pool;
@@ -42,7 +40,7 @@ public class Worker extends AbstractActor {
                     try {
                         event.run();
                         getSender().tell(new Events.Response(), getSelf());
-                    } catch (Throwable th) {
+                    } catch (Exception th) {
                         getSender().tell(new Status.Failure(th), getSelf());
                     } finally {
                         pool.tell(new Events.IdleWorker(getSelf()), getSelf());
@@ -52,7 +50,7 @@ public class Worker extends AbstractActor {
                     try {
                         Object ret = event.call();
                         getSender().tell(new Events.Response(ret), getSelf());
-                    } catch (Throwable th) {
+                    } catch (Exception th) {
                         getSender().tell(new Status.Failure(th), getSelf());
                     } finally {
                         pool.tell(new Events.IdleWorker(getSelf()), getSelf());

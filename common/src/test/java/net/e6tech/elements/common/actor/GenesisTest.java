@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S2925")
 public class GenesisTest {
 
     @Test

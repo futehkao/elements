@@ -21,5 +21,6 @@ package net.e6tech.elements.common.resources;
  */
 @FunctionalInterface
 public interface OnClosed extends ResourceProvider {
+    @Override
     void onClosed(Resources resources);
 }

@@ -22,6 +22,10 @@ import java.util.Arrays;
  * Created by futeh.
  */
 public class StringUtil {
+
+    private StringUtil() {
+    }
+
     public static boolean isNullOrEmpty(String p) {
         return ((p == null) || p.trim().isEmpty()) ? true : false;
     }
@@ -36,12 +40,15 @@ public class StringUtil {
 
     public static String pad(String content, int width, char padding, boolean leftAligned) {
         String str = "";
-        if (content != null) str = content.toString();
+        if (content != null)
+            str = content;
         int diff = width - str.length();
-        if (diff <= 0) return str;
+        if (diff <= 0)
+            return str;
         char[] chars = new char[diff];
         Arrays.fill(chars, padding);
-        if (leftAligned) return str + new String(chars);
+        if (leftAligned)
+            return str + new String(chars);
         else return new String(chars) + str;
     }
 }

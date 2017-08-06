@@ -15,6 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.network.restful;
 
+import net.e6tech.elements.common.util.SystemException;
+
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -32,9 +34,10 @@ public class Param implements Serializable{
         this.field = field;
         this.value = value;
         try {
-            if (value != null) this.encodedValue = URLEncoder.encode(value, "UTF-8");
+            if (value != null)
+                this.encodedValue = URLEncoder.encode(value, "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         };
     }
 

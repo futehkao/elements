@@ -50,7 +50,7 @@ public class GenerateCVVTest {
         fields[2] = akb.getKeyBlock();
         fields[3] = "";
         fields[4] = "41234567890123458701101";
-        generate.fields = fields;
+        generate.setFields(fields);
         Message message = generate.process();
         assertTrue(message.getField(1).equals("56149820"));
         assertTrue(message.getField(2).equals("08D7"));

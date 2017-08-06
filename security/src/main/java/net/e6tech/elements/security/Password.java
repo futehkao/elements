@@ -27,15 +27,21 @@ public class Password {
     // The higher the number of iterations the more
     // expensive computing the hash is for us and
     // also for an attacker.
-    private static final int iterations = 20*1000;
-    private static final int saltLen = 64;
-    private static final int desiredKeyLen = 512;
+    private static final int ITERATIONS = 20*1000;
+    private static final int SALT_LEN = 64;
+    private static final int DESIRED_KEY_LEN = 512;
+
+    private Password() {
+    }
 
     public static char[] generateRandomPassword(int min, int max) {
         StringBuilder builder = new StringBuilder();
-        for (char ch = '0' ; ch <= '9'; ch++) builder.append(ch);
-        for (char ch = 'A' ; ch <= 'Z'; ch++) builder.append(ch);
-        for (char ch = 'A' ; ch <= 'z'; ch++) builder.append(ch);
+        for (char ch = '0' ; ch <= '9'; ch++)
+            builder.append(ch);
+        for (char ch = 'A' ; ch <= 'Z'; ch++)
+            builder.append(ch);
+        for (char ch = 'A' ; ch <= 'z'; ch++)
+            builder.append(ch);
         builder.append("!@#$%^&*-_+=~|<>");
         String charSet = builder.toString();
         Random random = new Random();
@@ -59,7 +65,7 @@ public class Password {
      suitable for storing in a database.
      Empty passwords are not supported. */
     protected static String getSaltedHash(char[] password, boolean base64) throws GeneralSecurityException {
-        byte[] salt = RNG.generateSeed(saltLen);
+        byte[] salt = RNG.generateSeed(SALT_LEN);
         // store the salt with the password
         if (base64) {
             return Base64.getEncoder().encodeToString(salt) + "$" + hash(password, salt, base64);
@@ -70,14 +76,16 @@ public class Password {
     /* Checks whether given plaintext password corresponds
      to a stored salted hash of the password. */
     public static boolean check(char[] password, String stored) throws GeneralSecurityException {
-        if (stored == null) return false;
+        if (stored == null)
+            return false;
         String[] saltAndPass = stored.split("\\$");
         if (saltAndPass.length != 2) {
             throw new IllegalStateException("The stored password have the form 'salt$hash'");
         }
         boolean base64 = saltAndPass[0].endsWith("==");
         String hashOfInput = null;
-        if (base64) hashOfInput = hash(password, Base64.getDecoder().decode(saltAndPass[0]), base64);
+        if (base64)
+            hashOfInput = hash(password, Base64.getDecoder().decode(saltAndPass[0]), base64);
         else hashOfInput = hash(password, DatatypeConverter.parseHexBinary(saltAndPass[0]), base64);
         return hashOfInput.equals(saltAndPass[1]);
     }
@@ -88,8 +96,9 @@ public class Password {
         if (password == null || password.length == 0)
             throw new IllegalArgumentException("Empty passwords are not supported.");
         SecretKeyFactory f = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
-        SecretKey key = f.generateSecret(new PBEKeySpec(password, salt, iterations, desiredKeyLen));
-        if (base64) return Base64.getEncoder().encodeToString(key.getEncoded());
+        SecretKey key = f.generateSecret(new PBEKeySpec(password, salt, ITERATIONS, DESIRED_KEY_LEN));
+        if (base64)
+            return Base64.getEncoder().encodeToString(key.getEncoded());
         return Hex.toString(key.getEncoded());
     }
 }

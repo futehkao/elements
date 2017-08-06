@@ -25,6 +25,7 @@ import net.bytebuddy.implementation.SuperMethodCall;
 import net.bytebuddy.implementation.bind.annotation.*;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -38,30 +39,12 @@ import java.util.WeakHashMap;
  */
 public class Interceptor {
     private Map<Class, WeakReference<Class>> proxyClasses = Collections.synchronizedMap(new WeakHashMap<>(199));
+    private static final String HANDLER_FIELD = "handler";
 
     private static Interceptor instance = new Interceptor();
 
     public static Interceptor getInstance() {
         return instance;
-    }
-
-    protected Class createClass(Class cls) {
-        WeakReference<Class> ref = proxyClasses.get(cls);
-        Class proxyClass = (ref == null) ? null : ref.get();
-        if (proxyClass == null) {
-            proxyClass = new ByteBuddy()
-                    .subclass(cls)
-                    .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
-                    .intercept(MethodDelegation.toField("handler"))
-                    .defineField("handler", Handler.class, Visibility.PRIVATE)
-                    .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
-                    .make()
-                    .load(cls.getClassLoader())
-                    .getLoaded();
-            proxyClasses.put(cls, new WeakReference<Class>(proxyClass));
-        }
-
-        return proxyClass;
     }
 
     /**
@@ -73,14 +56,13 @@ public class Interceptor {
      * @return
      */
     public static <T> Class<T> newPrototypeClass(Class<T> cls, T prototype) {
-        Class proxyClass = new ByteBuddy()
+        return (Class) new ByteBuddy()
                 .subclass(cls)
                 .constructor(ElementMatchers.any())
                     .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.to(new Constructor<T>(prototype))))
                 .make()
                 .load(cls.getClassLoader())
                 .getLoaded();
-        return proxyClass;
     }
 
     // must be public static
@@ -92,7 +74,8 @@ public class Interceptor {
         }
 
         public void construct(@This Object instance) {
-            if (prototype != null) Reflection.copyInstance(instance, prototype);
+            if (prototype != null)
+                Reflection.copyInstance(instance, prototype);
         }
     }
 
@@ -111,34 +94,31 @@ public class Interceptor {
     }
 
     public static <T> Class<T> newSingletonClass(Class<T> cls, T singleton, InterceptorListener listener) {
-        if (singleton == null) throw new IllegalArgumentException("target cannot be null");
+        if (singleton == null)
+            throw new IllegalArgumentException("target cannot be null");
         Class proxyClass = new ByteBuddy()
                 .subclass(cls)
                 .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.named("finalize").and(ElementMatchers.hasParameters(ElementMatchers.none())))))
-                .intercept(MethodDelegation.toField("handler"))
-                .defineField("handler", Handler.class, Visibility.PRIVATE, Ownership.STATIC)
+                .intercept(MethodDelegation.toField(HANDLER_FIELD))
+                .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE, Ownership.STATIC)
                 .make()
                 .load(cls.getClassLoader())
                 .getLoaded();
         try {
-            Field field = proxyClass.getDeclaredField("handler");
+            Field field = proxyClass.getDeclaredField(HANDLER_FIELD);
             field.setAccessible(true);
-            InterceptorHandlerWrapper wrapper = null;
-            try {
-                wrapper = new InterceptorHandlerWrapper(getInstance(),
+            InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(getInstance(),
                         proxyClass,
                         singleton,
                         (t,  thisMethod,  args) -> thisMethod.invoke(singleton, args),
                         listener );
-                field.set(null, wrapper);
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
-            }
-        } catch (NoSuchFieldException e) {
-            throw new RuntimeException(e);
+            field.set(null, wrapper);
+        } catch (Exception e) {
+            throw new SystemException(e);
         }
         return proxyClass;
     }
+
 
     /**
      * Creates an interceptor for an instance.  All calls for the interceptor, except for methods declared in Object, are
@@ -178,14 +158,34 @@ public class Interceptor {
         InterceptorHandlerWrapper wrapper = null;
         try {
             Object target = null;
-            if (!cls.isInterface()) target = cls.newInstance();
+            if (!cls.isInterface())
+                target = cls.newInstance();
             wrapper = new InterceptorHandlerWrapper(this, proxyClass, target, handler, listener);
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new SystemException(e);
         }
         wrapper.targetClass = cls;
         ((HandlerAccessor) proxyObject).setHandler(wrapper);
         return proxyObject;
+    }
+
+    protected Class createClass(Class cls) {
+        WeakReference<Class> ref = proxyClasses.get(cls);
+        Class proxyClass = (ref == null) ? null : ref.get();
+        if (proxyClass == null) {
+            proxyClass = new ByteBuddy()
+                    .subclass(cls)
+                    .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
+                    .intercept(MethodDelegation.toField(HANDLER_FIELD))
+                    .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
+                    .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
+                    .make()
+                    .load(cls.getClassLoader())
+                    .getLoaded();
+            proxyClasses.put(cls, new WeakReference<Class>(proxyClass));
+        }
+
+        return proxyClass;
     }
 
     private <T> T newObject(Class proxyClass) {
@@ -193,16 +193,13 @@ public class Interceptor {
         try {
             proxyObject = (T) proxyClass.newInstance();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
         return proxyObject;
     }
 
     public static boolean isProxyObject(Object proxyObject) {
-        if (!(proxyObject instanceof HandlerAccessor)) {
-            return false;
-        }
-        return true;
+        return proxyObject instanceof HandlerAccessor;
     }
 
     public static <T> T cloneProxyObject(T proxyObject) {
@@ -210,7 +207,7 @@ public class Interceptor {
             throw new IllegalArgumentException("argument is not a proxy object");
         }
         InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
-        wrapper = wrapper.clone();
+        wrapper = new InterceptorHandlerWrapper(wrapper); // make a copy
         Interceptor interceptor = wrapper.interceptor;
         T cloneProxy = interceptor.newObject(wrapper.proxyClass);
         ((HandlerAccessor) cloneProxy).setHandler(wrapper);
@@ -255,17 +252,22 @@ public class Interceptor {
         wrapper.listener = handler;
     }
 
+    @SuppressWarnings("squid:S00112")
+    @FunctionalInterface
     public interface Handler {
         @RuntimeType
         Object handle(@Origin Method interceptorMethod, @AllArguments() Object[] arguments) throws Throwable;
     }
 
+    /**
+     * Implemented by an interceptor class so that handler can be set.
+     */
     public interface HandlerAccessor {
         Handler getHandler();
         void setHandler(Handler handler);
     }
 
-    private static class InterceptorHandlerWrapper implements Handler, Cloneable {
+    private static class InterceptorHandlerWrapper implements Handler {
         InterceptorHandler handler;
         InterceptorListener listener;
         Object target;
@@ -283,27 +285,32 @@ public class Interceptor {
             this.handler = handler;
             this.listener = listener;
             this.target = target;
-            if (target != null) targetClass = target.getClass();
+            if (target != null)
+                targetClass = target.getClass();
         }
 
-        protected InterceptorHandlerWrapper clone() {
-            try {
-                return (InterceptorHandlerWrapper) super.clone();
-            } catch (CloneNotSupportedException e) {
-                throw new RuntimeException(e);
-            }
+        public InterceptorHandlerWrapper(InterceptorHandlerWrapper copy) {
+            this.interceptor = copy.interceptor;
+            this.proxyClass = copy.proxyClass;
+            this.handler = copy.handler;
+            this.listener = copy.listener;
+            this.target = target;
+            this.targetClass = copy.targetClass;
         }
 
         public Object handle(Method interceptorMethod, @RuntimeType  Object[] arguments) throws Throwable {
-            if (listener != null) listener.preInvocation(target, interceptorMethod, arguments);
+            if (listener != null)
+                listener.preInvocation(target, interceptorMethod, arguments);
             Object ret = null;
             try {
                 ret = handler.invoke(target, interceptorMethod, arguments);
             } catch (Throwable throwable) {
-                if (listener != null) return listener.onException(target, interceptorMethod, arguments, throwable);
+                if (listener != null)
+                    return listener.onException(target, interceptorMethod, arguments, throwable);
                 else throw throwable;
             }
-            if (listener != null) ret = listener.postInvocation(target, interceptorMethod, arguments, ret);
+            if (listener != null)
+                ret = listener.postInvocation(target, interceptorMethod, arguments, ret);
             return ret;
         }
     }

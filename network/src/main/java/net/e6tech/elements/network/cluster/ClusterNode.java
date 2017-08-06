@@ -21,14 +21,11 @@ import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import akka.pattern.Patterns;
-import com.google.inject.Inject;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
-import net.e6tech.elements.common.actor.pool.WorkerPool;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,8 +55,10 @@ public class ClusterNode implements Initializable {
 
     public void setTimeout(long timeout) {
         this.timeout = timeout;
-        if (broadcast != null) broadcast.setTimeout(timeout);
-        if (registry != null) registry .setTimeout(timeout);
+        if (broadcast != null)
+            broadcast.setTimeout(timeout);
+        if (registry != null)
+            registry .setTimeout(timeout);
     }
 
     public String getName() {
@@ -90,9 +89,6 @@ public class ClusterNode implements Initializable {
         return members;
     }
 
-    public ClusterNode() {
-    }
-
     public void initialize(Resources resources) {
         if (genesis == null) {
             genesis = new Genesis();
@@ -113,12 +109,11 @@ public class ClusterNode implements Initializable {
     }
 
     public void start() {
-        if (started) return;
-        if (membership == null) {
-            membership = genesis.getSystem().actorOf(Props.create(Membership.class,() -> {
-                return new Membership();
-            }));
-        }
+        if (started)
+            return;
+        if (membership == null)
+            membership = genesis.getSystem().actorOf(Props.create(Membership.class, Membership::new ));
+
         if (broadcast == null) {
             broadcast = new Messaging();
             broadcast.setTimeout(timeout);
@@ -143,6 +138,7 @@ public class ClusterNode implements Initializable {
     }
 
     class Membership extends AbstractActor {
+
         akka.cluster.Cluster cluster = akka.cluster.Cluster.get(getContext().system());
 
         //subscribe to cluster changes

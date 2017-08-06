@@ -22,7 +22,8 @@ package net.e6tech.elements.common.notification;
 public class ShutdownNotification implements Notification {
     private static final long serialVersionUID = -725815273801217208L;
 
-    Object source;
+    transient Object source;
+
     public ShutdownNotification(Object source) {
         this.source = source;
     }

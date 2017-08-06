@@ -17,7 +17,7 @@ package net.e6tech.elements.common.launch;
 
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.ResourceManager;
-import org.apache.logging.log4j.ThreadContext;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -25,14 +25,22 @@ import java.util.concurrent.CountDownLatch;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S1700", "squid:MethodCyclomaticComplexity", "squid:ForLoopCounterChangedCheck",
+        "squid:S134"})
 public class Launch {
 
     private static final String LAUNCH = "launch";
     private static final String END = "end";
-    private static final String ARGS = "args";
 
     List<Launcher> launchers = new ArrayList<>();
     Map<String, ResourceManager> resourceManagers = new HashMap<>();
+
+    public Launch(LaunchController ... controllers) {
+        for (LaunchController controller : controllers) {
+            Launcher launcher = new Launcher(controller);
+            launchers.add(launcher);
+        }
+    }
 
     /**
      * Required properties are
@@ -55,9 +63,8 @@ public class Launch {
      *  arguments between launch and end are only visible for that particular launch profile.
      *
      * @param args arguments
-     * @throws Exception general exception.
      */
-    public static void main(String ... args) throws Exception {
+    public static void main(String ... args) {
         List<LaunchController> controllers = new ArrayList<>();
 
         Properties defaultProperties = new Properties();
@@ -65,8 +72,10 @@ public class Launch {
         for (int i = 0; i < args.length; i++) {
             if (args[i].startsWith("-") && i < args.length - 1) {
                 String key = args[i];
-                if (key.startsWith("--")) key = key.substring(2);
-                else if (key.startsWith("-")) key = key.substring(1);
+                if (key.startsWith("--"))
+                    key = key.substring(2);
+                else if (key.startsWith("-"))
+                    key = key.substring(1);
                 if (!args[i + 1].startsWith("-") && i + 1 < args.length) {
                     String val = args[++i];
                     defaultProperties.put(key, val);
@@ -104,7 +113,8 @@ public class Launch {
                 Properties properties = controller.getProperties();
                 for (String propKey : properties.stringPropertyNames()) {
                     for (LaunchController c : controllers) {
-                        if (c.getProperty(propKey) == null) c.property(propKey, properties.getProperty(propKey));
+                        if (c.getProperty(propKey) == null)
+                            c.property(propKey, properties.getProperty(propKey));
                     }
                 }
             }
@@ -119,16 +129,11 @@ public class Launch {
         launch.launch();
     }
 
-    public Launch(LaunchController ... controllers) {
-        for (LaunchController controller : controllers) {
-            Launcher launcher = new Launcher(controller);
-            launchers.add(launcher);
-        }
-    }
-
     public void launch(LaunchListener ... launchListeners) {
         List<LaunchListener> listeners = new ArrayList<>();
-        if (launchListeners != null) for (LaunchListener l : launchListeners) listeners.add(l);
+        if (launchListeners != null)
+            for (LaunchListener l : launchListeners)
+                listeners.add(l);
 
         CountDownLatch latch = new CountDownLatch(launchers.size());
         for (Launcher launcher : launchers) {
@@ -139,20 +144,23 @@ public class Launch {
         try {
             latch.await();
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
+            throw new SystemException(e);
         }
 
         // fire launched
         for (Launcher launcher : launchers) {
             Provision provision = launcher.resourceManager.getInstance(Provision.class);
             launcher.controller.launched(provision);
-            listeners.forEach((listener) -> {listener.launched(provision);});
+            listeners.forEach(listener -> listener.launched(provision));
         }
 
         for (Launcher launcher : launchers) {
             ResourceManager resourceManager = launcher.resourceManager;
-            if (resourceManager.getName() == null) throw new IllegalStateException("ResourceManager name not set");
-            if (resourceManagers.get(resourceManager.getName()) != null) throw new IllegalStateException("Duplicate ResourceManager name=" + resourceManager.getName());
+            if (resourceManager.getName() == null)
+                throw new IllegalStateException("ResourceManager name not set");
+            if (resourceManagers.get(resourceManager.getName()) != null)
+                throw new IllegalStateException("Duplicate ResourceManager name=" + resourceManager.getName());
             resourceManagers.put(resourceManager.getName(), resourceManager);
         }
         resourceManagers = Collections.unmodifiableMap(resourceManagers);

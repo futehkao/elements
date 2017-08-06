@@ -21,6 +21,7 @@ package net.e6tech.elements.common.resources;
  */
 @FunctionalInterface
 public interface OnAbort extends ResourceProvider {
+    @Override
     void onAbort(Resources resources);
 }
 

@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.security.Hex;
 import net.e6tech.elements.security.hsm.AnsiPinBlock;
 
@@ -33,7 +34,7 @@ public class EncryptPIN extends Command {
             byte[] encrypted = simulator.encrypt(akb, pinBlock.getEncoding());
             return "40#" + Hex.toString(encrypted) + "#";
         } catch (GeneralSecurityException e) {
-            e.printStackTrace();
+            Logger.suppress(e);
         }
         return "00#000000";
     }

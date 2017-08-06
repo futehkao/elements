@@ -35,7 +35,8 @@ import java.security.GeneralSecurityException;
 public class TranslatePIN extends Command {
     @Override
     protected String doProcess() throws CommandException {
-        if (!getField(1).equals("1")) throw new CommandException(1, new IllegalArgumentException("only ANSI pin block is supported"));
+        if (!"1".equals(getField(1)))
+            throw new CommandException(1, new IllegalArgumentException("only ANSI pin block is supported"));
         AnsiPinBlock pinBlock = getPinBlock(2, 4, 5);
         try {
             AnsiPinBlock outgoing = new AnsiPinBlock(getField(5), pinBlock.getPIN());

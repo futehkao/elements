@@ -18,27 +18,28 @@ package net.e6tech.elements.common.actor;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
-import akka.actor.Props;
 import akka.pattern.Patterns;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.pool.Events;
 import net.e6tech.elements.common.actor.pool.WorkerPool;
-import net.e6tech.elements.common.notification.NotificationListener;
-import net.e6tech.elements.common.notification.ShutdownNotification;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.*;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created by futeh.
  */
 public class Genesis implements Initializable {
-    public static final String WorkerPoolDispatcher = "worker-pool-dispatcher";
+    public static final String WORKER_POOL_DISPATCHER = "worker-pool-dispatcher";
     private String name;
     private String configuration;
     private ActorSystem system;
@@ -86,7 +87,8 @@ public class Genesis implements Initializable {
 
     @Override
     public void initialize(Resources resources) {
-        if (name == null) throw new IllegalStateException("name is null");
+        if (name == null)
+            throw new IllegalStateException("name is null");
         // Create an Akka system
         Config config = null;
         if (configuration != null) {
@@ -98,24 +100,19 @@ public class Genesis implements Initializable {
 
         if (resources != null) {
             final ResourceManager resourceManager = resources.getResourceManager();
-            resourceManager.addResourceProvider(ResourceProvider.wrap("Genesis", (OnShutdown) () -> {
-                shutdown();
-            }));
-            /* resourceManager.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
-            NotificationListener.wrap(getClass().getName(), (notification) -> {
-                shutdown();
-            })); */
+            resourceManager.addResourceProvider(ResourceProvider.wrap("Genesis", (OnShutdown) this::shutdown));
         }
     }
 
-    public void initialize(Config config) {
-        if (name == null) throw new IllegalStateException("name is null");
+    public void initialize(Config cfg) {
+        if (name == null)
+            throw new IllegalStateException("name is null");
 
-        if (config == null) config = ConfigFactory.defaultApplication();
+        Config config = (cfg != null) ? cfg : ConfigFactory.defaultApplication();
 
-        if (!config.hasPath(WorkerPoolDispatcher)) {
+        if (!config.hasPath(WORKER_POOL_DISPATCHER)) {
             config = config.withFallback(ConfigFactory.parseString(
-                    WorkerPoolDispatcher + " {\n" +
+                    WORKER_POOL_DISPATCHER + " {\n" +
                             "  type = Dispatcher\n" +
                             "  thread-pool-executor {\n" +
                             "      keep-alive-time = 60s\n" +
@@ -140,10 +137,8 @@ public class Genesis implements Initializable {
     public void shutdown() {
         try {
             Await.ready(system.terminate(), Duration.create(30, TimeUnit.SECONDS));
-        } catch (TimeoutException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        } catch (TimeoutException | InterruptedException e) {
+            Logger.suppress(e);
         }
     }
 
@@ -181,7 +176,8 @@ public class Genesis implements Initializable {
 
     public CompletionStage<Void> async(Runnable runnable, long timeout) {
         Future future = Patterns.ask(workerPool, runnable, timeout);
-        return FutureConverters.toJava(future).thenAcceptAsync((ret) -> {
+        return FutureConverters.toJava(future).thenAcceptAsync(ret -> {
+            // do nothing
         });
     }
 
@@ -191,7 +187,7 @@ public class Genesis implements Initializable {
 
     public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
         Future future = Patterns.ask(workerPool, callable, timeout);
-        return FutureConverters.toJava(future).thenApplyAsync((ret) -> {
+        return FutureConverters.toJava(future).thenApplyAsync(ret -> {
             Events.Response response = (Events.Response) ret;
             return (R) response.getValue();
         });

@@ -16,11 +16,14 @@
 
 package net.e6tech.elements.common.resources;
 
+import net.e6tech.elements.common.util.SystemException;
+
 import java.util.*;
 
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S1149")
 public class BeanLifecycle {
     private static final int BEAN_INITIALIZED = 0;
     private static final int BEAN_STARTED = 1;
@@ -53,8 +56,10 @@ public class BeanLifecycle {
     }
 
     public void removeBeanListener(BeanListener listener) {
-        for (List<BeanListener> listeners : namedBeanListeners.values()) listeners.remove(listener);
-        for (List<BeanListener> listeners : classBeanListeners.values()) listeners.remove(listener);
+        for (List<BeanListener> listeners : namedBeanListeners.values())
+            listeners.remove(listener);
+        for (List<BeanListener> listeners : classBeanListeners.values())
+            listeners.remove(listener);
     }
 
     public void fireBeanInitialized(String beanName, Object bean) {
@@ -101,23 +106,28 @@ public class BeanLifecycle {
                 list.addAll(listeners);
             }
         }
-        for (Class cls : classBeanListeners.keySet()) {
-            if (list == null) list = new ArrayList<>();
-            if (cls.isAssignableFrom(bean.getClass())) {
-                List<BeanListener> listeners = classBeanListeners.get(cls);
-                if (listeners != null) list.addAll(listeners);
+        for (Map.Entry<Class, List<BeanListener>> entry : classBeanListeners.entrySet()) {
+            if (list == null)
+                list = new ArrayList<>();
+            if (entry.getKey().isAssignableFrom(bean.getClass())) {
+                List<BeanListener> listeners = entry.getValue();
+                if (listeners != null)
+                    list.addAll(listeners);
             }
         }
-        if (list != null) list.forEach((beanListener) -> {
-            notifyBeanListener(beanListener, bean, eventType);
-        });
+        if (list != null)
+            list.forEach(beanListener -> notifyBeanListener(beanListener, bean, eventType));
     }
 
     private void notifyBeanListener(BeanListener beanListener, Object bean, int eventType) {
         switch (eventType) {
-            case BEAN_INITIALIZED: beanListener.initialized(bean); break;
-            case BEAN_STARTED: beanListener.started(bean); break;
-            case BEAN_LAUNCHED: beanListener.launched(bean); break;
+            case BEAN_INITIALIZED: beanListener.initialized(bean);
+            break;
+            case BEAN_STARTED: beanListener.started(bean);
+            break;
+            case BEAN_LAUNCHED: beanListener.launched(bean);
+            break;
+            default: throw new SystemException("Unrecognized eventType " + eventType);
         }
     }
 }

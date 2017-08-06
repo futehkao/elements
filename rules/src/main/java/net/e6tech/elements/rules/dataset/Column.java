@@ -72,13 +72,15 @@ public class Column implements Iterable {
 
     public BigDecimal max() {
         Number number = (Number) Collections.max(getData());
-        if (number == null) return null;
+        if (number == null)
+            return null;
         return new BigDecimal(number.toString());
     }
 
     public List getData() {
         List list = new ArrayList<>();
-        for (Object obj : this) list.add(obj);
+        for (Object obj : this)
+            list.add(obj);
         return list;
     }
 
@@ -93,14 +95,17 @@ public class Column implements Iterable {
 
         @SuppressWarnings("unchecked")
         public Object next() {
-            if (myModCount != dataSet.modCount) throw new ConcurrentModificationException();
+            if (myModCount != dataSet.modCount)
+                throw new ConcurrentModificationException();
             int i = cursor;
             if (i >= dataSet.getRowSize())
                 throw new NoSuchElementException();
             cursor = i + 1;
-            return dataSet.get(lastRet = i, columnIndex);
+            lastRet = i;
+            return dataSet.get(i, columnIndex);
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException();
         }

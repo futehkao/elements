@@ -15,6 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.security;
 
+import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -44,11 +46,34 @@ public class JCEKS {
         SymmetricCipher.initialize();
     }
 
+    private static final String JCEKS_CONST = "JCEKS";
     KeyStore keyStore;
     KeyManager[] keyManagers = null;
     TrustManager[] trustManagersWithSystem;
     TrustManager[] trustManagers;
     boolean includeSystem = true;
+
+    public JCEKS() throws GeneralSecurityException {
+        keyStore = createKeyStore();
+    }
+
+    public JCEKS(KeyStore keyStore) {
+        this.keyStore = keyStore;
+    }
+
+    public JCEKS(String file, char[] password) throws GeneralSecurityException, IOException {
+        if (file != null) {
+            keyStore = KeyStore.getInstance(JCEKS_CONST);
+            keyStore.load(new FileInputStream(file), password);
+        }
+    }
+
+    public JCEKS(InputStream inputStream, char[] password) throws GeneralSecurityException, IOException {
+        if (inputStream != null) {
+            keyStore = KeyStore.getInstance(JCEKS_CONST);
+            keyStore.load(inputStream, password);
+        }
+    }
 
     public static SecretKey generateSecretKey(String keyType, int keySize) throws GeneralSecurityException {
         KeyGenerator keyGenerator = KeyGenerator.getInstance(keyType, "BC");
@@ -59,8 +84,7 @@ public class JCEKS {
     public static KeyPair generateKeyPair(String keyType, int keySize) throws GeneralSecurityException {
         KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance(keyType, "BC");
         keyPairGen.initialize(keySize, RNG.getSecureRandom());
-        KeyPair keyPair = keyPairGen.generateKeyPair();
-        return keyPair;
+        return keyPairGen.generateKeyPair();
     }
 
     // CN=www.companyname.com,OU=IT,O=<Company Name>,L=Austin,ST=Texas,C=US,E=user@companyname.com
@@ -80,31 +104,8 @@ public class JCEKS {
             cert.checkValidity(new Date());
             cert.verify(cert.getPublicKey());
             return cert;
-        } catch (Throwable t) {
-            t.printStackTrace();
-            throw new RuntimeException("Failed to generate self-signed certificate!",t);
-        }
-    }
-
-    public JCEKS() throws GeneralSecurityException {
-        keyStore = createKeyStore();
-    }
-
-    public JCEKS(KeyStore keyStore) {
-        this.keyStore = keyStore;
-    }
-
-    public JCEKS(String file, char[] password) throws GeneralSecurityException, IOException {
-        if (file != null) {
-            keyStore = KeyStore.getInstance("JCEKS");
-            keyStore.load(new FileInputStream(file), password);
-        }
-    }
-
-    public JCEKS(InputStream inputStream, char[] password) throws GeneralSecurityException, IOException {
-        if (inputStream != null) {
-            keyStore = KeyStore.getInstance("JCEKS");
-            keyStore.load(inputStream, password);
+        } catch (Exception t) {
+            throw new SystemException("Failed to generate self-signed certificate!",t);
         }
     }
 
@@ -141,7 +142,8 @@ public class JCEKS {
                 factory.init(keyStore);
                 trustManagers = factory.getTrustManagers();
             }
-            if (trustManagers == null) trustManagers = new TrustManager[0];
+            if (trustManagers == null)
+                trustManagers = new TrustManager[0];
         }
 
         if (includeSystem) {
@@ -159,7 +161,6 @@ public class JCEKS {
     }
 
     public Key getKey(String alias, char[] password) throws GeneralSecurityException {
-        KeyStore.Entry entry = keyStore.getEntry(alias, new KeyStore.PasswordProtection(password));
         return keyStore.getKey(alias, password);
     }
 
@@ -187,10 +188,11 @@ public class JCEKS {
     }
 
     public static KeyStore createKeyStore() throws GeneralSecurityException {
-        KeyStore keyStore = KeyStore.getInstance("JCEKS");
+        KeyStore keyStore = KeyStore.getInstance(JCEKS_CONST);
         try {
             keyStore.load(null, null);
         } catch (IOException e) {
+            Logger.suppress(e);
         }
         return keyStore;
     }
@@ -201,6 +203,7 @@ public class JCEKS {
         keyStore.setKeyEntry(alias, pair.getPrivate(), password, new java.security.cert.Certificate[]{cert});
     }
 
+    @SuppressWarnings("squid:S1160")
     public void save(File keyStoreFile, char[] password) throws IOException, GeneralSecurityException {
         FileOutputStream fos = new FileOutputStream(keyStoreFile);
         try {
@@ -210,6 +213,7 @@ public class JCEKS {
         }
     }
 
+    @SuppressWarnings("squid:S1160")
     public void save(OutputStream output, char[] password) throws GeneralSecurityException, IOException {
         try {
             keyStore.store(output, password);
@@ -218,6 +222,7 @@ public class JCEKS {
         }
     }
 
+    @SuppressWarnings("all")
     public static void main(String ... args) throws Exception {
         char[] password = "password".toCharArray();
         KeyStore.ProtectionParameter protectionParameter = new KeyStore.PasswordProtection(password);

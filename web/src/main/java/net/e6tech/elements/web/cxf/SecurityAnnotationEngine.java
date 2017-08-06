@@ -38,16 +38,13 @@ public class SecurityAnnotationEngine {
 
     private static final Set<String> SKIP_METHODS;
     static {
-        SKIP_METHODS = new HashSet<String>();
+        SKIP_METHODS = new HashSet<>();
         SKIP_METHODS.addAll(Arrays.asList(
             new String[] {"wait", "notify", "notifyAll",
                           "equals", "toString", "hashCode"}));
     }
 
     private Map<String,Map<String,String>> scannedClassMap = new HashMap<>();
-
-    public SecurityAnnotationEngine() {
-    }
 
     public void register(Object object) {
         Class<?> cls = ClassHelper.getRealClass(object);
@@ -127,13 +124,13 @@ public class SecurityAnnotationEngine {
         if (cls == null || cls == Object.class)
             return;
 
-        boolean clsLevelPermitAll = isAnnotationPresent(cls.getAnnotations(),PERMIT_ALL_CLASS_NAME);
+        boolean clsLevelPermitAll = isAnnotationPresent(cls.getAnnotations(), PERMIT_ALL_CLASS_NAME);
         for (Method m : cls.getMethods()) {
             if (SKIP_METHODS.contains(m.getName())) {
                 continue;
             }
 
-            boolean methodLevelPerimitAll = isAnnotationPresent(m.getAnnotations(),PERMIT_ALL_CLASS_NAME);
+            boolean methodLevelPerimitAll = isAnnotationPresent(m.getAnnotations(), PERMIT_ALL_CLASS_NAME);
             if (clsLevelPermitAll || methodLevelPerimitAll) {
                 rolesMap.put(createMethodSig(m), ROLE_KEY_PERMIT_ALL);
             }
@@ -169,6 +166,7 @@ public class SecurityAnnotationEngine {
         // NOTE: Per Futeh: annotations should not be placed at the interface level
     }
 
+    @SuppressWarnings("squid:S1872")
     private boolean isAnnotationPresent(Annotation[] anns, String annName) {
         for (Annotation ann : anns) {
             if (ann.annotationType().getName().equals(annName)) {
@@ -202,6 +200,7 @@ public class SecurityAnnotationEngine {
         // NOTE: Per Futeh: annotations should not be placed at the interface level
     }
 
+    @SuppressWarnings("squid:S134")
     private String getRoles(Annotation[] anns, String annName) {
         for (Annotation ann : anns) {
             if (ann.annotationType().getName().equals(annName)) {
@@ -217,7 +216,7 @@ public class SecurityAnnotationEngine {
                     }
                     return sb.toString();
                 } catch (Exception ex) {
-                    // ignore
+                    Logger.suppress(ex);
                 }
                 break;
             }
@@ -230,7 +229,7 @@ public class SecurityAnnotationEngine {
         b.append(' ').append(method.getName()).append('(');
         boolean first = true;
         for (Class<?> cls : method.getParameterTypes()) {
-            if (!first) {
+            if (first) {
                 b.append(", ");
                 first = false;
             }

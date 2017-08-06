@@ -16,44 +16,42 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
-import java.util.concurrent.Callable;
-
 /**
  * Created by futeh.
  */
 public class CommandException extends Exception {
-    private String errorType = "08";
-    private int fieldNumber;
-    private String revision = "00";
+    private final String errorType;
+    private final int fieldNumber;
+    private static final String REVISION = "00";
 
 
     public CommandException(int fieldNumber, Throwable th) {
         super(th);
         this.fieldNumber = fieldNumber;
+        this.errorType = "08";
+    }
+
+    public CommandException(String errorType, int fieldNumber, Throwable th) {
+        super(th);
+        this.fieldNumber = fieldNumber;
+        this.errorType = errorType;
     }
 
     public String getErrorType() {
         return errorType;
     }
 
-    public void setErrorType(String errorType) {
-        this.errorType = errorType;
-    }
-
     public String getRevision() {
-        return revision;
-    }
-
-    public void setRevision(String revision) {
-        this.revision = revision;
+        return REVISION;
     }
 
     public String error() {
-        return errorType + formatField() + revision;
+        return errorType + formatField() + REVISION;
     }
 
     public String formatField() {
-        if (fieldNumber > 10) return "" + fieldNumber;
+        if (fieldNumber > 10)
+            return Integer.toString(fieldNumber);
         else return "0" + fieldNumber;
     }
 }

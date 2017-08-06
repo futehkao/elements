@@ -54,10 +54,10 @@ public class OrderBy<T> extends Handler {
 
     @Override
     public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
-        PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
-        String property = desc.getName();
+        PropertyDescriptor descriptor = Reflection.propertyDescriptor(thisMethod);
+        String property = descriptor.getName();
         CriteriaBuilder builder = getBuilder();
-        if (thisMethod.equals(desc.getReadMethod())) {
+        if (thisMethod.equals(descriptor.getReadMethod())) {
             // getter
             Class cls = thisMethod.getReturnType();
             Order order = (this.desc) ? builder.desc(getPath().get(property))
@@ -80,6 +80,6 @@ public class OrderBy<T> extends Handler {
 
     @Override
     public void onQuery() {
-
+        // do nothing
     }
 }

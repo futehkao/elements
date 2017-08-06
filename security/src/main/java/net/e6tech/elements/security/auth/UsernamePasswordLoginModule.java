@@ -15,6 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.security.auth;
 
+import net.e6tech.elements.common.logging.Logger;
+
 import javax.security.auth.Subject;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -43,6 +45,7 @@ public class UsernamePasswordLoginModule implements javax.security.auth.spi.Logi
         try {
             handler.handle(new Callback[] {name, password});
         } catch (Exception e) {
+            Logger.suppress(e);
             throw new LoginException(e.getMessage());
         }
         subject.getPrincipals().add(new UserPrincipal(name.getName()));

@@ -21,5 +21,6 @@ package net.e6tech.elements.common.resources;
  */
 @FunctionalInterface
 public interface OnOpen extends ResourceProvider {
+    @Override
     void onOpen(Resources resources);
 }

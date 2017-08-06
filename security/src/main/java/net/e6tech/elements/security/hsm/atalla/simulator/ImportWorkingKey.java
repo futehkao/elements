@@ -16,11 +16,6 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
-import net.e6tech.elements.security.Hex;
-import net.e6tech.elements.security.hsm.AnsiPinBlock;
-
-import java.security.GeneralSecurityException;
-
 /**
  * field 0 - 11B
  * field 1 - variant, only 0 is supported
@@ -37,7 +32,7 @@ public class ImportWorkingKey extends Command {
         try {
             byte[] plainKey = decrypt(2, 3);
             return null;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new CommandException(3, e);
         }
     }

@@ -17,6 +17,8 @@ limitations under the License.
 
 package net.e6tech.elements.common.util;
 
+import net.e6tech.elements.common.logging.Logger;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -28,6 +30,7 @@ public class Terminal implements Closeable {
 
     Emulator emulator;
 
+    @SuppressWarnings("squid:S106") // yes, we have to use System.out
     public Terminal() {
         Console console =  System.console();
         if (console != null) {
@@ -37,6 +40,7 @@ public class Terminal implements Closeable {
                     new PrintWriter(new OutputStreamWriter(System.out))) {
                 @Override
                 public void close() {
+                    // do noting, we cannot close System.out!
                 }
             };
         }
@@ -60,13 +64,13 @@ public class Terminal implements Closeable {
                         try {
                             socket.close();
                         } catch (IOException e) {
-
+                            Logger.suppress(e);
                         }
                     }
                 }
             };
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new SystemException(ex);
         }
     }
 
@@ -116,25 +120,30 @@ public class Terminal implements Closeable {
 
         @Override
         public String readLine(String text) {
-            output.print(text); output.flush();
+            output.print(text);
+            output.flush();
             try {
                 return input.readLine().trim();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             } catch (NullPointerException e) {
+                Logger.suppress(e);
                 return null;
             }
         }
 
         @Override
+        @SuppressWarnings("squid:S1168")
         public char[] readPassword(String text) {
-            output.println(text); output.flush();
+            output.println(text);
+            output.flush();
             String str = null;
             try {
                 str = input.readLine().trim();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             } catch (NullPointerException e) {
+                Logger.suppress(e);
                 return null;
             }
             return str.toCharArray();
@@ -142,12 +151,14 @@ public class Terminal implements Closeable {
 
         @Override
         public void println(String text) {
-            output.println(text); output.flush();
+            output.println(text);
+            output.flush();
         }
 
         @Override
         public void print(String text) {
-            output.print(text); output.flush();
+            output.print(text);
+            output.flush();
         }
 
         @Override
@@ -161,7 +172,8 @@ public class Terminal implements Closeable {
 
             output.close();
 
-            if (exception != null) throw new RuntimeException(exception);
+            if (exception != null)
+                throw new SystemException(exception);
         }
     }
 
@@ -178,6 +190,7 @@ public class Terminal implements Closeable {
             try {
                 return console.readLine().trim();
             } catch (NullPointerException e) {
+                Logger.suppress(e);
                 return "";
             }
         }
@@ -186,9 +199,11 @@ public class Terminal implements Closeable {
         public char[] readPassword(String text) {
             try {
                 char[] ret = console.readPassword(text);
-                if (ret == null) return new char[0];
+                if (ret == null)
+                    return new char[0];
                 return ret;
             } catch (NullPointerException e)  {
+                Logger.suppress(e);
                 return new char[0];
             }
         }
@@ -206,14 +221,18 @@ public class Terminal implements Closeable {
 
         @Override
         public void close() {
+            // Console uses System.out and we cannot close it.
         }
     }
 
+    @SuppressWarnings("squid:S106") // yes, we have to use System.out
     public static void main(String ... args) {
-        Terminal term = new Terminal();
-        String user = term.readLine("Username:");
-        char[] password = term.readPassword("Password:");
-
+        String user = null;
+        char[] password = null;
+        try (Terminal term = new Terminal()) {
+            user = term.readLine("Username:");
+            password = term.readPassword("Password:");
+        }
         System.out.println(user + ":" + new String(password));
     }
 }

@@ -26,7 +26,6 @@ import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.datastructure.Pair;
 
 import javax.ws.rs.*;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -122,17 +121,18 @@ public class RestfulProxy {
     private static class InvocationHandler implements InterceptorHandler {
         private RestfulProxy proxy;
         private String context;
-        private Map<Method, MethodForwarder> methodForwarders = new Hashtable<>();
-        private Map<Method, String> methodSignatures = new Hashtable<>();
+        private Map<Method, MethodForwarder> methodForwarders = Collections.synchronizedMap(new HashMap<>());
+        private Map<Method, String> methodSignatures = Collections.synchronizedMap(new HashMap<>());
         private PrintWriter printer;
 
-        InvocationHandler(RestfulProxy proxy, Class serviceClass, PrintWriter printer) {
+        InvocationHandler(RestfulProxy proxy, Class<?> serviceClass, PrintWriter printer) {
             this.proxy = proxy;
             this.printer = printer;
-            Path path = (Path) serviceClass.getAnnotation(Path.class);
+            Path path = serviceClass.getAnnotation(Path.class);
             if (path != null) {
                 this.context = path.value();
-                if (!context.endsWith("/")) this.context = path.value() + "/";
+                if (!context.endsWith("/"))
+                    this.context = path.value() + "/";
             } else {
                 context = "/";
             }
@@ -141,7 +141,7 @@ public class RestfulProxy {
         @Override
         public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
             if (printer != null) {
-                String signature = methodSignatures.computeIfAbsent(thisMethod, key -> methodSignature(key));
+                String signature = methodSignatures.computeIfAbsent(thisMethod, this::methodSignature);
                 String caller = Reflection.<String, Boolean>mapCallingStackTrace(e -> {
                     if (e.state().isPresent()) return e.get().toString(); // previous element match.
                     if (e.get().getMethodName().equals(thisMethod.getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
@@ -159,12 +159,13 @@ public class RestfulProxy {
             Path path = thisMethod.getAnnotation(Path.class);
             if (path != null) {
                 String subctx = path.value();
-                while (subctx.startsWith("/")) subctx = subctx.substring(1);
+                while (subctx.startsWith("/"))
+                    subctx = subctx.substring(1);
                 fullContext = context + subctx;
             }
 
             final String ctx = fullContext;
-            MethodForwarder forwarder = methodForwarders.computeIfAbsent(thisMethod, (key) ->  new MethodForwarder(ctx, key) );
+            MethodForwarder forwarder = methodForwarders.computeIfAbsent(thisMethod, key ->  new MethodForwarder(ctx, key) );
             Pair<Response, Object> pair = forwarder.forward(request, args);
             synchronized (proxy) {
                 proxy.lastResponse = pair.key();
@@ -213,7 +214,8 @@ public class RestfulProxy {
 
         MethodForwarder(String context, Method method) {
             returnType = method.getReturnType();
-            if (method.getGenericReturnType() instanceof ParameterizedType) parameterizedReturnType = (ParameterizedType) method.getGenericReturnType();
+            if (method.getGenericReturnType() instanceof ParameterizedType)
+                parameterizedReturnType = (ParameterizedType) method.getGenericReturnType();
             paramTypes = method.getParameterTypes();
             this.context = context;
             queryParams = new QueryParam[paramTypes.length];
@@ -222,8 +224,8 @@ public class RestfulProxy {
             int idx = 0;
             params = method.getParameters();
             for (Parameter param : params) {
-                QueryParam queryParam = (QueryParam) param.getAnnotation(QueryParam.class);
-                PathParam pathParam = (PathParam) param.getAnnotation(PathParam.class);
+                QueryParam queryParam = param.getAnnotation(QueryParam.class);
+                PathParam pathParam = param.getAnnotation(PathParam.class);
                 if (queryParam != null) {
                     queryParams[idx] = queryParam;
                 }
@@ -247,6 +249,7 @@ public class RestfulProxy {
             }
         }
 
+        @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134"})
         Pair<Response, Object> forward(Request request, Object[] args) throws Throwable {
 
             List<Param> paramList = new ArrayList<>();
@@ -260,13 +263,15 @@ public class RestfulProxy {
                 }
 
                 if(pathParams[i] != null) {
-                    if (args[i] == null) throw new IllegalArgumentException("PathParam {" + pathParams[i].value() + "} cannot be null");
+                    if (args[i] == null)
+                        throw new IllegalArgumentException("PathParam {" + pathParams[i].value() + "} cannot be null");
                     String value = args[i].toString();
                     String valueEscaped = URLEncoder.encode(value,"UTF-8").replaceAll("\\+", "%20");
                     fullContext = fullContext.replace("{" + pathParams[i].value() + "}", valueEscaped);
                 }
 
-                if (pathParams[i] == null && queryParams[i] == null) postData = args[i];
+                if (pathParams[i] == null && queryParams[i] == null)
+                    postData = args[i];
             }
 
             Response response = null;
@@ -278,6 +283,8 @@ public class RestfulProxy {
                 response = request.get(fullContext, paramList.toArray(new Param[paramList.size()]));
             } else if (delete) {
                 response = request.delete(fullContext, paramList.toArray(new Param[paramList.size()]));
+            } else {
+                throw new IllegalArgumentException("Unknown HTTP method");
             }
 
             if (javax.ws.rs.core.Response.class.isAssignableFrom(returnType)) {
@@ -293,21 +300,12 @@ public class RestfulProxy {
                         if (Collection.class.isAssignableFrom(encloseType)) {
                             Class elementType = (Class) parameterizedReturnType.getActualTypeArguments()[0];
                             CollectionType ctype = TypeFactory.defaultInstance().constructCollectionType(encloseType, elementType);
-                            return new Pair<>(response, response.mapper.readValue(response.getResult(), ctype));
+                            return new Pair<>(response, Response.mapper.readValue(response.getResult(), ctype));
                         }
                     }
                 }
                 return new Pair<>(response, response.read(returnType));
             }
-        }
-
-        private Collection convertCollection(Collection value, Class<? extends Collection> collectionType, Class elementType) throws IOException {
-
-            //CollectionType ctype = TypeFactory.defaultInstance().constructCollectionType(collectionType, elementType);
-            //String str = Response.mapper.writeValueAsString(value);
-            //Collection converted = mapper.readValue(str, ctype);
-
-            return null;
         }
     }
 

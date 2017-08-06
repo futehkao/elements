@@ -17,6 +17,7 @@
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
 
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.StringUtil;
 import net.e6tech.elements.security.Hex;
 
@@ -40,14 +41,17 @@ public class IBM3624PINOffset {
             setDecimalizationTable("0123456789012345");
         } catch (GeneralSecurityException e) {
             // not happening
+            Logger.suppress(e);
         }
     }
 
     public void setDecimalizationTable(String decString) throws GeneralSecurityException {
-        if (decString.length() != 16) throw new GeneralSecurityException("Must be 16 digits");
+        if (decString.length() != 16)
+            throw new GeneralSecurityException("Must be 16 digits");
         for (int i = 0; i < 16; i++) {
             char c = decString.charAt(i);
-            if (c < '0' || c > '9') throw new GeneralSecurityException("Must be all digits");
+            if (c < '0' || c > '9')
+                throw new GeneralSecurityException("Must be all digits");
         }
         String hexString = "0123456789ABCDEF";
         decimalizationTable.clear();
@@ -56,23 +60,27 @@ public class IBM3624PINOffset {
         }
     }
 
-    public String generateOffset(byte[] pvvKeyBytes, String acctNum, char pad, String pin) throws GeneralSecurityException {
+    public String generateOffset(byte[] pvvKey, String acctNum, char pad, String pin) throws GeneralSecurityException {
 
-        if (pin.length() < 4) throw new GeneralSecurityException("pin length too short");
-        else if (pin.length() > 12) throw new GeneralSecurityException("pin length too long");
+        if (pin.length() < 4)
+            throw new GeneralSecurityException("pin length too short");
+        else if (pin.length() > 12)
+            throw new GeneralSecurityException("pin length too long");
         for (int i = 0; i < pin.length(); i++) {
             char c = pin.charAt(i);
-            if (c < '0' || c > '9') throw new GeneralSecurityException("PIN must be all digits");
+            if (c < '0' || c > '9')
+                throw new GeneralSecurityException("PIN must be all digits");
         }
 
-        pvvKeyBytes = AKB.normalizeKey(pvvKeyBytes);
-        SecretKey pvv = new SecretKeySpec(pvvKeyBytes, "DESede");
+        byte[] pvvKeyNormalized = pvvKey;
+        pvvKeyNormalized = AKB.normalizeKey(pvvKeyNormalized);
+        SecretKey pvv = new SecretKeySpec(pvvKeyNormalized, "DESede");
         Cipher cipher = Cipher.getInstance("DESede/ECB/NoPadding");
 
         StringBuilder builder = new StringBuilder();
-        acctNum = StringUtil.padRight(acctNum, 16, pad);
+        String paddedAcctNum = StringUtil.padRight(acctNum, 16, pad);
         cipher.init(Cipher.ENCRYPT_MODE, pvv);
-        byte[] acctNo = Hex.toBytes(acctNum);
+        byte[] acctNo = Hex.toBytes(paddedAcctNum);
         byte[] encrypted = cipher.doFinal(acctNo);
         String ipin = Hex.toString(encrypted);
 
@@ -85,16 +93,18 @@ public class IBM3624PINOffset {
         // customer pin - natural pin then modulo 10
         builder.setLength(0);
         for (int i = 0; i < pin.length(); i++) {
-            int pinDidigit = Integer.parseInt("" + pin.charAt(i));
-            int ipinDigit = Integer.parseInt("" + ipin.charAt(i));
+            int pinDidigit = Integer.parseInt(Character.toString(pin.charAt(i)));
+            int ipinDigit = Integer.parseInt(Character.toString(ipin.charAt(i)));
             int offset = pinDidigit - ipinDigit;
-            if (offset < 0) offset += 10;
+            if (offset < 0)
+                offset += 10;
             offset = offset % 10;
-            builder.append("" + offset);
+            builder.append(Integer.toString(offset));
         }
         return builder.toString();
     }
 
+    @SuppressWarnings("all")
     public static void main(String ... args) throws Throwable {
         IBM3624PINOffset ibm = new IBM3624PINOffset();
         ibm.setDecimalizationTable("8351296477461538");

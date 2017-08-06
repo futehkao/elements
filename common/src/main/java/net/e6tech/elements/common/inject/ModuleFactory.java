@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.common.inject;
 
-import net.e6tech.elements.common.inject.spi.ModuleImpl;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.reflect.Constructor;
 
@@ -26,8 +26,11 @@ import java.lang.reflect.Constructor;
 public class ModuleFactory {
 
     private static ModuleFactory instance = new ModuleFactory(net.e6tech.elements.common.inject.spi.ModuleImpl.class);
-
     private Class<? extends Module> implementation = net.e6tech.elements.common.inject.spi.ModuleImpl.class;
+
+    public ModuleFactory( Class<? extends Module> implementation) {
+        this.implementation = implementation;
+    }
 
     public static ModuleFactory getInstance() {
         return instance;
@@ -35,10 +38,6 @@ public class ModuleFactory {
 
     public static void setInstance(ModuleFactory factory) {
         instance = factory;
-    }
-
-    public ModuleFactory( Class<? extends Module> implementation) {
-        this.implementation = implementation;
     }
 
     public Class<? extends Module> getImplementation() {
@@ -49,8 +48,8 @@ public class ModuleFactory {
         try {
             Constructor<? extends Module> constructor = implementation.getConstructor(ModuleFactory.class);
             return constructor.newInstance(this);
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new SystemException(e);
         }
     }
 }

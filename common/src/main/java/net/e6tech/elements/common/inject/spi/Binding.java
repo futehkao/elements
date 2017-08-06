@@ -19,7 +19,7 @@ package net.e6tech.elements.common.inject.spi;
 /**
  * Created by futeh.
  */
-class Binding implements Cloneable {
+class Binding {
     private Class implementation;
     private Object value;
 
@@ -34,6 +34,11 @@ class Binding implements Cloneable {
         this.implementation = implementation;
     }
 
+    public Binding(Binding binding) {
+        this.implementation = binding.implementation;
+        this.value = binding.value;
+    }
+
     public boolean isSingleton() {
         return implementation == null; // value can be null
     }
@@ -44,13 +49,5 @@ class Binding implements Cloneable {
 
     public Object getValue() {
         return value;
-    }
-
-    public Binding clone() {
-        try {
-            return (Binding) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

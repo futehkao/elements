@@ -38,7 +38,6 @@ public class Where<T> extends Handler {
     Comparison comparison = Comparison.equal;
     List<Predicate> predicates = new ArrayList<>();
     List<Order> orderByList = new ArrayList<>();
-    // List<Selection<?>> selections = new ArrayList<>();
 
     public Where(Where parent, Path path) {
         this(parent.getEntityManager(), parent.getBuilder(), parent.getQuery(), path);
@@ -87,10 +86,10 @@ public class Where<T> extends Handler {
 
     @Override
     public void onQuery() {
-        if (getPredicates().size() > 0) {
+        if (!getPredicates().isEmpty()) {
             getQuery().where(getPredicates().toArray(new Predicate[getPredicates().size()]));
         }
-        if (orderByList.size() > 0)
+        if (!orderByList.isEmpty())
             getQuery().orderBy(orderByList);
     }
 
@@ -99,7 +98,6 @@ public class Where<T> extends Handler {
         PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
         String property = desc.getName();
         CriteriaBuilder builder = getBuilder();
-        CriteriaQuery query = getQuery();
         if (thisMethod.equals(desc.getReadMethod())) {
             // getter
             Class cls = thisMethod.getReturnType();

@@ -118,18 +118,21 @@ public class LaunchController implements LaunchListener {
 
     @Override
     public void created(ResourceManager rm) {
-        for (LaunchListener listener : listeners) listener.created(rm);
+        for (LaunchListener listener : listeners)
+            listener.created(rm);
     }
 
     @Override
     public void launched(Provision provision) {
         provisions.put(getLaunchScript(), provision);
-        for (LaunchListener listener : listeners) listener.launched(provision);
+        for (LaunchListener listener : listeners)
+            listener.launched(provision);
     }
 
     public LaunchController launch() {
         String launchScript = getLaunchScript();
-        if (provisions.containsKey(launchScript)) return this;
+        if (provisions.containsKey(launchScript))
+            return this;
         (new Launch(this)).launch();
         return this;
     }

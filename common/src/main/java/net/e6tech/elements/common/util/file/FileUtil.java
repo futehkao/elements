@@ -21,13 +21,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S134")
 public class FileUtil {
 
     private static final Path[] EMPTY_FILE_LIST = new Path[0];
+
+    private FileUtil() {
+    }
 
     public static Path[] listFiles(String path, String extension) throws IOException {
         Path[] paths = EMPTY_FILE_LIST;
@@ -62,24 +67,28 @@ public class FileUtil {
         if (Files.isDirectory(path)) {
             directories.add(path);
         } else {
-            if (extension != null && path.toString().endsWith(extension)) list.add(path);
-            else if (extension == null) list.add(path);
+            if (extension != null && path.toString().endsWith(extension))
+                list.add(path);
+            else if (extension == null)
+                list.add(path);
         }
 
-        while (directories.size() > 0) {
+        while (!directories.isEmpty()) {
             Path parent = directories.remove(0);
-            Files.list(parent).forEach((f) -> {
-                if (Files.isDirectory(f)) {
-                    if (recursive) directories.add(f);
-                } else {
-                    // f is a file
-                    if (extension != null && f.toString().endsWith(extension)) {
-                        list.add(f);
-                    } else if (extension == null) {
-                        list.add(f);
+            try (Stream<Path> stream = Files.list(parent)) {
+                stream.forEach(f -> {
+                    if (Files.isDirectory(f)) {
+                        if (recursive) directories.add(f);
+                    } else {
+                        // f is a file
+                        if (extension != null && f.toString().endsWith(extension)) {
+                            list.add(f);
+                        } else if (extension == null) {
+                            list.add(f);
+                        }
                     }
-                }
-            });
+                });
+            }
         }
         return list.toArray(new Path[list.size()]);
     }

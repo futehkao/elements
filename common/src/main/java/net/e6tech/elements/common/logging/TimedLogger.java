@@ -25,6 +25,7 @@ import java.util.Stack;
  * This class is not thread safe
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S1149", "squid:MethodCyclomaticComplexity"})
 public class TimedLogger {
 
     private static Set<String> includes = Collections.synchronizedSet(new HashSet<>());
@@ -39,28 +40,28 @@ public class TimedLogger {
     private boolean shouldLog;
     private long timeout = defaultTimeout;
 
-    public static void setRegex(String pattern) {
-        regex = pattern;
+    public TimedLogger(String name) {
+        logger = Logger.getLogger(name);
     }
 
-    public static void setExcludes(Class ... classes) {
-        if (classes != null) {
-            for (Class cls : classes) excludes.add(cls.getName());
-        }
+    /**
+     *
+     * @param name name of the Logger
+     * @param timeout indicates whether to log depending the value. 0 to disable, meaning log everything.
+     *                However, if one calls time, instead of log, the timeout value is effectively 0.
+     */
+    public TimedLogger(String name, long timeout) {
+        this(name);
+        this.timeout = timeout;
     }
 
-    public static void setIncludes(Class ... classes) {
-        if (classes != null) {
-            for (Class cls : classes) includes.add(cls.getName());
-        }
-    }
-
-    public static long getDefaultTimeout() {
-        return defaultTimeout;
-    }
-
-    public static void setDefaultTimeout(long defaultTimeout) {
-        TimedLogger.defaultTimeout = defaultTimeout;
+    /**
+     * Constructs a TimedLogger using the default logger named TimedLogger
+     * @param timeout indicates wheter to log depending the value. 0 to disable
+     */
+    public TimedLogger(long timeout) {
+        this();
+        this.timeout = timeout;
     }
 
     /**
@@ -97,49 +98,59 @@ public class TimedLogger {
             }
         }
 
-        if (shouldLog) computeLogging();
+        if (shouldLog)
+            computeLogging();
     }
 
-    public TimedLogger(String name) {
-        logger = Logger.getLogger(name);
+    public static void setRegex(String pattern) {
+        regex = pattern;
     }
 
-    /**
-     *
-     * @param name name of the Logger
-     * @param timeout indicates whether to log depending the value. 0 to disable, meaning log everything.
-     *                However, if one calls time, instead of log, the timeout value is effectively 0.
-     */
-    public TimedLogger(String name, long timeout) {
-        this(name);
-        this.timeout = timeout;
+    public static void setExcludes(Class ... classes) {
+        if (classes != null) {
+            for (Class cls : classes)
+                excludes.add(cls.getName());
+        }
     }
 
-    /**
-     * Constructs a TimedLogger using the default logger named TimedLogger
-     * @param timeout indicates wheter to log depending the value. 0 to disable
-     */
-    public TimedLogger(long timeout) {
-        this();
-        this.timeout = timeout;
+    public static void setIncludes(Class ... classes) {
+        if (classes != null) {
+            for (Class cls : classes)
+                includes.add(cls.getName());
+        }
+    }
+
+    public static long getDefaultTimeout() {
+        return defaultTimeout;
+    }
+
+    public static void setDefaultTimeout(long defaultTimeout) {
+        TimedLogger.defaultTimeout = defaultTimeout;
     }
 
     private void computeLogging() {
         switch (logLevel) {
             case FATAL:
             case ERROR:
-                if (!logger.isErrorEnabled()) shouldLog = false;
+                if (!logger.isErrorEnabled())
+                    shouldLog = false;
                 break;
             case WARN:
-                if (!logger.isWarnEnabled()) shouldLog = false;
+                if (!logger.isWarnEnabled())
+                    shouldLog = false;
                 break;
             case INFO:
-                if (!logger.isInfoEnabled()) shouldLog = false;
+                if (!logger.isInfoEnabled())
+                    shouldLog = false;
                 break;
             case DEBUG:
-                if (!logger.isDebugEnabled()) shouldLog = false;
+                if (!logger.isDebugEnabled())
+                    shouldLog = false;
                 break;
             case TRACE:
+                shouldLog = true;
+                break;
+            default:
                 shouldLog = true;
                 break;
         }
@@ -178,11 +189,14 @@ public class TimedLogger {
         return _log(message, 0);
     }
 
+    @SuppressWarnings({"squid:S0010", "squid:S00100"})
     private TimedLogger _log(String message, long timeout) {
         long duration = System.currentTimeMillis() - start;
         start = System.currentTimeMillis();
-        if (duration <= timeout) return this;
-        if (!shouldLog) return this;
+        if (duration <= timeout)
+            return this;
+        if (!shouldLog)
+            return this;
 
         StringBuilder builder = checkout();
         Thread thread = Thread.currentThread();
@@ -205,6 +219,8 @@ public class TimedLogger {
                 break;
             case TRACE:
                 logger.trace(builder.toString());
+                break;
+            default:
                 break;
         }
         builder.setLength(0);
@@ -245,7 +261,8 @@ public class TimedLogger {
 
     private static StringBuilder checkout() {
         synchronized (builders) {
-            if (builders.size() > 0) return builders.pop();
+            if (!builders.isEmpty())
+                return builders.pop();
         }
         return new StringBuilder();
     }

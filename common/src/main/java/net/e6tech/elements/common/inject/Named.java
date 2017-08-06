@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,22 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.resources;
+package net.e6tech.elements.common.inject;
+
+import javax.inject.Qualifier;
+import java.lang.annotation.Documented;
+import java.lang.annotation.Retention;
+
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Created by futeh.
  */
-@FunctionalInterface
-public interface ClassBeanListener extends BeanListener {
-    Class[] listenFor();
+@Qualifier
+@Documented
+@Retention(RUNTIME)
+public @interface Named {
+
+    /** The name. */
+    String value() default "";
 }

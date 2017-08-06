@@ -15,8 +15,7 @@
  */
 package net.e6tech.elements.common.cache;
 
-import net.e6tech.elements.common.resources.Initializable;
-import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.logging.Logger;
 
 import javax.cache.Cache;
 import javax.cache.CacheException;
@@ -24,7 +23,6 @@ import javax.cache.CacheManager;
 import javax.cache.Caching;
 import javax.cache.configuration.MutableConfiguration;
 import javax.cache.expiry.TouchedExpiryPolicy;
-import javax.cache.spi.CachingProvider;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -34,12 +32,12 @@ import java.util.concurrent.TimeUnit;
  */
 public class CachePool {
 
-    public static final long defaultExpiry = 15 * 60 * 1000L;
+    public static final long DEFAULT_EXPIRY = 15 * 60 * 1000L;
 
     private static Map<String, CacheManager> managers = new HashMap<>();
 
     private String provider = "org.ehcache.jsr107.EhcacheCachingProvider";
-    protected long expiry = defaultExpiry;
+    protected long expiry = DEFAULT_EXPIRY;
     protected boolean storeByValue = false;
 
     public String getProvider() {
@@ -55,7 +53,8 @@ public class CachePool {
     }
 
     public void setExpiry(long expiry) {
-        if (expiry <= 0) throw new IllegalArgumentException();
+        if (expiry <= 0)
+            throw new IllegalArgumentException();
         this.expiry = expiry;
     }
 
@@ -74,16 +73,16 @@ public class CachePool {
     public <K,V> Cache<K,V> getCache(String name, Class<K> keyClass, Class<V> valueClass) {
         CacheManager cacheManager = getCacheManager();
         Cache<K, V> cache = cacheManager.getCache(name, keyClass, valueClass);
-        if (cache != null) return cache;
+        if (cache != null)
+            return cache;
         MutableConfiguration<K, V> configuration = new MutableConfiguration<>();
         configuration.setTypes(keyClass, valueClass);
         configuration.setExpiryPolicyFactory(TouchedExpiryPolicy.factoryOf(new javax.cache.expiry.Duration(TimeUnit.MILLISECONDS, expiry)));
-        // configuration.setReadThrough(true);
-        // configuration.setWriteThrough(true);
         configuration.setStoreByValue(storeByValue);
         try {
             return cacheManager.createCache(name, configuration);
         } catch (CacheException ex) {
+            Logger.suppress(ex);
             return cacheManager.getCache(name, keyClass, valueClass);
         }
     }

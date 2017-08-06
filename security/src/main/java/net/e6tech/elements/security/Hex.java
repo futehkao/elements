@@ -22,14 +22,19 @@ import javax.xml.bind.DatatypeConverter;
  */
 public class Hex {
 
-    public static byte[] toBytes(String hexString) {
-        hexString = hexString.replaceAll("\\s","");
+    private Hex() {
+    }
+
+    public static byte[] toBytes(String str) {
+        String hexString = str.replaceAll("\\s","");
         return DatatypeConverter.parseHexBinary(hexString);
     }
 
     public static char toNumeric(int number) {
-        if (number > 15 || number < 0) throw new IllegalArgumentException("number must be between 0 and 15, inclusively.");
-        if (number < 10) return (char) ('0' + number);
+        if (number > 15 || number < 0)
+            throw new IllegalArgumentException("number must be between 0 and 15, inclusively.");
+        if (number < 10)
+            return (char) ('0' + number);
         return (char) ('A' + (number - 10));
     }
 

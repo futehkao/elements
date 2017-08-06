@@ -17,23 +17,20 @@ package net.e6tech.elements.common.script;
 
 import groovy.lang.Closure;
 import groovy.lang.GString;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Configuration;
-import net.e6tech.elements.common.util.file.FileUtil;
 
 import javax.script.ScriptException;
 import java.beans.Introspector;
 import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
 
 /**
  * Created by futeh.
  */
-abstract public class AbstractScriptShell {
-    private String env;
+public abstract class AbstractScriptShell {
+    private static Logger logger = Logger.getLogger();
     private Map<String, List<String>> knownEnvironments = new LinkedHashMap<>();
     private Scripting scripting;
     private Properties properties;
@@ -47,10 +44,8 @@ abstract public class AbstractScriptShell {
         initialize(null, properties);
     }
 
-    protected void initialize(ClassLoader classLoader, Properties properties) {
-        if (properties == null) properties = new Properties();
-        this.properties = properties;
-        env = properties.getProperty("env");
+    protected void initialize(ClassLoader classLoader, Properties props) {
+        this.properties = (props == null) ? new Properties() : props;
 
         // see if a script base is already defined.  If so, we need replace it
         // with the appropriate script base
@@ -62,19 +57,21 @@ abstract public class AbstractScriptShell {
                 getClass().getClassLoader().loadClass(className);
                 properties.put(Scripting.SCRIPT_BASE_CLASS, className);
             } catch (ClassNotFoundException e) {
-                // ignore
+                Logger.suppress(e);
             }
         }
-        env = properties.getProperty("env");
+
         scripting = Scripting.newInstance(classLoader, properties);
-        if (originalScriptBase == null) properties.remove(Scripting.SCRIPT_BASE_CLASS);
+        if (originalScriptBase == null)
+            properties.remove(Scripting.SCRIPT_BASE_CLASS);
         else properties.put(Scripting.SCRIPT_BASE_CLASS, originalScriptBase);
 
         String simpleName = getClass().getSimpleName();
         if (simpleName.length() == 0) {
             simpleName = getClass().getName();
             int idx = simpleName.lastIndexOf('.');
-            if (idx >=0 ) simpleName = simpleName.substring(idx + 1);
+            if (idx >=0 )
+                simpleName = simpleName.substring(idx + 1);
         }
         String shellName = Introspector.decapitalize(simpleName);
         scripting.put(shellName, this);
@@ -104,7 +101,6 @@ abstract public class AbstractScriptShell {
             r.run();
         }
         cleanup.clear();
-        System.gc();
     }
 
     public void addCleanup(Runnable r) {
@@ -151,7 +147,8 @@ abstract public class AbstractScriptShell {
     }
 
     public void runAfterIfNotLoading() {
-        if (!loading) scripting.runAfter();
+        if (!loading)
+            scripting.runAfter();
     }
 
     public Object runNow(Object caller, Object callable) {
@@ -174,36 +171,49 @@ abstract public class AbstractScriptShell {
         try {
             return getScripting().exec(path);
         } catch (ScriptException e) {
-            throw new RuntimeException(e);
+            throw logger.systemException(e);
         }
     }
 
     public void exec(Object ... items) {
         Object value = null;
         for (Object item : items) {
-            try {
-                if (item instanceof String || item instanceof GString) {
-                    value = getScripting().exec(item.toString());
-                } else if (item instanceof Closure) {
-                    final Closure clonedClosure = (Closure) ((Closure) item).clone();
-                    try {
-                        clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
-                        clonedClosure.setDelegate(value);
-                        Object ret = clonedClosure.call(value);
-                        if (ret != null) value = ret;
-                    } finally {
-                        clonedClosure.setDelegate(null);
-                    }
-                } else if (item instanceof String[]) {
-                    for (String str : (String[]) item) {
-                        value = getScripting().exec(str);
-                    }
-                } else {
-                    value = item;
+            value = execItem(item, value);
+        }
+    }
+
+    private Object execItem(Object item, Object val) {
+        Object value = val;
+        try {
+            if (item instanceof String || item instanceof GString) {
+                value = getScripting().exec(item.toString());
+            } else if (item instanceof Closure) {
+                final Closure clonedClosure = (Closure) ((Closure) item).clone();
+                value = execClosure(clonedClosure, value);
+            } else if (item instanceof String[]) {
+                for (String str : (String[]) item) {
+                    value = getScripting().exec(str);
                 }
-            } catch (ScriptException e) {
-                throw new RuntimeException(e);
+            } else {
+                value = item;
             }
+        } catch (ScriptException e) {
+            throw logger.systemException(e);
+        }
+        return value;
+    }
+
+    private Object execClosure(Closure closure, Object value) {
+        try {
+            closure.setResolveStrategy(Closure.DELEGATE_FIRST);
+            closure.setDelegate(value);
+            Object ret = closure.call(value);
+            if (ret != null)
+                return ret;
+            else
+                return value;
+        } finally {
+            closure.setDelegate(null);
         }
     }
 
@@ -212,30 +222,33 @@ abstract public class AbstractScriptShell {
     }
 
     public static class Dir {
-        private String dir;
+        private String directory;
 
         public Dir() {
-            dir = "";
+            directory = "";
         }
 
         public Dir(String base) {
-            dir = base;
-            while (dir.endsWith(File.separator) || dir.endsWith("/")) {
-                if ("classpath://".equals(dir) || "classpath:/".equals(dir)) break;
-                dir = dir.substring(0, dir.length() - 1);
+            directory = base;
+            while (directory.endsWith(File.separator) || directory.endsWith("/")) {
+                if ("classpath://".equals(directory) || "classpath:/".equals(directory))
+                    break;
+                directory = directory.substring(0, directory.length() - 1);
             }
         }
 
         public String[] expand(String ... items) {
-            if (items == null) return new String[0];
+            if (items == null)
+                return new String[0];
             String[] paths = new String[items.length];
             for (int i = 0; i < paths.length; i++) {
                 String item = items[i];
-                while (item.startsWith(File.separator) || item.startsWith("/")) item = item.substring(1);
+                while (item.startsWith(File.separator) || item.startsWith("/"))
+                    item = item.substring(1);
                 if (!item.endsWith(".groovy")) {
                     item += ".groovy";
                 }
-                paths[i] = dir + "/" + item;
+                paths[i] = directory + "/" + item;
             }
             return paths;
         }

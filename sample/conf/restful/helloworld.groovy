@@ -19,7 +19,7 @@ import net.e6tech.elements.web.cxf.JaxRSServer
 atom("helloWorld") {
     configuration =  """
     _helloWorld.addresses:
-        - "http://0.0.0.0:9001/restful/"
+        - "http://0.0.0.0:19001/restful/"
     _helloWorld.resources:
         - class: "net.e6tech.sample.web.cxf.HelloWorld"
           singleton: false

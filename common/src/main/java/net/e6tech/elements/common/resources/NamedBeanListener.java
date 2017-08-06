@@ -18,6 +18,7 @@ package net.e6tech.elements.common.resources;
 /**
  * Created by futeh.
  */
+@FunctionalInterface
 public interface NamedBeanListener extends BeanListener {
     String[] listenFor();
 }

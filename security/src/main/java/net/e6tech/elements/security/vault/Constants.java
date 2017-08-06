@@ -16,10 +16,7 @@ limitations under the License.
 
 package net.e6tech.elements.security.vault;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 
 /**
@@ -53,6 +50,9 @@ public class Constants {
     public static final String SIGNATURE_FORMAT = "signature-format";
     public static final String SIGNATURE_FORMAT_VERSION = "1.0";
 
-    public static ObjectMapper mapper = ObjectMapperFactory.newInstance();
+    public static final ObjectMapper mapper = ObjectMapperFactory.newInstance();
+
+    private Constants() {
+    }
 
 }

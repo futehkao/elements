@@ -25,12 +25,11 @@ import java.util.*;
 public class VaultImpl implements Vault, Serializable, Cloneable {
     private static final long serialVersionUID = 3384640081249910052L;
 
+    // map of aliases to a SortedMap.  The SortedMap contain versioned Secrets
     private Map<String, SortedMap<Long, Secret>> secrets = new LinkedHashMap<>();
 
     private String name;
-
-    public VaultImpl() {
-    }
+    private transient VersionComparator comparator = new VersionComparator();
 
     public String getName() {
         return name;
@@ -58,11 +57,12 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         String alias = secret.alias();
         SortedMap<Long, Secret> versions = secrets.get(alias);
         if (versions == null) {
-            versions = new TreeMap<Long, Secret>(comparator);
+            versions = new TreeMap<>(comparator);
             secrets.put(alias, versions);
         }
         String version = secret.version();
-        if (version == null) version = "0";
+        if (version == null)
+            version = "0";
         versions.put(new Long(version), secret);
     }
 
@@ -71,7 +71,6 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         if (versions == null) {
             return;
         }
-        Secret secret = null;
         if (version == null) {
             secrets.remove(alias);
         } else {
@@ -87,7 +86,8 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
 
     public Set<Long> versions(String alias) {
         SortedMap<Long, Secret> versions = secrets.get(alias);
-        if (versions == null) return new HashSet<>();
+        if (versions == null)
+            return new HashSet<>();
         return versions.keySet();
     }
 
@@ -95,16 +95,17 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         return secrets.size();
     }
 
+    @SuppressWarnings({"squid:S1182", "squid:S2975"})
     public VaultImpl clone() {
         VaultImpl vault = new VaultImpl();
         Map<String, SortedMap<Long, Secret>> cloneSecrets = new LinkedHashMap<>();
-        for (String alias : secrets.keySet()) {
-            SortedMap<Long, Secret> versions = secrets.get(alias);
-            SortedMap<Long, Secret> cloneVersions = new TreeMap<Long, Secret>(comparator);
-            for (Long version : versions.keySet()) {
-                cloneVersions.put(version, versions.get(version).clone());
+        for (Map.Entry<String, SortedMap<Long, Secret>> entry : secrets.entrySet()) {
+            SortedMap<Long, Secret> versions = entry.getValue();
+            SortedMap<Long, Secret> cloneVersions = new TreeMap<>(comparator);
+            for (Map.Entry<Long, Secret> e : versions.entrySet()) {
+                cloneVersions.put(e.getKey(), new Secret(e.getValue()));
             }
-            cloneSecrets.put(alias, cloneVersions);
+            cloneSecrets.put(entry.getKey(), cloneVersions);
         }
 
         vault.secrets = cloneSecrets;
@@ -119,13 +120,13 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         return secrets;
     }
 
-    VersionComparator comparator = new VersionComparator();
-
     public class VersionComparator implements Comparator<Long> {
         @Override
         public int compare(Long o1, Long o2) {
-            if (o1 > o2) return 1;
-            else if (o1 < o2) return -1;
+            if (o1 > o2)
+                return 1;
+            else if (o1 < o2)
+                return -1;
             else return 0;
         }
     }

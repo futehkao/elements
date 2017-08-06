@@ -18,7 +18,7 @@ package net.e6tech.elements.web.cxf;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
-import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
@@ -26,6 +26,7 @@ import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.ExceptionMapper;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.jmx.JMXService;
 import net.e6tech.elements.jmx.stat.Measurement;
 import net.e6tech.elements.web.JaxExceptionHandler;
@@ -60,6 +61,7 @@ import java.util.concurrent.ExecutorService;
  *
  * code is based on http://cxf.apache.org/docs/jaxrs-services-configuration.html#JAXRSServicesConfiguration-JAX-RSRuntimeDelegateandApplications
  */
+@SuppressWarnings({"squid:S1149", "squid:MethodCyclomaticComplexity"})
 public class JaxRSServer extends CXFServer {
 
     static {
@@ -76,14 +78,6 @@ public class JaxRSServer extends CXFServer {
     private static Map<Integer, ServerFactorBeanEntry> entries = new Hashtable();
 
     private static Logger logger = Logger.getLogger();
-
-    public static Logger getLogger() {
-        return logger;
-    }
-
-    public static void setLogger(Logger logger) {
-        JaxRSServer.logger = logger;
-    }
 
     @Inject(optional = true)
     private Observer headerObserver;
@@ -104,6 +98,14 @@ public class JaxRSServer extends CXFServer {
 
     @Inject(optional = true)
     private SecurityAnnotationEngine securityAnnotationEngine;
+
+    public static Logger getLogger() {
+        return logger;
+    }
+
+    public static void setLogger(Logger logger) {
+        JaxRSServer.logger = logger;
+    }
 
     public Observer getHeaderObserver() {
         return headerObserver;
@@ -161,21 +163,23 @@ public class JaxRSServer extends CXFServer {
         this.measurement = measurement;
     }
 
+    @Override
+    @SuppressWarnings("squid:S2112")
     public void initialize(Resources res) {
-        if (getURLs().size() == 0) {
+        if (getURLs().isEmpty()) {
             throw new IllegalStateException("address not set");
         }
 
         res.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
-                NotificationListener.wrap("JaxRSServer" + getURLs(), (notification) -> stop())
+                NotificationListener.wrap("JaxRSServer" + getURLs(), notification -> stop())
         );
 
         List<ServerFactorBeanEntry> entryList = new ArrayList<>();
         synchronized (entries) {
             for (URL url : getURLs()) {
-                ServerFactorBeanEntry entry = entries.computeIfAbsent(url.getPort(), (port) -> new ServerFactorBeanEntry(url, new JAXRSServerFactoryBean()));
+                ServerFactorBeanEntry entry = entries.computeIfAbsent(url.getPort(), port -> new ServerFactorBeanEntry(url, new JAXRSServerFactoryBean()));
                 if (!entry.getURL().equals(url)) {
-                    throw new RuntimeException("Cannot register " + url.toExternalForm() + ".  Already a service at " + url.toExternalForm());
+                    throw new SystemException("Cannot register " + url.toExternalForm() + ".  Already a service at " + url.toExternalForm());
                 }
 
                 JAXRSServerFactoryBean bean = entry.getFactoryBean();
@@ -190,11 +194,12 @@ public class JaxRSServer extends CXFServer {
             boolean singleton = false;
             Class resourceClass = null;
             String resourceClassName = (String) map.get(CLASS);
-            if (resourceClassName == null) throw new RuntimeException("Missing resource class in resources map");
+            if (resourceClassName == null)
+                throw new SystemException("Missing resource class in resources map");
             try {
                 resourceClass = provision.getClass().getClassLoader().loadClass(resourceClassName);
             } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
 
             // determine if we should bind header observer or not
@@ -209,15 +214,17 @@ public class JaxRSServer extends CXFServer {
             Object instance = null;
             try {
                 instance = resourceClass.newInstance();
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
+            } catch (Exception e) {
+                throw new SystemException(e);
             }
             if (res != null) {
                 res.inject(instance);
-                if (hObserver != null) res.inject(hObserver);
+                if (hObserver != null)
+                    res.inject(hObserver);
             } else {
                 provision.inject(instance);
-                if (hObserver != null) provision.inject(hObserver);
+                if (hObserver != null)
+                    provision.inject(hObserver);
             }
 
             if (securityAnnotationEngine != null)
@@ -227,32 +234,38 @@ public class JaxRSServer extends CXFServer {
             if (singleton) {
                 resourceProvider = new SharedResourceProvider(map, instance, hObserver);
                 String beanName = (String) map.get(REGISTER_BEAN);
-                if (beanName != null) provision.getResourceManager().registerBean(beanName, instance);
+                if (beanName != null)
+                    provision.getResourceManager().registerBean(beanName, instance);
             } else {
                 resourceProvider = new InstanceResourceProvider(map, resourceClass, res.getModule(), provision, hObserver);
             }
 
-            for (ServerFactorBeanEntry entry : entryList) entry.getFactoryBean().setResourceProvider(resourceClass, resourceProvider);
+            for (ServerFactorBeanEntry entry : entryList)
+                entry.getFactoryBean().setResourceProvider(resourceClass, resourceProvider);
 
-            if (resourceName != null) instances.put(resourceName, instance);
+            if (resourceName != null)
+                instances.put(resourceName, instance);
             resourceClasses.add(resourceClass);
         }
 
         if (securityAnnotationEngine != null)
             securityAnnotationEngine.logMethodMap();
 
-        for (ServerFactorBeanEntry entry : entryList) entry.addResourceClasses(resourceClasses);
+        for (ServerFactorBeanEntry entry : entryList)
+            entry.addResourceClasses(resourceClasses);
 
         super.initialize(res);
     }
 
+    @Override
     public void start() {
-        if (isStarted()) return;
+        if (isStarted())
+            return;
 
         try {
             initKeyStore();
-        } catch (Throwable th) {
-            throw new RuntimeException(th);
+        } catch (Exception th) {
+            throw new SystemException(th);
         }
 
         List<JAXRSServerFactoryBean> beans = new ArrayList<>();
@@ -267,49 +280,56 @@ public class JaxRSServer extends CXFServer {
             }
         }
 
-        for (JAXRSServerFactoryBean bean: beans) bean.getBus().setProperty("skip.default.json.provider.registration", true);
+        for (JAXRSServerFactoryBean bean: beans)
+            bean.getBus().setProperty("skip.default.json.provider.registration", true);
         JacksonJaxbJsonProvider jackson = new JacksonJaxbJsonProvider();
         jackson.disable(SerializationFeature.WRAP_ROOT_VALUE)
                 .enable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
                 .disable(SerializationFeature.WRITE_NULL_MAP_VALUES);
-        for (JAXRSServerFactoryBean bean: beans) bean.setProvider(jackson);
+        for (JAXRSServerFactoryBean bean: beans)
+            bean.setProvider(jackson);
 
         if (isCorsFilter()) {
             logger.info("enabling CORS filter");
-            CrossOriginResourceSharingFilter corsFilter = new CrossOriginResourceSharingFilter();
-            for (JAXRSServerFactoryBean bean: beans) bean.setProvider(corsFilter);
+            CrossOriginResourceSharingFilter cf = new CrossOriginResourceSharingFilter();
+            for (JAXRSServerFactoryBean bean: beans)
+                bean.setProvider(cf);
         }
 
-        for (JAXRSServerFactoryBean bean: beans) bean.getInInterceptors().add(new LoggingInInterceptor() {
-            protected void log(java.util.logging.Logger otherLogger, final String message) {
-                JaxRSServer.this.log(otherLogger, message);
-            }
-        });
-        for (JAXRSServerFactoryBean bean: beans) bean.getOutInterceptors().add(new LoggingOutInterceptor() {
-            protected void log(java.util.logging.Logger otherLogger, String message) {
-                JaxRSServer.this.log(otherLogger, message);
-            }
-        });
+        for (JAXRSServerFactoryBean bean: beans)
+            bean.getInInterceptors().add(new LoggingInInterceptor() {
+                @Override
+                protected void log(java.util.logging.Logger otherLogger, final String message) {
+                    JaxRSServer.this.log(message);
+                }
+            });
+        for (JAXRSServerFactoryBean bean: beans)
+            bean.getOutInterceptors().add(new LoggingOutInterceptor() {
+                @Override
+                protected void log(java.util.logging.Logger otherLogger, String message) {
+                    JaxRSServer.this.log(message);
+                }
+            });
 
-        for (JAXRSServerFactoryBean bean: beans) bean.setProvider(new InternalExceptionMapper(exceptionMapper));
-        for (JAXRSServerFactoryBean bean: beans) logger.info("Starting Restful at address " + bean.getAddress() + " " + bean.getResourceClasses());
+        for (JAXRSServerFactoryBean bean: beans)
+            bean.setProvider(new InternalExceptionMapper(exceptionMapper));
+        for (JAXRSServerFactoryBean bean: beans)
+            logger.info("Starting Restful at address {} {} ", bean.getAddress(), bean.getResourceClasses());
         for (JAXRSServerFactoryBean bean: beans) {
             try {
                 bean.setStart(false);
                 registerServer(bean.create());
             } catch (Exception ex) {
-                throw new RuntimeException("Cannot start RESTful service at " + bean.getAddress());
+                throw new SystemException("Cannot start RESTful service at " + bean.getAddress(), ex);
             }
         }
         super.start();
     }
 
-    protected void log(java.util.logging.Logger otherLogger, String message) {
-        Runnable runnable = () -> {
-            messageLogger.trace(message);
-        };
+    protected void log(String message) {
+        Runnable runnable = () -> messageLogger.trace(message);
 
         if (messageLogger.isTraceEnabled()) {
             if (threadPool != null) {
@@ -320,17 +340,18 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
+    @SuppressWarnings("squid:S00112")
     private void handleException(Object instance, Method thisMethod, Object[] args, Throwable th) throws Throwable {
-        th = ExceptionMapper.unwrap(th);
+        Throwable throwable = ExceptionMapper.unwrap(th);
         if (instance instanceof JaxExceptionHandler) {
-            Object response = ((JaxExceptionHandler) instance).handleException(thisMethod, args, th);
+            Object response = ((JaxExceptionHandler) instance).handleException(thisMethod, args, throwable);
             if (response != null) {
                 throw new InvocationException(response);
             } else {
-
+                // do nothing
             }
         } else {
-            throw th;
+            throw throwable;
         }
     }
 
@@ -349,32 +370,31 @@ public class JaxRSServer extends CXFServer {
             this.map = map;
         }
 
+        @Override
         protected Object createInstance(Message message) {
             Object instance = super.createInstance(message);
             Observer cloneObserver = (observer == null) ? null : observer.clone();
-            UnitOfWork uow = provision.preOpen((resources) -> {
-                    resources.addModule(module);
+            UnitOfWork uow = provision.preOpen(res -> {
+                    res.addModule(module);
                 if (exceptionMapper != null) {
-                    resources.rebind(ExceptionMapper.class, exceptionMapper);
-                    resources.rebind((Class<ExceptionMapper>) exceptionMapper.getClass(), exceptionMapper);
+                    res.rebind(ExceptionMapper.class, exceptionMapper);
+                    res.rebind((Class<ExceptionMapper>) exceptionMapper.getClass(), exceptionMapper);
                 }
-                }).onOpen((resources) -> {
+                }).onOpen(res -> {
                     // call header observer.
                     // exception is automatically handled by ResourceManager.  It will kill the resources and throw an exception.
                     if (cloneObserver !=  null) {
                         HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
-                        resources.inject(cloneObserver);
+                        res.inject(cloneObserver);
                         cloneObserver.service(request);
                     }
-
-                    // copy from prototype properties to instance.
-                    // Reflection.copyInstance(instance, prototype);
-                    resources.inject(instance);
+                    res.inject(instance);
                 });
             message.getExchange().put(UnitOfWork.class, uow);
             return interceptor.newInterceptor(instance, new Handler(instance, uow, map, methods, cloneObserver, message));
         }
 
+        @Override
         public void releaseInstance(Message m, Object o) {
             try {
                 super.releaseInstance(m, o);
@@ -403,24 +423,27 @@ public class JaxRSServer extends CXFServer {
 
         private void open(Method method) {
             Class cls = instance.getClass();
-            for (Annotation annotation : cls.getAnnotations()) uow.put((Class) annotation.annotationType(), annotation);
-            for (Annotation annotation : method.getAnnotations()) uow.put((Class) annotation.annotationType(), annotation);
+            for (Annotation annotation : cls.getAnnotations())
+                uow.put((Class) annotation.annotationType(), annotation);
+            for (Annotation annotation : method.getAnnotations())
+                uow.put((Class) annotation.annotationType(), annotation);
             uow.open();
         }
 
         @Override
         public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
             boolean abort = false;
-            UnitOfWork uow = null;
+            UnitOfWork resourceUoW = null;
             Object result = null;
             boolean ignored = false;
 
             // Note PostConstruct is handled by CXF during createInstance
-            if (thisMethod.getAnnotation(PreDestroy.class) != null) ignored = true;
+            if (thisMethod.getAnnotation(PreDestroy.class) != null)
+                ignored = true;
             else {
                 try {
                     open(thisMethod);
-                } catch (Throwable th) {
+                } catch (Exception th) {
                     message.getExchange().remove(UnitOfWork.class);
                     logger.debug(th.getMessage(), th);
                     handleException(target, thisMethod, args, th);
@@ -430,12 +453,12 @@ public class JaxRSServer extends CXFServer {
             try {
                 checkInvocation(thisMethod, args);
                 if (!ignored) {
-                    uow = message.getExchange().get(UnitOfWork.class);
-                    if (uow.getResources() != null) // could be null when PreDestroy is called.
-                        uow.getResources().inject(target);
+                    resourceUoW = message.getExchange().get(UnitOfWork.class);
+                    if (resourceUoW.getResources() != null) // could be null when PreDestroy is called.
+                        resourceUoW.getResources().inject(target);
 
                     long start = System.currentTimeMillis();
-                    result = uow.submit(() -> {
+                    result = resourceUoW.submit(() -> {
                         if (observer != null) {
                             observer.beforeInvocation(target, thisMethod, args);
                         }
@@ -455,7 +478,7 @@ public class JaxRSServer extends CXFServer {
                     result = thisMethod.invoke(target, args);
                 }
 
-            } catch (Throwable th) {
+            } catch (Exception th) {
                 recordFailure(thisMethod, methods, map);
                 abort = true;
                 ignored = false;
@@ -463,8 +486,10 @@ public class JaxRSServer extends CXFServer {
                 handleException(target, thisMethod, args, th);
             } finally {
                 if (resources != null && !ignored) {
-                    if (abort) abort(message);
-                    else commit(message);
+                    if (abort)
+                        abort(message);
+                    else
+                        commit(message);
                 }
             }
             return result;
@@ -484,6 +509,8 @@ public class JaxRSServer extends CXFServer {
             this.map = map;
         }
 
+        @Override
+        @SuppressWarnings("squid:S1188")
         public Object getInstance(Message m) {
             Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
             if (observer !=  null && m != null) {
@@ -506,7 +533,7 @@ public class JaxRSServer extends CXFServer {
                             cloneObserver.afterInvocation(result);
                         }
                         return result;
-                    } catch (Throwable th) {
+                    } catch (Exception th) {
                         recordFailure(thisMethod, methods, map);
                         logger.debug(th.getMessage(), th);
                         handleException(target, thisMethod, args, th);
@@ -515,10 +542,6 @@ public class JaxRSServer extends CXFServer {
                 });
             }
             return proxy;
-        }
-
-        public void releaseInstance(Message m, Object o) {
-            super.releaseInstance(m, o);
         }
     }
 
@@ -581,9 +604,6 @@ public class JaxRSServer extends CXFServer {
                 status = Response.Status.SERVICE_UNAVAILABLE;
             }
 
-            // mapper should decide whether to log.
-            // logger.warn(exception.getMessage(), ExceptionMapper.unwrap(exception));
-
             Object response;
             if (exception instanceof InvocationException) {
                 response = ((InvocationException) exception).getResponse();
@@ -614,13 +634,15 @@ public class JaxRSServer extends CXFServer {
         commitOrAbort(message, true);
     }
 
+    @SuppressWarnings("squid:S134")
     static void commitOrAbort(Message message, boolean commit) {
         try {
             UnitOfWork uow = message.getExchange().get(UnitOfWork.class);
             if (uow != null) {
                 if (commit) {
                     // application may have aborted programmatically
-                    if (!uow.isAborted() && uow.isOpened()) uow.commit();
+                    if (!uow.isAborted() && uow.isOpened())
+                        uow.commit();
                 } else {
                     uow.abort();
                 }
@@ -630,6 +652,7 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
+    @SuppressWarnings("squid:S1172")
     private void computePerformance(Method method, Map<Method,String> methods,  Map<String, Object> map, long duration) {
         ObjectInstance instance = null;
         try {
@@ -640,6 +663,7 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
+    @SuppressWarnings("squid:S1172")
     private void recordFailure(Method method, Map<Method,String> methods,  Map<String, Object> map) {
         ObjectInstance instance = null;
         try {
@@ -669,27 +693,31 @@ public class JaxRSServer extends CXFServer {
         return JMXService.registerIfAbsent(objectName, () -> new Measurement(methodName, "ms", measurement));
     }
 
+    @SuppressWarnings( "squid:S134")
     private static void checkInvocation(Method method, Object[] args) {
         Parameter[] params = method.getParameters();
         int idx = 0;
         StringBuilder builder = null;
+        final String CANOT_BE_NULL = " cannot be null. \n";
         for (Parameter param : params) {
             QueryParam queryParam =  param.getAnnotation(QueryParam.class);
             PathParam pathParam =  param.getAnnotation(PathParam.class);
-
             if (args[idx] == null || (args[idx] instanceof String && ((String) args[idx]).trim().isEmpty())) {
                 if (pathParam != null) {
-                    if (builder == null) builder = new StringBuilder();
-                    builder.append("path parameter ").append(pathParam.value()).append(" cannot be null. \n");
+                    if (builder == null)
+                        builder = new StringBuilder();
+                    builder.append("path parameter ").append(pathParam.value()).append(CANOT_BE_NULL);
                 }
 
                 if (param.getAnnotation(Nonnull.class) != null) {
                     if (queryParam != null) {
-                        if (builder == null) builder = new StringBuilder();
-                        builder.append("query parameter ").append(queryParam.value()).append(" cannot be null. \n");
+                        if (builder == null)
+                            builder = new StringBuilder();
+                        builder.append("query parameter ").append(queryParam.value()).append(CANOT_BE_NULL);
                     } else if (pathParam == null) {
-                        if (builder == null) builder = new StringBuilder();
-                        builder.append("post parameter ").append("arg").append(idx).append(" cannot be null. \n");
+                        if (builder == null)
+                            builder = new StringBuilder();
+                        builder.append("post parameter ").append("arg").append(idx).append(CANOT_BE_NULL);
                     }
                 }
             }

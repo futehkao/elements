@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -45,7 +44,8 @@ public class Configurator {
 
     public <T extends Annotation, R> R annotatedValue(Class<T> key, Function<T, R> function) {
         T t = (T) configuration.get(key);
-        if (t == null) t = Annotator.create((Class<Annotation>)key, null);
+        if (t == null)
+            t = Annotator.create((Class<Annotation>)key, null);
         return function.apply(t);
     }
 
@@ -64,8 +64,7 @@ public class Configurator {
     }
 
     public <T> T get(Class<T> key) {
-        T t = (T) configuration.get(key);
-        return t;
+        return (T) configuration.get(key);
     }
 
     public <T> T get(Class<T> key, T defval) {
@@ -92,12 +91,14 @@ public class Configurator {
     }
 
     public Configurator putAll(Configurator configurator) {
-        if (configurator != null) configuration.putAll(configurator.configuration);
+        if (configurator != null)
+            configuration.putAll(configurator.configuration);
         return this;
     }
 
     public Configurator putAll(Map map) {
-        if (map != null) configuration.putAll(map);
+        if (map != null)
+            configuration.putAll(map);
         return this;
     }
 

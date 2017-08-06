@@ -30,14 +30,16 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S3008")
 public class AtallaSimulator {
 
     static String MASTER_KEY = "2ABC3DEF4567018998107645FED3CBA20123456789ABCDEF";
@@ -62,16 +64,7 @@ public class AtallaSimulator {
     private int port = 7000;
     private byte[] masterKey = Hex.toBytes(MASTER_KEY); // triple des is 24 bytes,
     private boolean stopped = true;
-    protected Map<String, String> keys = new Hashtable<>();
-
-    public static void main(String ... args) throws Exception  {
-        byte[] kekKey = Hex.toBytes("0123456789ABCDEFFEDCBA9876543210");
-        String header = "1KDEE000";
-        AtallaSimulator atalla = (new AtallaSimulator());
-        AKB akb = new AKB(header, atalla.masterKey, kekKey);
-        byte[] recoveredKek = akb.decryptKey(atalla.masterKey);
-        System.out.println(Arrays.equals(kekKey, recoveredKek));
-    }
+    protected Map<String, String> keys = new HashMap<>();
 
     public AtallaSimulator() throws GeneralSecurityException {
         Field[] fields = AtallaSimulator.class.getDeclaredFields();
@@ -82,7 +75,7 @@ public class AtallaSimulator {
                 try {
                     keys.put(f.getName(), (String) f.get(null));
                 } catch (IllegalAccessException e) {
-                    // nah
+                    Logger.suppress(e);
                 }
             }
         }
@@ -102,19 +95,18 @@ public class AtallaSimulator {
 
     public AKB getKey(String keyType) throws GeneralSecurityException {
         String key = keys.get(keyType);
-        if (key == null) return null;
+        if (key == null)
+            return null;
         return asAKB(key);
     }
 
     public AKB asAKB(String headerAndKey) throws GeneralSecurityException {
         String[] fields = headerAndKey.split(",");
-        AKB akb = new AKB(fields[0].trim(), masterKey, Hex.toBytes(fields[1]));
-        return akb;
+        return  new AKB(fields[0].trim(), masterKey, Hex.toBytes(fields[1]));
     }
 
     public AKB asAKB(String header, byte[] key) throws GeneralSecurityException {
-        AKB akb = new AKB(header, masterKey, key);
-        return akb;
+        return new AKB(header, masterKey, key);
     }
 
     public byte[] decryptKey(AKB akb) throws GeneralSecurityException {
@@ -163,6 +155,7 @@ public class AtallaSimulator {
         thread.start();
     }
 
+    @SuppressWarnings({"squid:S134", "squid:S1141"})
     protected void startServer() {
         try {
             serverSocket = new ServerSocket(port);
@@ -181,15 +174,15 @@ public class AtallaSimulator {
                                 writer.println(response);
                                 writer.flush();
                             }
-                            System.out.println("Atalla client exited");
+                            logger.info("Atalla client exited");
                         }
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        logger.trace(e.getMessage(), e);
                     }
                 });
             }
-        } catch (Throwable th) {
-            throw logger.runtimeException(th);
+        } catch (Exception th) {
+            throw logger.systemException(th);
         }
     }
 
@@ -198,10 +191,19 @@ public class AtallaSimulator {
             try {
                 serverSocket.close();
             } catch (IOException e) {
-
+                Logger.suppress(e);
             } finally {
                 stopped = true;
             }
         }
+    }
+
+    public static void main(String ... args) throws Exception  {
+        byte[] kekKey = Hex.toBytes("0123456789ABCDEFFEDCBA9876543210");
+        String header = "1KDEE000";
+        AtallaSimulator atalla = (new AtallaSimulator());
+        AKB akb = new AKB(header, atalla.masterKey, kekKey);
+        byte[] recoveredKek = akb.decryptKey(atalla.masterKey);
+        logger.info(Boolean.toString(Arrays.equals(kekKey, recoveredKek)));
     }
 }

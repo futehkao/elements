@@ -23,20 +23,20 @@ import java.util.Set;
  * Created by futeh.
  */
 public class Roles implements Principal {
-    private static final Set<String> EMPTY = Collections.EMPTY_SET;
+    private static final Set<String> EMPTY = Collections.emptySet();
 
-    Set<String> roles;
+    private Set<String> roleSet;
 
     public Roles() {
-        roles = EMPTY;
+        roleSet = EMPTY;
     }
 
     public Roles(Set<String> roles) {
-        this.roles = roles;
+        this.roleSet = roles;
     }
 
     public Set<String> getRoles() {
-        return roles;
+        return roleSet;
     }
 
     public boolean equals(Object object) {
@@ -44,13 +44,13 @@ public class Roles implements Principal {
             return true;
         }
         if (object instanceof Roles) {
-            return roles.equals(object);
+            return roleSet.equals(object);
         }
         return false;
     }
 
     public int hashCode() {
-        return roles.hashCode();
+        return roleSet.hashCode();
     }
 
     public String getName() {
@@ -58,6 +58,6 @@ public class Roles implements Principal {
     }
 
     public String toString() {
-        return "Roles: " + roles;
+        return "Roles: " + roleSet;
     }
 }

@@ -34,13 +34,7 @@ import java.util.function.Consumer;
  */
 public class Select<T> extends Statement<T> {
 
-    public static <T> Select<T> create(EntityManager entityManager, Class<T> cls) {
-        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
-        CriteriaQuery query = builder.createQuery();
-        Root<T> root = query.from(cls);
-        Where<T> where = new Where(entityManager, builder, query, root);
-        return new Select<>(where, root);
-    }
+    private static final String GETTER_MSG = "Only accepts getter";
 
     Select parent;
     int maxResults = -1;
@@ -50,10 +44,18 @@ public class Select<T> extends Statement<T> {
         super(where, root);
     }
 
-    protected Select(Select parent, Where where, From<?, T> root) {
+    protected Select(Select parent, Where where, From<T, T> root) {
         super(where, root);
         this.parent = parent;
         this.selections = parent.selections;
+    }
+
+    public static <T> Select<T> create(EntityManager entityManager, Class<T> cls) {
+        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+        CriteriaQuery query = builder.createQuery();
+        Root<T> root = query.from(cls);
+        Where<T> where = new Where(entityManager, builder, query, root);
+        return new Select<>(where, root);
     }
 
     public Select<T> where(Consumer<T> consumer) {
@@ -72,13 +74,14 @@ public class Select<T> extends Statement<T> {
         where.onQuery();
         if (selections.size() == 1) {
             getQuery().select((Selection<? extends T>) selections.get(0));
-        } else if (selections.size() > 0) {
+        } else if (!selections.isEmpty()) {
             getQuery().multiselect(selections);
         } else {
             getQuery().select(getFrom());
         }
         Query query = where.getEntityManager().createQuery(getQuery());
-        if (maxResults >= 0) query.setMaxResults(maxResults);
+        if (maxResults >= 0)
+            query.setMaxResults(maxResults);
         return (R) query.getSingleResult();
     }
 
@@ -86,13 +89,14 @@ public class Select<T> extends Statement<T> {
         where.onQuery();
         if (selections.size() == 1) {
             getQuery().select((Selection<? extends T>) selections.get(0));
-        } else if (selections.size() > 0) {
+        } else if (!selections.isEmpty()) {
             getQuery().multiselect(selections.toArray(new Selection[selections.size()]));
         } else {
             getQuery().select(getFrom());
         }
         Query query = where.getEntityManager().createQuery(getQuery());
-        if (maxResults >= 0) query.setMaxResults(maxResults);
+        if (maxResults >= 0)
+            query.setMaxResults(maxResults);
         return query.getResultList();
     }
 
@@ -121,17 +125,14 @@ public class Select<T> extends Statement<T> {
     }
 
     public <R> Select<T> crossJoinManyToOneWhere(Class<R> entityClass, Consumer<T> joinCondition, Consumer<R> consumer) {
-        return crossJoinManyToOne(entityClass, joinCondition, nestedSelect -> {
-            nestedSelect.where(consumer);
-        });
+        return crossJoinManyToOne(entityClass, joinCondition, nestedSelect -> nestedSelect.where(consumer));
     }
 
     public <R> Select<T> crossJoinManyToOne(Class<R> entityClass, Consumer<T> joinCondition, BiConsumer<Select<R>, R> consumer) {
-        return crossJoinManyToOne(entityClass, joinCondition, nestedSelect -> {
-            nestedSelect.where(consumer);
-        });
+        return crossJoinManyToOne(entityClass, joinCondition, nestedSelect -> nestedSelect.where(consumer));
     }
 
+    @SuppressWarnings("squid:S1188")
     public <R> Select<T> crossJoinManyToOne(Class<R> entityClass, Consumer<T> joinCondition, Consumer<Select<R>> consumer) {
         From<R, R> jointRoot = getQuery().from(entityClass);
         Interceptor.setInterceptorHandler(where.getTemplate(), (target, thisMethod, args) -> {
@@ -152,7 +153,7 @@ public class Select<T> extends Statement<T> {
                 }
                 this.where.getPredicates().add(joinPredicate);
             } else {
-                throw new UnsupportedOperationException("Only accepts getter");
+                throw new UnsupportedOperationException(GETTER_MSG);
             }
             return null;
         });
@@ -166,45 +167,42 @@ public class Select<T> extends Statement<T> {
     }
 
     public <R> Select<T> crossJoinOneToManyWhere(Class<R> entityClass, Consumer<R> joinCondition, Consumer<R> consumer) {
-        return crossJoinOneToMany(entityClass, joinCondition, nestedSelect -> {
-            nestedSelect.where(consumer);
-        });
+        return crossJoinOneToMany(entityClass, joinCondition, nestedSelect -> nestedSelect.where(consumer));
     }
 
     public <R> Select<T> crossJoinOneToMany(Class<R> entityClass, Consumer<R> joinCondition, BiConsumer<Select<R>, R> consumer) {
-        return crossJoinOneToMany(entityClass, joinCondition, nestedSelect -> {
-            nestedSelect.where(consumer);
-        });
+        return crossJoinOneToMany(entityClass, joinCondition, nestedSelect -> nestedSelect.where(consumer));
     }
 
+    @SuppressWarnings("squid:S1188")
     public <R> Select<T> crossJoinOneToMany(Class<R> entityClass, Consumer<R> joinCondition, Consumer<Select<R>> consumer) {
-        From<R, R> jointRoot = getQuery().from(entityClass);
+        From<R, R> joinRoot = getQuery().from(entityClass);
         R joinTemplate = Handler.interceptor.newInstance(entityClass,  (target, thisMethod, args) -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
             String property = desc.getName();
             if (thisMethod.equals(desc.getReadMethod())) {
                 Predicate joinPredicate;
-                if (jointRoot.get(property).getJavaType().equals(getFrom().getJavaType())) {
-                    joinPredicate = getBuilder().equal(getFrom(), jointRoot.get(property));
+                if (joinRoot.get(property).getJavaType().equals(getFrom().getJavaType())) {
+                    joinPredicate = getBuilder().equal(getFrom(), joinRoot.get(property));
                 } else {
                     EntityType type = (EntityType) getFrom().getModel();
                     String parentIdAttribute = type.getId(type.getIdType().getJavaType()).getName();
-                    if (!getFrom().get(parentIdAttribute).getJavaType().equals(jointRoot.get(property).getJavaType())) {
+                    if (!getFrom().get(parentIdAttribute).getJavaType().equals(joinRoot.get(property).getJavaType())) {
                         throw new IllegalArgumentException("Type mismatch: cannot join " + type.getName() + "." + parentIdAttribute + " to " +
-                        jointRoot.get(property));
+                        joinRoot.get(property));
                     }
-                    joinPredicate = getBuilder().equal(getFrom().get(parentIdAttribute), jointRoot.get(property));
+                    joinPredicate = getBuilder().equal(getFrom().get(parentIdAttribute), joinRoot.get(property));
                 }
                 this.where.getPredicates().add(joinPredicate);
             } else {
-                throw new UnsupportedOperationException("Only accepts getter");
+                throw new UnsupportedOperationException(GETTER_MSG);
             }
             return null;
         });
         joinCondition.accept(joinTemplate);
 
-        Where<R> where = new Where<>(this.where, jointRoot);
-        Select<R> joinSelect = new Select<>(this, where, jointRoot);
+        Where<R> where = new Where<>(this.where, joinRoot);
+        Select<R> joinSelect = new Select<>(this, where, joinRoot);
         consumer.accept(joinSelect);
         return this;
     }
@@ -218,7 +216,7 @@ public class Select<T> extends Statement<T> {
     }
 
     public Select<T> leftJoin(Runnable joinCondition) {
-        return join(JoinType.LEFT, joinCondition, (sel, r) -> {});
+        return join(JoinType.LEFT, joinCondition, (sel, r) -> { /* no-op */});
     }
 
     public <R> Select<T> join(Runnable joinCondition, BiConsumer<Select<R>, R> consumer) {
@@ -230,7 +228,7 @@ public class Select<T> extends Statement<T> {
     }
 
     public Select<T> join(Runnable joinCondition) {
-        return join(JoinType.INNER, joinCondition, (sel, r) -> {});
+        return join(JoinType.INNER, joinCondition, (sel, r) -> { /* no-op */});
     }
 
     protected <R> Select<T> join(JoinType type, Runnable joinCondition, BiConsumer<Select<R>, R> consumer) {
@@ -243,7 +241,7 @@ public class Select<T> extends Statement<T> {
                 Select<R> joinSelect = new Select<>(this, where, join);
                 consumer.accept(joinSelect, where.getTemplate());
             } else {
-                throw new UnsupportedOperationException("Only accepts getter");
+                throw new UnsupportedOperationException(GETTER_MSG);
             }
             return null;
         });
@@ -281,7 +279,7 @@ public class Select<T> extends Statement<T> {
             if (thisMethod.equals(desc.getReadMethod())) {
                 getFrom().fetch(property, type);
             } else {
-                throw new UnsupportedOperationException("Only accepts getter");
+                throw new UnsupportedOperationException(GETTER_MSG);
             }
             return null;
         });
@@ -292,7 +290,8 @@ public class Select<T> extends Statement<T> {
 
     public Select<T> setMaxResults(int maxResults) {
         this.maxResults = maxResults;
-        if (parent != null) parent.setMaxResults(maxResults);
+        if (parent != null)
+            parent.setMaxResults(maxResults);
         return this;
     }
 

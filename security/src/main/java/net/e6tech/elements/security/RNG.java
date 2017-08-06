@@ -15,6 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.security;
 
+import net.e6tech.elements.common.logging.Logger;
+
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
@@ -24,25 +26,32 @@ import java.security.SecureRandom;
 public class RNG {
     private static String rngAlgorithm = "SHA1PRNG";
 
+    private RNG() {
+    }
+
     static {
         try {
             rngAlgorithm = "NativePRNGNonBlocking";
             SecureRandom.getInstance("NativePRNGNonBlocking");
         } catch (NoSuchAlgorithmException e) {
+            Logger.suppress(e);
             try {
                 rngAlgorithm = "SHA1PRNG";
                 SecureRandom.getInstance(rngAlgorithm);
             } catch (NoSuchAlgorithmException e2) {
+                Logger.suppress(e2);
                 rngAlgorithm = null;
             }
         }
     }
 
     public static SecureRandom getSecureRandom() {
-        if (rngAlgorithm == null) return new SecureRandom();
+        if (rngAlgorithm == null)
+            return new SecureRandom();
         try {
             return SecureRandom.getInstance(rngAlgorithm);
         } catch (NoSuchAlgorithmException e) {
+            Logger.suppress(e);
             return new SecureRandom();
         }
     }

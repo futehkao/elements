@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S2276","squid:S134", "squid:S1188", "squid:S1066", "squid:S2864", "squid:S1149"})
 public class Wait<K, V> {
     Hashtable<K, Entry<V>> table = new Hashtable<>();
     Thread thread;
@@ -92,6 +93,7 @@ public class Wait<K, V> {
                             try {
                                 Thread.sleep(waitTime);
                             } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
                             }
                         }
                         synchronized (table) {
@@ -99,6 +101,7 @@ public class Wait<K, V> {
                                 try {
                                     table.wait();
                                 } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
                                 }
                             }
                         }
@@ -112,17 +115,20 @@ public class Wait<K, V> {
 
     public V remove(K key) {
         Entry<V> entry = table.get(key);
-        if (entry == null) return null;
+        if (entry == null)
+            return null;
         table.remove(key);
         return entry.queue.peek();
     }
 
     public V poll(K key, long timeout) {
         Entry<V> entry = table.get(key);
-        if (entry == null) return null;
+        if (entry == null)
+            return null;
         try {
             return  entry.queue.poll(timeout, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return null;
         } finally {
             remove(key);
@@ -131,13 +137,15 @@ public class Wait<K, V> {
 
     public V peek(K key) {
         Entry<V> entry = table.get(key);
-        if (entry == null) return null;
+        if (entry == null)
+            return null;
         return entry.queue.peek();
     }
 
     public <T> T peekUserData(K key) {
         Entry<V> entry = table.get(key);
-        if (entry == null) return null;
+        if (entry == null)
+            return null;
         return (T) entry.userData;
     }
 

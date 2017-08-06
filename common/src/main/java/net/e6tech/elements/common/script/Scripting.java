@@ -17,6 +17,7 @@ package net.e6tech.elements.common.script;
 
 import groovy.lang.*;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.jsr223.GroovyScriptEngineImpl;
@@ -35,7 +36,9 @@ import java.util.concurrent.Callable;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S00115", "squid:S134", "squid:S1192"})
 public class Scripting {
+
     public static final String SCRIPT_BASE_CLASS = "scriptBaseClass";
     public static final String PATH = "script.path";
     public static final String __DIR = "__dir";
@@ -44,6 +47,7 @@ public class Scripting {
     public static final String __LOAD_FILE = "__load_file";
     private static Logger logger = Logger.getLogger();
     private static final Set<String> reservedKeyWords = new HashSet<>();
+
     static {
         reservedKeyWords.add(__DIR);
         reservedKeyWords.add(__FILE);
@@ -54,6 +58,9 @@ public class Scripting {
     List launchedList = new LinkedList<>();
     ScriptPath scriptPath;
 
+    protected Scripting() {
+    }
+
     public static Scripting newInstance(ClassLoader classLoader, Properties properties) {
         Scripting script = new Scripting();
 
@@ -62,15 +69,13 @@ public class Scripting {
         return script;
     }
 
-    protected Scripting() {
-    }
-
     public void put(String key, Object val) {
-        if (reservedKeyWords.contains(key)) throw new RuntimeException(key + " is a reserved keyword");
-        _put(key, val);
+        if (reservedKeyWords.contains(key))
+            throw new SystemException(key + " is a reserved keyword");
+        privatePut(key, val);
     }
 
-    public void _put(String key, Object val) {
+    public void privatePut(String key, Object val) {
         engine.put(key, val);
     }
 
@@ -90,28 +95,32 @@ public class Scripting {
         return engine.getProperties();
     }
 
-    private String normalizePath(String path) {
+    @SuppressWarnings("squid:S1067")
+    private String normalizePath(String originalPath) {
         String dir = (String) get(Scripting.__DIR);
         boolean relativePath = false;
-        if (dir != null) {
-            if (!path.startsWith(dir) && !path.startsWith(File.separator) && !path.startsWith("/")
-                    && !path.startsWith("classpath:")) {
-                // detect windows
-                int indexOfColon = path.indexOf(":");
-                if (indexOfColon > 0) {
-                    String prefix = path.substring(0, indexOfColon);
-                    if (prefix.contains(File.separator)
+        String path = originalPath;
+        if (dir != null
+                && !path.startsWith(dir)
+                && !path.startsWith(File.separator)
+                && !path.startsWith("/")
+                && !path.startsWith("classpath:")) {
+            // detect windows
+            int indexOfColon = path.indexOf(':');
+            if (indexOfColon > 0) {
+                String prefix = path.substring(0, indexOfColon);
+                if (prefix.contains(File.separator)
                         || prefix.contains("/")) {
-                        relativePath = false;
-                    } else {
-                        relativePath = true;
-                    }
+                    relativePath = false;
                 } else {
                     relativePath = true;
                 }
+            } else {
+                relativePath = true;
             }
         }
-        if (relativePath) path = dir + "/" + path;
+        if (relativePath)
+            path = dir + "/" + path;
         return path;
     }
 
@@ -119,20 +128,21 @@ public class Scripting {
         return eval(script, false);
     }
 
-    private Object eval(Path script, boolean topLevel) throws  ScriptException {
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2093"})
+    private Object eval(Path script, boolean topLevel) throws ScriptException {
         String prevRootDir = null;
         String prevRootFile = null;
         if (topLevel) {
-            prevRootDir = (String)get(__LOAD_DIR);
+            prevRootDir = (String) get(__LOAD_DIR);
             prevRootFile = (String) get(__LOAD_FILE);
         }
 
         ScriptPath prev = scriptPath;
         scriptPath = new ScriptPath(normalizePath(script.toString()));
+        Reader reader = null;
         try {
-            Reader reader = null;
             if (Files.exists(scriptPath.getPath())) {
-                 // reader = Files.newBufferedReader(script);
+                // this is handled later
             } else {
                 String fileName = scriptPath.getFileName();
                 boolean loadFromClassPath = false;
@@ -150,7 +160,8 @@ public class Scripting {
                 scriptPath.setClassPath(true);
                 if (loadFromClassPath) {
                     InputStream stream = getClass().getClassLoader().getResourceAsStream(fileName);
-                    if (stream == null) throw new IOException("File not found: " + fileName);
+                    if (stream == null)
+                        throw new IOException("File not found: " + fileName);
                     reader = new InputStreamReader(stream, "UTF-8");
                 } else {
                     throw new IOException("Script not found: " + script);
@@ -163,42 +174,47 @@ public class Scripting {
                 dir = (new File(dir)).getCanonicalPath();
                 file = (new File(dir)).getCanonicalPath();
             }
-            _put(__DIR, dir);
-            _put(__FILE, file);
+            privatePut(__DIR, dir);
+            privatePut(__FILE, file);
             if (topLevel) {
-                _put(__LOAD_DIR, dir);
-                _put(__LOAD_FILE, file);
+                privatePut(__LOAD_DIR, dir);
+                privatePut(__LOAD_FILE, file);
             }
 
+            // reader is not null for classpath
             if (Files.exists(scriptPath.getPath())) {
                 return engine.eval(scriptPath.getPath().toFile());
             } else {
                 return engine.eval(reader, scriptPath.getFileName());
             }
         } catch (IOException e) {
+            // rethrow to let caller handle it, instead of logging erro
             throw new ScriptException(e);
         } catch (ScriptException e) {
             logger.error("Error eval " + script.toString());
             throw e;
-        } catch (RuntimeException e) {
-            logger.error("Error eval " + script.toString());
-            throw e;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.error("Error eval " + script.toString(), e);
             throw new ScriptException(e.getMessage());
         } finally {
+            if (reader != null)
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    logger.error(e.getMessage(), e);
+                }
             scriptPath = prev;
             if (prev != null) {
-                _put(__DIR, prev.getParent());
-                _put(__FILE, prev.getFileName());
+                privatePut(__DIR, prev.getParent());
+                privatePut(__FILE, prev.getFileName());
             } else {
-                _put(__DIR, null);
-                _put(__FILE, null);
+                privatePut(__DIR, null);
+                privatePut(__FILE, null);
             }
 
             if (topLevel) {
-                _put(__LOAD_DIR, prevRootDir);
-                _put(__LOAD_FILE, prevRootFile);
+                privatePut(__LOAD_DIR, prevRootDir);
+                privatePut(__LOAD_FILE, prevRootFile);
             }
         }
     }
@@ -213,7 +229,7 @@ public class Scripting {
 
     public Object runNow(Object caller, Object callable) {
         Object ret = null;
-        if(callable instanceof Closure) {
+        if (callable instanceof Closure) {
             Closure closure = (Closure) callable;
             try {
                 final Closure clonedClosure = (Closure) closure.clone();
@@ -224,19 +240,19 @@ public class Scripting {
                 } finally {
                     clonedClosure.setDelegate(null);
                 }
-            } catch (Throwable th) {
-                th.printStackTrace();
+            } catch (Exception th) {
+                logger.warn(th.getMessage(), th);
             }
-        } else if (callable instanceof  Runnable) {
+        } else if (callable instanceof Runnable) {
             ((Runnable) callable).run();
         } else if (callable instanceof Callable) {
             try {
                 ret = ((Callable) callable).call();
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         } else {
-            throw new RuntimeException("runNow " + callable + " cannot be run");
+            throw new SystemException("runNow " + callable + " cannot be run");
         }
         return ret;
     }
@@ -252,6 +268,7 @@ public class Scripting {
     public void runLaunched(Object callable) {
         launchedList.add(callable);
     }
+
     // onStartup is called when all ResourceManagers are initialized and ready to go.
     public void onLaunched() {
         executeList(launchedList);
@@ -291,7 +308,7 @@ public class Scripting {
                 ((Runnable) obj).run();
             } else {
                 String clsName = (obj == null) ? "null" : obj.getClass().getName();
-                throw new RuntimeException("Expecting Closure or Runnable but got " + clsName);
+                throw new SystemException("Expecting Closure or Runnable but got " + clsName);
             }
         }
 
@@ -311,10 +328,10 @@ public class Scripting {
         return exec(path, false);
     }
 
-    private Object exec(String path, boolean topLevel) throws ScriptException {
+    private Object exec(String originalPath, boolean topLevel) throws ScriptException {
         Path[] paths;
         try {
-            path = normalizePath(path);
+            String path = normalizePath(originalPath);
             paths = listFiles(path);
         } catch (IOException e) {
             throw new ScriptException(e);
@@ -323,7 +340,8 @@ public class Scripting {
         Object ret = null;
         for (Path p : paths) {
             Object val = eval(p, topLevel);
-            if (val != null) ret = val;
+            if (val != null)
+                ret = val;
         }
         return ret;
     }
@@ -340,12 +358,15 @@ public class Scripting {
 
         public GroovyEngine(ClassLoader classLoader, Properties properties, boolean useGroovyShell) {
             ClassLoader ctxLoader = classLoader;
-            if (ctxLoader == null) classLoader = Thread.currentThread().getContextClassLoader();
-            if (ctxLoader == null) ctxLoader = Scripting.class.getClassLoader();
+            if (ctxLoader == null)
+                ctxLoader = Thread.currentThread().getContextClassLoader();
+            if (ctxLoader == null)
+                ctxLoader = Scripting.class.getClassLoader();
 
             CompilerConfiguration compilerConfig = new CompilerConfiguration();
             String scriptBaseClass = properties.getProperty(SCRIPT_BASE_CLASS);
-            if (scriptBaseClass != null) compilerConfig.setScriptBaseClass(scriptBaseClass);
+            if (scriptBaseClass != null)
+                compilerConfig.setScriptBaseClass(scriptBaseClass);
             GroovyClassLoader loader = new GroovyClassLoader(ctxLoader, compilerConfig);
             if (properties.getProperty(PATH) != null) {
                 loader.addClasspath(properties.getProperty(PATH));
@@ -353,18 +374,16 @@ public class Scripting {
 
             if (useGroovyShell) {
                 Binding binding = new Binding();
-                for (Object key : properties.keySet()) {
-                    binding.setVariable(key.toString(), properties.get(key));
+                for (Map.Entry entry : properties.entrySet()) {
+                    binding.setVariable(entry.getKey().toString(), entry.getValue());
                 }
-                // binding.setVariable("vars", properties);
                 shell = new GroovyShell(loader, binding, compilerConfig);
             } else {
                 scriptEngine = new GroovyScriptEngineImpl(loader);
                 scriptContext = new SimpleScriptContext();
-                for (Object key : properties.keySet()) {
-                    scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).put(key.toString(), properties.get(key));
+                for (Map.Entry entry : properties.entrySet()) {
+                    scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).put(entry.getKey().toString(), entry.getValue());
                 }
-                // scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).put("vars", properties);
             }
         }
 
@@ -397,10 +416,12 @@ public class Scripting {
 
         public Object get(String key) {
             if (shell != null) {
-                if ("binding".equals(key)) return shell.getContext();
+                if ("binding".equals(key))
+                    return shell.getContext();
                 return shell.getVariable(key);
             } else {
-                if ("binding".equals(key)) return scriptContext.getBindings(ScriptContext.ENGINE_SCOPE);
+                if ("binding".equals(key))
+                    return scriptContext.getBindings(ScriptContext.ENGINE_SCOPE);
                 return scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get(key);
             }
         }
@@ -415,41 +436,46 @@ public class Scripting {
 
         public Properties getProperties() {
             if (shell != null) {
-                Map binding = shell.getContext().getVariables();
+                Map<Object, Object> binding = shell.getContext().getVariables();
                 Properties properties = new Properties();
-                for (Object key : binding.keySet()) {
+                for (Map.Entry key : binding.entrySet()) {
                     Object value = binding.get(key);
-                    if (value != null) properties.setProperty(key.toString(), value.toString());
+                    if (value != null)
+                        properties.setProperty(key.toString(), value.toString());
                 }
                 return properties;
             } else {
                 Bindings bindings = scriptContext.getBindings(ScriptContext.ENGINE_SCOPE);
                 Properties properties = new Properties();
-                for (String key : bindings.keySet()) {
-                    Object value = bindings.get(key);
-                    if (value != null) properties.setProperty(key, value.toString());
+                for (Map.Entry<String, Object> entry : bindings.entrySet()) {
+                    if (entry.getValue() != null)
+                        properties.setProperty(entry.getKey(), entry.getValue().toString());
                 }
                 return properties;
             }
         }
 
-        public Object eval(File file) throws IOException, ScriptException {
-            if (shell != null) {
-                return shell.evaluate(file);
-            } else {
-                Reader reader = new BufferedReader(new FileReader(file));
-                return scriptEngine.eval(reader, scriptContext);
+        public Object eval(File file) throws ScriptException {
+            try {
+                if (shell != null) {
+                    return shell.evaluate(file);
+                } else {
+                    try (Reader reader = new BufferedReader(new FileReader(file))) {
+                        return scriptEngine.eval(reader, scriptContext);
+                    }
+                }
+            } catch (IOException ex) {
+                throw new ScriptException(ex);
             }
         }
 
-        public Object eval(Reader reader, String fileName) throws IOException, ScriptException {
+        public Object eval(Reader reader, String fileName) throws ScriptException {
             if (shell != null) {
                 return shell.evaluate(reader, scriptName(fileName));
             } else {
                 return scriptEngine.eval(reader, scriptContext);
             }
         }
-
 
         public Object eval(String script) throws ScriptException {
             if (shell != null) {
@@ -463,21 +489,21 @@ public class Scripting {
                 }
             }
         }
-    }
 
-    private static String scriptName(String fileName) {
-        Path path = Paths.get(fileName);
-        Path file = path.getFileName();
-        if (file.toString().endsWith(".groovy")) {
-            int idx = file.toString().lastIndexOf(".");
-            String name = file.toString().substring(0, idx);
-            name += "$script.groovy"; // change the name so that in the script a variable can have the same name as the script.
-            file = Paths.get(name);
-        } else {
-            file = Paths.get(file.toString() + "$script");
+        private static String scriptName(String fileName) {
+            Path path = Paths.get(fileName);
+            Path file = path.getFileName();
+            if (file.toString().endsWith(".groovy")) {
+                int idx = file.toString().lastIndexOf('.');
+                String name = file.toString().substring(0, idx);
+                name += "$script.groovy"; // change the name so that in the script a variable can have the same name as the script.
+                file = Paths.get(name);
+            } else {
+                file = Paths.get(file.toString() + "$script");
+            }
+            Path parent = path.getParent();
+            path = Paths.get(parent.toString(), file.toString());
+            return path.toString();
         }
-        Path parent = path.getParent();
-        path = Paths.get(parent.toString(), file.toString());
-        return path.toString();
     }
 }

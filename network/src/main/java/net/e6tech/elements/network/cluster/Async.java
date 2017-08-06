@@ -18,8 +18,6 @@ package net.e6tech.elements.network.cluster;
 
 import net.e6tech.elements.common.reflection.Primitives;
 
-import javax.ws.rs.NotSupportedException;
-import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -77,11 +75,12 @@ public class Async<U> {
     private class MyHandler implements InvocationHandler {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            if (method.getName().equals("hashCode") && method.getParameterCount() == 0) {
+            String methodName = method.getName();
+            if ("hashCode".equals(methodName) && method.getParameterCount() == 0) {
                 return Async.this.hashCode();
-            } else if (method.getName().equals("equals") && method.getParameterCount() == 1) {
+            } else if ("equals".equals(methodName) && method.getParameterCount() == 1) {
                 return Async.this.equals(args[0]);
-            } else if (method.getName().equals("toString") && method.getParameterCount() == 0) {
+            } else if ("toString".equals(methodName) && method.getParameterCount() == 0) {
                 return Async.this.toString();
             }
 

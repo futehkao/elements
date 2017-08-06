@@ -16,7 +16,9 @@
 
 package net.e6tech.elements.common.util.concurrent;
 
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -38,19 +40,21 @@ public abstract class Balancer<T> {
     private long timeout = 3000L;
     private long recoveryPeriod = 60000L;
     private Thread recoveryThread;
+    private volatile boolean stopped = false;
 
     @SuppressWarnings({"unchecked"})
     public T getService() {
         Class cls = Reflection.getParametrizedType(getClass(), 0);
         return (T) Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] { cls },
                 (proxy,  method, args)->
-                     execute((service) -> {
+                     execute(service -> {
                         try {
                             return method.invoke(service, args);
                         } catch (IllegalAccessException e) {
-                            throw new RuntimeException(e);
+                            throw new SystemException(e);
                         } catch (InvocationTargetException e) {
-                            throw new RuntimeException(e.getCause());
+                            Logger.suppress(e);
+                            throw new SystemException(e.getCause());
                         }
                     })
                 );
@@ -78,33 +82,41 @@ public abstract class Balancer<T> {
 
     public void start() {
         Iterator<T> iterator = liveList.iterator();
+        stopped = false;
         while (iterator.hasNext()) {
             T service = iterator.next();
             try {
                start(service);
-            } catch (Throwable th) {
+            } catch (Exception th) {
+                Logger.suppress(th);
                 iterator.remove();
                 recover(service);
             }
         }
     }
 
-    abstract protected void start(T service) throws IOException;
+    public void stop() {
+        stopped = true;
+    }
 
-    abstract protected void stop(T service) throws IOException;
+    protected abstract void start(T service) throws IOException;
+
+    protected abstract void stop(T service) throws IOException;
 
     private void recoverTask() {
         List<T> list = new LinkedList<>();
-        while (true) {
+        while (!stopped) {
             list.clear();
             T service = deadList.poll();
             try {
                 start(service);
                 liveList.offer(service);
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
+                Logger.suppress(ex);
                 try {
                     stop(service);
-                } catch (Throwable e) {
+                } catch (Exception e) {
+                    Logger.suppress(e);
                 }
                 list.add(service);
             }
@@ -113,6 +125,7 @@ public abstract class Balancer<T> {
             try {
                 Thread.sleep(recoveryPeriod);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 break;
             }
         }
@@ -121,7 +134,8 @@ public abstract class Balancer<T> {
     protected synchronized void recover(T service) {
         try {
             stop(service);
-        } catch (Throwable e) {
+        } catch (Exception e) {
+            Logger.suppress(e);
         }
         deadList.offer(service);
         if (recoveryThread == null) {
@@ -136,6 +150,7 @@ public abstract class Balancer<T> {
             try {
                 service = liveList.poll(timeout, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new IOException();
             }
 
@@ -144,6 +159,7 @@ public abstract class Balancer<T> {
                 liveList.offer(service);
                 return ret;
             } catch (IOException ex) {
+                Logger.suppress(ex);
                 recover(service);
             }
         }

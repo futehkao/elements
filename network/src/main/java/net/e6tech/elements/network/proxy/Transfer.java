@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 /**
  * Created by futeh on 1/21/16.
  */
+@SuppressWarnings("squid:S1141")
 public class Transfer implements Runnable {
     private static Logger logger = Logger.getLogger();
 
@@ -72,12 +73,14 @@ public class Transfer implements Runnable {
                         remoteOutputStream.flush();
                     }
                 } catch (IOException e) {
+                    Logger.suppress(e);
                 }
 
                 // done reading, close server output stream
                 try {
                     remoteOutputStream.close();
                 } catch (IOException e) {
+                    Logger.suppress(e);
                 }
             });
 
@@ -90,16 +93,20 @@ public class Transfer implements Runnable {
                     clientOutputStream.flush();
                 }
             } catch (IOException e) {
+                Logger.suppress(e);
             }
 
             clientOutputStream.close();
         } catch (IOException e) {
-            System.err.println(e);
+            logger.error(e.getMessage(), e);
         } finally {
             try {
-                if (remote != null) remote.close();
-                if (client != null) client.close();
+                if (remote != null)
+                    remote.close();
+                if (client != null)
+                    client.close();
             } catch (IOException e) {
+                Logger.suppress(e);
             }
         }
     }

@@ -17,9 +17,10 @@
 package net.e6tech.elements.common.inject.spi;
 
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.inject.Named;
 import net.e6tech.elements.common.inject.Injector;
+import net.e6tech.elements.common.util.SystemException;
 
-import javax.inject.Named;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -29,6 +30,7 @@ import java.util.*;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S134")
 public class InjectorImpl implements Injector {
 
     private static Map<Class, WeakReference<List<InjectionPoint>>> injectionPoints = Collections.synchronizedMap(new WeakHashMap<>());
@@ -53,10 +55,11 @@ public class InjectorImpl implements Injector {
 
     @Override
     public <T> T getNamedInstance(Class<T> boundClass, String name) {
-        return _getNamedInstance(boundClass, name).<T>map(entry -> (T) entry.value).orElse(null);
+        return privateGetNamedInstance(boundClass, name).<T>map(entry -> (T) entry.value).orElse(null);
     }
 
-    private Optional<Entry> _getNamedInstance(Type boundClass, String name) {
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    private Optional<Entry> privateGetNamedInstance(Type boundClass, String name) {
         BoundInstances boundInstances = instances.get(boundClass);
         Entry entry = null;
 
@@ -90,8 +93,8 @@ public class InjectorImpl implements Injector {
                     try {
                         instance = binding.getImplementation().newInstance();
                         // to be injected later in code.
-                    } catch (Throwable e) {
-                        throw new RuntimeException(e);
+                    } catch (Exception e) {
+                        throw new SystemException(e);
                     }
                 }
 
@@ -103,7 +106,7 @@ public class InjectorImpl implements Injector {
                     inject(instance);
                 }
             } else if (parentInjector != null) {
-                entry = parentInjector._getNamedInstance(boundClass, name).orElse(null);
+                entry = parentInjector.privateGetNamedInstance(boundClass, name).orElse(null);
             }
         }
 
@@ -111,7 +114,8 @@ public class InjectorImpl implements Injector {
     }
 
     public void inject(Object instance) {
-        if (instance == null) return;
+        if (instance == null)
+            return;
         Class instanceClass = instance.getClass();
         WeakReference<List<InjectionPoint>> ref = injectionPoints.get(instanceClass);
 
@@ -123,16 +127,17 @@ public class InjectorImpl implements Injector {
         points.forEach(pt ->{
             boolean injected = inject(pt, instance);
             if (!injected) {
-                throw new RuntimeException("Cannot inject " + pt.field + "; no instances bound to " + pt.field.getType());
+                throw new SystemException("Cannot inject " + pt.field + "; no instances bound to " + pt.field.getType());
             }
         });
     }
 
     protected boolean inject(InjectionPoint point, Object instance) {
-        boolean injected = false;
         boolean myAttempt = point.inject(this, instance);
-        if (myAttempt) return true;
-        if (parentInjector != null) return parentInjector.inject(point, instance);
+        if (myAttempt)
+            return true;
+        if (parentInjector != null)
+            return parentInjector.inject(point, instance);
         return false;
     }
 
@@ -151,14 +156,9 @@ public class InjectorImpl implements Injector {
                     injectionPoint = new InjectionPoint();
                     optional = inject.optional();
                 } else {
-                    com.google.inject.Inject gInject = field.getDeclaredAnnotation(com.google.inject.Inject.class);
-                    if (gInject != null) {
+                    javax.inject.Inject jInject = field.getDeclaredAnnotation(javax.inject.Inject.class);
+                    if (jInject != null)
                         injectionPoint = new InjectionPoint();
-                        optional = gInject.optional();
-                    } else {
-                        javax.inject.Inject jInject = field.getDeclaredAnnotation(javax.inject.Inject.class);
-                        if (jInject != null) injectionPoint = new InjectionPoint();
-                    }
                 }
 
                 if (injectionPoint != null) {
@@ -166,9 +166,9 @@ public class InjectorImpl implements Injector {
                     if (named != null){
                         name = named.value();
                     } else {
-                        com.google.inject.name.Named gNamed = field.getDeclaredAnnotation(com.google.inject.name.Named.class);
-                        if (gNamed != null) {
-                            name = gNamed.value();
+                        javax.inject.Named jNamed = field.getDeclaredAnnotation(javax.inject.Named.class);
+                        if (jNamed != null) {
+                            name = jNamed.value();
                         }
                     }
                 }
@@ -192,13 +192,15 @@ public class InjectorImpl implements Injector {
         Entry unnamedInstance;
 
         Entry getInstance(String name) {
-            if (name == null) return unnamedInstance;
+            if (name == null)
+                return unnamedInstance;
             return namedInstances.get(name);
         }
 
         Entry put(String name, Object instance) {
             Entry entry = new Entry(instance);
-            if (name == null) unnamedInstance = entry;
+            if (name == null)
+                unnamedInstance = entry;
             else namedInstances.put(name, entry);
             return entry;
         }
@@ -222,7 +224,7 @@ public class InjectorImpl implements Injector {
         private boolean optional;
 
         public boolean inject(InjectorImpl injector, Object target) {
-            Optional<Entry> opt = injector._getNamedInstance(field.getGenericType(), name);
+            Optional<Entry> opt = injector.privateGetNamedInstance(field.getGenericType(), name);
 
             if (!opt.isPresent() && !optional) {
                 return false;
@@ -232,7 +234,7 @@ public class InjectorImpl implements Injector {
                 try {
                     field.set(target, entry.value());
                 } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
+                    throw new SystemException(e);
                 }
             });
             return true;

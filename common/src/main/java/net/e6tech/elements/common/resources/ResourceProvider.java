@@ -16,7 +16,6 @@ limitations under the License.
 package net.e6tech.elements.common.resources;
 
 import java.lang.reflect.Proxy;
-import java.util.function.Consumer;
 
 /**
  * Created by futeh.
@@ -26,7 +25,7 @@ public interface ResourceProvider {
     static ResourceProvider wrap(String description, ResourceProvider resourceProvider) {
         return (ResourceProvider) Proxy.newProxyInstance(resourceProvider.getClass().getClassLoader(), new Class[] { ResourceProvider.class},
         (proxy, method, args) -> {
-            if (method.getName().equals("getDescription") && (args == null || args.length == 0)) {
+            if ("getDescription".equals(method.getName()) && (args == null || args.length == 0)) {
                 return description;
             } else {
                 return method.invoke(resourceProvider, args);

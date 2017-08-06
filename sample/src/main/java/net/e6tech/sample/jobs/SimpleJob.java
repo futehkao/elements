@@ -21,6 +21,7 @@ import java.util.Date;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("all")
 public class SimpleJob {
     public void run() {
         System.out.println(new Date());

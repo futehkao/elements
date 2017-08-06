@@ -21,6 +21,8 @@ import java.lang.reflect.Method;
 /**
  * Created by futeh.
  */
+@FunctionalInterface
+@SuppressWarnings("squid:S00112")
 public interface InterceptorListener {
 
     default void preInvocation(Object target, Method thisMethod, Object[] args) {

@@ -21,20 +21,17 @@ import akka.actor.ActorSystem;
 import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.pattern.Patterns;
-import net.e6tech.elements.common.resources.Startable;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Created by futeh.
  */
 class Messaging implements Broadcast {
 
-    private ActorRef messaging;
+    private ActorRef messagingRef;
     private String name = "messaging";
     private long timeout = 5000L;
 
@@ -55,18 +52,18 @@ class Messaging implements Broadcast {
     }
 
     public void start(ActorSystem system) {
-        messaging = system.actorOf(Props.create(MessagingActor.class, () -> new MessagingActor()), name);
+        messagingRef = system.actorOf(Props.create(MessagingActor.class, MessagingActor::new), name);
     }
 
     public void shutdown() {
-        if (messaging != null) {
-            Patterns.ask(messaging, PoisonPill.getInstance(), timeout);
+        if (messagingRef != null) {
+            Patterns.ask(messagingRef, PoisonPill.getInstance(), timeout);
         }
     }
 
     @Override
     public void subscribe(String topic, Subscriber subscriber) {
-        Patterns.ask(messaging, new Events.Subscribe(topic, subscriber), timeout);
+        Patterns.ask(messagingRef, new Events.Subscribe(topic, subscriber), timeout);
     }
 
     @Override
@@ -76,7 +73,7 @@ class Messaging implements Broadcast {
 
     @Override
     public void unsubscribe(String topic, Subscriber subscriber) {
-        Patterns.ask(messaging, new Events.Unsubscribe(topic, subscriber), timeout);
+        Patterns.ask(messagingRef, new Events.Unsubscribe(topic, subscriber), timeout);
     }
 
     @Override
@@ -86,7 +83,7 @@ class Messaging implements Broadcast {
 
     @Override
     public void publish(String topic, Serializable object) {
-        Patterns.ask(messaging, new Events.Publish(topic, object), timeout);
+        Patterns.ask(messagingRef, new Events.Publish(topic, object), timeout);
     }
 
     @Override
@@ -95,11 +92,11 @@ class Messaging implements Broadcast {
     }
 
     public void destination(String destination, Subscriber subscriber) {
-        Patterns.ask(messaging, new Events.NewDestination(destination, subscriber), timeout);
+        Patterns.ask(messagingRef, new Events.NewDestination(destination, subscriber), timeout);
     }
 
     public void send(String destination, Serializable object) {
-         Patterns.ask(messaging, new Events.Send(destination, object), timeout);
+         Patterns.ask(messagingRef, new Events.Send(destination, object), timeout);
     }
 
 }

@@ -19,6 +19,7 @@ package net.e6tech.elements.common.resources;
  * Created by futeh.
  * Initializable gets called after the containing Component has run the closure to setup the Component.
  */
+@FunctionalInterface
 public interface Initializable {
     void initialize(Resources resources);
 }

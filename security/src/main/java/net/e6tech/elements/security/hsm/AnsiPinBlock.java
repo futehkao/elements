@@ -28,26 +28,32 @@ public class AnsiPinBlock {
     boolean sanityCheck = true;
 
     public AnsiPinBlock(String partialPan, String pin) {
-        if (partialPan.length() != 12) throw new IllegalArgumentException("invalid partial pan length, must be 12");
-        if (pin == null) throw new IllegalArgumentException("null pin");
-        if (pin.length() < 4 || pin.length() > 12) throw new IllegalArgumentException("invalid pin length.");
+        if (partialPan.length() != 12)
+            throw new IllegalArgumentException("invalid partial pan length, must be 12");
+        if (pin == null)
+            throw new IllegalArgumentException("null pin");
+        if (pin.length() < 4 || pin.length() > 12)
+            throw new IllegalArgumentException("invalid pin length.");
         int pinLen = pin.length();
         String pinBlock = "0" + Hex.toNumeric(pinLen) + pin;
         pinBlock = StringUtil.padRight(pinBlock, 16, 'F');
         byte[] pinBytes = Hex.toBytes(pinBlock);
         byte[] panBytes = Hex.toBytes("0000" + partialPan);
         byte[] xor = new byte[8];
-        for (int i = 0; i < 8; i++) xor[i] = (byte)(pinBytes[i] ^ panBytes[i]);
+        for (int i = 0; i < 8; i++)
+            xor[i] = (byte)(pinBytes[i] ^ panBytes[i]);
         encoding = xor;
         this.pin = pin;
     }
 
     public AnsiPinBlock(byte[] encoding, String partialPan) {
-        if (partialPan.length() != 12) throw new IllegalArgumentException("invalid partial pan length, must be 12");
+        if (partialPan.length() != 12)
+            throw new IllegalArgumentException("invalid partial pan length, must be 12");
         this.encoding = encoding;
         byte[] panBytes = Hex.toBytes("0000" + partialPan);
         byte[] pinBytes = new byte[8];
-        for (int i = 0; i < 8; i++) pinBytes[i] = (byte)(encoding[i] ^ panBytes[i]);
+        for (int i = 0; i < 8; i++)
+            pinBytes[i] = (byte)(encoding[i] ^ panBytes[i]);
         String pinStr = Hex.toString(pinBytes);
         int pinLen = Integer.parseInt(pinStr.substring(1, 2));
         pin = pinStr.substring(2, pinLen + 2);
@@ -73,10 +79,4 @@ public class AnsiPinBlock {
         return encoding;
     }
 
-    public static void main(String ... args) throws Exception {
-        AnsiPinBlock ansi = new AnsiPinBlock("999789012345", "1234");
-        System.out.println(Hex.toString(ansi.encoding)); // should be 0412AD6876FEDCBA
-        ansi = new AnsiPinBlock(ansi.encoding, "999789012345");
-        System.out.println(ansi.pin); // should be 1234
-    }
 }

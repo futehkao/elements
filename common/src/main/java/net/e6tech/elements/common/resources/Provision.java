@@ -16,13 +16,14 @@ limitations under the License.
 
 package net.e6tech.elements.common.resources;
 
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
 import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
+import net.e6tech.elements.common.util.SystemException;
 
-import javax.inject.Inject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
@@ -37,29 +38,33 @@ public class Provision {
     private ResourceManager resourceManager;
 
     public Provision load(Map<String, Object> map) {
-        ObjectConverter converter = new ObjectConverter();
         Class cls = getClass();
         while (Provision.class.isAssignableFrom(cls)) {
             Field[] fields = cls.getDeclaredFields();
             for (Field f : fields) {
-                if (Modifier.isPublic(f.getModifiers()) && !Modifier.isStatic(f.getModifiers())) {
-                    if (map.get(f.getName()) != null) {
-                        Object from = map.get(f.getName());
-                        if (from != null) {
-                            try {
-                                f.setAccessible(true);
-                                f.set(this, converter.convert(from, f, null));
-                                f.setAccessible(false);
-                            } catch (Exception e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                    }
-                }
+                setField(f, map);
             }
             cls = cls.getSuperclass();
         }
         return this;
+    }
+
+    private void setField(Field f, Map<String, Object> map) {
+        ObjectConverter converter = new ObjectConverter();
+        if (Modifier.isPublic(f.getModifiers())
+                && !Modifier.isStatic(f.getModifiers())
+                && map.get(f.getName()) != null) {
+            Object from = map.get(f.getName());
+            if (from != null) {
+                try {
+                    f.setAccessible(true);
+                    f.set(this, converter.convert(from, f, null));
+                    f.setAccessible(false);
+                } catch (Exception e) {
+                    throw new SystemException(e);
+                }
+            }
+        }
     }
 
     public void log(Logger logger, String message, Throwable th) {
@@ -110,7 +115,7 @@ public class Provision {
         return resourceManager.listBeans();
     }
 
-    public <T> T getInstance(Class<T> cls) throws InstanceNotFoundException {
+    public <T> T getInstance(Class<T> cls) {
         return resourceManager.getInstance(cls);
     }
 
@@ -127,15 +132,15 @@ public class Provision {
     }
 
     public <S, T extends Plugin> T getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
-        return (T) getPlugin(PluginPath.of(c1, n1).and(c2), args);
+        return getPlugin(PluginPath.of(c1, n1).and(c2), args);
     }
 
     public <R,S,T extends Plugin> T getPlugin(Class<R> c1, String n1, Class<S> c2, String n2, Class<T> c3, Object ... args) {
-        return (T) getPlugin(PluginPath.of(c1, n1).and(c2, n2).and(c3), args);
+        return getPlugin(PluginPath.of(c1, n1).and(c2, n2).and(c3), args);
     }
 
     public <T extends Plugin> T getPlugin(PluginPath<T> path, Object ... args) {
-        return (T) getInstance(PluginManager.class).get(path, args);
+        return getInstance(PluginManager.class).get(path, args);
     }
 
     public UnitOfWork open() {

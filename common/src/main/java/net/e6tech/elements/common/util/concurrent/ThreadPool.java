@@ -18,10 +18,7 @@ package net.e6tech.elements.common.util.concurrent;
 
 import net.e6tech.elements.common.resources.BindClass;
 
-import java.util.Collection;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
@@ -31,14 +28,24 @@ import java.util.function.Function;
 @BindClass(ExecutorService.class)
 public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorService  {
 
-    private static Map<String, ThreadPool> cachedThreadPools = new Hashtable<>();
-    private static Map<String, ThreadPool> rateLimitedThreadPools = new Hashtable<>();
-    private static Map<String, ThreadPool> fixedThreadPools = new Hashtable<>();
+    private static Map<String, ThreadPool> cachedThreadPools = new HashMap<>();
+    private static Map<String, ThreadPool> rateLimitedThreadPools = new HashMap<>();
+    private static Map<String, ThreadPool> fixedThreadPools = new HashMap<>();
 
     private ThreadGroup threadGroup;
     private String name;
     private boolean daemon = true;
     private ExecutorService executorService;
+
+    protected ThreadPool(ThreadGroup threadGroup, String name, Function<ThreadFactory, ExecutorService> newPool) {
+        this.threadGroup = threadGroup;
+        this.name = name;
+        this.executorService = newPool.apply(this);
+    }
+
+    protected ThreadPool(String name, Function<ThreadFactory, ExecutorService> newPool) {
+        this(Thread.currentThread().getThreadGroup(), name, newPool);
+    }
 
     /**
      * Return a thread pool that supports unlimited number of threads.  It will create threads as needed.
@@ -46,18 +53,19 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
      * @param name name of the pool
      * @return ThreadPool
      */
-    public static ThreadPool cachedThreadPool(String name) {
-        return cachedThreadPools.computeIfAbsent(name, (poolName) ->
-                new ThreadPool(name, (p) -> Executors.newCachedThreadPool(p)));
+    public static synchronized ThreadPool cachedThreadPool(String name) {
+        return cachedThreadPools.computeIfAbsent(name, poolName ->
+                new ThreadPool(name, Executors::newCachedThreadPool));
     }
 
     /*
      *
      * Using this type of threadPool may result in RejectedExecutionException when submitting a task.
      */
-    public static ThreadPool rateLimitedThreadPool(String name, int threadCoreSize, int threadMaxSize, long threadKeepAliveSec, int threadQueueSize) {
-        return rateLimitedThreadPools.computeIfAbsent(name, (poolName) -> {
-            return new ThreadPool(name, (p) ->
+    @SuppressWarnings("squid:S1602")
+    public static synchronized ThreadPool rateLimitedThreadPool(String name, int threadCoreSize, int threadMaxSize, long threadKeepAliveSec, int threadQueueSize) {
+        return rateLimitedThreadPools.computeIfAbsent(name, poolName -> {
+            return new ThreadPool(name, p ->
                 new ThreadPoolExecutor(threadCoreSize, threadMaxSize, threadKeepAliveSec, TimeUnit.SECONDS, new ArrayBlockingQueue<>(threadQueueSize), p));
         });
     }
@@ -69,19 +77,9 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
      * @param nThreads number of threads
      * @return ThreadPool
      */
-    public static ThreadPool fixedThreadPool(String name, int nThreads) {
-        return fixedThreadPools.computeIfAbsent(name, (poolName) ->
-                new ThreadPool(name, (p) -> Executors.newFixedThreadPool(nThreads, p)));
-    }
-
-    protected ThreadPool(ThreadGroup threadGroup, String name, Function<ThreadFactory, ExecutorService> newPool) {
-        this.threadGroup = threadGroup;
-        this.name = name;
-        this.executorService = newPool.apply(this);
-    }
-
-    protected ThreadPool(String name, Function<ThreadFactory, ExecutorService> newPool) {
-        this(Thread.currentThread().getThreadGroup(), name, newPool);
+    public static synchronized ThreadPool fixedThreadPool(String name, int nThreads) {
+        return fixedThreadPools.computeIfAbsent(name, poolName ->
+                new ThreadPool(name, p -> Executors.newFixedThreadPool(nThreads, p)));
     }
 
     public ThreadPool daemon() {
@@ -126,7 +124,7 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
 
     @Override
     public List<Runnable> shutdownNow() {
-        return null;
+        return Collections.emptyList();
     }
 
     @Override

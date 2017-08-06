@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.security.hsm.AnsiPinBlock;
 
 import java.security.GeneralSecurityException;
@@ -29,12 +30,14 @@ public class VerifyPIN extends Command {
     @Override
     protected String doProcess() throws CommandException {
 
-        if (!getField(2).equals("1")) return "000200"; // only supports ANSI block type
+        if (!"1".equals(getField(2)))
+            return "000200"; // only supports ANSI block type
 
-        if (getField(1).equals("2")) { // ibm 3624
-            if (getField(7).length() != 12) return "001200"; // validation data needs to be 12 digit partial pan.
+        if ("2".equals(getField(1))) { // ibm 3624
+            if (getField(7).length() != 12)
+                return "001200"; // validation data needs to be 12 digit partial pan.
             return ibm3624();
-        } else  if (getField(1).equals("3")) { // visa pvv
+        } else if ("3".equals(getField(1))) { // visa pvv
             return visaPVV();
         }
 
@@ -52,7 +55,8 @@ public class VerifyPIN extends Command {
         String pad = getField(8);
 
         AnsiPinBlock ansiPinBlock = getPinBlock(4, 3, 7);
-        if (!ansiPinBlock.isSanityCheck()) return "42#S#";
+        if (!ansiPinBlock.isSanityCheck())
+            return "42#S#";
 
         byte[] pvvKey = decryptKey(10);
 
@@ -63,7 +67,8 @@ public class VerifyPIN extends Command {
             throw new CommandException(0, e);
         }
 
-        if (computedOffset.equals(offset)) return "42#Y#";
+        if (computedOffset.equals(offset))
+            return "42#Y#";
         else return "42#N#";
     }
 
@@ -75,16 +80,19 @@ public class VerifyPIN extends Command {
         String partialPan = getField(9);
 
         AnsiPinBlock ansiPinBlock = getPinBlock(4, 3, 10);
-        if (!ansiPinBlock.isSanityCheck()) return "42#S#";
-        int pvki = new Integer(pvkiStr);
+        if (!ansiPinBlock.isSanityCheck())
+            return "42#S#";
+        int pvki = Integer.parseInt(pvkiStr);
 
         String computedOffset = null;
         try {
             computedOffset = visa.generatePVV(pvvKey, partialPan, pvki, ansiPinBlock.getPIN());
         } catch (GeneralSecurityException e) {
+            Logger.suppress(e);
             return "001000";
         }
-        if (computedOffset.equals(offset)) return "42#Y#";
+        if (computedOffset.equals(offset))
+            return "42#Y#";
         else return "42#N#";
     }
 }

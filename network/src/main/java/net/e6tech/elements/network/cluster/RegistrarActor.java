@@ -18,8 +18,6 @@ package net.e6tech.elements.network.cluster;
 
 import akka.actor.*;
 import akka.cluster.Cluster;
-import akka.event.Logging;
-import akka.event.LoggingAdapter;
 import akka.routing.RoundRobinRoutingLogic;
 import akka.routing.Router;
 import net.e6tech.elements.common.actor.Genesis;
@@ -34,7 +32,6 @@ import java.util.Map;
  * Created by futeh.
  */
 class RegistrarActor extends AbstractActor {
-    private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     private Cluster cluster = Cluster.get(getContext().system());
     private Map<String, Router> routes = new HashMap<>();
     private Map<ActorRef, List<String>> actors = new HashMap<>();
@@ -51,21 +48,21 @@ class RegistrarActor extends AbstractActor {
         return receiveBuilder()
                 .match(Events.Registration.class, message -> { // come from Registry.register
                     String dispatcher;
-                    if (getContext().getSystem().dispatchers().hasDispatcher(Registry.RegistryDispatcher)) {
-                        dispatcher = Registry.RegistryDispatcher;
+                    if (getContext().getSystem().dispatchers().hasDispatcher(Registry.REGISTRY_DISPATCHER)) {
+                        dispatcher = Registry.REGISTRY_DISPATCHER;
                     } else {
-                        dispatcher = Genesis.WorkerPoolDispatcher;
+                        dispatcher = Genesis.WORKER_POOL_DISPATCHER;
                     }
                     Props props = Props.create(RegistryEntryActor.class, () -> new RegistryEntryActor(message, workerPool))
                             .withDispatcher(dispatcher);
-                    ActorRef entry = getContext().actorOf(props);
+                    getContext().actorOf(props); // create the actor
                 })
                 .match(Events.Announcement.class, message -> { // Receiving an announce event from a newly created RegisterEntry actor.
                     getContext().watch(getSender()); // watch for Terminated event
-                    Router router = routes.computeIfAbsent(message.path(), (cls) -> new Router(new RoundRobinRoutingLogic()));
+                    Router router = routes.computeIfAbsent(message.path(), cls -> new Router(new RoundRobinRoutingLogic()));
                     router = router.addRoutee(getSender());
                     routes.put(message.path(), router);
-                    List<String> paths = actors.computeIfAbsent(getSender(), (ref) -> new ArrayList<>());
+                    List<String> paths = actors.computeIfAbsent(getSender(), ref -> new ArrayList<>());
                     paths.add(message.path());
                     registry.onAnnouncement(message.path());
                 })
@@ -75,14 +72,7 @@ class RegistrarActor extends AbstractActor {
                     if (paths != null) {
                         for (String path : paths) {
                             Router router = routes.get(path);
-                            if (router != null) {
-                                registry.onTerminated(path, actor);
-                                router = router.removeRoutee(getSender());
-                                routes.put(path, router);
-                                if (router.routees().length() == 0) {
-                                    registry.onRouteRemoved(path);
-                                }
-                            }
+                            onTerminated(path, router, actor);
                         }
                         actors.remove(actor);
                     }
@@ -96,5 +86,17 @@ class RegistrarActor extends AbstractActor {
                     }
                 })
                 .build();
+    }
+
+    private void onTerminated(String path, Router router, ActorRef actor) {
+        if (router == null)
+            return;
+
+        registry.onTerminated(path, actor);
+        Router newRouter = router.removeRoutee(getSender());
+        routes.put(path, newRouter);
+        if (newRouter.routees().length() == 0) {
+            registry.onRouteRemoved(path);
+        }
     }
 }

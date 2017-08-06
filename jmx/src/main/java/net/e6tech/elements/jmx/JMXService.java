@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package net.e6tech.elements.jmx;
 
 import com.j256.simplejmx.common.JmxResource;
@@ -21,6 +22,7 @@ import com.sun.jdmk.comm.AuthInfo;
 import com.sun.jdmk.comm.HtmlAdaptorServer;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
+import net.e6tech.elements.common.util.SystemException;
 
 import javax.management.*;
 import javax.management.remote.JMXConnector;
@@ -40,9 +42,14 @@ import java.util.function.Supplier;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S1191")
 public class JMXService {
     private static final Logger logger = Logger.getLogger();
 
+    private JMXService() {
+    }
+
+    @SuppressWarnings("squid:S00112")
     public static void start(int port, int jmxrmiPort,  String user, char[] password) throws Exception {
         HtmlAdaptorServer adapter = new HtmlAdaptorServer(port);
         if (user != null && user.length() > 0) {
@@ -53,11 +60,12 @@ public class JMXService {
         try {
             ManagementFactory.getPlatformMBeanServer().registerMBean(adapter, new ObjectName("JMX:name=htmlAdaptorServer"));
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         Registry registry = LocateRegistry.createRegistry(jmxrmiPort);
+        registry.list();
         Map env = new HashMap<>();
         if (user != null && user.length() > 0) {
             String[] creds = {user, new String(password)};
@@ -73,10 +81,8 @@ public class JMXService {
     public static void registerMBean(Object mbean, String name) {
         try {
             register(mbean, new ObjectName(name));
-        } catch (javax.management.NotCompliantMBeanException | IllegalArgumentException ex) {
-            logger.info("Cannot register " + name + " as MBean", ex);
-        } catch (Exception e) {
-            logger.warn("Cannot register " + name + " as MBean", e);
+        } catch (Exception ex) {
+            logger.info("Cannot register {} as MBean", name, ex);
         }
     }
 
@@ -101,6 +107,7 @@ public class JMXService {
         }
     }
 
+    @SuppressWarnings("squid:S135")
     private static void register(Object mbean, ObjectName objectName) throws JMException {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         JmxServer jmxServer = new JmxServer(server);
@@ -108,9 +115,9 @@ public class JMXService {
             jmxServer.register(mbean, objectName, null, null, null);
         } else {
             boolean conformToMBean = false;
-            Class[] interfaces = mbean.getClass().getInterfaces();
-            for (Class intf : interfaces) {
-                MXBean annotation = (MXBean) intf.getAnnotation(MXBean.class);
+            Class<?>[] interfaces = mbean.getClass().getInterfaces();
+            for (Class<?> intf : interfaces) {
+                MXBean annotation = intf.getAnnotation(MXBean.class);
                 if (annotation != null) {
                     conformToMBean = annotation.value();
                     break;
@@ -121,7 +128,8 @@ public class JMXService {
                     break;
                 }
             }
-            if (conformToMBean) server.registerMBean(mbean, objectName);
+            if (conformToMBean)
+                server.registerMBean(mbean, objectName);
             else jmxServer.register(mbean, objectName, null, null, null);
         }
     }
@@ -150,6 +158,7 @@ public class JMXService {
         try {
             instance = mBeanServer.getObjectInstance(objectName);
         } catch (InstanceNotFoundException e) {
+            Logger.suppress(e);
             return Optional.empty();
         }
         return Optional.of(instance);
@@ -160,24 +169,28 @@ public class JMXService {
         return  mBeanServer.queryMBeans(objectName, null);
     }
 
-    public static Object invoke(ObjectName objectName, String method, Object[] arguments, String[] signature) throws MBeanException, InstanceNotFoundException, ReflectionException {
+    public static Object invoke(ObjectName objectName, String method, Object[] arguments, String[] signature) throws MBeanException {
         MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        return mBeanServer.invoke(objectName, method, arguments, signature);
+        try {
+            return mBeanServer.invoke(objectName, method, arguments, signature);
+        } catch (InstanceNotFoundException | ReflectionException e) {
+            throw new MBeanException(e);
+        }
     }
 
     /* invokes an operation on the mbean */
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S00112", "squid:S135", "squid:S134"})
     public static Object invoke(ObjectName objectName,
                        String methodName,
                        Object ... arguments) throws Exception {
         MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         Set<ObjectInstance> instances = mBeanServer.queryMBeans(objectName, null);
 
-        if (instances.size() == 0) {
+        if (instances.isEmpty())
             return null;
-        }
-        if (instances.size() > 1) {
+
+        if (instances.size() > 1)
             throw new IllegalStateException("More than one instances found with the objectName");
-        }
 
         ObjectInstance instance = instances.iterator().next();
         MBeanInfo info = mBeanServer.getMBeanInfo(instance.getObjectName());
@@ -185,14 +198,16 @@ public class JMXService {
         Object ret = null;
         boolean found = false;
         int arglen = 0;
-        if (arguments != null) arglen = arguments.length;
+        if (arguments != null)
+            arglen = arguments.length;
         for (MBeanOperationInfo op : info.getOperations()) {
             if (op.getName().equals(methodName)) {
                 String[] signature = new String[0];
                 Object[] args = new Object[0];
                 MBeanParameterInfo[] params = op.getSignature();
-                if (arglen != params.length) continue;
-                if (params != null) {
+                if (arglen != params.length)
+                    continue;
+                if (params != null && arguments != null) {
                     signature = new String[params.length];
                     args = new Object[params.length];
                     for (int i = 0 ; i < params.length; i++) {

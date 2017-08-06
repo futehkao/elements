@@ -19,6 +19,7 @@ package net.e6tech.elements.common.resources;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S00112")
 public abstract class Retry {
     private int limit = 3;
 
@@ -33,14 +34,14 @@ public abstract class Retry {
     public abstract boolean shouldRetry(Throwable th);
 
     public <R> R retry(Retryable<R> call) throws Throwable {
-        return _retry(null, call);
+        return privateRetry(null, call);
     }
 
     public <R> R retry(Throwable exception, Retryable<R> call) throws Throwable {
-        return _retry(exception, call);
+        return privateRetry(exception, call);
     }
 
-    protected <R> R _retry(Throwable exception, Retryable<R> call) throws Throwable {
+    protected <R> R privateRetry(Throwable exception, Retryable<R> call) throws Throwable {
         R ret = null;
         Throwable error = exception;
         boolean success = false;
@@ -55,17 +56,17 @@ public abstract class Retry {
                 success = true;
                 break;
             } catch (Throwable th) {
-                error = exception;
+                error = th;
             }
         }
 
-        if (!success) {
+        if (!success && error != null)
             throw error;
-        }
 
         return ret;
     }
 
+    @FunctionalInterface
     public interface Retryable<R> {
         R call() throws Throwable;
     }

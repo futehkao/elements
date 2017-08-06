@@ -19,8 +19,10 @@ package net.e6tech.elements.common.resources.plugin;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.InitialContextFactory;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
 
 import javax.naming.Context;
@@ -35,6 +37,7 @@ import java.util.*;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134"})
 public class PluginManager {
 
     private static final String DEFAULT_PLUGIN = "defaultPlugin";
@@ -45,6 +48,12 @@ public class PluginManager {
     private Resources resources;
     private Map<Class, Object> defaultPlugins = new HashMap<>();
 
+    public PluginManager(ResourceManager resourceManager) {
+        this.resourceManager = resourceManager;
+        classLoader = new PluginClassLoader(resourceManager.getClass().getClassLoader());
+        context = (new InitialContextFactory()).createContext(new Hashtable());
+    }
+
     public PluginManager from(Resources resources) {
         PluginManager plugin = new PluginManager(resourceManager);
         plugin.resources = resources;
@@ -54,25 +63,19 @@ public class PluginManager {
         return plugin;
     }
 
-    public PluginManager(ResourceManager resourceManager) {
-        this.resourceManager = resourceManager;
-        classLoader = new PluginClassLoader(resourceManager.getClass().getClassLoader());
-        context = (new InitialContextFactory()).createContext(new Hashtable());
-    }
-
     public void loadPlugins(String[] directories) {
         for (String dir: directories) {
             java.nio.file.Path[] paths = new java.nio.file.Path[0];
             try {
                 paths = FileUtil.listFiles(dir, "jar");
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
             for (java.nio.file.Path p : paths) {
                 try {
                     classLoader.addURL(p.toUri().toURL());
                 } catch (MalformedURLException e) {
-                    throw new RuntimeException(e);
+                    throw new SystemException(e);
                 }
             }
         };
@@ -88,6 +91,7 @@ public class PluginManager {
         try {
             lookup =  context.lookup(fullPath);
         } catch (NamingException e) {
+            Logger.suppress(e);
             Class type = path.getType();
             lookup = defaultPlugins.get(type);
             if (lookup == null) {
@@ -97,12 +101,13 @@ public class PluginManager {
                         lookup = field.get(null);
                         defaultPlugins.put(path.getType(), lookup);
                         break;
-                    } catch (NoSuchFieldException e1) {
-                    } catch (IllegalAccessException e1) {
+                    } catch (NoSuchFieldException | IllegalAccessException e1) {
+                        Logger.suppress(e1);
                     }
                     type = type.getSuperclass();
                 }
-                if (lookup == null) throw new RuntimeException("Invalid plugin path: " + fullPath);
+                if (lookup == null)
+                    throw new SystemException("Invalid plugin path: " + fullPath);
             }
         }
 
@@ -110,8 +115,8 @@ public class PluginManager {
         if (lookup instanceof Class) {
             try {
                 plugin = (T) ((Class) lookup).newInstance();
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
+            } catch (Exception e) {
+                throw new SystemException(e);
             }
         } else {
             plugin = (T) lookup;
@@ -154,7 +159,7 @@ public class PluginManager {
         try {
             context.rebind(path.path(), cls);
         } catch (NamingException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -162,7 +167,7 @@ public class PluginManager {
         try {
             context.rebind(path.path(), object);
         } catch (NamingException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -184,6 +189,7 @@ public class PluginManager {
             super(new URL[0], parent);
         }
 
+        @Override
         public void addURL(URL url) {
             super.addURL(url);
         }

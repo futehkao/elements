@@ -16,13 +16,13 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.security.Hex;
 import net.e6tech.elements.security.hsm.AnsiPinBlock;
 import net.e6tech.elements.security.hsm.atalla.Message;
 
-
 import java.security.GeneralSecurityException;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -30,7 +30,7 @@ import java.util.concurrent.Callable;
  * Created by futeh.
  */
 public abstract class Command extends Message {
-    private static Map<String, Class<? extends Command>> commands = new Hashtable<>();
+    private static Map<String, Class<? extends Command>> commands = new HashMap<>();
 
     static {
         commands.put("00", Echo.class);
@@ -43,7 +43,6 @@ public abstract class Command extends Message {
     }
 
     protected AtallaSimulator simulator;
-    protected String[] fields;
 
     public Command() {
     }
@@ -59,20 +58,21 @@ public abstract class Command extends Message {
             request.simulator = simulator;
             request.fields = msg.getFields();
             return request;
-        } catch (Throwable e) {
-
+        } catch (Exception e) {
+            Logger.suppress(e);
         }
         return null;
     }
 
-    public String getField(int index) {
-        return fields[index];
+    void setFields(String[] fields) {
+        this.fields = fields;
     }
 
     public Message process() {
         try {
             return new Message("<" + doProcess() + ">");
         } catch (CommandException e) {
+            Logger.suppress(e);
             return new Message("<00#" + e.error() + ">");
         }
     }
@@ -82,14 +82,14 @@ public abstract class Command extends Message {
     public static <T> T run(int fieldNumber, Callable<T> call) throws CommandException {
         try {
             return call.call();
-        } catch (Throwable th) {
+        } catch (Exception th) {
             throw new CommandException(fieldNumber, th);
         }
     }
 
     protected void setDecimalizationTable(IBM3624PINOffset ibm, int fieldNo) throws CommandException {
         String decTab = getField(fieldNo);
-        if (decTab.indexOf(",") > 0) { // akb
+        if (decTab.indexOf(',') >= 0) { // akb
             try {
                 decTab = Hex.toString(simulator.decryptKey(new AKB(decTab)));
             } catch (GeneralSecurityException e) {

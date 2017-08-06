@@ -15,15 +15,16 @@ limitations under the License.
 */
 package net.e6tech.elements.common.logging.jul;
 
-import java.util.Enumeration;
 import java.util.logging.Logger;
 
 /**
  * Created by futeh.
  */
-public class LogManager extends java.util.logging.LogManager  {
+@SuppressWarnings("squid:S2176")
+public class LogManager extends java.util.logging.LogManager {
 
     public LogManager() {
+        //
     }
 
     @Override
@@ -36,10 +37,5 @@ public class LogManager extends java.util.logging.LogManager  {
     @Override
     public Logger getLogger(final String name) {
         return new LoggerAdapter(name);
-    }
-
-    @Override
-    public Enumeration<String> getLoggerNames() {
-        return super.getLoggerNames();
     }
 }

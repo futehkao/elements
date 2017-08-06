@@ -21,5 +21,6 @@ package net.e6tech.elements.common.resources;
  */
 @FunctionalInterface
 public interface OnShutdown extends ResourceProvider {
+    @Override
     void onShutdown();
 }

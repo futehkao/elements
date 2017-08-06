@@ -23,14 +23,8 @@ import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
-import akka.dispatch.Futures;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import scala.concurrent.ExecutionContext;
-
-import java.io.Serializable;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by futeh.
@@ -72,19 +66,16 @@ class RegistryEntryActor extends AbstractActor {
 
     @Override
     public AbstractActor.Receive createReceive() {
-        return receiveBuilder().match(ClusterEvent.MemberUp.class, member -> {
-            register(member.member());
-        }).match(ClusterEvent.CurrentClusterState.class, state -> {
+        return receiveBuilder().match(ClusterEvent.MemberUp.class, member -> register(member.member()))
+                .match(ClusterEvent.CurrentClusterState.class, state -> {
             for (Member member : state.getMembers()) {
                 if (member.status().equals(MemberStatus.up())) {
                     register(member);
                 }
             }
-        }).match(ClusterEvent.UnreachableMember.class, member -> {
-            log.info("Member detected as unreachable: {}", member.member());
-        }).match(ClusterEvent.MemberRemoved.class, member -> {
-            log.info("Member is Removed: {}", member.member());
-        }).match(Events.Invocation.class, message -> {
+        }).match(ClusterEvent.UnreachableMember.class, member -> log.info("Member detected as unreachable: {}", member.member()))
+                .match(ClusterEvent.MemberRemoved.class, member -> log.info("Member is Removed: {}", member.member()))
+                .match(Events.Invocation.class, message -> {
             final ActorRef sender = getSender();
             final ActorRef self = getSelf();
             try {

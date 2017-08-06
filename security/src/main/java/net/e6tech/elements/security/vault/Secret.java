@@ -25,15 +25,33 @@ import static net.e6tech.elements.security.vault.Constants.VERSION;
 /**
  * Created by futeh.
  */
-public class Secret implements Serializable, Cloneable {
+public class Secret implements Serializable {
 
     private static final long serialVersionUID = -5640813231783061396L;
     private Properties properties;
     private String protectedProperties;
-    private String secret;
+    private String encryptedSecret;
+
+    public Secret() {
+    }
+
+    public Secret(Secret secret) {
+        this.properties = secret.properties;
+        this.protectedProperties = secret.protectedProperties;
+        this.encryptedSecret = secret.encryptedSecret;
+
+        // copy properties from secret to this
+        if (secret.properties != null) {
+            this.properties = new Properties();
+            for (String key : secret.properties.stringPropertyNames()) {
+                this.properties.setProperty(key, secret.properties.getProperty(key));
+            }
+        }
+    }
 
     public String getProperty(String key) {
-        if (properties == null) return null;
+        if (properties == null)
+            return null;
         return properties.getProperty(key);
     }
 
@@ -54,20 +72,20 @@ public class Secret implements Serializable, Cloneable {
     }
 
     public String getSecret() {
-        return secret;
+        return encryptedSecret;
     }
 
     public void setSecret(String secret) {
-        this.secret = secret;
+        this.encryptedSecret = secret;
     }
 
     public String keyAlias() {
-        String[] components = secret.split("\\$");
+        String[] components = encryptedSecret.split("\\$");
         return components[2];
     }
 
     public String keyVersion() {
-        String[] components = secret.split("\\$");
+        String[] components = encryptedSecret.split("\\$");
         return components[3];
     }
 
@@ -79,19 +97,4 @@ public class Secret implements Serializable, Cloneable {
         return getProperty(VERSION);
     }
 
-    public Secret clone() {
-        try {
-            Secret secret = (Secret) super.clone();
-            secret.properties = null;
-            if (properties != null) {
-                secret.properties = new Properties();
-                for (String key : properties.stringPropertyNames()) {
-                    secret.properties.setProperty(key, properties.getProperty(key));
-                }
-            }
-            return secret;
-        } catch (CloneNotSupportedException e) {
-            throw new RuntimeException(e);
-        }
-    }
 }

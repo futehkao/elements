@@ -21,9 +21,6 @@ package net.e6tech.elements.web.security.vault.client;
 public class Action {
     String token;
 
-    public Action() {
-    }
-
     public String getType() {
         return getClass().getSimpleName();
     }

@@ -15,6 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.jobs;
 
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.jmx.JMXService;
@@ -22,7 +23,6 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.impl.StdSchedulerFactory;
 
-import javax.inject.Inject;
 import java.util.*;
 
 /**
@@ -59,7 +59,7 @@ public class JobServer {
                 scheduler = factory.getScheduler();
                 scheduler.start();
             } catch (SchedulerException e) {
-                e.printStackTrace();
+                logger.warn(e.getMessage(), e);
             }
         }
         return scheduler;

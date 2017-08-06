@@ -23,6 +23,7 @@ import java.util.List;
  * BinarySearchList supports binary search within a list.
  * Created by futeh.
  */
+@SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134"})
 public class BinarySearchList implements Iterable<Comparable> {
 
     private List<Comparable> sortedList = new ArrayList<>(); // Needs ArrayList for it O(1) get
@@ -57,6 +58,7 @@ public class BinarySearchList implements Iterable<Comparable> {
     }
 
     // binary search insert.
+    @SuppressWarnings("squid:S00100")
     private void _add(int min, int max, Comparable cmp) {
         if (size() == 0) {
             sortedList.add(cmp);
@@ -91,6 +93,7 @@ public class BinarySearchList implements Iterable<Comparable> {
         return _remove(0, sortedList.size() - 1, cmp);
     }
 
+    @SuppressWarnings({"squid:S3776", "squid:ForLoopCounterChangedCheck", "squid:S00100"})
     private boolean _remove(int min, int max, Comparable cmp) {
         if (size() == 0) {
             return false;

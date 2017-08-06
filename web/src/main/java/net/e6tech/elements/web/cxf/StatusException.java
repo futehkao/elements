@@ -22,7 +22,7 @@ import javax.ws.rs.core.Response;
  * Created by futeh.
  */
 public class StatusException extends RuntimeException {
-    private Response.Status status = Response.Status.BAD_REQUEST;
+    private final Response.Status status;
 
     public StatusException(Response.Status status, Throwable exception) {
         super(exception);

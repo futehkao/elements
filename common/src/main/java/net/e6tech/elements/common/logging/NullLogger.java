@@ -22,6 +22,7 @@ import org.slf4j.Marker;
  * Created by futeh.
  */
 public class NullLogger implements org.slf4j.Logger {
+    private static final Object[] EMPTY_ARGS = new Object[0];
 
     @Override
     public String getName() {
@@ -35,18 +36,22 @@ public class NullLogger implements org.slf4j.Logger {
 
     @Override
     public void trace(String msg) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void trace(String format, Object arg) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void trace(String format, Object arg1, Object arg2) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void trace(String format, Object... arguments) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
@@ -61,18 +66,22 @@ public class NullLogger implements org.slf4j.Logger {
 
     @Override
     public void trace(Marker marker, String msg) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void trace(Marker marker, String format, Object arg) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void trace(Marker marker, String format, Object arg1, Object arg2) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void trace(Marker marker, String format, Object... arguments) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
@@ -87,18 +96,22 @@ public class NullLogger implements org.slf4j.Logger {
 
     @Override
     public void debug(String msg) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void debug(String format, Object arg) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void debug(String format, Object arg1, Object arg2) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void debug(String format, Object... arguments) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
@@ -113,18 +126,22 @@ public class NullLogger implements org.slf4j.Logger {
 
     @Override
     public void debug(Marker marker, String msg) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void debug(Marker marker, String format, Object arg) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void debug(Marker marker, String format, Object arg1, Object arg2) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void debug(Marker marker, String format, Object... arguments) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
@@ -137,7 +154,6 @@ public class NullLogger implements org.slf4j.Logger {
         return true;
     }
 
-    private static Object[] EMPTY_ARGS = new Object[0];
     @Override
     public void info(String msg) {
         info(msg, EMPTY_ARGS);
@@ -155,10 +171,12 @@ public class NullLogger implements org.slf4j.Logger {
 
     @Override
     public void info(String format, Object... arguments) {
+        // do nothing, it is a NullLogger
     }
 
     @Override
     public void info(String msg, Throwable t) {
+        // do nothing, it is a NullLogger
     }
 
     @Override

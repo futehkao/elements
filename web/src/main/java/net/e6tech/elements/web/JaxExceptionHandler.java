@@ -21,6 +21,7 @@ import java.lang.reflect.Method;
 /**
  * Created by futeh.
  */
+@FunctionalInterface
 public interface JaxExceptionHandler {
     Object handleException(Method method, Object[] args, Throwable throwable);
 }

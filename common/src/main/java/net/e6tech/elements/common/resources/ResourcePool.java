@@ -17,10 +17,9 @@
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.notification.NotificationCenter;
+import net.e6tech.elements.common.util.SystemException;
 
-import java.lang.reflect.Field;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -62,7 +61,7 @@ public interface ResourcePool {
             inject(instance);
             return instance;
         } catch (InstantiationException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 

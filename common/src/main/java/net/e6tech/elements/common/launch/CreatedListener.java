@@ -24,6 +24,7 @@ import net.e6tech.elements.common.resources.ResourceManager;
  */
 public interface CreatedListener extends LaunchListener {
 
+    @Override
     void created(ResourceManager rm);
 
     default void launched(Provision provision) {

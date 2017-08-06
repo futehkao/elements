@@ -20,7 +20,7 @@ package net.e6tech.elements.security.hsm.atalla;
  * Created by futeh.
  */
 public class Message {
-    String[] fields;
+    protected String[] fields;
 
     public Message() {
     }
@@ -29,14 +29,18 @@ public class Message {
         parse(message);
     }
 
-    protected void parse(String message) {
-        int beginIndex = message.indexOf("<");
-        int endIndex = message.lastIndexOf(">");
-        if (beginIndex < 0 || endIndex < 0) throw new BadMessageException("Cannot find message delimiter");
-        if (beginIndex >= endIndex) throw new BadMessageException("end delimiter is found before begin delimiter.");  // todo
+    protected void parse(String msg) {
+        String message = msg;
+        int beginIndex = message.indexOf('<');
+        int endIndex = message.lastIndexOf('>');
+        if (beginIndex < 0 || endIndex < 0)
+            throw new BadMessageException("Cannot find message delimiter");
+        if (beginIndex >= endIndex)
+            throw new BadMessageException("end delimiter is found before begin delimiter.");
         message = message.substring(beginIndex + 1, endIndex);
         String[] tokens = message.split("#");
-        for (int i = 0; i < tokens.length; i++) tokens[i] = tokens[i].trim();
+        for (int i = 0; i < tokens.length; i++)
+            tokens[i] = tokens[i].trim();
         fields = tokens;
     }
 
@@ -45,7 +49,8 @@ public class Message {
     }
 
     public String[] getFields() {
-        if (fields == null) return null;
+        if (fields == null)
+            return new String[0];
         String[] flds = new String[fields.length];
         System.arraycopy(fields, 0, flds, 0, fields.length);
         return flds;

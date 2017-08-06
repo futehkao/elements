@@ -16,18 +16,19 @@
 
 package net.e6tech.elements.common.reflection;
 
-import net.e6tech.elements.common.interceptor.Interceptor;
+import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 
-import javax.lang.model.element.AnnotationValue;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 /**
  * Created by futeh.
@@ -35,11 +36,25 @@ import java.util.function.Function;
  * See AnnotationTest for an example
  */
 public class Annotator implements InvocationHandler {
+    private static Map<String, Integer> objectMethods = new HashMap<>();
+
     private Map<Method, Object> values;
     private Method lastAccessed;
     private Class<? extends Annotation> type;
     private Integer hashCode;
     private String toString;
+
+    static {
+        objectMethods.put("toString", 0);
+        objectMethods.put("hashCode", 0);
+        objectMethods.put("annotationType", 0);
+        objectMethods.put("equals", 1);
+    }
+
+    protected Annotator(Class type, Map<Method, Object> values) {
+        this.type = type;
+        this.values = values;
+    }
 
     @SuppressWarnings("unchecked")
     public static <T extends Annotation> T create(Class<? extends Annotation> cls, BiConsumer<AnnotationValue, T> consumer) {
@@ -50,14 +65,9 @@ public class Annotator implements InvocationHandler {
     public static <T extends Annotation> T create(Class<? extends Annotation> cls, T original, BiConsumer<AnnotationValue, T> consumer) {
         Map<Method, Object> values = new LinkedHashMap<>();
         for (Method method : cls.getDeclaredMethods()) {
-            if (method.getName().equals("hashCode") && method.getParameterCount() == 0) {
+            if (objectMethods.containsKey(method.getName())
+                && method.getParameterCount() == objectMethods.get(method.getName())) {
                 // to be generated
-            } else if (method.getName().equals("equals") && method.getParameterCount() == 1) {
-                // to be generate
-            } else if (method.getName().equals("annotationType") && method.getParameterCount() == 0) {
-                // to ge generated
-            } else if (method.getName().equals("toString") && method.getParameterCount() == 0) {
-                // to be generate
             } else {
                 Object defaultValue = method.getDefaultValue();
                 values.put(method, defaultValue);
@@ -65,29 +75,29 @@ public class Annotator implements InvocationHandler {
         }
 
         Annotator annotator = new Annotator(cls, values);
-        annotator.copy(original);
+        annotator.copyFrom(original);
         AnnotationValue annotationValue = new AnnotationValue(annotator);
-        if (consumer != null) consumer.accept(annotationValue, (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, annotator));
+        if (consumer != null)
+            consumer.accept(annotationValue, (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, annotator));
         return (T) Proxy.newProxyInstance(cls.getClassLoader(), new Class[]{cls}, annotator);
     }
 
-    protected Annotator(Class type, Map<Method, Object> values) {
-        this.type = type;
-        this.values = values;
-    }
-
     @Override
+    @SuppressWarnings({"squid:S3776", "squid:MethodCyclomaticComplexity"})
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        if (method.getName().equals("hashCode") && method.getParameterCount() == 0) {
-            if (hashCode == null) hashCode = hashCodeImpl();
+        String methodName = method.getName();
+        if ("hashCode".equals(methodName) && method.getParameterCount() == 0) {
+            if (hashCode == null)
+                hashCode = hashCodeImpl();
             return hashCode;
-        } else if (method.getName().equals("equals") && method.getParameterCount() == 1
+        } else if ("equals".equals(methodName) && method.getParameterCount() == 1
                 && method.getParameterTypes()[0].equals(Object.class)) {
             return equalsImpl(args[0]);
-        } else if (method.getName().equals("annotationType") && method.getParameterCount() == 0) {
+        } else if ("annotationType".equals(methodName) && method.getParameterCount() == 0) {
             return type;
-        } else if (method.getName().equals("toString") && method.getParameterCount() == 0) {
-            if (toString == null) toString = toStringImpl();
+        } else if ("toString".equals(methodName) && method.getParameterCount() == 0) {
+            if (toString == null)
+                toString = toStringImpl();
             return toString;
         } else {
             lastAccessed = method;
@@ -99,16 +109,16 @@ public class Annotator implements InvocationHandler {
         }
     }
 
-    private <T extends Annotation> void copy(T original) {
-        if (original == null) return;
+    private <T extends Annotation> void copyFrom(T original) {
+        if (original == null)
+            return;
         Iterator<Map.Entry<Method, Object>> iterator = values.entrySet().iterator();
         while(iterator.hasNext()) {
             Map.Entry<Method, Object> entry = iterator.next();
-            Method method = entry.getKey();
-            Object value1 = entry.getValue();
             try {
                 entry.setValue(entry.getKey().invoke(original));
-            } catch (Throwable e) {
+            } catch (Exception e) {
+                Logger.suppress(e);
             }
         }
         hashCode = null;
@@ -118,14 +128,17 @@ public class Annotator implements InvocationHandler {
     private int hashCodeImpl() {
         int hash = 0;
         Map.Entry<Method, Object> entry;
-        for(Iterator iterator = values.entrySet().iterator(); iterator.hasNext(); hash += 127 * (entry.getKey().getName()).hashCode() ^ Primitives.hashCode(entry.getValue())) {
-            entry = (Map.Entry)iterator.next();
+        for(Iterator iterator = values.entrySet().iterator(); iterator.hasNext();
+            hash += 127 * (entry.getKey().getName()).hashCode() ^ Primitives.hashCode(entry.getValue())) {
+            entry = (Map.Entry) iterator.next();
         }
         return hash;
     }
 
+    @SuppressWarnings("squid:S134")
     private boolean equalsImpl(Object object) {
-        if (object == null) return false;
+        if (object == null)
+            return false;
         if(object == this) {
             return true;
         } else if(!this.type.isInstance(object)) {
@@ -136,8 +149,10 @@ public class Annotator implements InvocationHandler {
                 Map.Entry<Method, Object> entry = iterator.next();
                 try {
                     Object value2 = entry.getKey().invoke(object);
-                    if (! Primitives.equals(entry.getValue(), value2)) return false;
-                } catch (Throwable e) {
+                    if (! Primitives.equals(entry.getValue(), value2))
+                        return false;
+                } catch (Exception e) {
+                    Logger.suppress(e);
                     return false;
                 }
             }
@@ -244,11 +259,12 @@ public class Annotator implements InvocationHandler {
             return _set(callable, value);
         }
 
+        @SuppressWarnings("squid:S00100")
         private <K> AnnotationValue _set(Callable<K> callable, K value) {
             try {
                 callable.call();
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
             handler.values.put(handler.lastAccessed, value);
             handler.hashCode = null;

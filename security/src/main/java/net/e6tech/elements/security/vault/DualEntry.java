@@ -16,6 +16,8 @@ limitations under the License.
 
 package net.e6tech.elements.security.vault;
 
+import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.Terminal;
 
 import java.io.IOException;
@@ -60,7 +62,7 @@ public class DualEntry {
     }
 
     public void run(String text, int port) {
-        while(!_run(text, port));
+        while(!nestedRun(text, port));
     }
 
     public void run(String text, ServerSocket serverSocket) {
@@ -69,33 +71,44 @@ public class DualEntry {
         while(!_user2(terminal, serverSocket));
     }
 
-    private boolean _run(String text, int port) {
+    private boolean nestedRun(String text, int port) {
         ServerSocket serverSocket = null;
         try {
             serverSocket = new ServerSocket(port);
             serverSocket.setReuseAddress(true);
         } catch (IOException e) {
-            try { if (serverSocket != null) serverSocket.close(); } catch (Exception ex) {}
-            throw new RuntimeException(e);
+            try {
+                if (serverSocket != null)
+                    serverSocket.close();
+            } catch (Exception ex) {
+                Logger.suppress(ex);
+            }
+            throw new SystemException(e);
         }
 
         Terminal terminal = new Terminal();
-        if (!_user1(terminal, text, serverSocket)) return false;
         try {
-             return _user2(terminal, serverSocket);
+            if (!_user1(terminal, text, serverSocket))
+                return false;
+            return _user2(terminal, serverSocket);
         } catch (Exception ex) {
+            Logger.suppress(ex);
             return true; // return true to stop while loop in run()
         } finally {
-            if (serverSocket != null) try {
-                serverSocket.close();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            if (serverSocket != null) {
+                try {
+                    serverSocket.close();
+                } catch (IOException e) {
+                    Logger.suppress(e);
+                }
             }
         }
     }
 
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S2093"})
     private boolean _user1(Terminal terminal, String text, ServerSocket serverSocket) {
-        if (user1 == null || user2 == null || user1.getUser() == null || user2.getUser() == null) terminal.println(text);
+        if (user1 == null || user2 == null || user1.getUser() == null || user2.getUser() == null)
+            terminal.println(text);
         if (user1 == null || user1.getUser() == null) {
             Terminal t = null;
             try {
@@ -103,24 +116,30 @@ public class DualEntry {
                 String u1 = t.readLine("Username: ");
                 char[] pwd = t.readPassword("Password: ");
                 while (u1.length() == 0 || pwd.length == 0) {
-                    if (u1.length() == 0) t.println("user name is empty...try again\n");
-                    else if (pwd.length == 0) t.println("password is empty...try again\n");
+                    if (u1.length() == 0)
+                        t.println("user name is empty...try again\n");
+                    else if (pwd.length == 0)
+                        t.println("password is empty...try again\n");
                     u1 = t.readLine("Username: ");
                     pwd = t.readPassword("Password: ");
                 }
-                if (!verifyPassword(t, pwd)) return false;
+                if (!verifyPassword(t, pwd))
+                    return false;
                 user1 = new Credential(u1, pwd);
                 t.println("Please have user2 connect to port " + serverSocket.getLocalPort() + " to provide user name and password");
             } catch (Exception ex) {
+                Logger.suppress(ex);
                 terminal.println("Error getting user1 name and password: " + ex.getMessage());
                 return false;
             } finally {
-                if (t != null) t.close();
+                if (t != null)
+                    t.close();
             }
         }
         return true;
     }
 
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S2093"})
     private boolean _user2(Terminal terminal, ServerSocket serverSocket) {
         while (user2 == null || user2.getUser() == null) {
             Terminal t = null;
@@ -133,19 +152,25 @@ public class DualEntry {
                     continue;
                 }
                 while (u2.equalsIgnoreCase(user1.getUser()) || u2.length() == 0 || pwd.length == 0) {
-                    if (u2.equalsIgnoreCase(user1.getUser())) t.println("user1 cannot be the same as user2...try again\n");
-                    else if (u2.length() == 0) t.println("user name is empty...try again\n");
-                    else if (pwd.length == 0) t.println("password is empty...try again\n");
+                    if (u2.equalsIgnoreCase(user1.getUser()))
+                        t.println("user1 cannot be the same as user2...try again\n");
+                    else if (u2.length() == 0)
+                        t.println("user name is empty...try again\n");
+                    else if (pwd.length == 0)
+                        t.println("password is empty...try again\n");
                     u2 = t.readLine("Username:");
                     pwd = t.readPassword("Password:");
                 }
-                if (!verifyPassword(t, pwd)) return false;
+                if (!verifyPassword(t, pwd))
+                    return false;
                 user2 = new Credential(u2, pwd);
             } catch (Exception e) {
+                Logger.suppress(e);
                 terminal.println("Error getting user2 name and password: " + e.getMessage());
                 return false;
             } finally {
-                if (t != null) t.close();
+                if (t != null)
+                    t.close();
             }
         }
         return true;
@@ -171,8 +196,10 @@ public class DualEntry {
     }
 
     public void clear() {
-        if (user1 != null) user1.clear();
-        if (user2 != null) user2.clear();
+        if (user1 != null)
+            user1.clear();
+        if (user2 != null)
+            user2.clear();
         user1 = user2 = null;
     }
 }

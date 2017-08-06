@@ -30,14 +30,16 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S2065")
 public class RuleContext implements GroovyObject {
 
+    private static final String RULE_FAILED_MSG = "Rule failed: ";
     static Logger logger = Logger.getLogger();
 
     Result result = new Result();
     Rule currentRule;
     boolean completed = false;
-    private transient Object delegate;
+    private transient Object delegate; // transient so that Groovy does not serialize and hold on to it.
     private Map<String, Object> properties = new HashMap<>();
     private Map<String, Rule> rulesHalted = new LinkedHashMap<>();
     private Map<String, Rule> rulesExecuted = new LinkedHashMap<>();
@@ -45,9 +47,6 @@ public class RuleContext implements GroovyObject {
     private String failedMessage;
     private Throwable exception;
     private RuleSet ruleSet;
-
-    public RuleContext() {
-    }
 
     public Object getDelegate() {
         return delegate;
@@ -78,6 +77,7 @@ public class RuleContext implements GroovyObject {
     }
 
     protected void onCheckFailed() {
+        // to be subclassed.  this method is called whenever check fails.
     }
 
     void ruleExecuted(Rule rule) {
@@ -93,9 +93,9 @@ public class RuleContext implements GroovyObject {
     void ruleFailed(Rule rule, String failedMessage) {
         ruleFailed = rule;
         if (failedMessage == null) {
-            this.failedMessage = "Rule failed: " + rule.getName() + ".";
+            this.failedMessage = RULE_FAILED_MSG + rule.getName() + ".";
         } else {
-            this.failedMessage = "Rule failed: " + rule.getName() + " - " + failedMessage;
+            this.failedMessage = RULE_FAILED_MSG + rule.getName() + " - " + failedMessage;
         }
     }
 
@@ -103,9 +103,9 @@ public class RuleContext implements GroovyObject {
         exception = throwable;
         ruleFailed = rule;
         if (failedMessage == null) {
-            this.failedMessage = "Rule failed: " + rule.getName() + ".";
+            this.failedMessage = RULE_FAILED_MSG + rule.getName() + ".";
         } else {
-            this.failedMessage = "Rule failed: " + rule.getName() + " - " + throwable.getMessage();
+            this.failedMessage = RULE_FAILED_MSG + rule.getName() + " - " + throwable.getMessage();
         }
         logger.debug(throwable.getMessage(), throwable);
     }
@@ -138,6 +138,8 @@ public class RuleContext implements GroovyObject {
         this.ruleSet = ruleSet;
     }
 
+    // to be subclassed
+    @SuppressWarnings("squid:S1172")
     protected ControlFlow verifyObject(Object object) {
         return Continue;
     }
@@ -175,10 +177,12 @@ public class RuleContext implements GroovyObject {
 
     private ControlFlow interpret(Object obj) {
         ControlFlow flow = Continue;
-        if (obj == null) flow = Continue; // this may be counter intuitive.  We should assume true, if there is no effort to return false.
+        if (obj == null)
+            flow = Continue; // this may be counter intuitive.  We should assume true, if there is no effort to return false.
         else if (obj.getClass().equals(Boolean.TYPE) || obj.getClass().equals(Boolean.class)) {
             boolean bool = (boolean) obj;
-            if (!bool) flow = Failed;
+            if (!bool)
+                flow = Failed;
         } else if (obj instanceof ControlFlow) {
             flow = (ControlFlow) obj;
         }
@@ -196,7 +200,8 @@ public class RuleContext implements GroovyObject {
     }
 
     public Object getProperty(String property) {
-        if (property.equals("result")) return getResult();
+        if ("result".equals(property))
+            return getResult();
         return properties.get(property);
     }
 

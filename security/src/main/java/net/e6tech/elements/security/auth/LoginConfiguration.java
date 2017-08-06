@@ -23,6 +23,7 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S1452")
 public class LoginConfiguration extends Configuration {
 
     Map<String, ?> options = new HashMap<>();

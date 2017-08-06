@@ -16,6 +16,7 @@ limitations under the License.
 
 package net.e6tech.elements.security.vault;
 
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.PasswordEncrypted;
 import net.e6tech.elements.security.PasswordEncryption;
 
@@ -32,26 +33,29 @@ import static net.e6tech.elements.security.vault.Constants.mapper;
  */
 public class PasswordProtected {
 
+    private static final String UTF8 = "UTF-8";
+
     public Secret sealUser(ClearText clear, char[] password) throws GeneralSecurityException {
         ClearText passphrase = new ClearText();
         passphrase.version("0");
         passphrase.alias(PASSPHRASE);
         try {
-            passphrase.setBytes((new String(password)).getBytes("UTF-8"));
+            passphrase.setBytes((new String(password)).getBytes(UTF8));
         } catch (UnsupportedEncodingException e) {
-            // no way
+            throw new SystemException(e);
         }
         return seal(clear, passphrase);
     }
 
     public Secret seal(ClearText clear, ClearText passphrase) throws GeneralSecurityException {
-        if (clear.alias() == null) throw new RuntimeException("null alias");
+        if (clear.alias() == null)
+            throw new SystemException("null alias");
         clear.setProtectedProperty("alias", clear.alias());
         PasswordEncryption pwdEnc = null;
         try {
-            pwdEnc = new PasswordEncryption((new String(passphrase.getBytes(), "UTF-8")).toCharArray());
+            pwdEnc = new PasswordEncryption((new String(passphrase.getBytes(), UTF8)).toCharArray());
         } catch (UnsupportedEncodingException e) {
-            // no way
+            throw new GeneralSecurityException(e);
         }
         PasswordEncrypted encrypted = pwdEnc.encrypt(clear.getBytes(), passphrase.alias(), passphrase.version());
         Secret secret = new Secret();
@@ -60,10 +64,10 @@ public class PasswordProtected {
         if (clear.getProtectedProperties() != null) {
             try {
                 String str = mapper.writeValueAsString(clear.getProtectedProperties());
-                encrypted = pwdEnc.encrypt(str.getBytes("UTF-8"), passphrase.alias(), passphrase.version());
+                encrypted = pwdEnc.encrypt(str.getBytes(UTF8), passphrase.alias(), passphrase.version());
                 secret.setProtectedProperties(encrypted.toHex());
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         }
 
@@ -75,9 +79,9 @@ public class PasswordProtected {
         passphrase.version("0");
         passphrase.alias(PASSPHRASE);
         try {
-            passphrase.setBytes((new String(password)).getBytes("UTF-8"));
+            passphrase.setBytes((new String(password)).getBytes(UTF8));
         } catch (UnsupportedEncodingException e) {
-            // no way
+            throw new SystemException(e);
         }
         return unseal(secret, passphrase);
     }
@@ -86,9 +90,9 @@ public class PasswordProtected {
         PasswordEncrypted encrypted = new PasswordEncrypted(secret.getSecret());
         PasswordEncryption pwdEnc = null;
         try {
-            pwdEnc = new PasswordEncryption((new String(passphrase.getBytes(), "UTF-8")).toCharArray());
+            pwdEnc = new PasswordEncryption((new String(passphrase.getBytes(), UTF8)).toCharArray());
         } catch (UnsupportedEncodingException e) {
-            // no way
+            throw new GeneralSecurityException(e);
         }
 
         byte[] plain = pwdEnc.decrypt(encrypted);
@@ -99,9 +103,9 @@ public class PasswordProtected {
             byte[] props = pwdEnc.decrypt(new PasswordEncrypted(secret.getProtectedProperties()));
             Properties properties = null;
             try {
-                properties = mapper.readValue(new String(props, "UTF-8"), Properties.class);
+                properties = mapper.readValue(new String(props, UTF8), Properties.class);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
             ct.setProtectedProperties(properties);
         }

@@ -26,14 +26,15 @@ public class Each<T, U> {
     private T value;
     private U state;
 
-    public static <T, U> Mutator<T, U> create() {
-        Mutator mutator = new Mutator<>();
-        mutator.each = new Each<T, U>(null);
-        return mutator;
-    }
 
     protected Each(T value) {
         this.value = value;
+    }
+
+    public static <T, U> Mutator<T, U> create() {
+        Mutator mutator = new Mutator<>();
+        mutator.each = new Each<>(null);
+        return mutator;
     }
 
     public T get() {

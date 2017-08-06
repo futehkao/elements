@@ -19,13 +19,16 @@ package net.e6tech.elements.network.cluster;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
-import java.lang.reflect.Method;
 import java.util.function.Function;
 
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S1948") // we use kryo for serialization.
 public class Events {
+
+    private Events() {
+    }
 
     public static class Subscribe implements Serializable {
         String topic;
@@ -113,14 +116,14 @@ public class Events {
 
     public static class Registration {
         private RegisterReference reference;
-        private Function<Object[], ?> function;
+        private Function<Object[], Object> function;
 
-        public Registration(String path, Function<Object[], ?> function) {
+        public Registration(String path, Function<Object[], Object> function) {
             this.reference = new RegisterReference(path);
             this.function = function;
         }
 
-        public Function<Object[], ?> function() {
+        public Function<Object[], Object> function() {
             return function;
         }
     }

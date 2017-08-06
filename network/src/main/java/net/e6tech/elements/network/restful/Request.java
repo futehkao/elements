@@ -1,10 +1,5 @@
 package net.e6tech.elements.network.restful;
 
-import net.e6tech.elements.common.logging.Logger;
-
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.ProtocolException;
 import java.util.Properties;
 
 /**
@@ -18,10 +13,7 @@ public class Request {
     static final String DELETE = "DELETE";
     static final int RETRY = 4;
 
-    private static Logger logger = Logger.getLogger();
-
     private RestfulClient client;
-    private String encoding = "UTF-8";
     private Properties requestProperties = new Properties();
 
     Request(RestfulClient client) {
@@ -31,19 +23,6 @@ public class Request {
     public Request setRequestProperty(String key, String value) {
         requestProperties.setProperty(key, value);
         return this;
-    }
-
-    private void setConnectionProperties(HttpURLConnection conn) throws ProtocolException {
-        conn.setDoInput(true);
-        conn.setUseCaches(false);
-        conn.setAllowUserInteraction(false);
-        conn.setRequestProperty("Accept", "application/json");
-    }
-
-    private void loadRequestProperties(HttpURLConnection conn) {
-        for (String key : requestProperties.stringPropertyNames()) {
-            conn.setRequestProperty(key, requestProperties.getProperty(key));
-        }
     }
 
     public Response get(String context, Param ... params) throws Throwable {

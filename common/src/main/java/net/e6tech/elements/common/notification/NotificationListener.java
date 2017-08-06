@@ -19,18 +19,18 @@ package net.e6tech.elements.common.notification;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
-import java.util.function.Consumer;
 
 /**
  * Created by futeh on 1/21/16.
  */
+@FunctionalInterface
 public interface NotificationListener<T extends Notification> {
 
     @SuppressWarnings("unchecked")
     static <R extends Notification> NotificationListener<R> wrap(String description, NotificationListener<R> listener) {
         return (NotificationListener<R>) Proxy.newProxyInstance(listener.getClass().getClassLoader(), new Class[] { NotificationListener.class},
                 (proxy, method, args) -> {
-                    if (method.getName().equals("getDescription") && (args == null || args.length == 0)) {
+                    if ("getDescription".equals(method.getName()) && (args == null || args.length == 0)) {
                         return description;
                     } else {
                         return method.invoke(listener, args);
@@ -42,7 +42,7 @@ public interface NotificationListener<T extends Notification> {
     static <R extends Notification> NotificationListener<R> wrap(Class<? extends Notification>[] types, NotificationListener<R> listener) {
         return (NotificationListener<R>) Proxy.newProxyInstance(listener.getClass().getClassLoader(), new Class[] { NotificationListener.class},
                 (proxy, method, args) -> {
-                    if (method.getName().equals("getNotificationTypes") && (args == null || args.length == 0)) {
+                    if ("getNotificationTypes".equals(method.getName()) && (args == null || args.length == 0)) {
                         return types;
                     } else {
                         return method.invoke(listener, args);

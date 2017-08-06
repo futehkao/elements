@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.persist.hibernate;
 
-import org.hibernate.MappingException;
+import net.e6tech.elements.common.util.SystemException;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.QualifiedName;
 import org.hibernate.boot.model.relational.QualifiedNameParser;
@@ -39,11 +39,12 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
     private int defaultInitialValue = 1;
     private int defaultIncrementSize = 100;
 
+    @SuppressWarnings("squid:S2975") // we really want clone!
     public TableIdGenerator clone() {
         try {
             return (TableIdGenerator) super.clone();
         } catch (CloneNotSupportedException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -71,6 +72,7 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
         this.defaultIncrementSize = defaultIncrementSize;
     }
 
+    @Override
     protected QualifiedName determineGeneratorTableName(Properties params, JdbcEnvironment jdbcEnvironment) {
         final String tableName = ConfigurationHelper.getString( TABLE_PARAM, params, defaultTableName );
 
@@ -91,20 +93,23 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
         }
     }
 
+    @Override
     protected int determineInitialValue(Properties params) {
         return ConfigurationHelper.getInt( INITIAL_PARAM, params, defaultInitialValue );
     }
 
+    @Override
     protected String determineDefaultSegmentValue(Properties params) {
         return params.getProperty( TABLE );
     }
 
+    @Override
     protected int determineIncrementSize(Properties params) {
         return ConfigurationHelper.getInt( INCREMENT_PARAM, params, defaultIncrementSize );
     }
 
     @Override
-    public void configure(Type type, Properties params, ServiceRegistry serviceRegistry) throws MappingException {
+    public void configure(Type type, Properties params, ServiceRegistry serviceRegistry) {
         if (params.getProperty(OPT_PARAM) == null) {
             params.setProperty(OPT_PARAM, StandardOptimizerDescriptor.POOLED_LO.getExternalName());
         }

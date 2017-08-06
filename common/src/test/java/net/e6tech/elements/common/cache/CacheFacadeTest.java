@@ -15,7 +15,6 @@
  */
 package net.e6tech.elements.common.cache;
 
-import com.google.inject.TypeLiteral;
 import net.e6tech.elements.common.cache.CacheFacade;
 import net.e6tech.elements.common.cache.CachePool;
 import org.ehcache.Cache;
@@ -91,11 +90,6 @@ public class CacheFacadeTest {
 
         Map<String, String> value = facade.get(1L, ()-> new HashMap<String, String>());
         System.out.println(value);
-
-        TypeLiteral typeLiteral = TypeLiteral.get(facade.getClass().getGenericSuperclass());
-        TypeLiteral typeLiteral2 = new TypeLiteral<CacheFacade<Long, Map<String, String>>>(){};
-        System.out.println(typeLiteral);
-        System.out.println(typeLiteral2);
     }
 
     @Test

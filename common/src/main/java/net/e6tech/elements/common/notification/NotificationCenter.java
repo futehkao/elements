@@ -25,6 +25,7 @@ import java.util.*;
 /**
  * Created by futeh on 1/21/16.
  */
+@SuppressWarnings({"squid:S1149"})
 public class NotificationCenter implements Broadcast {
 
     private Map<Object, List<NotificationListener>> srcNotificationListeners = new Hashtable<>();
@@ -57,21 +58,25 @@ public class NotificationCenter implements Broadcast {
     public void fireNotification(Notification notification) {
         if (notification.source() != null) {
             List<NotificationListener> listeners = srcNotificationListeners.get(notification.source());
-            if (listeners != null) listeners.forEach((listener) -> listener.onEvent(notification));
+            if (listeners != null)
+                listeners.forEach(listener -> listener.onEvent(notification));
         }
 
         List<NotificationListener> listeners = notificationListeners.get(notification.getClass());
-        if (listeners != null) listeners.forEach((listener) -> listener.onEvent(notification));
+        if (listeners != null)
+            listeners.forEach(listener -> listener.onEvent(notification));
     }
 
     public List<NotificationListener> getNotificationListeners(Notification notification) {
         List<NotificationListener> listeners = new ArrayList<>();
         if (notification.source() != null) {
             List<NotificationListener> list = srcNotificationListeners.get(notification.source());
-            if (list != null) listeners.addAll(list);
+            if (list != null)
+                listeners.addAll(list);
         }
         List<NotificationListener> list = notificationListeners.get(notification.getClass());
-        if (list != null) listeners.addAll(list);
+        if (list != null)
+            listeners.addAll(list);
 
         return list;
     }

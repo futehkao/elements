@@ -33,8 +33,8 @@ public class AllocationMonitor {
     private ReferenceQueue<Object> phantoms = new ReferenceQueue<>();
     private Thread gcThread = new Thread();
     Set<AllocationReference> allocated = Collections.synchronizedSet(new LinkedHashSet<>());
-    private long checkInterval = 1 * 60000;
-    private long expired = 1 * 60000;
+    private long checkInterval = 1 * 60000L;
+    private long expired = 1 * 60000L;
     private boolean disabled = false;
 
     /**
@@ -46,9 +46,12 @@ public class AllocationMonitor {
      * @param listener an AllocationListener
      */
     public void monitor(long timeout, Object obj, AllocationListener listener) {
-        if (disabled) return;
-        if (timeout <= 0) timeout = expired;
-        allocated.add(new AllocationReference(timeout, obj, phantoms, listener));
+        if (disabled)
+            return;
+        long realTimeout = timeout;
+        if (realTimeout <= 0)
+            realTimeout = expired;
+        allocated.add(new AllocationReference(realTimeout, obj, phantoms, listener));
         checkGCThread();
     }
 
@@ -76,14 +79,15 @@ public class AllocationMonitor {
         this.disabled = disabled;
     }
 
+    @SuppressWarnings({"squid:S2276", "squid:S3776", "squid:S1188", "squid:S134"}) // we really want the thread to sleep, not wait
     protected synchronized void checkGCThread() {
-        if (gcThread.isAlive()) return;
+        if (gcThread.isAlive())
+            return;
         gcThread = new Thread(() -> {
             try {
                 Thread.sleep(checkInterval);
-                System.gc();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Thread.currentThread().interrupt();
             }
             while (true) {
                 try {
@@ -106,6 +110,7 @@ public class AllocationMonitor {
                     }
                     Thread.sleep(checkInterval);
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 }
             }
@@ -134,7 +139,8 @@ public class AllocationMonitor {
         }
 
         public boolean equals(Object object) {
-            if (!(object instanceof  AllocationReference)) return false;
+            if (!(object instanceof  AllocationReference))
+                return false;
             return System.identityHashCode(this) == System.identityHashCode(object);
         }
 

@@ -21,6 +21,7 @@ import net.e6tech.elements.common.resources.ResourceManager;
 /**
  * Created by futeh.
  */
+@FunctionalInterface
 public interface LaunchListener {
 
     default void created(ResourceManager rm) {

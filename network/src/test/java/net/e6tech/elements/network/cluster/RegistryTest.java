@@ -34,6 +34,7 @@ import java.util.function.Function;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("all")
 public class RegistryTest {
 
     ClusterNode create(int port) {
@@ -122,12 +123,12 @@ public class RegistryTest {
         Async<X> async = registry.async("blah", X.class, 5000L);
         async.apply(p -> p.doSomething(5))
                 .thenAccept(result -> {
-                    System.out.println(result);
+                    System.out.println("This should be 0 -> " + result);
                 });
 
         async.accept(p -> p.returnsVoid(5))
                 .thenAccept(result -> {
-                    System.out.println(result);
+                    System.out.println("This should be null -> " + result);
                 });
 
         Thread.sleep(2000L);
@@ -136,6 +137,33 @@ public class RegistryTest {
     @Test
     public void asyncVM1() throws Exception {
         ClusterNode clusterNode = create(2551);
+        Registry registry = clusterNode.getRegistry();
+
+        registry.register("blah", X.class, new X() {
+            @Override
+            public int doSomething(int x) {
+                return x * x;
+            }
+
+            @Override
+            public void returnsVoid(int x) {
+            }
+
+            @Override
+            public Response request(Request request) {
+                Response response = new Response();
+                response.map = request.map;
+                return response;
+            }
+        });
+        synchronized (this) {
+            wait();
+        }
+    }
+
+    @Test
+    public void asyncVM1_1() throws Exception {
+        ClusterNode clusterNode = create(2553);
         Registry registry = clusterNode.getRegistry();
 
         registry.register("blah", X.class, new X() {

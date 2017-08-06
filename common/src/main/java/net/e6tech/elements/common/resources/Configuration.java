@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.SystemException;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.AbstractConstruct;
 import org.yaml.snakeyaml.constructor.Constructor;
@@ -32,6 +33,7 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
@@ -44,29 +46,41 @@ import java.util.*;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S3776", "squid:S134", "squid:MethodCyclomaticComplexity"})
 public class Configuration extends LinkedHashMap<String, Object> {
 
     private static Logger logger = Logger.getLogger();
-
+    private static final String NO_SUCH_PROPERTY = ": No such property ";
     private static final String BEGIN = "${";
     private static final String END = "}";
     private static final YamlConstructor yamlConstructor = new YamlConstructor();
 
-    Map<String, List<String>> knownEnvironments = new HashMap<>();
-    Properties properties = new Properties();
-    Map<String, List<Reference>> references = new HashMap<>();
+    private Properties properties = new Properties();
+    private Map<String, List<Reference>> references = new HashMap<>();  // reformatMap() for description of usage
+
+    public Configuration() {
+    }
+
+    public Configuration(Properties properties) {
+        if (properties != null)
+            this.properties = properties;
+    }
 
     public static Map<String, List<String>> defineEnvironments(String str) {
         Yaml yaml = new Yaml(new YamlConstructor());
         return (Map<String, List<String>>) yaml.load(str);
     }
 
-    public Configuration() {
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Configuration))
+            return false;
+        return super.equals(obj);
     }
 
-    public Configuration(Properties properties) {
-        if (properties != null) this.properties = properties;
-
+    @Override
+    public int hashCode() {
+        return super.hashCode();
     }
 
     public Properties getProperties() {
@@ -83,16 +97,19 @@ public class Configuration extends LinkedHashMap<String, Object> {
 
     public Configuration loadFile(String file) throws IOException {
         Path path = FileSystems.getDefault().getPath(file);
-        BufferedReader reader = Files.newBufferedReader(path);
-        StringBuilder builder = new StringBuilder();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-            builder.append(line).append("\n");
+
+        try (BufferedReader reader = Files.newBufferedReader(path)) {
+            StringBuilder builder = new StringBuilder();
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append("\n");
+            }
+            return load(builder.toString());
         }
-        return load(builder.toString());
     }
 
-    public Configuration load(String text) {
+    public Configuration load(String configStr) {
+        String text = configStr;
         Yaml yaml = newYaml();
         if (text.contains(BEGIN)) {
             text = parse(text, true);
@@ -118,11 +135,12 @@ public class Configuration extends LinkedHashMap<String, Object> {
         }
 
         for (Map<String, Object> map : maps) {
-            if (map != null) merge(this, map);
+            if (map != null)
+                merge(this, map);
         }
     }
 
-    private static class Reference {
+    private static class Reference implements Serializable {
         String key;
         String lookup;
         Reference(String key, String lookup) {
@@ -175,7 +193,8 @@ public class Configuration extends LinkedHashMap<String, Object> {
         }
     }
 
-    private String parse(String value, boolean useProperties) {
+    private String parse(String valueStr, boolean useProperties) {
+        String value = valueStr;
         int start = value.indexOf(BEGIN);
 
         if (start >= 0) {
@@ -190,9 +209,10 @@ public class Configuration extends LinkedHashMap<String, Object> {
                         String substring = parse(value.substring(nested), useProperties);
                         if (substring.startsWith(BEGIN)) {
                             // need to skip
-                            int lineTerm = substring.indexOf("\n");
+                            int lineTerm = substring.indexOf('\n');
                             String line = substring;
-                            if (lineTerm > 0) substring.substring(0, lineTerm);
+                            if (lineTerm > 0)
+                                line = substring.substring(0, lineTerm);
 
                             int begin = BEGIN.length();
                             int count = 2;
@@ -233,7 +253,8 @@ public class Configuration extends LinkedHashMap<String, Object> {
 
     private String resolve(String value, boolean useProperties) {
         String obj = (useProperties) ? properties.getProperty(value.trim()) : super.get(value.trim()).toString();
-        if (obj == null) return "${" + value + "}";
+        if (obj == null)
+            return "${" + value + "}";
         return obj;
     }
 
@@ -242,31 +263,40 @@ public class Configuration extends LinkedHashMap<String, Object> {
     }
 
     // subOnly is true when running through substitution.
-    public void configure(Object object, String prefix, Resolver resolver, ObjectConverter.InstanceCreationListener listener) {
-        if (object == null) throw new IllegalArgumentException();
+    @SuppressWarnings("squid:S1141")
+    public void configure(Object object, String prefixArg, Resolver resolver, ObjectConverter.InstanceCreationListener listener) {
+        if (object == null)
+            throw new IllegalArgumentException();
+        String prefix = prefixArg;
         BeanInfo info = null;
         try {
             if (get(prefix) instanceof Map && !(object instanceof Map)) {
                 configureWithMap(object, get(prefix), listener);
             }
 
-            if (prefix != null) prefix = prefix.trim();
-            if (prefix != null && !prefix.endsWith(".")) prefix += ".";
-            if (prefix == null || prefix.equals(".")) prefix = "";
+            if (prefix != null)
+                prefix = prefix.trim();
+            if (prefix != null && !prefix.endsWith("."))
+                prefix += ".";
+            if (prefix == null || ".".equals(prefix))
+                prefix = "";
 
             if (object instanceof Map) {
                 Map map = (Map) object;
                 for (String key : keySet()) {
-                    if (prefix.equals("") || key.startsWith(prefix)) {
+                    if ("".equals(prefix) || key.startsWith(prefix)) {
                         String subkey = key.substring(prefix.length());
-                        if (object instanceof Properties) map.put(subkey, get(key).toString());
-                        else map.put(subkey, get(key));
+                        if (object instanceof Properties)
+                            map.put(subkey, get(key).toString());
+                        else
+                            map.put(subkey, get(key));
                     }
                 }
 
                 if (resolver != null) {
                     String substitutionObjectKey = prefix;
-                    while (substitutionObjectKey.endsWith(".")) substitutionObjectKey = substitutionObjectKey.substring(0, substitutionObjectKey.length() - 1);
+                    while (substitutionObjectKey.endsWith("."))
+                        substitutionObjectKey = substitutionObjectKey.substring(0, substitutionObjectKey.length() - 1);
                     List<Reference> referenceList = references.get(prefix);
                     if (referenceList != null) {
                         for (Reference reference : referenceList) {
@@ -277,7 +307,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
                 return;
             }
 
-            // getting setters and gettes from the object
+            // getting setters and getter from the object
             info = Introspector.getBeanInfo(object.getClass());
             Map<String, PropertyDescriptor> setters = new LinkedHashMap<>();
             Map<String, PropertyDescriptor> getters = new LinkedHashMap<>();
@@ -285,7 +315,8 @@ public class Configuration extends LinkedHashMap<String, Object> {
                 if (desc.getWriteMethod() != null) {
                     String key = prefix + desc.getName();
                     Object value = get(key);
-                    if (value != null) setters.put(key, desc);
+                    if (value != null)
+                        setters.put(key, desc);
                 }
 
                 if (desc.getReadMethod() != null) {
@@ -298,39 +329,41 @@ public class Configuration extends LinkedHashMap<String, Object> {
             Set<String> applicableKeys = new HashSet<>();
             for (String key : keySet()) {
                 if (key.startsWith(prefix)) {
-                    int index = key.indexOf(".", prefix.length());
-                    if (index < 0) applicableKeys.add(key); // if index > 0, key includes subfields
+                    int index = key.indexOf('.', prefix.length());
+                    if (index < 0)
+                        applicableKeys.add(key); // if index > 0, key includes subfields
                 }
             }
 
             // Setting object's property
             ObjectConverter converter = new ObjectConverter();
-            for (String key : setters.keySet()) {
-                PropertyDescriptor desc = setters.get(key);
-                Object value = get(key);
+            for (Map.Entry<String, PropertyDescriptor> entry : setters.entrySet()) {
+                PropertyDescriptor desc = entry.getValue();
+                Object value = get(entry.getKey());
                 // annotate substitution
                 value = converter.convert(value, desc.getWriteMethod(), listener);
                 Method method = desc.getWriteMethod();
                 method.invoke(object, value);
-                applicableKeys.remove(key);
+                applicableKeys.remove(entry.getKey());
             }
 
-            if (applicableKeys.size() > 0) {
-                logger.warn("object " + object.getClass() + " do not have properties: " + applicableKeys);
+            if (!applicableKeys.isEmpty()) {
+                logger.warn("object {} do not have properties: {}", object.getClass(), applicableKeys);
             }
 
             // recurse into fields
             for (String key : keySet()) {
-                if (prefix.equals("") || key.startsWith(prefix)) {
+                if ("".equals(prefix) || key.startsWith(prefix)) {
                     boolean shouldRecurse = true;
                     String subkey = key.substring(prefix.length());
                     String fieldKey;
                     if (subkey.contains(".")) {
-                        fieldKey = subkey.substring(0, subkey.indexOf("."));
+                        fieldKey = subkey.substring(0, subkey.indexOf('.'));
                     } else {
                         fieldKey = subkey;
                         Object val = get(key);
-                        if (!(val instanceof Map)) shouldRecurse = false;
+                        if (!(val instanceof Map))
+                            shouldRecurse = false;
                     }
                     PropertyDescriptor desc = getters.get(prefix + fieldKey);
                     if (desc != null && desc.getReadMethod() != null) {
@@ -346,19 +379,22 @@ public class Configuration extends LinkedHashMap<String, Object> {
                                     try {
                                         java.lang.reflect.Constructor constructor = fieldClass.getConstructor();
                                         val = constructor.newInstance();
-                                    } catch (Throwable th) {
+                                    } catch (Exception th) {
+                                        Logger.suppress(th);
                                         val = new LinkedHashMap<>();
                                     }
                                     if (val != null) {
                                         try {
                                             desc.getWriteMethod().invoke(object, val);
-                                        } catch (Throwable th) {
+                                        } catch (Exception th) {
+                                            Logger.suppress(th);
                                             val = null;
                                         }
                                     }
                                 }
                             }
-                            if (val != null) configure(val, prefix + fieldKey, resolver, listener);
+                            if (val != null)
+                                configure(val, prefix + fieldKey, resolver, listener);
                         }
                     }
                 }
@@ -368,26 +404,32 @@ public class Configuration extends LinkedHashMap<String, Object> {
             resolveReferences(object, prefix, resolver);
 
         } catch (Exception e) {
-            throw logger.runtimeException(e);
+            throw logger.systemException(e);
         }
     }
 
     // subOnly is true when running through substitution.
-    private void resolveReferences(Object object, String prefix, Resolver resolver) {
-        if (object == null) throw new IllegalArgumentException();
+    private void resolveReferences(Object object, String prefixArg, Resolver resolver) {
+        if (object == null)
+            throw new IllegalArgumentException();
+        String prefix = prefixArg;
         try {
-            if (prefix != null) prefix = prefix.trim();
-            if (prefix != null && !prefix.endsWith(".")) prefix += ".";
-            if (prefix == null || prefix.equals(".")) prefix = "";
+            if (prefix != null)
+                prefix = prefix.trim();
+            if (prefix != null && !prefix.endsWith("."))
+                prefix += ".";
+            if (prefix == null || ".".equals(prefix))
+                prefix = "";
 
             // recurse into substitution
             if (resolver != null) {
                 String substitutionObjectKey = prefix;
-                while (substitutionObjectKey.endsWith(".")) substitutionObjectKey = substitutionObjectKey.substring(0, substitutionObjectKey.length() - 1);
-                for (String key: references.keySet()) {
+                while (substitutionObjectKey.endsWith("."))
+                    substitutionObjectKey = substitutionObjectKey.substring(0, substitutionObjectKey.length() - 1);
+                for (Map.Entry<String, List<Reference>> entry: references.entrySet()) {
                     // setting substitution.
-                    if (key.equals(substitutionObjectKey)) {
-                        List<Reference> referenceList = references.get(key);
+                    if (entry.getKey().equals(substitutionObjectKey)) {
+                        List<Reference> referenceList = entry.getValue();
                         for (Reference reference : referenceList) {
                             if (object instanceof Map) {
                                 ((Map) object).put(reference.key, resolver.resolve(reference.lookup));
@@ -398,12 +440,12 @@ public class Configuration extends LinkedHashMap<String, Object> {
                                 }
                             }
                         }
-                    } else if (key.contains(prefix)) {
+                    } else if (entry.getKey().contains(prefix)) {
                         // recurse into substitute
-                        String subkey = key.substring(prefix.length());
+                        String subkey = entry.getKey().substring(prefix.length());
                         String fieldKey;
                         if (subkey.contains(".")) {
-                            fieldKey = subkey.substring(0, subkey.indexOf("."));
+                            fieldKey = subkey.substring(0, subkey.indexOf('.'));
                         } else {
                             fieldKey = subkey;
                         }
@@ -419,11 +461,12 @@ public class Configuration extends LinkedHashMap<String, Object> {
                 }
             }
         } catch (Exception e) {
-            throw logger.runtimeException(e);
+            throw logger.systemException(e);
         }
     }
 
     // object is the owner
+    @SuppressWarnings("squid:S1141")
     public void configureWithMap(Object object, Map<String, Object> map, ObjectConverter.InstanceCreationListener listener) {
         ObjectMapper mapper = ObjectConverter.mapper;
         // getting a list of relevant properties from Configuration
@@ -436,7 +479,8 @@ public class Configuration extends LinkedHashMap<String, Object> {
                 if (desc.getWriteMethod() != null && map.containsKey(desc.getName())) {
                     String encoding = mapper.writeValueAsString(map.get(desc.getName()));
                     Object value = mapper.readValue(encoding, desc.getPropertyType());
-                    if (listener != null) listener.instanceCreated(value, desc.getPropertyType(), value);
+                    if (listener != null)
+                        listener.instanceCreated(value, desc.getPropertyType(), value);
                     desc.getWriteMethod().invoke(object, value);
                     applicableKeys.remove(desc.getName());
                 }
@@ -449,38 +493,41 @@ public class Configuration extends LinkedHashMap<String, Object> {
                     String[] path = key.split("\\.");
                     Object obj = null;
                     try {
-                        if (path[0].trim().length() > 0) obj = Reflection.getProperty(object, path[0]);
+                        if (path[0].trim().length() > 0)
+                            obj = Reflection.getProperty(object, path[0]);
                     } catch (Exception ex) {
-                        throw new RuntimeException(object.getClass().getName() + "." + key + ": No such property " + path[0], ex);
+                        throw new SystemException(object.getClass().getName() + "." + key + NO_SUCH_PROPERTY + path[0], ex);
                     }
                     for (int i = 1; i < path.length - 1; i++) {
-                        if (obj == null) break;
+                        if (obj == null)
+                            break;
                         try {
                             obj = Reflection.getProperty(obj, path[i].trim());
                         } catch (Exception ex) {
-                            throw new RuntimeException(object.getClass().getName() + "." + key + ": No such property " + path[i], ex);
+                            throw new SystemException(object.getClass().getName() + "." + key + NO_SUCH_PROPERTY + path[i], ex);
                         }
                     }
                     if (obj != null) {
                         try {
                             PropertyDescriptor desc = new PropertyDescriptor(path[path.length - 1], obj.getClass());
-                            if (desc == null || desc.getWriteMethod() == null) break;
+                            if (desc == null || desc.getWriteMethod() == null)
+                                break;
                             Object value = mapper.readValue(mapper.writeValueAsString(map.get(key)), desc.getPropertyType());
                             desc.getWriteMethod().invoke(obj, value);
                             iterator.remove();
                         } catch (IntrospectionException ex) {
-                            throw new RuntimeException(object.getClass().getName() + "." + key + ": No such property " + path[path.length - 1], ex);
+                            throw new SystemException(object.getClass().getName() + "." + key + NO_SUCH_PROPERTY + path[path.length - 1], ex);
                         }
                     }
                 }
             }
 
-            if (applicableKeys.size() > 0) {
-                logger.warn("object " + object.getClass() + " do not have properties: " + applicableKeys);
+            if (!applicableKeys.isEmpty()) {
+                logger.warn("object {} do not have properties: {}", object.getClass().getName(), applicableKeys);
             }
 
         } catch (Exception e) {
-            throw logger.runtimeException(e);
+            throw logger.systemException(e);
         }
     }
 
@@ -495,9 +542,12 @@ public class Configuration extends LinkedHashMap<String, Object> {
     // reformatMap would remove references from an nested map and convert it to dot notation because
     // when de-serializing a map into an object, a reference would cause the serialization to failed since
     // we rely on ObjectMapper to convert a map into an object and it would not know what to do with a reference.
-    private void reformatMap(String prefix,  Map<String, Object> map, Map<String, List<Reference>> substitutions) {
-        if (prefix != null) prefix = prefix.trim();
-        if (prefix == null) prefix = "";
+    private void reformatMap(String prefixArg,  Map<String, Object> map, Map<String, List<Reference>> substitutions) {
+        String prefix = prefixArg;
+        if (prefix != null)
+            prefix = prefix.trim();
+        if (prefix == null)
+            prefix = "";
 
         List<String> toBeRemoved = new ArrayList<>();
         for (Map.Entry<String, Object> entry : map.entrySet()) {
@@ -508,9 +558,9 @@ public class Configuration extends LinkedHashMap<String, Object> {
                     String lookup = value.substring(1).trim();
                     Reference reference = new Reference(entry.getKey(), lookup);
                     List<Reference> referenceList = null;
-                    if (prefix.equals("")) {
+                    if ("".equals(prefix)) {
                         if (entryKey.contains(".")) {
-                            int lastIndex = entryKey.lastIndexOf(".");
+                            int lastIndex = entryKey.lastIndexOf('.');
                             String owner = entryKey.substring(0, lastIndex);
                             String key = entryKey.substring(lastIndex + 1);
                             reference = new Reference(key, lookup);
@@ -525,10 +575,14 @@ public class Configuration extends LinkedHashMap<String, Object> {
                     toBeRemoved.add(entry.getKey());
                 }
             } else if (entry.getValue() instanceof  Map) {
-                if (!prefix.equals("")) prefix += ".";
-                reformatMap(prefix + entry.getKey(), (Map) entry.getValue(), substitutions);
+                StringBuilder builder = new StringBuilder();
+                builder.append(prefix);
+                if (!"".equals(prefix))
+                    builder.append(".");
+                builder.append(entry.getKey());
+                reformatMap(builder.toString(), (Map) entry.getValue(), substitutions);
             } else if (entry.getValue() instanceof  Collection) {
-                // todo
+                // we don't support collection yet.
             }
         }
 
@@ -556,7 +610,8 @@ public class Configuration extends LinkedHashMap<String, Object> {
                     value = value.substring(1);
                 }
                 BigDecimal decimal = new BigDecimal(value);
-                if (sign > 0) return decimal;
+                if (sign > 0)
+                    return decimal;
                 else return decimal.negate();
 
             }
@@ -571,6 +626,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
         }
     }
 
+    @FunctionalInterface
     public interface Resolver {
         Object resolve(String key);
     }

@@ -21,6 +21,7 @@ package net.e6tech.elements.common.resources;
  * If an Object implemented this interface, the methods would be called
  * during resources.inject
  */
+@FunctionalInterface
 public interface InjectionListener {
     default void preInject(ResourcePool r) {}
     void injected(ResourcePool r);

@@ -27,13 +27,13 @@ public class PluginPath<T> {
     private Class<T> type;
     private String name;
 
-    public static <T> PluginPath<T> of(Class<T> cls, String name) {
-        return new PluginPath<T>(cls, name);
-    }
-
     protected PluginPath(Class<T> cls, String name) {
         this.type = cls;
         this.name = name;
+    }
+
+    public static <T> PluginPath<T> of(Class<T> cls, String name) {
+        return new PluginPath<>(cls, name);
     }
 
     public Class<T> getType() {
@@ -53,13 +53,13 @@ public class PluginPath<T> {
     }
 
     public <R> PluginPath<R> and(Class<R> cls, String name) {
-        PluginPath<R> child = new PluginPath<R>(cls, name);
+        PluginPath<R> child = new PluginPath<>(cls, name);
         child.parent = this;
         return child;
     }
 
     public <R> PluginPath<R> and(Class<R> cls) {
-        PluginPath<R> child = new PluginPath<R>(cls, null);
+        PluginPath<R> child = new PluginPath<>(cls, null);
         child.parent = this;
         return child;
     }

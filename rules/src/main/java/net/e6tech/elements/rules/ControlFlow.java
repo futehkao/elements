@@ -19,6 +19,7 @@ package net.e6tech.elements.rules;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S00115")
 public enum ControlFlow {
     Success,
     Continue,

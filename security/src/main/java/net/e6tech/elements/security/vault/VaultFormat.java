@@ -17,6 +17,8 @@ limitations under the License.
 
 package net.e6tech.elements.security.vault;
 
+import net.e6tech.elements.common.util.SystemException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -24,9 +26,9 @@ import java.util.Map;
  * Created by futeh on 1/4/16.
  */
 public class VaultFormat {
-    public static final String VERSION = "1.0";
+    public static final String CURRENT_VERSION = "1.0";
 
-    private String version = VERSION;
+    private String version = CURRENT_VERSION;
     private Map<String, VaultImpl> vaults = new LinkedHashMap<>();
 
     public VaultFormat() {
@@ -53,8 +55,8 @@ public class VaultFormat {
     }
 
     public void checkVersion() {
-        if (getVaults().size() > 0) {
-            if (getVersion() == null || !VERSION.equals(getVersion())) throw new RuntimeException("Vault format version mismatch");
-        }
+        if (getVaults().size() > 0
+                && (getVersion() == null || !CURRENT_VERSION.equals(getVersion())))
+            throw new SystemException("Vault format version mismatch");
     }
 }

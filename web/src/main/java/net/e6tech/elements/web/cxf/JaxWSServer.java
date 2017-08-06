@@ -17,6 +17,7 @@ package net.e6tech.elements.web.cxf;
 
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.SystemException;
 import org.apache.cxf.interceptor.LoggingInInterceptor;
 import org.apache.cxf.interceptor.LoggingOutInterceptor;
 import org.apache.cxf.jaxws.JaxWsServerFactoryBean;
@@ -32,6 +33,7 @@ public class JaxWSServer extends CXFServer {
     Object implementor;
     Class serviceClass;
 
+    @Override
     public void initialize(Resources resources) {
         // code is based on http://cxf.apache.org/docs/a-simple-jax-ws-service.html
         // in Publishing your service
@@ -48,8 +50,8 @@ public class JaxWSServer extends CXFServer {
 
         try {
             initKeyStore();
-        } catch (Throwable th) {
-            throw new RuntimeException(th);
+        } catch (Exception th) {
+            throw new SystemException(th);
         }
 
         super.initialize(resources);
@@ -60,10 +62,11 @@ public class JaxWSServer extends CXFServer {
     }
 
     public void setImplementor(Object implementor) {
+        Object impl = implementor;
         if (implementor instanceof  String) {
-            implementor = Reflection.newInstance(implementor.toString(), null);
+            impl = Reflection.newInstance(implementor.toString(), null);
         }
-        this.implementor = implementor;
+        this.implementor = impl;
     }
 
     public Class getServiceClass() {

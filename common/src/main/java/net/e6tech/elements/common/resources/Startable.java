@@ -21,6 +21,7 @@ package net.e6tech.elements.common.resources;
  * Startable gets called after the owning ResourceManager has been loaded.  This is after all of
  * the Components have been loaded.
  */
+@FunctionalInterface
 public interface Startable {
     void start();
 }

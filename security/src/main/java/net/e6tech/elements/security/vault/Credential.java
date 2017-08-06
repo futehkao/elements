@@ -16,11 +16,11 @@ limitations under the License.
 
 package net.e6tech.elements.security.vault;
 
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.Terminal;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.SocketException;
 import java.util.Arrays;
 
 /**
@@ -56,48 +56,62 @@ public class Credential {
 
     public void run(String text) {
         Terminal term = new Terminal();
-        while (user == null || password == null) {
-            term.println(text);
-            user = term.readLine("Username:");
-            password = term.readPassword("Password:");
+        try {
+            while (user == null || password == null) {
+                term.println(text);
+                user = term.readLine("Username:");
+                password = term.readPassword("Password:");
+            }
+        } finally {
+            term.close();
         }
     }
 
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
     public void run(String text, int port) {
-        if (user != null && user.length() > 0 && password != null && password.length > 0) return;
-        Terminal term = new Terminal();
-        term.println(text);
+        if (user != null && user.length() > 0 && password != null && password.length > 0)
+            return;
         ServerSocket serverSocket = null;
         Terminal t = null;
-        try {
+        Exception exception = null;
+        try (Terminal term = new Terminal()) {
+            term.println(text);
             serverSocket = new ServerSocket(port);
             serverSocket.setReuseAddress(true);
             t = new Terminal(serverSocket);
             user = t.readLine("Username: ");
             password = t.readPassword("Password: ");
             while (user.length() == 0 || password.length == 0) {
-                if (user.length() == 0) t.println("user name is empty...try again\n");
-                else if (password.length == 0) t.println("password is empty...try again\n");
+                if (user.length() == 0)
+                    t.println("user name is empty...try again\n");
+                else if (password.length == 0)
+                    t.println("password is empty...try again\n");
                 user = t.readLine("Username:");
                 password = t.readPassword("Password:");
             }
         } catch (IOException e) {
             user = null;
             password = null;
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         } finally {
-            if (t != null) t.close();
-            if (serverSocket != null) try {
-                serverSocket.close();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            if (t != null)
+                t.close();
+            if (serverSocket != null)
+                try {
+                    serverSocket.close();
+                } catch (IOException e) {
+                    exception = e;
+                }
         }
+
+        if (exception != null)
+            throw new SystemException(exception);
     }
 
     public void clear() {
         user = null;
-        if (password != null) Arrays.fill(password, 'x');
+        if (password != null)
+            Arrays.fill(password, 'x');
     }
 
 }

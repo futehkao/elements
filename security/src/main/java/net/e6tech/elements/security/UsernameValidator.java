@@ -19,11 +19,14 @@ import java.util.regex.Pattern;
 
 public class UsernameValidator {
     public static final String USERNAME_PATTERN = "^[a-z0-9._-]{8,32}$";
-
     private static Pattern pattern = Pattern.compile(USERNAME_PATTERN);
 
+    private UsernameValidator() {
+    }
+
     public static boolean validate(String username) {
-        if ((username == null) || (username.length() == 0)) return false;
+        if ((username == null) || (username.length() == 0))
+            return false;
         return pattern.matcher(username).matches();
     }
 }

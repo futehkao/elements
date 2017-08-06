@@ -20,7 +20,7 @@ import java.math.BigDecimal;
 /**
  * Created by futeh.
  */
-abstract public class Calculate {
+public abstract class Calculate {
 
     Class dataType;
     long initLong = 0;
@@ -42,17 +42,18 @@ abstract public class Calculate {
     abstract double calculateDouble(double current, double value);
     abstract BigDecimal calculateBigDecimal(BigDecimal current, BigDecimal value);
 
+    @SuppressWarnings({"squid:S3776", "squid:MethodCyclomaticComplexity"})
     public BigDecimal calculate(Iterable iterable) {
         BigDecimal result = null;
         if (dataType.isAssignableFrom(Integer.class)
                 || dataType.isAssignableFrom(Long.class)
                 || dataType.isAssignableFrom(Short.class)
-                || dataType.isAssignableFrom(Integer.class)
                 || dataType.isAssignableFrom(Byte.class)) {
             long value = initLong;
             for (Object obj : iterable) {
                 Number number = (Number) obj;
-                if (number != null) value = calculateLong(value, number.longValue());
+                if (number != null)
+                    value = calculateLong(value, number.longValue());
             }
             result = new BigDecimal(value);
         } else if (dataType.isAssignableFrom(Float.class)
@@ -60,14 +61,16 @@ abstract public class Calculate {
             double value = initDouble;
             for (Object obj : iterable) {
                 Number number = (Number) obj;
-                if (number != null) value = calculateDouble(value, number.doubleValue());
+                if (number != null)
+                    value = calculateDouble(value, number.doubleValue());
             }
-            result = new BigDecimal(value);
+            result = BigDecimal.valueOf(value);
         } else if (dataType.isAssignableFrom(BigDecimal.class)) {
             BigDecimal value = initBigDecimal;
             for (Object obj : iterable) {
                 BigDecimal number = (BigDecimal) obj;
-                if (number != null) value = calculateBigDecimal(value, number);
+                if (number != null)
+                    value = calculateBigDecimal(value, number);
             }
             result = value;
         }

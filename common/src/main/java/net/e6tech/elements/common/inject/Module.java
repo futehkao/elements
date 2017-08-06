@@ -23,21 +23,24 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by futeh.
  */
 public interface Module {
 
-    default Type[] getBindClass(Class cls) {
-        Class c = cls;
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:CommentedOutCodeLine"})
+    default Type[] getBindClass(Class<?> cls) {
+        Objects.requireNonNull(cls);
+        Class<?> c = cls;
         Class prev = cls;
         Class bindClass = cls;
         List<Type> list = new ArrayList<>();
         list.add(cls);
         boolean found = false;
         while (c != null && !c.equals(Object.class)) {
-            BindClass bind = (BindClass) c.getAnnotation(BindClass.class);
+            BindClass bind = c.getAnnotation(BindClass.class);
             if (bind != null) {
                 if (bind.generics()) {
                     found = true;
@@ -59,14 +62,16 @@ public interface Module {
                 // for example, new CacheFacade<String, SecretKey>(KeyServer, "clientKeys") {}
                 list.add(bindClass.getGenericSuperclass());
             } else {
-                if (!bindClass.equals(cls)) list.add(bindClass);
+                if (!bindClass.equals(cls))
+                    list.add(bindClass);
             }
         }
 
         Iterator<Type> iterator = list.iterator();
         while (iterator.hasNext()) {
             Type type = iterator.next();
-            if (type instanceof Class && ((Class) type).isSynthetic()) iterator.remove();
+            if (type instanceof Class && ((Class) type).isSynthetic())
+                iterator.remove();
         }
 
         return list.toArray(new Type[list.size()]);

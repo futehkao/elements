@@ -29,6 +29,7 @@ import java.io.File;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("all") // this is a test.
 public class WorkerPoolTest {
 
     @Test

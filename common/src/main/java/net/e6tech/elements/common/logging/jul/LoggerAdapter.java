@@ -26,6 +26,7 @@ import java.util.logging.LogRecord;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S00122")
 public class LoggerAdapter extends java.util.logging.Logger {
 
     net.e6tech.elements.common.logging.Logger logger;
@@ -53,7 +54,14 @@ public class LoggerAdapter extends java.util.logging.Logger {
     }
 
     public void log(Level level, String message, Object[] parameters, Throwable th) {
-        log(level, message, th);
+        if (th != null) {
+            Object[] param = new Object[parameters.length + 1];
+            System.arraycopy(parameters, 0, param, 0, parameters.length);
+            param[parameters.length] = th;
+            log(level, message, param);
+        } else {
+            log(level, message, parameters);
+        }
     }
 
     @Override
@@ -69,7 +77,7 @@ public class LoggerAdapter extends java.util.logging.Logger {
     }
 
     @Override
-    public void setLevel(final Level newLevel) throws SecurityException {
+    public void setLevel(final Level newLevel) {
         throw new UnsupportedOperationException("Cannot set level through log4j-api");
     }
 
@@ -144,54 +152,35 @@ public class LoggerAdapter extends java.util.logging.Logger {
         log(level, msg, thrown);
     }
 
-    /* Deprecated
-    @Override
-    public void logrb(final Level level, final String sourceClass, final String sourceMethod, final String bundleName,
-                      final String msg) {
-        log(level, msg);
-    }
-
-    @Override
-    public void logrb(final Level level, final String sourceClass, final String sourceMethod, final String bundleName,
-                      final String msg, final Object param1) {
-        log(level, msg, param1);
-    }
-
-    @Override
-    public void logrb(final Level level, final String sourceClass, final String sourceMethod, final String bundleName,
-                      final String msg, final Object[] params) {
-        log(level, msg, params);
-    }
-
-    @Override
-    public void logrb(final Level level, final String sourceClass, final String sourceMethod, final String bundleName,
-                      final String msg, final Throwable thrown) {
-        log(level, msg, thrown);
-    }*/
-
     @Override
     public void entering(final String sourceClass, final String sourceMethod) {
-
+        // do nothing
     }
 
     @Override
     public void entering(final String sourceClass, final String sourceMethod, final Object param1) {
+        // do nothing
     }
+
 
     @Override
     public void entering(final String sourceClass, final String sourceMethod, final Object[] params) {
+        // do nothing
     }
 
     @Override
     public void exiting(final String sourceClass, final String sourceMethod) {
+        // do nothing
     }
 
     @Override
     public void exiting(final String sourceClass, final String sourceMethod, final Object result) {
+        // do nothing
     }
 
     @Override
     public void throwing(final String sourceClass, final String sourceMethod, final Throwable thrown) {
+        // do nothing
     }
 
     @Override

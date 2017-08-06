@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S00112", "squid:S1149"})
 public class Watcher implements InvocationHandler {
     protected static Logger logger = Logger.getLogger();
     private static ThreadLocal<Stack<Long>> gracePeriod = new ThreadLocal<>();
@@ -36,11 +37,17 @@ public class Watcher implements InvocationHandler {
     private long longTransaction = 200L;
     private AtomicInteger ignoreInitialLongTransactions;
 
+    public Watcher(Object target) {
+        this.target = target;
+    }
+
     // disable long transaction monitoring if time is greater than longTransaction
     public static void addGracePeriod(long time) {
-        if (!logger.isDebugEnabled()) return;
+        if (!logger.isDebugEnabled())
+            return;
         Stack<Long> stack = gracePeriod.get();
-        if (stack == null) return;
+        if (stack == null)
+            return;
         for (int i = 0; i < stack.size(); i++) {
             long existing = stack.get(i);
             stack.set(i, existing + time);
@@ -48,35 +55,35 @@ public class Watcher implements InvocationHandler {
     }
 
     protected static long getGracePeriod() {
-        if (!logger.isDebugEnabled()) return 0l;
+        if (!logger.isDebugEnabled())
+            return 0l;
         Stack<Long> stack = gracePeriod.get();
-        if (stack == null) return 0L;
+        if (stack == null)
+            return 0L;
         return stack.peek();
     }
 
     protected static void clearGracePeriod() {
-        if (!logger.isDebugEnabled()) return;
+        if (!logger.isDebugEnabled())
+            return;
         Stack<Long> stack = gracePeriod.get();
         if (stack != null) {
             stack.pop();
-            if (stack.size() == 0) {
+            if (stack.isEmpty()) {
                 gracePeriod.remove();
             }
         }
     }
 
     protected static void initGracePeriod() {
-        if (!logger.isDebugEnabled()) return;
+        if (!logger.isDebugEnabled())
+            return;
         Stack<Long> stack = gracePeriod.get();
         if (stack == null) {
             stack = new Stack<>();
             gracePeriod.set(stack);
         }
         stack.push(0l);
-    }
-
-    public Watcher(Object target) {
-        this.target = target;
     }
 
     public long getLongTransaction() {
@@ -121,12 +128,14 @@ public class Watcher implements InvocationHandler {
         }
     }
 
+    @SuppressWarnings("squid:S1172")
     public Object doInvoke(Object proxy, Method method, Object[] args) throws Throwable {
 
         long start = System.currentTimeMillis();
         try {
             return method.invoke(target, args);
         } catch(InvocationTargetException ex) {
+            Logger.suppress(ex);
             throw ex.getCause();
         } finally {
             long duration = System.currentTimeMillis() - start;
@@ -134,6 +143,7 @@ public class Watcher implements InvocationHandler {
         }
     }
 
+    @SuppressWarnings("squid:S1172")
     protected void log(Method method, Object[] args, long duration) {
         if (!logger.isDebugEnabled() || duration < longTransaction + getGracePeriod()) {
             if (duration >= longTransaction) {
@@ -155,10 +165,12 @@ public class Watcher implements InvocationHandler {
         builder.append("Long transaction: " + duration + "ms. Method called=" + method.getName() + "\n");
 
         for (int i = 3; i < 20; i++) {
-            if (i == trace.length) break;
+            if (i == trace.length)
+                break;
             builder.append("\tat " + trace[i] + "\n");
         }
-        if (trace.length > 20) builder.append("...\n");
+        if (trace.length > 20)
+            builder.append("...\n");
         logger.debug(builder.toString());
 
     }

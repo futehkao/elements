@@ -25,6 +25,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
  * Created by futeh.
  */
 public class ObjectMapperFactory {
+    private ObjectMapperFactory() {
+    }
+
     public static ObjectMapper newInstance() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);

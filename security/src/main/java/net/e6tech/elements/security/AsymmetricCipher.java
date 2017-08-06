@@ -15,6 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.security;
 
+import net.e6tech.elements.common.util.SystemException;
+
 import javax.crypto.Cipher;
 import java.security.*;
 import java.util.Base64;
@@ -24,23 +26,15 @@ import java.util.Base64;
  */
 public class AsymmetricCipher {
 
-    static {
-        SymmetricCipher.initialize();
-    }
-
-    public static AsymmetricCipher getInstance(String algorithm) {
-        if ("RSA".equalsIgnoreCase(algorithm)) {
-            return new AsymmetricCipher("RSA");
-        } else {
-            throw new IllegalArgumentException(algorithm + " is not supported");
-        }
-    }
-
     private String algorithm;
     private String transformation;
     private int keyLength = 2048;
     private boolean base64 = false;
     private KeyFactory keyFactory;
+
+    static {
+        SymmetricCipher.initialize();
+    }
 
     protected AsymmetricCipher(String algorithm) {
         this.algorithm = algorithm;
@@ -48,7 +42,15 @@ public class AsymmetricCipher {
         try {
             this.keyFactory = KeyFactory.getInstance(algorithm);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
+        }
+    }
+
+    public static AsymmetricCipher getInstance(String algorithm) {
+        if ("RSA".equalsIgnoreCase(algorithm)) {
+            return new AsymmetricCipher("RSA");
+        } else {
+            throw new IllegalArgumentException(algorithm + " is not supported");
         }
     }
 
@@ -90,10 +92,7 @@ public class AsymmetricCipher {
     public KeyPair generateKeySpec() throws GeneralSecurityException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "BC");
         kpg.initialize(keyLength);
-        KeyPair kp = kpg.genKeyPair();
-        // RSAPublicKeySpec publicKey = kp.getPublic();
-        // RSAPrivateKeySpec privateKey = kp.getPrivate();
-        return kp;
+        return kpg.genKeyPair();
     }
 
     public KeyFactory getKeyFactory() {

@@ -23,6 +23,7 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.Notification;
 import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.SystemException;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -34,6 +35,7 @@ import java.util.function.Consumer;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S1845", "squid:S3776"})
 public class Atom implements Map<String, Object> {
     private static Logger logger = Logger.getLogger();
     private static final String WAIT_FOR = "waitFor";
@@ -73,9 +75,7 @@ public class Atom implements Map<String, Object> {
                 resources.configurator.putAll(configuration);
             }
         });
-        directives.put(WAIT_FOR, (key, value) -> {
-            (new MyBeanListener()).invokeMethod(key, new Object[]{value});
-        });
+        directives.put(WAIT_FOR, (key, value) -> (new MyBeanListener()).invokeMethod(key, new Object[]{value}));
         directives.put(PRE_INIT, put);
         directives.put(POST_INIT, put);
         directives.put(AFTER, (key, value) -> runAfter(value));
@@ -88,6 +88,7 @@ public class Atom implements Map<String, Object> {
                     resourceManager.exec(((List) value).toArray(new Object[0]));
                 }
             } catch (RuntimeException e) {
+                logger.trace(e.getMessage(), e);
                 throw new NestedScriptException(e.getCause());
             }
         });
@@ -96,7 +97,8 @@ public class Atom implements Map<String, Object> {
     public Atom(ResourceManager resourceManager, Atom prototype) {
         this(resourceManager);
 
-        if (prototype == null) return;
+        if (prototype == null)
+            return;
         if (!prototype.isPrototype())
             throw new IllegalArgumentException("Atom named " + prototype.getName() + " is not a prototype.");
         resources = prototype.resources;
@@ -142,12 +144,13 @@ public class Atom implements Map<String, Object> {
         try {
             (new InitialContext()).bind(key, value);
         } catch (NamingException e) {
-            throw logger.runtimeException(e);
+            throw logger.systemException(e);
         }
     }
 
     public Map<String, Object> getConfiguration() {
-        if (configuration == null) return null;
+        if (configuration == null)
+            return null;
         return Collections.unmodifiableMap(configuration);
     }
 
@@ -175,16 +178,17 @@ public class Atom implements Map<String, Object> {
         // when a config string begin with ^, it is turned into a closure.  The expression is
         // then executed in configuration.annotate.
         configuration.configure(obj, prefix,
-                (str) -> {
+                str -> {
                     try {
                         Closure closure = (Closure) resourceManager.getScripting().eval("{ it ->" + str + " }");
                         closure.setDelegate(this);
                         closure.setResolveStrategy(Closure.DELEGATE_FIRST);
                         return closure.call(obj);
                     } catch (MissingPropertyException e) {
+                        logger.trace(e.getMessage(), e);
                         return null;
                     } catch (ScriptException e) {
-                        throw new RuntimeException(e);
+                        throw new SystemException(e);
                     }
                 },
                 (value, toType, instance) -> {
@@ -198,6 +202,7 @@ public class Atom implements Map<String, Object> {
                 });
     }
 
+    @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity"})
     public Atom build() {
         long start = System.currentTimeMillis();
         if (configuration != null) {
@@ -227,14 +232,15 @@ public class Atom implements Map<String, Object> {
             resourceManager.runNow(this, obj);
         }
 
-        for (String key : boundInstances.keySet()) {
-            Object value = boundInstances.get(key);
-            if (beanLifecycle.isBeanInitialized(value)) continue;
+        for (Map.Entry<String, Object> entry : boundInstances.entrySet()) {
+            Object value = entry.getValue();
+            if (beanLifecycle.isBeanInitialized(value))
+                continue;
             if (value instanceof Initializable) {
                 ((Initializable) value).initialize(resources);
             }
             if (!resourceManager.getScripting().isRunnable(value)) {
-                beanLifecycle.fireBeanInitialized(key, value);
+                beanLifecycle.fireBeanInitialized(entry.getKey(), value);
             }
         }
 
@@ -248,35 +254,33 @@ public class Atom implements Map<String, Object> {
         if (boundInstances.size() > 0) {
             RunStartable runStartable = new RunStartable(resourceManager);
             runStartable.name = getName();
-            for (String key : boundInstances.keySet()) {
-                Object value = boundInstances.get(key);
-                if (value instanceof Startable) {
-                    runStartable.add(key, (Startable) value);
+            for (Map.Entry<String, Object> entry : boundInstances.entrySet()) {
+                if (entry.getValue() instanceof Startable) {
+                    runStartable.add(entry.getKey(), (Startable) entry.getValue());
                 }
             }
-            if (runStartable.startables.size() > 0) resourceManager.runAfter(runStartable);
+            if (!runStartable.startables.isEmpty())
+                resourceManager.runAfter(runStartable);
         }
 
         // running object that implements OnLaunched
         RunLaunched runLaunched = new RunLaunched(resourceManager.getInstance(Provision.class));
         if (boundInstances.size() > 0) {
             runLaunched.name = getName();
-            for (String key : boundInstances.keySet()) {
-                Object value = boundInstances.get(key);
-                if (value instanceof LaunchListener) {
-                    runLaunched.add(key, (LaunchListener) value);
+            for (Map.Entry<String, Object> entry : boundInstances.entrySet()) {
+                if (entry.getValue() instanceof LaunchListener) {
+                    runLaunched.add(entry.getKey(), (LaunchListener) entry.getValue());
                 }
             }
-            /* runLaunched.add(getName(), (provision) -> {
-                cleanup();
-            }); */
-            if (runLaunched.listeners.size() > 0) resourceManager.runLaunched(runLaunched);
+
+            if (!runLaunched.listeners.isEmpty())
+                resourceManager.runLaunched(runLaunched);
         }
 
         // this only applies when the Atom is created outside of loading a script.
         resourceManager.runAfterIfNotLoading();
 
-        logger.info("Atom " + getName() + " loaded in " + (System.currentTimeMillis() - start) + "ms");
+        logger.info("Atom {} loaded in {}ms", getName(), (System.currentTimeMillis() - start));
 
         return this;
     }
@@ -297,13 +301,13 @@ public class Atom implements Map<String, Object> {
 
         public void run() {
             try {
-                for (String key : startables.keySet()) {
-                    Startable startable = startables.get(key);
+                for (Map.Entry<String, Startable> entry : startables.entrySet()) {
+                    Startable startable = entry.getValue();
                     if (!resourceManager.getBeanLifecycle().isBeanStarted(startable)) {
                         long s = System.currentTimeMillis();
                         startable.start();
-                        logger.info("Class " + startable.getClass() + " started in " + (System.currentTimeMillis() - s) + "ms");
-                        resourceManager.getBeanLifecycle().fireBeanStarted(key, startable);
+                        logger.info("Class {} started in {}ms", startable.getClass().getName(), (System.currentTimeMillis() - s));
+                        resourceManager.getBeanLifecycle().fireBeanStarted(entry.getKey(), startable);
                     }
                 }
             } catch (RuntimeException ex) {
@@ -328,11 +332,11 @@ public class Atom implements Map<String, Object> {
 
         public void run() {
             try {
-                for (String key : listeners.keySet()) {
-                    LaunchListener listener = listeners.get(key);
+                for (Map.Entry<String, LaunchListener> entry : listeners.entrySet()) {
+                    LaunchListener listener = entry.getValue();
                     if (!provision.getResourceManager().getBeanLifecycle().isBeanLaunched(listener)) {
                         listener.launched(provision);
-                        provision.getResourceManager().getBeanLifecycle().fireBeanLaunched(key, listener);
+                        provision.getResourceManager().getBeanLifecycle().fireBeanLaunched(entry.getKey(), listener);
                     }
                 }
             } catch (RuntimeException ex) {
@@ -354,21 +358,19 @@ public class Atom implements Map<String, Object> {
     }
 
     public Atom open(Consumer<Resources> consumer) {
-        Resources resources = null;
+        Resources res = null;
         try {
-            resources = resourceManager.open(null);
-            consumer.accept(resources);
+            res = resourceManager.open(null);
+            consumer.accept(res);
         } finally {
-            if (resources != null) try {
+            if (resources != null)
                 resources.commit();
-            } catch (Throwable th) {
-            }
         }
         return this;
     }
 
     public <T> T getInstance(Class<T> cl) {
-        return (T) resources.getInstance(cl);
+        return resources.getInstance(cl);
     }
 
     /**
@@ -476,12 +478,14 @@ public class Atom implements Map<String, Object> {
     }
 
     @Override
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
     public Object get(Object key) {
 
         if (key instanceof String && ((String) key).contains(".")) {
             String[] path = ((String) key).split("\\.");
             Object obj = get(path[0].trim());
-            for (int i = 1; i < path.length; i++) obj = Reflection.getProperty(obj, path[i].trim());
+            for (int i = 1; i < path.length; i++)
+                obj = Reflection.getProperty(obj, path[i].trim());
             return obj;
         }
 
@@ -505,6 +509,7 @@ public class Atom implements Map<String, Object> {
                 try {
                     object = resources.getInstance((Class) key);
                 } catch (InstanceNotFoundException ex) {
+                    Logger.suppress(ex);
                     object = resourceManager.getBean((Class) key);
                 }
             } else {
@@ -529,13 +534,14 @@ public class Atom implements Map<String, Object> {
                 if (existing == value) {
                     // ok ignore
                 } else {
-                    throw logger.runtimeException("bean with name=" + name + " already registered");
+                    throw logger.systemException("bean with name=" + name + " already registered");
                 }
             }
         }
     }
 
     @Override
+    @SuppressWarnings({"squid:S1141", "squid:S134", "squid:MethodCyclomaticComplexity"})
     public Object put(String key, Object value) {
         // NOTE: at this point resources is mostly likely not open so that inject won't work
         Object instance = null;
@@ -571,7 +577,7 @@ public class Atom implements Map<String, Object> {
                             }
                         }
                     } catch (Exception e) {
-                        throw logger.runtimeException(e);
+                        throw logger.systemException(e);
                     }
                 } else {
                     // creating an instance from Class
@@ -586,13 +592,13 @@ public class Atom implements Map<String, Object> {
                             instance = cls.newInstance();
                         }
                     } catch (InstantiationException | IllegalAccessException e) {
-                        throw logger.runtimeException(e);
+                        throw logger.systemException(e);
                     }
 
                     registerBean(key, instance);
 
                     if (instance == null) {
-                        throw new RuntimeException("Cannot instantiate " + value);
+                        throw new SystemException("Cannot instantiate " + value);
                     }
                     resources.rebind(cls, instance);
                 }
@@ -636,23 +642,25 @@ public class Atom implements Map<String, Object> {
 
             if (!duplicate) {
                 // the below is to apply closure to instance.
-                if (instance != null && !resourceManager.getScripting().isRunnable(instance)) {  // make sure instance is not a closure itself
-                    // instance is not null (but closure is). See if there is a closure already in
+                if (instance != null
+                        && !resourceManager.getScripting().isRunnable(instance)                 // make sure instance is not a closure itself
+                        && resourceManager.getScripting().isRunnable(boundInstances.get(key))   // See if there is a closure already in
                     // boundInstances and applies it to the instance.
-                    if (resourceManager.getScripting().isRunnable(boundInstances.get(key))) {
-                        Object closure = boundInstances.get(key);
-                        resourceManager.runNow(instance, closure);
-                    }
+                        ) {
+                    Object closure = boundInstances.get(key);
+                    resourceManager.runNow(instance, closure);
                 }
 
                 if (instance != null) {
                     if (instance instanceof ClassBeanListener) {
                         ClassBeanListener l = (ClassBeanListener) instance;
-                        for (Class cl : l.listenFor()) beanLifecycle.addBeanListener(cl, l);
+                        for (Class cl : l.listenFor())
+                            beanLifecycle.addBeanListener(cl, l);
                     }
                     if (instance instanceof NamedBeanListener) {
                         NamedBeanListener l = (NamedBeanListener) instance;
-                        for (String beanName : l.listenFor()) beanLifecycle.addBeanListener(beanName, l);
+                        for (String beanName : l.listenFor())
+                            beanLifecycle.addBeanListener(beanName, l);
                     }
                     boundInstances.put(key, instance);
                 }
@@ -661,9 +669,9 @@ public class Atom implements Map<String, Object> {
         } catch (NestedScriptException th) {
             // no logging as it is done by the nested script.
             throw th;
-        } catch (Throwable th) {
+        } catch (Exception th) {
             logger.error("Component name=" + getName() + " has issues", th);
-            throw new RuntimeException(th);
+            throw new SystemException(th);
         }
 
         return instance;
@@ -676,8 +684,8 @@ public class Atom implements Map<String, Object> {
 
     @Override
     public void putAll(Map<? extends String, ?> m) {
-        for (String key : m.keySet()) {
-            put(key, m.get(key));
+        for (Map.Entry<? extends String, ?> entry : m.entrySet()) {
+            put(entry.getKey(), entry.getValue());
         }
     }
 
@@ -732,6 +740,7 @@ public class Atom implements Map<String, Object> {
     class MyBeanListener extends GroovyObjectSupport {
 
         // name is the name of the bean
+        @Override
         public Object invokeMethod(String name, Object args) {
             Object[] arguments = (Object[]) args;
             Closure closure = (Closure) arguments[0];

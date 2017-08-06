@@ -15,8 +15,10 @@ limitations under the License.
 */
 package net.e6tech.elements.web.security.vault.client;
 
-import net.e6tech.elements.common.resources.Startable;
 import net.e6tech.elements.common.cache.CacheFacade;
+import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.Startable;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.restful.RestfulClient;
 import net.e6tech.elements.security.AsymmetricCipher;
 import net.e6tech.elements.security.SymmetricCipher;
@@ -25,10 +27,8 @@ import net.e6tech.elements.security.vault.Credential;
 
 import javax.crypto.SecretKey;
 import javax.ws.rs.NotAuthorizedException;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
-import java.net.ServerSocket;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.spec.RSAPublicKeySpec;
@@ -39,6 +39,8 @@ import static net.e6tech.elements.security.vault.Constants.mapper;
  * Created by futeh.
  */
 public class KeyClient implements Startable {
+
+    private static final String UTF8_ENCODING = "UTF-8";
 
     private AsymmetricCipher asym = AsymmetricCipher.getInstance("RSA");
     private SymmetricCipher sym = SymmetricCipher.getInstance("AES");
@@ -91,7 +93,8 @@ public class KeyClient implements Startable {
     }
 
     public void start() {
-        if (started) return;
+        if (started)
+            return;
         started = true;
 
         cachedSecretKeys = new CacheFacade<String, SecretKey>("secretKeys") {};
@@ -116,10 +119,10 @@ public class KeyClient implements Startable {
             publicKey = asym.getKeyFactory().generatePublic(publicKeySpec);
             clientKey = asym.encrypt(publicKey, secretKey.getEncoded());
         } catch (Throwable e) {
+            Logger.suppress(e);
             throw new NotAuthorizedException("Unable to authenticate with keyserver at " + address);
         }
 
-        ServerSocket serverSocket = null;
         try{
             if (credential == null) {
                 credential = new Credential();
@@ -135,13 +138,7 @@ public class KeyClient implements Startable {
             obfuscatedPassword = sym.encrypt(secretKey, buffer, null);
             authorize(user, credential.getPassword());
         } catch(Exception ex){
-            throw new RuntimeException(ex);
-        } finally {
-            if (serverSocket != null) try {
-                serverSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            throw new SystemException(ex);
         }
     }
 
@@ -151,11 +148,12 @@ public class KeyClient implements Startable {
                 try {
                     Thread.sleep(renewInterval);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
                 }
                 try {
                     renew();
                 } catch (GeneralSecurityException e) {
+                    Logger.suppress(e);
                     reAuthorize();
                 }
             }
@@ -173,7 +171,7 @@ public class KeyClient implements Startable {
             }
             authorize(user, chars);
         } catch (GeneralSecurityException e1) {
-            throw new RuntimeException(e1);
+            throw new SystemException(e1);
         }
     }
 
@@ -184,7 +182,7 @@ public class KeyClient implements Startable {
         String ret = submit(auth);
         byte[] result = decryptResult(ret);
         try {
-            token = new String(result, "UTF-8");
+            token = new String(result, UTF8_ENCODING);
         } catch (UnsupportedEncodingException e) {
             throw new GeneralSecurityException(e);
         }
@@ -200,7 +198,7 @@ public class KeyClient implements Startable {
         String ret = submit(request);
         byte[] result = decryptResult(ret);
         try {
-            token = new String(result, "UTF-8");
+            token = new String(result, UTF8_ENCODING);
         } catch (UnsupportedEncodingException e) {
             throw new GeneralSecurityException(e);
         }
@@ -237,13 +235,13 @@ public class KeyClient implements Startable {
             request.setIv(iv);
             String ret = submit(request);
             try {
-                return new String(decryptResult(ret), "UTF-8");
+                return new String(decryptResult(ret), UTF8_ENCODING);
             } catch (UnsupportedEncodingException e) {
                 throw new GeneralSecurityException(e);
             }
         } else {
-            SecretKey secretKey = getSecretKey(key);
-            return sym.encrypt(secretKey, data, iv);
+            SecretKey skey = getSecretKey(key);
+            return sym.encrypt(skey, data, iv);
         }
     }
 
@@ -258,12 +256,12 @@ public class KeyClient implements Startable {
             String ret = submit(request);
             return decryptResult(ret);
         } else {
-            SecretKey secretKey = getSecretKey(key);
-            return sym.decrypt(secretKey, secret, iv);
+            SecretKey skey = getSecretKey(key);
+            return sym.decrypt(skey, secret, iv);
         }
     }
 
-    private SecretKey getSecretKey(String key) throws GeneralSecurityException {
+    private SecretKey getSecretKey(String key) {
         return cachedSecretKeys.get(key, ()-> {
             byte[] keyBytes = decrypt(key);
             return sym.getKeySpec(keyBytes);
@@ -282,10 +280,11 @@ public class KeyClient implements Startable {
     private String submit(Action action) throws GeneralSecurityException {
         Request request = new Request();
         request.setAction(action.getType());
-        if (!(action instanceof Authenticate)) action.setToken(token);
+        if (!(action instanceof Authenticate))
+            action.setToken(token);
         String encryptedData = null;
         try {
-            encryptedData = sym.encrypt(secretKey, mapper.writeValueAsString(action).getBytes("UTF-8"), null);
+            encryptedData = sym.encrypt(secretKey, mapper.writeValueAsString(action).getBytes(UTF8_ENCODING), null);
         } catch (Exception e) {
             throw new GeneralSecurityException(e);
         }
@@ -321,6 +320,7 @@ public class KeyClient implements Startable {
             return mapper.readValue(value, cls);
         } catch (UnsupportedEncodingException e) {
             // impossible
+            Logger.suppress(e);
             return null;
         } catch (Exception e) {
             throw new GeneralSecurityException(e);
@@ -328,7 +328,8 @@ public class KeyClient implements Startable {
     }
 
     private void checkToken() throws GeneralSecurityException {
-        if (token == null) throw new GeneralSecurityException("Not authenticated");
+        if (token == null)
+            throw new GeneralSecurityException("Not authenticated");
     }
 
 }

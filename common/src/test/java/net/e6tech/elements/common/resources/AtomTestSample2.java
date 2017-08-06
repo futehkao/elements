@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.common.resources;
 
-import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
 
 /**
  * Created by futeh.

@@ -30,7 +30,7 @@ import java.util.Map;
  */
 public class Response implements Serializable {
     private static final long serialVersionUID = 775319303475963086L;
-    public static ObjectMapper mapper = new ObjectMapper();
+    public static final ObjectMapper mapper = new ObjectMapper();
     static {
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
         mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -67,8 +67,9 @@ public class Response implements Serializable {
     }
 
     public <T> T read(Class<T> cls) throws IOException {
-        if (cls.isAssignableFrom(String.class)) return (T) result;
-        return (T) mapper.readValue(result, cls);
+        if (cls.isAssignableFrom(String.class))
+            return (T) result;
+        return mapper.readValue(result, cls);
     }
 
     public String toString() {
@@ -76,9 +77,6 @@ public class Response implements Serializable {
     }
 
     public boolean isSuccess() {
-        if (getResponseCode() < 200 || getResponseCode() > 202) {
-            return false;
-        }
-        return true;
+        return ! (getResponseCode() < 200 || getResponseCode() > 202);
     }
 }

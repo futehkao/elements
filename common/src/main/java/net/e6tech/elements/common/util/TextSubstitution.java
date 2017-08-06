@@ -17,6 +17,8 @@ limitations under the License.
 
 package net.e6tech.elements.common.util;
 
+import net.e6tech.elements.common.logging.Logger;
+
 import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
 import java.io.IOException;
@@ -69,7 +71,8 @@ public class TextSubstitution {
     }
 
     public String build(Object binding) {
-        if (template == null) return "";
+        if (template == null)
+            return "";
         String text = template;
         for (Map.Entry<String, Var> entry : variables.entrySet()) {
             Var var = entry.getValue();
@@ -82,15 +85,17 @@ public class TextSubstitution {
         return text.replace("${" + key + "}", value);
     }
 
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135"})
     private void parseVariableNames(String text) {
         variables.clear();
         List<String> expressions = new LinkedList<>();
-        int pos = 0, max = text.length();
+        int pos = 0;
+        int max = text.length();
         while (pos < max) {
             pos = text.indexOf("${", pos);
             if (pos == -1)
                 break;
-            int end = text.indexOf("}", pos + 2);
+            int end = text.indexOf('}', pos + 2);
             if (end == -1)
                 break;
             String name = text.substring(pos + 2, end);
@@ -110,7 +115,7 @@ public class TextSubstitution {
                     strategy = ":+";
                 }
             } else if (expression.contains(":")) {
-                int index = expression.indexOf(":");
+                int index = expression.indexOf(':');
                 if (index >= 0) {
                     key = expression.substring(0, index).trim();
                     defVal = expression.substring(index + 1);
@@ -137,15 +142,15 @@ public class TextSubstitution {
                 }
             }
             String trailingSpaces = "";
-            if (index < key.length()) trailingSpaces = key.substring(index);
+            if (index < key.length())
+                trailingSpaces = key.substring(index);
 
             String[] tokens = key.split("\\.");
             Var var = declared.get(tokens[0]);
             if (var == null) {
-                // throw new IllegalArgumentException("Unrecognized variable: " + tokens[0]);
                 var = new Var(expression);
             } else {
-                var = var.clone();
+                var = new Var(var); // essentially clone var.
             }
 
             var.leading = leadingSpaces;
@@ -164,7 +169,7 @@ public class TextSubstitution {
         return name.substring(0, 1).toUpperCase(ENGLISH) + name.substring(1);
     }
 
-    private static class Var implements Cloneable {
+    private static class Var {
         String name;
         String leading;
         String trailing;
@@ -174,6 +179,15 @@ public class TextSubstitution {
 
         Var(String name) {
             this.name = name;
+        }
+
+        Var(Var var) {
+            this.name = var.name;
+            this.leading = var.leading;
+            this.trailing = var.trailing;
+            this.defaultValue = var.defaultValue;
+            this.strategy = var.strategy;
+            this.path = var.path;
         }
 
         public String getName() {
@@ -192,6 +206,7 @@ public class TextSubstitution {
             this.defaultValue = defaultValue;
         }
 
+        @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135", "squid:S1141", "squid:S134"})
         public String build(Object object) {
             Object result = object;
             PropertyDescriptor desc;
@@ -202,7 +217,8 @@ public class TextSubstitution {
                     continue;
                 }
                 try {
-                    if (result == null) break;
+                    if (result == null)
+                        break;
                     if (result instanceof Map) {
                         result = ((Map) result).get(comp);
                     } else {
@@ -210,11 +226,13 @@ public class TextSubstitution {
                             desc = new PropertyDescriptor(comp, result.getClass(), "is" + capitalize(comp), null);
                             result = desc.getReadMethod().invoke(result);
                         } catch (IntrospectionException ex) {
+                            Logger.suppress(ex);
                             result = null;
                         }
                     }
-                } catch (Throwable e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    Logger.suppress(e);
+                    throw new SystemException(e);
                 }
             }
 
@@ -234,14 +252,6 @@ public class TextSubstitution {
                     return result.toString();
                 }
                 return leading + result.toString() + trailing;
-            }
-        }
-
-        public Var clone() {
-            try {
-                return (Var) super.clone();
-            } catch (CloneNotSupportedException e) {
-                throw new RuntimeException(e);
             }
         }
     }

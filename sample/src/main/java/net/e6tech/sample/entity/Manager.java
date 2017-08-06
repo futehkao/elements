@@ -19,9 +19,9 @@ package net.e6tech.sample.entity;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("all")
 public class Manager extends Employee {
     private Department department;
     private String fromDate;
     private String toDate;
-
 }

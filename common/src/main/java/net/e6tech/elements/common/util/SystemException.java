@@ -14,33 +14,30 @@
  * limitations under the License.
  */
 
-package net.e6tech.sample.prototype;
-
-import net.e6tech.elements.common.inject.Inject;
+package net.e6tech.elements.common.util;
 
 /**
  * Created by futeh.
- *
- * This class is used to test atom inheritance.
  */
-public class Owner {
-    @Inject
-    private Dependent dependent;
-    private String name;
+public class SystemException extends RuntimeException {
+    private static final long serialVersionUID = -867090148883644287L;
 
-    public Dependent getDependent() {
-        return dependent;
+    public SystemException() {
     }
 
-    public void setDependent(Dependent dependent) {
-        this.dependent = dependent;
+    public SystemException(String message) {
+        super(message);
     }
 
-    public String getName() {
-        return name;
+    public SystemException(String message, Throwable cause) {
+        super(message, cause);
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public SystemException(Throwable cause) {
+        super(cause);
+    }
+
+    public SystemException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+        super(message, cause, enableSuppression, writableStackTrace);
     }
 }

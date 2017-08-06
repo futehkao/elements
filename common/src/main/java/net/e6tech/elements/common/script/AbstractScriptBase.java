@@ -19,16 +19,16 @@ import groovy.lang.Closure;
 import groovy.lang.GString;
 import groovy.lang.GroovyObjectSupport;
 import groovy.lang.Script;
+import net.e6tech.elements.common.logging.Logger;
 
 import javax.script.ScriptException;
-import java.beans.IntrospectionException;
 import java.util.Properties;
 
 
 /**
  * Created by futeh.
  */
-abstract public class AbstractScriptBase<T extends AbstractScriptShell> extends Script {
+public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends Script {
 
     T scriptShell;
 
@@ -43,12 +43,8 @@ abstract public class AbstractScriptBase<T extends AbstractScriptShell> extends 
         return (V) getBinding().getVariable(var);
     }
 
-    public Object exec(String path) {
-        try {
-            return getShell().getScripting().exec(path);
-        } catch (ScriptException e) {
-            throw new RuntimeException(e);
-        }
+    public Object exec(String path) throws ScriptException {
+        return getShell().getScripting().exec(path);
     }
 
     public void exec(Object ... items) {
@@ -62,7 +58,8 @@ abstract public class AbstractScriptBase<T extends AbstractScriptShell> extends 
     public Object tryExec(String path) {
         try {
             return getShell().getScripting().exec(path);
-        } catch (Throwable e) {
+        } catch (Exception e) {
+            Logger.suppress(e);
             return null;
         }
     }
@@ -75,14 +72,18 @@ abstract public class AbstractScriptBase<T extends AbstractScriptShell> extends 
         scriptShell.runNow(caller, callable);
     }
 
-    public void systemProperties(Closure closure) throws IntrospectionException {
+    @SuppressWarnings({"squid:S3776", "squid:S1188"})
+    public void systemProperties(Closure closure) {
         closure.setResolveStrategy(Closure.DELEGATE_FIRST);
         closure.setDelegate(new GroovyObjectSupport() {
+            @Override
+            @SuppressWarnings("squid:MethodCyclomaticComplexity")
             public Object invokeMethod(String name, Object args) {
                 Properties props = System.getProperties();
                 Object[] arr = (Object[]) args;
                 if ("set".equals(name)) {
-                    if (arr.length != 2) return super.invokeMethod(name, args);
+                    if (arr.length != 2)
+                        return super.invokeMethod(name, args);
                     if ((arr[0] instanceof String || arr[0] instanceof GString)
                             && (arr[1] instanceof String || arr[1] instanceof GString)) {
                         String key = (arr[0] == null) ? null : arr[0].toString();

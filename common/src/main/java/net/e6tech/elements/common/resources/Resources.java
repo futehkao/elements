@@ -15,7 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.common.resources;
 
-import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
@@ -23,6 +23,7 @@ import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.util.ExceptionMapper;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -42,10 +43,12 @@ import java.util.function.Supplier;
  * Created by futeh.
  */
 @BindClass(Resources.class)
+@SuppressWarnings({"squid:S1141", "squid:S134", "squid:S1602", "squid:S00100", "squid:MethodCyclomaticComplexity"})
 public class Resources implements AutoCloseable, ResourcePool {
 
     private static Logger logger = Logger.getLogger(Resources.class);
     private static final List<ResourceProvider> emptyResourceProviders = Collections.unmodifiableList(new ArrayList<>());
+    private static final String ABORT_DUE_TO_EXCEPTION = "Aborting due to exception";
 
     private ResourceManager resourceManager;
 
@@ -56,7 +59,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     protected Configurator configurator = new Configurator();
     private List<ResourceProvider> externalResourceProviders;
     private Consumer<? extends Resources> preOpen;
-    private List<Replay<? extends Resources, ?>> unitOfWork = new LinkedList<>();
+    private List<Replay<? extends Resources, ?>> replays = new LinkedList<>();
     Object lastResult;
     boolean submitting = false;
 
@@ -71,15 +74,15 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized boolean isCommitted() {
-        return state.getState() == ResourcesState.State.Committed;
+        return state.getState() == ResourcesState.State.COMMITTED;
     }
 
     public synchronized boolean isOpen() {
-        return state.getState() == ResourcesState.State.Open;
+        return state.getState() == ResourcesState.State.OPEN;
     }
 
     public synchronized boolean isAborted() {
-        return state.getState() == ResourcesState.State.Aborted;
+        return state.getState() == ResourcesState.State.ABORTED;
     }
 
     public synchronized boolean isClosed() {
@@ -91,7 +94,8 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     List<ResourceProvider> getExternalResourceProviders() {
-        if (externalResourceProviders == null) return emptyResourceProviders;
+        if (externalResourceProviders == null)
+            return emptyResourceProviders;
         return externalResourceProviders;
     }
 
@@ -127,9 +131,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public void onCommit(Runnable runnable) {
-        OnCommit on = (res) -> {
-            runnable.run();
-        };
+        OnCommit on = res -> runnable.run();
         onCommit(on);
     }
 
@@ -138,9 +140,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public void afterCommit(Runnable runnable) {
-        AfterCommit after = (res) -> {
-            runnable.run();
-        };
+        AfterCommit after = res -> runnable.run();
         afterCommit(after);
     }
 
@@ -149,9 +149,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized void onOpen(Runnable runnable) {
-        OnOpen on = (res) -> {
-            runnable.run();
-        };
+        OnOpen on = res -> runnable.run();
         onOpen(on);
     }
 
@@ -160,9 +158,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized void onAbort(Runnable runnable) {
-        OnAbort on = (res) -> {
-            runnable.run();
-        };
+        OnAbort on = res -> runnable.run();
         onAbort(on);
     }
 
@@ -171,9 +167,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized void onClosed(Runnable runnable) {
-        OnClosed on = (res) -> {
-            runnable.run();
-        };
+        OnClosed on = res -> runnable.run();
         onClosed(on);
     }
 
@@ -194,20 +188,21 @@ public class Resources implements AutoCloseable, ResourcePool {
      * @param n1
      * @param c2
      * @param args
-     * @param <T>
-     * @return
+     * @param <T> type of Plugin
+     * @param <S> owner class type
+     * @return plugin
      */
     public <S, T extends Plugin> T getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
-        return (T) getPlugin(PluginPath.of(c1, n1).and(c2), args);
+        return getPlugin(PluginPath.of(c1, n1).and(c2), args);
     }
 
     public <R,S,T extends Plugin> T getPlugin(Class<R> c1, String n1, Class<S> c2, String n2, Class<T> c3, Object ... args) {
-        return (T) getPlugin(PluginPath.of(c1, n1).and(c2, n2).and(c3), args);
+        return getPlugin(PluginPath.of(c1, n1).and(c2, n2).and(c3), args);
     }
 
     public <T extends Plugin> T getPlugin(PluginPath<T> path, Object ... args) {
         PluginManager plugin = getInstance(PluginManager.class);
-        return (T) plugin.from(this).get(path, args);
+        return plugin.from(this).get(path, args);
     }
 
     public <T> T getVariable(String variable) {
@@ -223,12 +218,11 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public <T> Binding<T> getBinding(Class<T> cls) {
-        Binding<T> boundInstance = new Binding<>(this, cls);
-        return boundInstance;
+        return  new Binding<>(this, cls);
     }
 
     public <T> T tryBind(Class<T> cls, Callable<T> callable) {
-        return state.tryBind(this, cls, callable);
+        return state.tryBind(cls, callable);
     }
 
     public <T> boolean isBound(Class<T> cls) {
@@ -236,11 +230,11 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public <T> T bind(Class<T> cls, T resource) {
-        return state.bind(this, cls, resource);
+        return state.bind(cls, resource);
     }
 
     public <T> T rebind(Class<T> cls, T resource) {
-        return state.rebind(this, cls, resource);
+        return state.rebind(cls, resource);
     }
 
     public <T> T unbind(Class<T> cls) {
@@ -274,12 +268,13 @@ public class Resources implements AutoCloseable, ResourcePool {
         return inject(object, new HashSet<>());
     }
 
-    private <T> T inject(T object, Set<Object> seen) {
-        if (object == null) return null;
+    private <T> T inject(T object, Set<Integer> seen) {
+        if (object == null)
+            return null;
         // the commented out line indicates that we cannot use seen.contains(object)
         // because it is being injected and its hashCode may not be ready to be computed
         // so that the object should not be added to seen.
-        // if (seen.contains(System.identityHashCode(object)) && seen.contains(object))
+        // commented out line -- if seen.contains(System.identityHashCode(object)) && seen.contains(object)
         // as a compromise, we use identifyHashCode
         if (seen.contains(System.identityHashCode(object)))
             return object;  // already been injected.
@@ -317,7 +312,7 @@ public class Resources implements AutoCloseable, ResourcePool {
                     inject(injectField, seen);
                 }
             } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         }
         return injected;
@@ -327,7 +322,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         return state.hasInstance(this, cls);
     }
 
-    public <T> T getInstance(Class<T> cls) throws InstanceNotFoundException {
+    public <T> T getInstance(Class<T> cls) {
         return state.getInstance(this, cls);
     }
 
@@ -335,6 +330,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         try {
             return state.getInstance(this, cls);
         } catch (InstanceNotFoundException ex) {
+            Logger.suppress(ex);
             return call.get();
         }
     }
@@ -350,7 +346,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     public synchronized void onOpen() {
         // state.initModules(this); // MUST initialize injector first by calling initModules
         if (!isOpen()) {
-            state.setState(ResourcesState.State.Open);
+            state.setState(ResourcesState.State.OPEN);
             // this loop can produce recursive onOpen call
             for (ResourceProvider resourceProvider : state.getResourceProviders()) {
                 resourceProvider.onOpen(this);
@@ -359,12 +355,14 @@ public class Resources implements AutoCloseable, ResourcePool {
         }
     }
 
-    protected <Res extends Resources, R> R replay(Throwable th, Replay<Res, R> replay) {
+    protected <T extends Resources, R> R replay(Exception th, Replay<T, R> replay) {
         if (isAborted() || retry == null) {
-            log("Aborting due to exception", th);
-            if (!isAborted()) abort();
-            if (th instanceof RuntimeException) throw (RuntimeException) th;
-            throw new RuntimeException(th);
+            log(ABORT_DUE_TO_EXCEPTION, th);
+            if (!isAborted())
+                abort();
+            if (th instanceof RuntimeException)
+                throw (RuntimeException) th;
+            throw new SystemException(th);
         }
         try {
             return retry.retry(th, () -> {
@@ -376,53 +374,58 @@ public class Resources implements AutoCloseable, ResourcePool {
                 Reflection.printStackTrace(builder, "    ", 2, 8);
                 logger.warn(builder.toString());
 
-                try { abort(); } catch (Throwable th2) {}
+                try { abort(); } catch (Exception th2) { Logger.suppress(th2); }
 
-                Res retryResources = (Res) resourceManager.open(null, preOpen);
+                T retryResources = (T) resourceManager.open(null, preOpen);
                 // copy retryResources to this.  retryResources is not used.  We only need to create a new ResourcesState.
                 state = retryResources.state;
-                Iterator<Replay<? extends Resources, ?>> iterator = unitOfWork.iterator();
+                Iterator<Replay<? extends Resources, ?>> iterator = replays.iterator();
                 while (iterator.hasNext()) {
-                    Object ret = ((Replay<Res, ?>) iterator.next()).replay((Res) this);
+                    Object ret = ((Replay<T, ?>) iterator.next()).replay((T) this);
                     if (!iterator.hasNext()) {
                         lastResult = ret;
                     }
                 }
-                return replay.replay((Res) this);
+                return replay.replay((T) this);
             });
-        } catch (Throwable th2) {
-            log("Aborting due to exception", th2);
+        } catch (RuntimeException th2) {
+            log(ABORT_DUE_TO_EXCEPTION, th2);
             abort();
-            if (th2 instanceof RuntimeException) throw (RuntimeException) th2;
-            throw new RuntimeException(th2);
+            throw th2;
+        } catch (Throwable th2) {
+            log(ABORT_DUE_TO_EXCEPTION, th2);
+            abort();
+            throw new SystemException(th2);
         }
     }
 
     // return null because we want this type of work to be stateless outside of
     // Resources.
-    public synchronized <Res extends Resources> void submit(Transactional.ConsumerWithException<Res> work) {
-        play(new Replay<Res, Object>(work));
+    public synchronized <R extends Resources> void submit(Transactional.ConsumerWithException<R> work) {
+        play(new Replay<R, Object>(work));
     }
 
-    public synchronized <Res extends Resources, R> R submit(Transactional.FunctionWithException<Res, R> work) {
-        return play(new Replay<Res, R>(work));
+    public synchronized <T extends Resources, R> R submit(Transactional.FunctionWithException<T, R> work) {
+        return play(new Replay<T, R>(work));
     }
 
-    private <Res extends Resources, R> R play(Replay<Res, R> replay) {
+    private <T extends Resources, R> R play(Replay<T, R> replay) {
         R ret = null;
         boolean topLevel = !submitting;
         submitting = true;
         try {
             try {
-                ret = replay.replay((Res) this);
-            } catch (Throwable th) {
+                ret = replay.replay((T) this);
+            } catch (Exception th) {
                 ret = replay(th, replay);
             }
             lastResult = ret;
         } finally {
             if (topLevel) { // prevents nested submission to be added
                 submitting = false;
-                unitOfWork.add(replay);
+                // replay can programmatically call abort
+                if (!isAborted())
+                    replays.add(replay);
             }
         }
         return ret;
@@ -437,13 +440,13 @@ public class Resources implements AutoCloseable, ResourcePool {
         R ret = null;
         try {
             ret = _commit();
-        } catch (Throwable th) {
-            ret = replay(th, new Replay<Resources, R>((res)-> {return _commit();}));
+        } catch (Exception th) {
+            ret = replay(th, new Replay<Resources, R>(res -> {return _commit();}));
         } finally {
             if (isCommitted()) {
                 // commit successful
                 cleanup();
-                state.setState(ResourcesState.State.Committed);
+                state.setState(ResourcesState.State.COMMITTED);
             }
         }
         return ret;
@@ -451,9 +454,12 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     private <R> R _commit() {
         R ret = null;
-        if (resourceManager == null) return null;
-        if (isAborted()) return (R) lastResult;
-        if (!isOpen()) throw new IllegalStateException("Already closed");
+        if (resourceManager == null)
+            return null;
+        if (isAborted())
+            return (R) lastResult;
+        if (!isOpen())
+            throw new IllegalStateException("Already closed");
 
         // use index because additional ResourceProviders may be added during the loop.
         for (int i = 0; i < state.getResourceProviders().size(); i++) {
@@ -472,10 +478,12 @@ public class Resources implements AutoCloseable, ResourcePool {
             ResourceProvider resourceProvider = state.getResourceProviders().get(i);
             try {
                 resourceProvider.afterCommit(this);
-            } catch (Throwable th) {}
+            } catch (Exception th) {
+                Logger.suppress(th);
+            }
         }
 
-        state.setState(ResourcesState.State.Committed);
+        state.setState(ResourcesState.State.COMMITTED);
         ret = (R) lastResult;
 
         return ret;
@@ -483,31 +491,35 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     public synchronized void abort() {
         try {
-            if (resourceManager == null) return;
+            if (resourceManager == null)
+                return;
 
             if (!isAborted()) {
                 for (int i = 0; i < state.getResourceProviders().size(); i++) {
                     ResourceProvider resourceProvider = state.getResourceProviders().get(i);
                     try {
                         resourceProvider.onAbort(this);
-                    } catch (Throwable th) {
+                    } catch (Exception th) {
+                        Logger.suppress(th);
                     }
                 }
                 for (ResourceProvider p : getExternalResourceProviders()) {
                     try {
                         p.onAbort(this);
-                    } catch (Throwable th) {
+                    } catch (Exception th) {
+                        Logger.suppress(th);
                     }
                 }
             }
         } finally {
             cleanup();
-            state.setState(ResourcesState.State.Aborted);
+            state.setState(ResourcesState.State.ABORTED);
         }
     }
 
     public void close() throws Exception {
-        if (!isOpen()) return;
+        if (!isOpen())
+            return;
 
         if (!isAborted()) {
             commit();
@@ -525,12 +537,12 @@ public class Resources implements AutoCloseable, ResourcePool {
                 p.onClosed(this);
             }
         } catch (Exception ex) {
-            // ignore everything.
+            logger.trace(ex.getMessage(), ex);
         }
         state.cleanup();
         configurator.clear();
         externalResourceProviders = null;
-        unitOfWork = null;
+        replays.clear();  // cannot be set to null because during replay abort may be called.
         lastResult = null;
         submitting = false;
         preOpen = null;
@@ -540,20 +552,20 @@ public class Resources implements AutoCloseable, ResourcePool {
         return (T) getInstance(Provision.class);
     }
 
-    private static class Replay<Res, R> {
+    private static class Replay<T, R> {
 
-        Transactional.ConsumerWithException<Res> consumer;
-        Transactional.FunctionWithException<Res, R> function;
+        Transactional.ConsumerWithException<T> consumer;
+        Transactional.FunctionWithException<T, R> function;
 
-        Replay(Transactional.ConsumerWithException<Res> work) {
+        Replay(Transactional.ConsumerWithException<T> work) {
             consumer = work;
         }
 
-        Replay(Transactional.FunctionWithException<Res, R> work) {
+        Replay(Transactional.FunctionWithException<T, R> work) {
             function = work;
         }
 
-        R replay(Res res) throws Throwable {
+        R replay(T res) throws Exception {
             if (consumer != null) {
                 consumer.accept(res);
                 return null;

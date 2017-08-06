@@ -27,6 +27,7 @@ import java.io.File;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("all")
 public class MessagingTest {
 
     @Test

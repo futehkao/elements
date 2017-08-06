@@ -15,13 +15,14 @@
  */
 package net.e6tech.elements.common.util.monitor;
 
-import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
 
 import java.util.concurrent.ExecutorService;
 
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S134", "squid:S135"})
 public class TimeoutMonitor {
 
     long timeout = -1; // means disable, 0 means use default
@@ -46,37 +47,16 @@ public class TimeoutMonitor {
     }
 
     public void monitor(TimeoutListener listener) {
-        if (listener.getTimeout() < 0) return;
-        long initialTimeout = (listener.getTimeout() == 0) ? timeout : listener.getTimeout();
-        if (initialTimeout > 0 && threadPool != null) {
-            Runnable runnable = () -> {
-                long start = System.currentTimeMillis();
-                long sleep = 100;
-                while (sleep >= 0) {
-                    long t = (listener.getTimeout() == 0) ? timeout : listener.getTimeout();
-                    if (!listener.isOpen()) break;
-                    if (System.currentTimeMillis() - start > t) {
-                        if (rollback(listener)) break;
-                    } else {
-                        if (t - (System.currentTimeMillis() - start) < 100) sleep = t - (System.currentTimeMillis() - start);
-                        if (sleep < 100) {
-                            sleep = t - (System.currentTimeMillis() - start) - 10;
-                            if (sleep < 10) {
-                                sleep = t - (System.currentTimeMillis() - start) - 1;
-                            }
-                        }
-                        try {
-                            if (sleep >= 0) Thread.sleep(sleep);
-                        } catch (InterruptedException e) {
-                        }
-                    }
-                }
-                rollback(listener);
-            };
+        if (listener.getTimeout() < 0)
+            return;
 
-            if (threadPool != null) threadPool.execute(runnable);
+        long initialTimeout = (listener.getTimeout() == 0) ? timeout : listener.getTimeout();
+        if (initialTimeout > 0) {
+            Monitor monitor = new Monitor(listener);
+            if (threadPool != null)
+                threadPool.execute(monitor);
             else {
-                Thread thread = new Thread(runnable);
+                Thread thread = new Thread(monitor);
                 thread.setDaemon(true);
                 thread.start();
             }
@@ -89,5 +69,43 @@ public class TimeoutMonitor {
             return true;
         }
         return false;
+    }
+
+    class Monitor implements Runnable {
+        TimeoutListener listener;
+
+        Monitor(TimeoutListener listener) {
+            this.listener = listener;
+        }
+
+        public void run() {
+            long start = System.currentTimeMillis();
+            long sleep = 100;
+            while (sleep >= 0) {
+                long t = (listener.getTimeout() == 0) ? timeout : listener.getTimeout();
+                if (!listener.isOpen())
+                    break;
+                if (System.currentTimeMillis() - start > t) {
+                    if (rollback(listener))
+                        break;
+                } else {
+                    if (t - (System.currentTimeMillis() - start) < 100)
+                        sleep = t - (System.currentTimeMillis() - start);
+                    if (sleep < 100) {
+                        sleep = t - (System.currentTimeMillis() - start) - 10;
+                        if (sleep < 10) {
+                            sleep = t - (System.currentTimeMillis() - start) - 1;
+                        }
+                    }
+                    try {
+                        if (sleep >= 0)
+                            Thread.sleep(sleep);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+            rollback(listener);
+        }
     }
 }

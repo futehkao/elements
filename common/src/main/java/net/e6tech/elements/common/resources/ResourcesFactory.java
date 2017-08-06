@@ -17,7 +17,8 @@ limitations under the License.
 package net.e6tech.elements.common.resources;
 
 
-import javax.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
+
 import java.util.function.Consumer;
 
 /**

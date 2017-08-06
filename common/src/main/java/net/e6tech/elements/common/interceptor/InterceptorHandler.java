@@ -20,6 +20,8 @@ import java.lang.reflect.Method;
 /**
  * Created by futeh on 1/20/16.
  */
+@FunctionalInterface
+@SuppressWarnings("squid:S00112")
 public interface InterceptorHandler {
     /**
      *

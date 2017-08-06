@@ -25,7 +25,7 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
-abstract public class RuleSetScript extends AbstractScriptBase<RuleSet> {
+public abstract class RuleSetScript extends AbstractScriptBase<RuleSet> {
 
     public Rule rule(String name, Closure closure) {
         return getShell().createRule(name, closure, false);
@@ -70,14 +70,15 @@ abstract public class RuleSetScript extends AbstractScriptBase<RuleSet> {
         } else if (obj instanceof String) {
             String key = (String) obj;
             Rule rule = getShell().getRule(key);
-            if (rule != null) parent.addChild(rule);
+            if (rule != null)
+                parent.addChild(rule);
         } else if (obj instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) obj;
-            for (String key : map.keySet()) {
-                Rule rule = getShell().getRule(key);
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                Rule rule = getShell().getRule(entry.getKey());
                 if (rule != null) {
                     parent.addChild(rule);
-                    Object child = map.get(key);
+                    Object child = entry.getValue();
                     traverse(rule, child);
                 }
             }

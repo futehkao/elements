@@ -30,8 +30,8 @@ public class SocketProxyServer implements Startable, Runnable {
     private String remoteHost;
     private int remotePort;
     private int localPort;
-    private ServerSocket serverSocket;
     private ExecutorService threadPool;
+    private volatile boolean stopped = false;
 
     public String getRemoteHost() {
         return remoteHost;
@@ -57,14 +57,6 @@ public class SocketProxyServer implements Startable, Runnable {
         this.localPort = localPort;
     }
 
-    public ServerSocket getServerSocket() {
-        return serverSocket;
-    }
-
-    public void setServerSocket(ServerSocket serverSocket) {
-        this.serverSocket = serverSocket;
-    }
-
     public ExecutorService getThreadPool() {
         return threadPool;
     }
@@ -83,14 +75,18 @@ public class SocketProxyServer implements Startable, Runnable {
                 return thread;
             });
         }
+        stopped = false;
         threadPool.execute(this);
     }
 
-    public void run() {
-        try {
-            serverSocket = new ServerSocket(localPort);
+    public void stop() {
+        stopped = true;
+    }
 
-            while (true) {
+    @SuppressWarnings("squid:S1141")
+    public void run() {
+        try (ServerSocket serverSocket = new ServerSocket(localPort)){
+            while (!stopped) {
                 try {
                     Transfer transfer = new Transfer(remoteHost, remotePort, serverSocket.accept(), threadPool);
                     threadPool.execute(transfer);
@@ -98,8 +94,8 @@ public class SocketProxyServer implements Startable, Runnable {
                     logger.warn(e.getMessage(), e);
                 }
             }
-        } catch (Throwable th) {
-            throw logger.runtimeException(th);
+        } catch (Exception th) {
+            throw logger.systemException(th);
         }
     }
 }

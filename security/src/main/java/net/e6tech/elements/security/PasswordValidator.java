@@ -22,7 +22,7 @@ public class PasswordValidator {
     private int maxPasswordLength;
     private int minNumberOfGroups;
 
-    private static PasswordValidator DEFAULT_VALIDATOR = new PasswordValidator(8,20,3);
+    private static final PasswordValidator DEFAULT_VALIDATOR = new PasswordValidator(8,20,3);
 
     public PasswordValidator() {
     }
@@ -57,23 +57,22 @@ public class PasswordValidator {
         this.minNumberOfGroups = minNumberOfGroups;
     }
 
-    public boolean check(String password) {
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    public boolean check(String pwd) {
+        String password = pwd;
         if ((password == null) || (password.length() == 0)) {
             return false;
         }
 
         password = password.trim();
         int len = password.length();
-        if (minPasswordLength > 0) {
-            if (len < minPasswordLength)
-                return false;
+        if (minPasswordLength > 0 && len < minPasswordLength) {
+            return false;
         }
 
-        if (maxPasswordLength > 0) {
-            if (len > maxPasswordLength)
-                return false;
+        if (maxPasswordLength > 0 && len > maxPasswordLength) {
+            return false;
         }
-
 
         int nLowerCase = 0;
         int nUpperCase = 0;
@@ -100,15 +99,16 @@ public class PasswordValidator {
         }
 
         int count = 0;
-        if (nUpperCase > 0) count++;
-        if (nLowerCase > 0) count++;
-        if (nSpecial > 0) count++;
-        if (nDigits > 0) count++;
+        if (nUpperCase > 0)
+            count++;
+        if (nLowerCase > 0)
+            count++;
+        if (nSpecial > 0)
+            count++;
+        if (nDigits > 0)
+            count++;
 
-        if (count < minNumberOfGroups)
-            return false;
-
-        return true;
+        return ! (count < minNumberOfGroups);
     }
 
     public static boolean validate(String password) {

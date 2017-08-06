@@ -22,6 +22,8 @@ import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.pattern.Patterns;
 import net.e6tech.elements.common.actor.pool.WorkerPool;
+import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 
@@ -39,22 +41,22 @@ import java.util.function.Function;
  */
 public class Registry {
 
-    private static String PATH = "registry";
-    public static String RegistryDispatcher = "registry-dispatcher";
-
-    public static String getPath() {
-        return PATH;
-    }
-
-    public static void setPath(String PATH) {
-        Registry.PATH = PATH;
-    }
+    private static String path = "registry";
+    public static final String REGISTRY_DISPATCHER = "registry-dispatcher";
 
     ActorSystem system;
     ActorRef registrar;
     ActorRef workerPool;
     long timeout = 5000L;
     List<RouteListener> listeners = new ArrayList<>();
+
+    public static String getPath() {
+        return path;
+    }
+
+    public static void setPath(String path) {
+        Registry.path = path;
+    }
 
     public long getTimeout() {
         return timeout;
@@ -100,8 +102,9 @@ public class Registry {
 
     public void start(ActorSystem system) {
         this.system = system;
-        if (workerPool == null) workerPool = system.actorOf(Props.create(WorkerPool.class));
-        registrar = system.actorOf(Props.create(RegistrarActor.class, () -> new RegistrarActor(this, workerPool)), PATH);
+        if (workerPool == null)
+            workerPool = system.actorOf(Props.create(WorkerPool.class));
+        registrar = system.actorOf(Props.create(RegistrarActor.class, () -> new RegistrarActor(this, workerPool)), getPath());
     }
 
     public void shutdown() {
@@ -109,16 +112,27 @@ public class Registry {
     }
 
     public <R> void register(String path, Function<Object[], R> function) {
-        Patterns.ask(registrar, new Events.Registration(path, function), timeout);
+        Patterns.ask(registrar, new Events.Registration(path, (Function<Object[], Object>) function), timeout);
     }
 
+    /**
+     *
+     * @param qualifier a unique name for the service
+     * @param interfaceClass Interface class.  Its methods will be registered and, therefore, it is important
+     *                       for the qualifier to be unique.
+     * @param implementation implementation of the interface
+     * @param <T>
+     */
+    @SuppressWarnings("squid:S1067")
     public <T> void register(String qualifier, Class<T> interfaceClass, T implementation) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
+
         for (Method method : interfaceClass.getMethods()) {
-            if (method.getName().equals("hashCode") && method.getParameterCount() == 0
-                    || method.getName().equals("equals") && method.getParameterCount() == 1
-                    || method.getName().equals("toString") && method.getParameterCount() == 0) {
+            String methodName = method.getName();
+            if ("hashCode".equals(methodName) && method.getParameterCount() == 0
+                    || "equals".equals(methodName) && method.getParameterCount() == 1
+                    || "toString".equals(methodName) && method.getParameterCount() == 0) {
                 // ignored
             } else {
                 register(fullyQualify(qualifier, interfaceClass, method),
@@ -126,9 +140,10 @@ public class Registry {
                             try {
                                 return method.invoke(implementation, t);
                             } catch (IllegalAccessException e) {
-                                throw new RuntimeException();
+                                throw new SystemException(e);
                             } catch (InvocationTargetException e) {
-                                throw new RuntimeException(e.getCause());
+                                Logger.suppress(e);
+                                throw new SystemException(e.getCause());
                             }
                         });
             }
@@ -137,16 +152,19 @@ public class Registry {
 
     String fullyQualify(String qualifier, Class interfaceClass, Method method) {
         StringBuilder builder = new StringBuilder();
-        qualifier = (qualifier == null) ? "" : qualifier.trim();
-        if (qualifier != null && qualifier.length() > 0) {
-            builder.append(qualifier);
+        String normalizedQualifier = (qualifier == null) ? "" : qualifier.trim();
+        if (normalizedQualifier.length() > 0) {
+            builder.append(normalizedQualifier);
             builder.append("@");
         }
+        builder.append(interfaceClass.getName());
+        builder.append("::");
         builder.append(method.getName());
         builder.append("(");
         boolean first = true;
         for (Class param : method.getParameterTypes()) {
-            if (first) first = false;
+            if (first)
+                first = false;
             else {
                 builder.append(",");
             }
@@ -162,14 +180,13 @@ public class Registry {
     }
 
     public Function<Object[], CompletionStage> route(String path, long timeout) {
-        Function<Object[], CompletionStage> function = (arguments) -> {
+        return (Function<Object[], CompletionStage>) arguments -> {
             Future future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
-            return FutureConverters.toJava(future).thenApplyAsync((ret) -> {
+            return FutureConverters.toJava(future).thenApplyAsync(ret -> {
                 Events.Response response = (Events.Response) ret;
                 return response.getValue();
             });
         };
-        return function;
     }
 
     public <T> Async<T> async(String qualifier, Class<T> interfaceClass) {

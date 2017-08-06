@@ -17,7 +17,6 @@
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.resources.Configuration;
 import org.yaml.snakeyaml.Yaml;
 
 import java.util.Map;
@@ -37,7 +36,7 @@ public class ConfigurationTest {
         System.out.println("home=" + System.getProperty("home"));
         Logger logger = Logger.getLogger();
         logger.info("Just a test");
-        Exception ex =  logger.runtimeException("Just a test");
+        Exception ex =  logger.systemException("Just a test");
     }
 
     @Test

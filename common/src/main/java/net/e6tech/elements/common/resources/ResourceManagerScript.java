@@ -19,13 +19,16 @@ import groovy.lang.Closure;
 import groovy.lang.MissingMethodException;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.script.AbstractScriptBase;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.util.function.Consumer;
 
 /**
  * Created by futeh.
  */
-abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceManager> {
+public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceManager> {
+    private static final String RESOURCE_MANAGER_VAR = "resourceManager";
+
     Logger logger = Logger.getLogger();
 
     /**
@@ -36,16 +39,17 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
      * @return result
      */
     @Override
+    @SuppressWarnings({"squid:S134", "squid:CommentedOutCodeLine"})
     public Object invokeMethod(String name, Object args) {
         try {
             return getMetaClass().invokeMethod(this, name, args);
         } catch (MissingMethodException ex) {
             if (ex.getArguments().length > 0 && ex.getArguments()[0] instanceof Closure) {
 
-                // component() { this is outerClosure
+                // atom() { this is outerClosure
                 //    commServer =  CommServer
                 //
-                //    commServer {  // THIS IS the "closure"; its delegate should be outerClosure
+                //    commServer {  <-- THIS IS the "closure"; its delegate should be outerClosure
                 //        addService('pingService', PingServer)
                 //        ...
                 //    }
@@ -70,24 +74,24 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
             } else {
                 throw ex;
             }
-        } catch (Throwable ex) {
-            ex.printStackTrace();
-            throw new RuntimeException(ex);
+        } catch (Exception ex) {
+            logger.debug(ex.getMessage(), ex);
+            throw new SystemException(ex);
         }
     }
 
     public void bindClass(Class a, Class b) {
-        ResourceManager resourceManager =  getVariable("resourceManager");
+        ResourceManager resourceManager =  getVariable(RESOURCE_MANAGER_VAR);
         resourceManager.bindClass(a, b);
     }
 
     public <T> T bindNamedInstance(String name, Class<T> a, T b) {
-        ResourceManager resourceManager =  getVariable("resourceManager");
+        ResourceManager resourceManager =  getVariable(RESOURCE_MANAGER_VAR);
         return resourceManager.bindNamedInstance(a, name, b);
     }
 
     public <T> T bindNamedInstance(String name, T b) {
-        ResourceManager resourceManager =  getVariable("resourceManager");
+        ResourceManager resourceManager =  getVariable(RESOURCE_MANAGER_VAR);
         return resourceManager.bindNamedInstance((Class<T>) b.getClass(), name, b);
     }
 
@@ -109,32 +113,28 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
 
     public Atom prototype(String name, Closure closure) {
         Consumer<Atom> consumer = atomConsumer(closure);
-        Atom atom = getShell().createAtom(name, consumer, null, true);
-        return atom;
+        return getShell().createAtom(name, consumer, null, true);
     }
 
     public Atom prototype(String name,  String prototypePath, Closure closure) {
         Atom prototype = (Atom) getShell().exec(prototypePath);
         Consumer<Atom> consumer = atomConsumer(closure);
-        Atom atom = getShell().createAtom(name, consumer, prototype, true);
-        return atom;
+        return getShell().createAtom(name, consumer, prototype, true);
     }
 
     public Atom atom(String name, Closure closure) {
         Consumer<Atom> consumer = atomConsumer(closure);
-        Atom atom = getShell().createAtom(name, consumer, null, false);
-        return atom;
+        return getShell().createAtom(name, consumer, null, false);
     }
 
     public Atom atom(String name, String prototypePath,  Closure closure) {
         Atom prototype = (Atom) getShell().exec(prototypePath);
         Consumer<Atom> consumer = atomConsumer(closure);
-        Atom atom = getShell().createAtom(name, consumer, prototype, false);
-        return atom;
+        return getShell().createAtom(name, consumer, prototype, false);
     }
 
     private Consumer<Atom> atomConsumer(Closure closure) {
-        Consumer<Atom> consumer = (atom) -> {
+        return atom -> {
             final Closure clonedClosure = closure.rehydrate(atom, closure.getOwner(), closure.getOwner());
             clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
             clonedClosure.call(atom);
@@ -150,6 +150,5 @@ abstract public class ResourceManagerScript extends AbstractScriptBase<ResourceM
                 }
             });
         };
-        return consumer;
     }
 }

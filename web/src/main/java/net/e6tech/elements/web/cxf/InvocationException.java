@@ -19,9 +19,10 @@ package net.e6tech.elements.web.cxf;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S1948")
 public class InvocationException extends Exception {
 
-    private Object response;
+    private final Object response;
 
     public InvocationException(Object response) {
         this.response = response;
@@ -29,9 +30,5 @@ public class InvocationException extends Exception {
 
     public Object getResponse() {
         return response;
-    }
-
-    public void setResponse(Object response) {
-        this.response = response;
     }
 }

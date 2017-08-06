@@ -16,11 +16,12 @@ limitations under the License.
 package net.e6tech.elements.network.restful;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.ExceptionMapper;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.JCEKS;
 
 import javax.net.ssl.*;
@@ -33,7 +34,6 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
@@ -51,8 +51,9 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();
+    private static final X509Certificate[] EMPTY_CERTIFICATES = new X509Certificate[0];
 
-    public static ObjectMapper mapper = ObjectMapperFactory.newInstance();
+    public static final ObjectMapper mapper = ObjectMapperFactory.newInstance();
 
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
@@ -149,6 +150,7 @@ public class RestfulClient {
         this.readTimeout = readTimeout;
     }
 
+    @SuppressWarnings("squid:S134")
     private Param[] toParams(Object object) {
         List<Param> params = new ArrayList<>();
         if (object != null) {
@@ -157,15 +159,16 @@ public class RestfulClient {
             try {
                 beanInfo = Introspector.getBeanInfo(cls);
             } catch (IntrospectionException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
             for (PropertyDescriptor desc : beanInfo.getPropertyDescriptors()) {
                 if (desc.getReadMethod()!= null) {
                     try {
                         Object value = desc.getReadMethod().invoke(object);
-                        if (value != null) params.add(new Param(desc.getName(), value.toString()));
+                        if (value != null)
+                            params.add(new Param(desc.getName(), value.toString()));
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        throw new SystemException(e);
                     }
                 }
             }
@@ -214,27 +217,36 @@ public class RestfulClient {
         return new Request(this).post(context, data, params);
     }
 
-    private String constructPath(String dest, String context, Param ... params) {
-
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    private String constructPath(String destination, String ctx, Param ... params) {
+        String dest = destination;
+        String context = ctx;
         String fullPath = null;
-        synchronized (this) {
-            if (!dest.endsWith("/")) dest = dest + "/";
 
-            if (context != null) {
-                while (context.startsWith("/")) context = context.substring(1);
-            }
+        if (!dest.endsWith("/"))
+            dest = dest + "/";
 
-            fullPath = dest + context;
+        if (context != null) {
+            while (context.startsWith("/"))
+                context = context.substring(1);
         }
-        while (fullPath.endsWith("/")) fullPath = fullPath.substring(0, fullPath.length() - 1);
+
+        fullPath = dest + context;
+
+        while (fullPath.endsWith("/"))
+            fullPath = fullPath.substring(0, fullPath.length() - 1);
         if (params !=  null) {
             StringBuilder builder = new StringBuilder();
             List<Param> list = new ArrayList<>();
-            for(Param param : params) if (param.getValue() != null) list.add(param);
+            for(Param param : params)
+                if (param.getValue() != null)
+                    list.add(param);
             for (int i = 0; i < list.size(); i++) {
-                if (i == 0) builder.append("?");
+                if (i == 0)
+                    builder.append("?");
                 builder.append(list.get(i).encode());
-                if (i != list.size() - 1) builder.append("&");
+                if (i != list.size() - 1)
+                    builder.append("&");
             }
             fullPath = fullPath + builder.toString();
         }
@@ -248,16 +260,19 @@ public class RestfulClient {
             logger.debug(fullPath);
             url = new URL(fullPath);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            if (connectionTimeout >= 0) conn.setConnectTimeout(connectionTimeout);
-            if (readTimeout >= 0) conn.setReadTimeout(readTimeout);
+            if (connectionTimeout >= 0)
+                conn.setConnectTimeout(connectionTimeout);
+            if (readTimeout >= 0)
+                conn.setReadTimeout(readTimeout);
             if (conn instanceof HttpsURLConnection) {
                 HttpsURLConnection https = (HttpsURLConnection) conn;
                 https.setSSLSocketFactory(getSSLSocketFactory());
-                if (skipHostnameCheck || skipCertCheck) https.setHostnameVerifier((hostname, session) -> true);
+                if (skipHostnameCheck || skipCertCheck)
+                    https.setHostnameVerifier((hostname, session) -> true);
             }
             return conn;
         } catch (MalformedURLException e) {
-            throw logger.runtimeException(e);
+            throw logger.systemException(e);
         }
     }
 
@@ -265,6 +280,7 @@ public class RestfulClient {
         return _submit(staticAddress, context, method, requestProperties, data, params);
     }
 
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S1141", "squid:S00100", "squid:S00112", "squid:S2093"})
     protected Response _submit(String dest, String context, String method, Properties requestProperties, Object data, Param ... params) throws Throwable {
         Response response = null;
         HttpURLConnection conn = null;
@@ -306,7 +322,8 @@ public class RestfulClient {
             if (printer != null) {
                 printer.println("RESPONSE ----------------------------");
                 List<String> statusList = response.getHeaderFields().get(null);
-                if (statusList != null  && statusList.size() > 0) printer.println(statusList.get(0));
+                if (statusList != null  && !statusList.isEmpty())
+                    printer.println(statusList.get(0));
                 printer.println("Response Code=" + response.getResponseCode());
                 printHeaders(response.getHeaderFields());
                 String result = response.getResult();
@@ -324,7 +341,7 @@ public class RestfulClient {
                         } else {
                             ret = mapper.readValue(response.getResult(), Long.class);
                         }
-                    } else if (result.equalsIgnoreCase("true") || result.equalsIgnoreCase("false")) {
+                    } else if ("true".equalsIgnoreCase(result) || "false".equalsIgnoreCase(result)) {
                         ret = Boolean.getBoolean(result);
                     } else {
                         ret = result;
@@ -345,15 +362,18 @@ public class RestfulClient {
                             mappedThrowable = exceptionMapper.fromResponse(error);
                         }
                     } catch (Exception e) {
+                        Logger.suppress(e);
                     }
                 }
-                if (mappedThrowable != null) throw mappedThrowable;
+                if (mappedThrowable != null)
+                    throw mappedThrowable;
                 else throw ex;
             }
         } catch (MalformedURLException e) {
-            logger.runtimeException(e);
+            logger.systemException(e);
         } finally {
-            if (conn != null) conn.disconnect();
+            if (conn != null)
+                conn.disconnect();
         }
 
         return response;
@@ -365,14 +385,17 @@ public class RestfulClient {
         response.setHeaderFields(conn.getHeaderFields());
         response.setResponseCode(conn.getResponseCode());
 
-        if (conn.getResponseCode() == HTTP_NO_CONTENT) return response;
+        if (conn.getResponseCode() == HTTP_NO_CONTENT)
+            return response;
 
         InputStream in = null;
         try {
             in = conn.getInputStream();
         } catch (IOException ex) {
+            Logger.suppress(ex);
             in = conn.getErrorStream();
-            if (in == null) checkResponseCode(conn.getResponseCode(), conn.getResponseMessage());
+            if (in == null)
+                checkResponseCode(conn.getResponseCode(), conn.getResponseMessage());
         }
 
         try {
@@ -394,29 +417,16 @@ public class RestfulClient {
             throw new IllegalStateException(ex);
         }
 
-        /*
-        try {
-            // Buffer the result into a string
-            BufferedReader rd = new BufferedReader(new InputStreamReader(in, encoding));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = rd.readLine()) != null) {
-                sb.append(line);
-            }
-            rd.close();
-            String result = sb.toString();
-            response.setResult(result);
-        } catch (IOException ex) {
-            System.out.println(ex);
-        }*/
-
         return response;
     }
 
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
     private void checkResponseCode(int code, String message) {
         javax.ws.rs.core.Response.Status status = javax.ws.rs.core.Response.Status.fromStatusCode(code);
-        if (code == 500) throw new InternalServerErrorException();
-        if (code > 500) throw new ServiceUnavailableException();
+        if (code == 500)
+            throw new InternalServerErrorException();
+        if (code > 500)
+            throw new ServiceUnavailableException();
 
         switch (status) {
             case OK:
@@ -439,11 +449,13 @@ public class RestfulClient {
         }
     }
 
+    @SuppressWarnings({"squid:S135", "squid:S134"})
     private void printHeaders(Map<String, ?> headers) {
         for (Map.Entry<String, ?> entry : headers.entrySet()) {
-            if (entry.getKey() == null) continue;
+            if (entry.getKey() == null)
+                continue;
             printer.print(entry.getKey() + ": ");
-            if (entry.getKey().equals("Authorization") && entry.getValue() instanceof String) {
+            if ("Authorization".equals(entry.getKey()) && entry.getValue() instanceof String) {
                 String auth = (String) entry.getValue();
                 if (auth.startsWith("Bearer ")) {
                     printer.println("Bearer ...");
@@ -468,7 +480,7 @@ public class RestfulClient {
         printer.flush();
     }
 
-    private void setConnectionProperties(HttpURLConnection conn) throws ProtocolException {
+    private void setConnectionProperties(HttpURLConnection conn)  {
         conn.setDoInput(true);
         conn.setUseCaches(false);
         conn.setAllowUserInteraction(false);
@@ -482,7 +494,8 @@ public class RestfulClient {
     }
 
     private SSLSocketFactory getSSLSocketFactory() {
-        if (sslSocketFactory != null) return sslSocketFactory;
+        if (sslSocketFactory != null)
+            return sslSocketFactory;
         TrustManager[] trustManagers = null;
         if (skipCertCheck) {
             trustManagers = new TrustManager[] { new AcceptAllTrustManager()};
@@ -497,7 +510,7 @@ public class RestfulClient {
                     trustManagers = factory.getTrustManagers();
                 }
             } catch (Exception ex) {
-                throw logger.runtimeException(ex);
+                throw logger.systemException(ex);
             }
         }
 
@@ -508,20 +521,22 @@ public class RestfulClient {
             sslSocketFactory = ctx.getSocketFactory();
             return sslSocketFactory;
         } catch (Exception e) {
-            throw logger.runtimeException(e);
+            throw logger.systemException(e);
         }
     }
 
     public class AcceptAllTrustManager implements X509TrustManager {
 
         public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+            // do nothing
         }
 
         public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+            // do nothing
         }
 
         public X509Certificate[] getAcceptedIssuers() {
-            return null;
+            return EMPTY_CERTIFICATES;
         }
     }
 }

@@ -19,11 +19,13 @@ package net.e6tech.elements.common.inject.spi;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
-import scala.collection.immutable.IntMap;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.reflect.Type;
-import java.util.*;
-import java.util.function.BiConsumer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by futeh.
@@ -43,7 +45,7 @@ public class ModuleImpl implements Module {
             return null;
         }
         Binding binding = bindingList.getBinding(name);
-        binding = (binding == null) ? null : binding.clone();
+        binding = (binding == null) ? null : new Binding(binding);
         return binding;
     }
 
@@ -59,13 +61,14 @@ public class ModuleImpl implements Module {
         synchronized (moduleImpl.directory) {
             dir.putAll(moduleImpl.directory);
         }
-        for (Type type: dir.keySet()) {
-            BindingList bindingList = dir.get(type);
-            BindingList existing = directory.get(type);
+
+        // dir contains directory from module argument
+        for (Map.Entry<Type, BindingList> entry: dir.entrySet()) {
+            BindingList existing = directory.get(entry.getKey());
             if (existing != null) {
-                existing.merge(bindingList);
+                existing.merge(entry.getValue());
             } else {
-                directory.put(type, bindingList);
+                directory.put(entry.getKey(), entry.getValue());
             }
         }
     }
@@ -87,13 +90,14 @@ public class ModuleImpl implements Module {
         synchronized (directory) {
             bindList = directory.get(cls);
         }
-        if (bindList == null || bindList.unnamedBinding == null) return null;
+        if (bindList == null || bindList.unnamedBinding == null)
+            return null;
         return bindList.unnamedBinding.getImplementation();
     }
 
     @Override
-    public Object bindInstance(Class cls, Object instance) {
-        instance = newInstance(instance);
+    public Object bindInstance(Class cls, Object inst) {
+        Object instance = newInstance(inst);
         Type[] types = getBindClass(cls);
         synchronized (directory) {
             for (Type type : types) {
@@ -105,8 +109,8 @@ public class ModuleImpl implements Module {
     }
 
     @Override
-    public Object bindNamedInstance(Class cls, String name, Object instance) {
-        instance = newInstance(instance);
+    public Object bindNamedInstance(Class cls, String name, Object inst) {
+        Object instance = newInstance(inst);
         Type[] types = getBindClass(cls);
         synchronized (directory) {
             for (Type type : types) {
@@ -124,7 +128,8 @@ public class ModuleImpl implements Module {
                 BindingList bindList = directory.get(type);
                 if (bindList != null) {
                     Object value = bindList.unbind();
-                    if (bindList.namedBindings.size() == 0) directory.remove(type);
+                    if (bindList.namedBindings.size() == 0)
+                        directory.remove(type);
                     return value;
                 }
             }
@@ -135,12 +140,13 @@ public class ModuleImpl implements Module {
     private Object newInstance(Object instance) {
         if (instance instanceof Class) {
             try {
-                instance = ((Class) instance).newInstance();
+                return ((Class) instance).newInstance();
             } catch (InstantiationException | IllegalAccessException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
+        } else {
+            return instance;
         }
-        return instance;
     }
 
     public <T> T getBoundNamedInstance(Class<T> cls, String name) {
@@ -148,9 +154,11 @@ public class ModuleImpl implements Module {
         synchronized (directory) {
             bindList = directory.get(cls);
         }
-        if (bindList == null) return null;
+        if (bindList == null)
+            return null;
         Binding binding = bindList.getBinding(name);
-        if (binding == null) return null;
+        if (binding == null)
+            return null;
         return (T) binding.getValue();
     }
 
@@ -175,7 +183,8 @@ public class ModuleImpl implements Module {
         Injector parent = null;
         if (components != null && components.length > 0) {
             Module[] remaining = new Module[components.length - 1];
-            if (remaining.length > 0) System.arraycopy(components, 1, remaining, 0, components.length - 1);
+            if (remaining.length > 0)
+                System.arraycopy(components, 1, remaining, 0, components.length - 1);
             parent = components[0].build(remaining);
         }
 
@@ -195,18 +204,20 @@ public class ModuleImpl implements Module {
         return injector;
     }
 
-    private static class BindingList implements Cloneable {
+    private static class BindingList {
         private Map<String, Binding> namedBindings = new HashMap<>();
         private Binding unnamedBinding;
 
         Binding getBinding(String name) {
-            if (name == null) return unnamedBinding;
+            if (name == null)
+                return unnamedBinding;
             return namedBindings.get(name);
         }
 
         List<Binding> list() {
             List<Binding> list = new ArrayList<>();
-            if (unnamedBinding != null) list.add(unnamedBinding);
+            if (unnamedBinding != null)
+                list.add(unnamedBinding);
             list.addAll(namedBindings.values());
             return list;
         }
@@ -236,7 +247,8 @@ public class ModuleImpl implements Module {
         }
 
         void merge(BindingList bindingList) {
-            if (unnamedBinding == null) unnamedBinding = bindingList.unnamedBinding;
+            if (unnamedBinding == null)
+                unnamedBinding = bindingList.unnamedBinding;
 
             Map<String, Binding> copy = new HashMap<>();
             synchronized (bindingList.namedBindings) {

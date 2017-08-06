@@ -24,10 +24,11 @@ public class DataSet implements Map<String, Column> {
     List<List> data = new ArrayList<>();
     Map<String, Column> columnMap = new LinkedHashMap<>();
     Column[] columns;
-    transient int modCount = 0;
+    int modCount = 0;
 
     public DataSet(String[] col, Class[] columnType) {
-        if (col.length != columnType.length) throw new IllegalArgumentException();
+        if (col.length != columnType.length)
+            throw new IllegalArgumentException();
         columns = new Column[col.length];
         for (int i = 0; i < col.length; i++) {
             columns[i] =  new Column(this, col[i], columnType[i], i);
@@ -36,7 +37,8 @@ public class DataSet implements Map<String, Column> {
     }
 
     public void addRow(List row) {
-        if (row.size() != columns.length) throw new IllegalArgumentException();
+        if (row.size() != columns.length)
+            throw new IllegalArgumentException();
         List r = new ArrayList();
         r.addAll(row);
         data.add(r);

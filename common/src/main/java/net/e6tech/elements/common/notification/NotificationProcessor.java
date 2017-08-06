@@ -16,10 +16,10 @@ limitations under the License.
 
 package net.e6tech.elements.common.notification;
 
-import com.google.inject.Inject;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.common.resources.Startable;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -50,15 +50,15 @@ public class NotificationProcessor implements NotificationListener {
     public NotificationProcessor() {
         Class cls = getClass();
         List<Class<? extends Notification>> types = new ArrayList<>();
-        while (cls != null & !cls.equals(Object.class)) {
-            Method[] methods = cls.getDeclaredMethods();
-            for (Method method : methods) {
-                if (method.getName().equals("processEvent")
+        while (cls != null && !cls.equals(Object.class)) {
+            Method[] methodArray = cls.getDeclaredMethods();
+            for (Method method : methodArray) {
+                if ("processEvent".equals(method.getName())
                         && method.getParameterCount() == 1
                         && Notification.class.isAssignableFrom(method.getParameterTypes()[0])) {
                     method.setAccessible(true);
                     Class<? extends Notification> notificationType = (Class<? extends Notification>) method.getParameterTypes()[0];
-                    this.methods.computeIfAbsent(notificationType, (key) -> method);
+                    this.methods.computeIfAbsent(notificationType, key -> method);
                     types.add(notificationType);
                 }
             }
@@ -67,6 +67,7 @@ public class NotificationProcessor implements NotificationListener {
         notificationTypes = types.toArray(new Class[types.size()]);
     }
 
+    @Override
     public Class<? extends Notification>[] getNotificationTypes() {
         return notificationTypes;
     }
@@ -86,8 +87,8 @@ public class NotificationProcessor implements NotificationListener {
             if (method != null) {
                 try {
                     method.invoke(this, notification);
-                } catch (Throwable e) {
-                    // logger.warn
+                } catch (Exception e) {
+                    Logger.suppress(e);
                 }
                 return;
             } else {
@@ -104,6 +105,7 @@ public class NotificationProcessor implements NotificationListener {
      * @param notification  Notification instance
      */
     public void catchEvent(Notification notification) {
+        // do nothing
     }
 
     public void async(Runnable runnable) {

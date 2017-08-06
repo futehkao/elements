@@ -22,6 +22,7 @@ import java.io.Serializable;
 /**
  * Created by futeh on 1/18/16.
  */
+@FunctionalInterface
 public interface Subscriber<T extends Serializable> {
     void receive(Notice<T> notice);
 }

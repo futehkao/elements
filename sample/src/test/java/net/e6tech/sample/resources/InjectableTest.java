@@ -16,12 +16,11 @@
 
 package net.e6tech.sample.resources;
 
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Injectable;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.sample.BaseCase;
 import org.junit.jupiter.api.Test;
-
-import javax.inject.Inject;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 

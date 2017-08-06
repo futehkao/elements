@@ -16,6 +16,7 @@ limitations under the License.
 package net.e6tech.elements.security;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -49,6 +50,12 @@ public class SymmetricCipher {
         initialize();
     }
 
+    protected SymmetricCipher(String algorithm) {
+        this.algorithm = algorithm;
+        this.transformation = algorithm + "/CBC/PKCS7PADDING";
+        generateKeySpec(); // prime the pump
+    }
+
     public static SymmetricCipher getInstance(String algorithm) {
         if (ALGORITHM_AES.equalsIgnoreCase(algorithm)) {
             return new SymmetricCipher(ALGORITHM_AES);
@@ -61,8 +68,10 @@ public class SymmetricCipher {
         return algorithm;
     }
 
+    @SuppressWarnings("squid:CommentedOutCodeLine")
     public static void initialize() {
-        if (initialized) return;
+        if (initialized)
+            return;
         initialized = true;
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
@@ -119,23 +128,17 @@ public class SymmetricCipher {
 
     public static byte[] toBytes(String hexString) {
         return DatatypeConverter.parseHexBinary(hexString);
-        //  String decodedString = new String(decodedHex, "UTF-8");
     }
 
     public static String toString(byte[] bytes) {
         return DatatypeConverter.printHexBinary(bytes);
     }
 
-    protected SymmetricCipher(String algorithm) {
-        this.algorithm = algorithm;
-        this.transformation = algorithm + "/CBC/PKCS7PADDING";
-        generateKeySpec(); // prime the pump
-    }
-
     public String encrypt(SecretKey key, byte[] plain, String iv) throws GeneralSecurityException {
         byte[] ivBytes = null;
         if (iv != null) {
-            if (base64) ivBytes = Base64.getDecoder().decode(iv);
+            if (base64)
+                ivBytes = Base64.getDecoder().decode(iv);
             else ivBytes = Hex.toBytes(iv);
         }
         byte[] encrypted = encryptBytes(key, plain, ivBytes);
@@ -147,22 +150,26 @@ public class SymmetricCipher {
         }
     }
 
-    public byte[] encryptBytes(SecretKey key, byte[] plain, byte[] iv) throws GeneralSecurityException {
+    public byte[] encryptBytes(SecretKey key, byte[] plain, byte[] initVector) throws GeneralSecurityException {
         Cipher cipher = Cipher.getInstance(transformation, "BC");
+        byte[] iv = initVector;
         if (iv != null) {
             cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
         } else {
             iv = new byte[16];
-            for (int i=0; i < iv.length; i++) iv[i] = 0;
+            for (int i=0; i < iv.length; i++)
+                iv[i] = 0;
             cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
         }
         return cipher.doFinal(plain);
     }
 
-    public byte[] decrypt(SecretKey key, String encrypted, String iv) throws GeneralSecurityException {
+    public byte[] decrypt(SecretKey key, String encrypted, String initVector) throws GeneralSecurityException {
         byte[] ivBytes = null;
+        String iv = initVector;
         if (iv != null) {
-            if (base64) ivBytes = Base64.getDecoder().decode(iv);
+            if (base64)
+                ivBytes = Base64.getDecoder().decode(iv);
             else ivBytes = Hex.toBytes(iv);
         }
         byte[] decodedBytes = null;
@@ -174,13 +181,15 @@ public class SymmetricCipher {
         return decryptBytes(key, decodedBytes, ivBytes);
     }
 
-    public byte[] decryptBytes(SecretKey key, byte[] encrypted, byte[] iv) throws GeneralSecurityException {
+    public byte[] decryptBytes(SecretKey key, byte[] encrypted, byte[] initVector) throws GeneralSecurityException {
         Cipher cipher = Cipher.getInstance(transformation, "BC");
+        byte[] iv = initVector;
         if (iv != null) {
             cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
         } else {
             iv= new byte[16];
-            for (int i=0; i < iv.length; i++) iv[i] = 0;
+            for (int i=0; i < iv.length; i++)
+                iv[i] = 0;
             cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
         }
         return cipher.doFinal(encrypted);
@@ -191,11 +200,10 @@ public class SymmetricCipher {
         try {
             keyGen = KeyGenerator.getInstance(algorithm);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
         keyGen.init(keyLength);
-        SecretKey secretKey = keyGen.generateKey();
-        return secretKey;
+        return keyGen.generateKey();
     }
 
     public SecretKey getKeySpec(byte[] bytes) {
@@ -213,9 +221,5 @@ public class SymmetricCipher {
         } else {
             return Hex.toString(iv);
         }
-    }
-
-    public static void main(String ... args) {
-
     }
 }

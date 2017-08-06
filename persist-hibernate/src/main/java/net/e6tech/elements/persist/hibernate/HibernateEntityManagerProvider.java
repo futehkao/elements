@@ -17,6 +17,7 @@ limitations under the License.
 
 package net.e6tech.elements.persist.hibernate;
 
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.serialization.ObjectReference;
 import net.e6tech.elements.common.util.InitialContextFactory;
@@ -39,6 +40,8 @@ import java.util.Map;
  */
 public class HibernateEntityManagerProvider extends EntityManagerProvider {
 
+    private static Logger logger = Logger.getLogger();
+
     private Map<String, IdentifierGenerator> identifierGenerators = new LinkedHashMap<>();
 
     @Override
@@ -52,18 +55,15 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         // getEntityManagerFactoryBuilder(PersistenceUnitDescriptor persistenceUnitDescriptor, Map integration, ClassLoader providedClassLoader)
         // to provide a builder (which subclasses EntityManagerFactoryBuilderImpl in order to hook in the strategies.
         if (identifierGenerators.size() > 0) {
-            net.e6tech.elements.common.interceptor.Interceptor interceptor = new net.e6tech.elements.common.interceptor.Interceptor();
             Map<String, Class<?>> strategies = new LinkedHashMap<>();
             for (Map.Entry<String, IdentifierGenerator> entry: identifierGenerators.entrySet()) {
-                Class<IdentifierGenerator> cls = interceptor.newPrototypeClass((Class<IdentifierGenerator>)entry.getValue().getClass(), entry.getValue());
+                Class<IdentifierGenerator> cls = net.e6tech.elements.common.interceptor.Interceptor
+                        .newPrototypeClass((Class<IdentifierGenerator>)entry.getValue().getClass(), entry.getValue());
                 strategies.put(entry.getKey(), cls);
             }
-            getPersistenceProperties().put(AvailableSettings.IDENTIFIER_GENERATOR_STRATEGY_PROVIDER, new IdentifierGeneratorStrategyProvider() {
-                @Override
-                public Map<String, Class<?>> getStrategies() {
-                    return strategies;
-                }
-            });
+
+            getPersistenceProperties().put(AvailableSettings.IDENTIFIER_GENERATOR_STRATEGY_PROVIDER,
+                    (IdentifierGeneratorStrategyProvider)() -> strategies);
         }
         super.initialize(resources);
     }
@@ -102,7 +102,7 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
             ObjectReference ref = notification.getObjectReference();
             hibernateCache.evictEntity(getClass().getClassLoader().loadClass(ref.getType()), (Serializable) ref.getId());
         } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         }
     }
 
@@ -116,8 +116,7 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         resources.bind(SessionFactoryImplementor.class, factory);
         if (session.getInterceptor() instanceof PersistenceInterceptor) {
             PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
-            // cannot inject, resources not yet open
-            // resources.inject(interceptor);
+            // cannot call resources.inject(interceptor), it is not open yet
             interceptor.setResources(resources);
         }
     }

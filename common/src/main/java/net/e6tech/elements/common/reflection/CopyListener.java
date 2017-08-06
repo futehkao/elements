@@ -18,11 +18,11 @@ package net.e6tech.elements.common.reflection;
 
 import java.beans.PropertyDescriptor;
 import java.beans.PropertyVetoException;
-import java.lang.reflect.Method;
 
 /**
  * Created by futeh on 11/25/15.
  */
+@FunctionalInterface
 public interface CopyListener {
     /**
      *

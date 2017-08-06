@@ -24,6 +24,10 @@ import java.io.Serializable;
  * Created by futeh.
  */
 public class Events {
+    private Events() {
+
+    }
+
     public static class IdleWorker implements Serializable {
         private static final long serialVersionUID = 3494669944533209616L;
         private ActorRef worker;

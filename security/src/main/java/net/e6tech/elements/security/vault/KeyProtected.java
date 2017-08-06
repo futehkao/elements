@@ -15,6 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.security.vault;
 
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.SymmetricCipher;
 
 import java.security.GeneralSecurityException;
@@ -50,7 +51,7 @@ public class KeyProtected {
                 str = encryption.encrypt(key.asSecretKey(), str.getBytes("UTF-8"), iv);
                 secret.setProtectedProperties(iv + "$" + str  + "$" + key.alias() + "$" + key.version());
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         }
         return secret;
@@ -60,15 +61,18 @@ public class KeyProtected {
         try {
             SymmetricCipher encryption = SymmetricCipher.getInstance("AES");
             encryption.setBase64(false);
-            if (secret == null) return null;
+            if (secret == null)
+                return null;
             String encrypted = secret.getSecret();
             String[] components = encrypted.split("\\$");
             if (components.length != 4) {
                 throw new IllegalStateException("The stored secret should have been formatted as 'iv$encypted$alias$version'");
             }
 
-            if (!components[2].equalsIgnoreCase(key.alias())) throw new GeneralSecurityException("Key alias mismatch");
-            if (!components[3].equalsIgnoreCase(key.version())) throw new GeneralSecurityException("Key version mismatch");
+            if (!components[2].equalsIgnoreCase(key.alias()))
+                throw new GeneralSecurityException("Key alias mismatch");
+            if (!components[3].equalsIgnoreCase(key.version()))
+                throw new GeneralSecurityException("Key version mismatch");
             byte[] plain = encryption.decrypt(key.asSecretKey(), components[1], components[0]);
 
             ClearText ct = new ClearText();
@@ -80,21 +84,21 @@ public class KeyProtected {
                     throw new IllegalStateException("The protected properties should have been formatted as 'iv$encypted$alias$version");
                 }
 
-                if (!components[2].equalsIgnoreCase(key.alias())) throw new GeneralSecurityException("Key alias mismatch");
-                if (!components[3].equalsIgnoreCase(key.version())) throw new GeneralSecurityException("Key version mismatch");
+                if (!components[2].equalsIgnoreCase(key.alias()))
+                    throw new GeneralSecurityException("Key alias mismatch");
+                if (!components[3].equalsIgnoreCase(key.version()))
+                    throw new GeneralSecurityException("Key version mismatch");
 
                 byte[] props = encryption.decrypt(key.asSecretKey(), components[1], components[0]);
-                try {
-                    Properties properties = mapper.readValue(new String(props, "UTF-8"), Properties.class);
-                    ct.setProtectedProperties(properties);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+
+                Properties properties = mapper.readValue(new String(props, "UTF-8"), Properties.class);
+                ct.setProtectedProperties(properties);
             }
             return ct;
         } catch (GeneralSecurityException ex) {
-
             throw ex;
+        } catch (Exception ex) {
+            throw new GeneralSecurityException(ex);
         }
     }
 }

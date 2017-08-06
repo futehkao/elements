@@ -16,8 +16,9 @@
 
 package net.e6tech.elements.common.cache;
 
-import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.SystemException;
 
 import javax.cache.Cache;
 import java.lang.reflect.ParameterizedType;
@@ -81,8 +82,10 @@ public abstract class CacheFacade<K, V> {
             clsName = clsName.substring(0, last);
         }
 
-        if (name != null) this.name = clsName + "." + name;
-        else this.name = clsName;
+        if (name != null)
+            this.name = clsName + "." + name;
+        else
+            this.name = clsName;
     }
 
     public CacheFacade<K,V> initPool(long expiry) {
@@ -95,7 +98,7 @@ public abstract class CacheFacade<K, V> {
     }
 
     public CacheFacade<K,V> initPool() {
-        return initPool(CachePool.defaultExpiry);
+        return initPool(CachePool.DEFAULT_EXPIRY);
     }
 
     public String getName() {
@@ -127,22 +130,22 @@ public abstract class CacheFacade<K, V> {
     }
 
     public V get(K key, Callable<V> callable) {
-        Cache<K,V> cache = getCache();
-        V value = cache.get(key);
+        Cache<K,V> c = getCache();
+        V value = c.get(key);
         if (value == null) {
             try {
                 value = callable.call();
-                cache.put(key, value);
+                c.put(key, value);
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         }
         return value;
     }
 
     public boolean remove(K key) {
-        Cache<K,V> cache = getCache();
-        return cache.remove(key);
+        Cache<K,V> c = getCache();
+        return c.remove(key);
     }
 
     public void put(K key, V value) {
@@ -150,7 +153,8 @@ public abstract class CacheFacade<K, V> {
     }
 
     protected synchronized Cache<K,V> getCache() {
-        if (cache != null) return cache;
+        if (cache != null)
+            return cache;
         if (pool == null) {
             pool = new CachePool();
         }

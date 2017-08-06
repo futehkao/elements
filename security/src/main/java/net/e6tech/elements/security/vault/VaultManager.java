@@ -16,6 +16,7 @@ limitations under the License.
 package net.e6tech.elements.security.vault;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.AsymmetricCipher;
 import net.e6tech.elements.security.Hex;
 import net.e6tech.elements.security.RNG;
@@ -44,6 +45,7 @@ import static net.e6tech.elements.security.vault.Constants.*;
 /**
  * Created by futeh.
  */
+@SuppressWarnings({"squid:S1192", "squid:RedundantThrowsDeclarationCheck", "squid:S00100"})
 public class VaultManager {
     private static Logger logger = Logger.getLogger();
 
@@ -124,6 +126,7 @@ public class VaultManager {
         try {
             ct.setBytes(encoded.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
+            Logger.suppress(e);
         }
         ct.setProperty(TYPE, KEY_PAIR_TYPE);
         ct.setProperty(ALGORITHM, asymmetricCipher.getAlgorithm());
@@ -167,7 +170,7 @@ public class VaultManager {
         try {
             ct.setBytes(new String(password).getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
-            // no way
+            Logger.suppress(e);
         }
         ct.alias(PASSPHRASE);
         ct.setProperty(TYPE, PASSPHRASE_TYPE);
@@ -191,8 +194,8 @@ public class VaultManager {
         String dateTime = now.format(DateTimeFormatter.ISO_ZONED_DATE_TIME);
         if (ct.version() == null) {
             ct.setProperty(CREATION_DATE_TIME, dateTime);
-            ct.setProperty(CREATION_TIME, "" + now.toInstant().toEpochMilli());
-            ct.version("" + now.toInstant().toEpochMilli());
+            ct.setProperty(CREATION_TIME, Long.toString(now.toInstant().toEpochMilli()));
+            ct.version(Long.toString(now.toInstant().toEpochMilli()));
         }
         return now;
     }
@@ -200,18 +203,22 @@ public class VaultManager {
     public RSAPublicKeySpec getPublicKey() throws GeneralSecurityException {
         KeyFactory fact = asymmetricCipher.getKeyFactory();
         ClearText key = getKey(ASYMMETRIC_KEY_ALIAS, null);
+        if (key == null)
+            return null;
         return fact.getKeySpec(key.asKeyPair().getPublic(), RSAPublicKeySpec.class);
     }
 
     // not to be exposed to remote calls
     public boolean validateUser(String user, char[] password) {
         try {
-            if (user == null || password == null) return false;
+            if (user == null || password == null)
+                return false;
             ClearText ct1 = getUser(new Credential(user, password));
-            if (ct1 == null) return false;
-            if (ct1.getProperty(TYPE).equals(USER_TYPE)) return true;
-            return false;
-        } catch (Throwable th) {
+            if (ct1 == null)
+                return false;
+            return ct1.getProperty(TYPE).equals(USER_TYPE);
+        } catch (Exception th) {
+            Logger.suppress(th);
             return false;
         }
     }
@@ -219,10 +226,11 @@ public class VaultManager {
     public String authorize(Credential credential) throws GeneralSecurityException {
         checkAccess(credential);
         long now = System.currentTimeMillis();
-        String token = "" + now + "-" + random.nextInt(1000000);
+        String token = "" + Long.toString(now) + "-" + random.nextInt(1000000);
         try {
             return _encrypt(AUTHORIZATION_KEY_ALIAS, token.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
+            Logger.suppress(e);
             return null;
         }
     }
@@ -230,21 +238,24 @@ public class VaultManager {
     public String renew(String token) throws GeneralSecurityException {
         checkToken(token);
         long now = System.currentTimeMillis();
-        token = "" + now + "-" + random.nextInt(1000000);
+        String nextToken = "" + Long.toString(now) + "-" + random.nextInt(1000000);
         try {
-            return _encrypt(AUTHORIZATION_KEY_ALIAS, token.getBytes("UTF-8"));
+            return _encrypt(AUTHORIZATION_KEY_ALIAS, nextToken.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
+            Logger.suppress(e);
             return null;
         }
     }
 
     private void checkToken(String token) throws GeneralSecurityException {
-        if (token == null) throw new LoginException();
+        if (token == null)
+            throw new LoginException();
         byte[] decrypted = _decrypt(token);
         try {
             String plain = new String(decrypted, "UTF-8");
-            int index = plain.indexOf("-");
-            if (index < 0) throw new LoginException("Invalid toke format");
+            int index = plain.indexOf('-');
+            if (index < 0)
+                throw new LoginException("Invalid toke format");
             long time = Long.parseLong(plain.substring(0, index));
             if (System.currentTimeMillis() - time > authorizationDuration) {
                 Date date = new Date(time);
@@ -252,6 +263,7 @@ public class VaultManager {
                 throw new LoginException("Token issued on " + format.format(date) + " expired.  Current time is " + format.format(new Date()));
             }
         } catch (UnsupportedEncodingException e) {
+            Logger.suppress(e);
             throw new LoginException();
         }
     }
@@ -293,7 +305,8 @@ public class VaultManager {
     public ClearText getSecretData(String token, String alias, String version) throws GeneralSecurityException {
         checkToken(token);
         Secret secret = getData(alias, version);
-        if (secret == null) return null;
+        if (secret == null)
+            return null;
         String[] components = encryptedComponents(secret.getSecret());
         String keyAlias = components[2];
         String keyVersion = components[3];
@@ -307,7 +320,8 @@ public class VaultManager {
     public ClearText getSecretData(Credential credential, String alias, String version) throws GeneralSecurityException {
         checkAccess(credential);
         Secret secret = getData(alias, version);
-        if (secret == null) return null;
+        if (secret == null)
+            return null;
         String[] components = encryptedComponents(secret.getSecret());
         String keyAlias = components[2];
         String keyVersion = components[3];
@@ -352,24 +366,30 @@ public class VaultManager {
 
     public String encryptPublic(byte[] data) throws GeneralSecurityException {
         ClearText key = getKey(ASYMMETRIC_KEY_ALIAS, null);
+        if (key == null)
+            throw new GeneralSecurityException("Public/Private key not set up");
         return asymmetricCipher.encrypt(key.asKeyPair().getPublic(), data);
     }
 
     public byte[] decryptPrivate(String secret) throws GeneralSecurityException {
         ClearText key = getKey(ASYMMETRIC_KEY_ALIAS, null);
+        if (key == null)
+            throw new GeneralSecurityException("Public/Private key not set up");
         return asymmetricCipher.decrypt(key.asKeyPair().getPrivate(), secret);
     }
 
     private ClearText getUser(Credential credential) throws GeneralSecurityException {
         Secret user = getUser(credential.getUser(), null);
-        if (user == null) return null;
+        if (user == null)
+            return null;
         // need to get passphrase
         return pwd.unsealUserOrPassphrase(user, credential.getPassword());
     }
 
     private void newUser(byte[] component, Credential credential, String group) throws GeneralSecurityException {
         Secret user = getUser(credential.getUser(), null);
-        if (user != null) throw new GeneralSecurityException("User exists: " + credential.getUser());
+        if (user != null)
+            throw new GeneralSecurityException("User exists: " + credential.getUser());
         ClearText ct1 = new ClearText();
         ct1.alias(credential.getUser());
         ct1.setBytes(component);
@@ -384,11 +404,12 @@ public class VaultManager {
     public void addUser(Credential newUser, Credential existingUser) throws GeneralSecurityException {
         checkAccess(existingUser);
         ClearText ct1 = getUser(existingUser);
+        if (ct1 == null)
+            throw new GeneralSecurityException("Existing user not found: " + existingUser.getUser());
         newUser(ct1.getBytes(), newUser, ct1.getProperty(GUARDIAN));
     }
 
     public void changePassword(String user, char[] oldPwd, char[] newPwd) throws GeneralSecurityException {
-        // ClearText ct1 = getUser(new Credential(user, oldPwd));
         Vault userVault = userLocalStore.getVault(USER_VAULT);
         Set<Long> versions = userVault.versions(user);
 
@@ -397,10 +418,9 @@ public class VaultManager {
             ClearText ct = pwd.unsealUserOrPassphrase(secret, oldPwd);
             addUser(pwd.sealUser(ct, newPwd));
         }
-
-       // addUser(pwd.seal(ct1, newPwd));
     }
 
+    // Encrypting ClearText with dualEntry's associated passphrase and store it in local, ie file.
     public void passphraseLock(String alias, ClearText ct, DualEntry dualEntry) throws GeneralSecurityException {
         ct.alias(alias);
         ClearText clearPassphrase;
@@ -417,23 +437,28 @@ public class VaultManager {
     public ClearText passphraseUnlock(String alias, Credential credential) throws GeneralSecurityException {
         checkAccess(credential);
         Secret secret = getLocal(alias, null);
-        if (secret == null) return null;
+        if (secret == null)
+            return null;
         return pwd.unseal(secret, getPassphrase());
     }
 
     public ClearText passphraseUnlock(String token, String alias) throws GeneralSecurityException {
         checkToken(token);
         Secret secret = getLocal(alias, null);
-        if (secret == null) return null;
+        if (secret == null)
+            return null;
         return pwd.unseal(secret, getPassphrase());
     }
 
     public void newMasterKey(DualEntry dualEntry) throws GeneralSecurityException {
+        getPassphrase(dualEntry);
         addKey(generateInternalKey(MASTER_KEY_ALIAS));
     }
 
     private void checkAccess(Credential credential) throws GeneralSecurityException {
         ClearText ct = getUser(credential);
+        if (ct == null)
+            throw new GeneralSecurityException("Cannot find user " + credential.getUser());
         if (!ct.getProperty(GUARDIAN).equals(GROUP_1) || !ct.getProperty(GUARDIAN).equals(GROUP_2))
             new GeneralSecurityException("User " + ct.getProperty(USERNAME) + " is not a guardian");
 
@@ -442,24 +467,26 @@ public class VaultManager {
         }
     }
 
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
     private void checkAccess(DualEntry dualEntry) throws GeneralSecurityException {
         ClearText ct1 = getUser(dualEntry.getUser1());
         ClearText ct2  = getUser(dualEntry.getUser2());
 
-        if (ct1 == null) throw new GeneralSecurityException("Bad user name " + dualEntry.getUser1());
-        if (ct2 == null) throw new GeneralSecurityException("Bad user name " + dualEntry.getUser2());
+        if (ct1 == null)
+            throw new GeneralSecurityException("Bad user name " + dualEntry.getUser1());
+        if (ct2 == null)
+            throw new GeneralSecurityException("Bad user name " + dualEntry.getUser2());
 
-        int n = 0;
         if (ct1.getProperty(GUARDIAN) == null ||
                 !(ct1.getProperty(GUARDIAN).equals(GROUP_1) || ct1.getProperty(GUARDIAN).equals(GROUP_2))) {
-            throw new RuntimeException("User " + ct1.getProperty(USERNAME) + " is not a guardian");
+            throw new SystemException("User " + ct1.getProperty(USERNAME) + " is not a guardian");
         }
         if (ct2.getProperty(GUARDIAN) == null ||
                 !(ct2.getProperty(GUARDIAN).equals(GROUP_1) || ct2.getProperty(GUARDIAN).equals(GROUP_2))) {
             throw new GeneralSecurityException("User " + ct2.getProperty(USERNAME) + " is not a guardian");
         }
         if (ct1.getProperty(GUARDIAN).equals(ct2.getProperty(GUARDIAN))) {
-            throw new RuntimeException("User1 " + ct1.getProperty(USERNAME) + " and user 2 "
+            throw new SystemException("User1 " + ct1.getProperty(USERNAME) + " and user 2 "
                     + ct2.getProperty(USERNAME) + " cannot be in the same group");
         }
 
@@ -474,13 +501,18 @@ public class VaultManager {
 
     private char[] getPassphrase(DualEntry dualEntry) throws GeneralSecurityException {
         ClearText ct1 = getUser(dualEntry.getUser1());
+        if (ct1 == null)
+            throw new GeneralSecurityException("Cannot find user " + dualEntry.getUser1());
         ClearText ct2  = getUser(dualEntry.getUser2());
+        if (ct2 == null)
+            throw new GeneralSecurityException("Cannot find user " + dualEntry.getUser2());
 
         checkAccess(dualEntry);
         byte[] comp1 = ct1.getBytes();
         byte[] comp2 = ct2.getBytes();
         byte[] pwdBytes = new byte[comp1.length];
-        for (int i = 0; i< comp1.length; i++) pwdBytes[i] = (byte)((comp1[i] ^ comp2[i]) & 0x000000ff);
+        for (int i = 0; i< comp1.length; i++)
+            pwdBytes[i] = (byte)((comp1[i] ^ comp2[i]) & 0x000000ff);
         return Hex.toString(pwdBytes).toCharArray();
     }
 
@@ -493,7 +525,7 @@ public class VaultManager {
      * 5. re-encrypt keys in the database.  We need to iterate through all version for each alias.
      * @param dualEntry dual entry containing authentication info for two users.
      */
-    public void changePassphrase(DualEntry dualEntry) throws GeneralSecurityException, IOException {
+    public void changePassphrase(DualEntry dualEntry) throws GeneralSecurityException {
         checkAccess(dualEntry);
 
         // save password and signature
@@ -501,8 +533,12 @@ public class VaultManager {
 
         // make backup of file and database
         String currentVersion = state.getSignature().version();
-        userLocalStore.backup(currentVersion);
-        keyDataStore.backup(currentVersion);
+        try {
+            userLocalStore.backup(currentVersion);
+            keyDataStore.backup(currentVersion);
+        } catch (IOException ex) {
+            throw new GeneralSecurityException(ex);
+        }
 
         try {
             byte[] comp1 = RNG.generateSeed(16);
@@ -571,11 +607,15 @@ public class VaultManager {
             addData(newSignature);
             state.setSignature(newSignature);
 
-        } catch (Throwable th) {
+        } catch (Exception th) {
             // restore file and database
             state = oldState;
-            userLocalStore.restore(currentVersion);
-            keyDataStore.restore(currentVersion);
+            try {
+                userLocalStore.restore(currentVersion);
+                keyDataStore.restore(currentVersion);
+            } catch (IOException ex) {
+                throw new GeneralSecurityException(ex);
+            }
             throw new GeneralSecurityException(th);
         }
 
@@ -584,21 +624,29 @@ public class VaultManager {
         // files store need to detect if a backup exist.
         try {
             userLocalStore.save();
-        } catch (Throwable th) {
+        } catch (Exception th) {
             // restore file and database from backup
-            restore(currentVersion);
-            state = oldState;
+            restoreState(currentVersion, oldState);
             throw new GeneralSecurityException(th);
         }
 
         try {
             keyDataStore.save();
-        } catch (Throwable th) {
+        } catch (Exception th) {
             // restore file and database from backup
-            restore(currentVersion);
+            restoreState(currentVersion, oldState);
             state = oldState;
             throw new GeneralSecurityException(th);
         }
+    }
+
+    private void restoreState(String currentVersion, VaultManagerState oldState) throws GeneralSecurityException {
+        try {
+            restore(currentVersion);
+        } catch (IOException e) {
+            throw new GeneralSecurityException(e);
+        }
+        state = oldState;
     }
 
     private void restore(String version) throws IOException {
@@ -606,13 +654,15 @@ public class VaultManager {
         keyDataStore.restore(version);
     }
 
+    @SuppressWarnings("squid:S00100")
     private String _encrypt(String keyAlias, byte[] plain) throws GeneralSecurityException {
         ClearText ct = getKey(keyAlias, null);
+        if (ct == null)
+            throw new GeneralSecurityException("No key for keyAlias=" + keyAlias);
 
         String iv = symmetricCipher.generateIV();
         String encrypted = symmetricCipher.encrypt(ct.asSecretKey(), plain, iv);
-        String ivAndEnc = iv + "$" + encrypted + "$" + keyAlias + "$" + ct.version();
-        return ivAndEnc;
+        return iv + "$" + encrypted + "$" + keyAlias + "$" + ct.version(); // iv and enc
     }
 
     public byte[] _decrypt(String encoded) throws GeneralSecurityException {
@@ -620,6 +670,8 @@ public class VaultManager {
         String alias = components[2];
         String version = components[3];
         ClearText ct = getKey(alias, version);
+        if (ct == null)
+            throw new GeneralSecurityException("No key for keyAlias=" + alias);
         return symmetricCipher.decrypt(ct.asSecretKey(), components[1], components[0]);
     }
 
@@ -633,63 +685,66 @@ public class VaultManager {
         keyDataStore.close();
     }
 
-    public void open(DualEntry dualEntry) throws GeneralSecurityException, IOException {
-        if (userLocalOpened) return;
-        userLocalStore.open();
+    public void open(DualEntry dualEntry) throws GeneralSecurityException {
+        if (userLocalOpened)
+            return;
+        try {
+            userLocalStore.open();
+        } catch (IOException e) {
+            throw new GeneralSecurityException(e);
+        }
         userLocalOpened = true;
 
         boolean modified = false;
 
-        try {
-            // if no users in the vault
-            if (userLocalStore.getVault(USER_VAULT).size() == 0) {
-                byte[] comp1 = RNG.generateSeed(16);
-                byte[] comp2 = RNG.generateSeed(16);
-                newUser(comp1, dualEntry.getUser1(), GROUP_1);
-                newUser(comp2, dualEntry.getUser2(), GROUP_2);
+        // if no users in the vault we will create passphrase component 1 and 2.
+        if (userLocalStore.getVault(USER_VAULT).size() == 0) {
+            byte[] comp1 = RNG.generateSeed(16);
+            byte[] comp2 = RNG.generateSeed(16);
+            newUser(comp1, dualEntry.getUser1(), GROUP_1);
+            newUser(comp2, dualEntry.getUser2(), GROUP_2);
 
-                try {
-                    state.setPassword(getPassphrase(dualEntry));
-                } catch (GeneralSecurityException ex) {
-                    throw new GeneralSecurityException("Bad user name or password to unlock the vault");
-                }
-
-                // add passphrase
-                ClearText passphrase = generatePassphrase(getPassphrase(dualEntry));
-                passphraseLock(PASSPHRASE, passphrase, dualEntry);
-
-                // add signature
-                ClearText signature = generateSignature();
-                passphraseLock(SIGNATURE, signature, dualEntry);
-
-                modified = true;
+            try {
+                state.setPassword(getPassphrase(dualEntry));
+            } catch (GeneralSecurityException ex) {
+                throw new GeneralSecurityException("Bad user name or password to unlock the vault", ex);
             }
-        } catch (GeneralSecurityException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
+
+            // add passphrase
+            ClearText passphrase = generatePassphrase(getPassphrase(dualEntry));
+            passphraseLock(PASSPHRASE, passphrase, dualEntry);
+
+            // add signature
+            ClearText signature = generateSignature();
+            passphraseLock(SIGNATURE, signature, dualEntry);
+
+            modified = true;
         }
+
         if (modified) {
             try {
                 userLocalStore.save();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         }
 
         try {
             state.setPassword(getPassphrase(dualEntry));
         } catch (GeneralSecurityException ex) {
-            throw new GeneralSecurityException("Bad user name or password to unlock the vault");
+            throw new GeneralSecurityException("Bad user name or password to unlock the vault", ex);
         }
 
         state.setSignature(passphraseUnlock(SIGNATURE, dualEntry.getUser1()));
 
     }
 
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
     private void openKeyData() throws GeneralSecurityException {
-        if (keyDataOpened) return;
-        if (!userLocalOpened) throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+        if (keyDataOpened)
+            return;
+        if (!userLocalOpened)
+            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
 
         // need to check file backup
         try {
@@ -728,7 +783,7 @@ public class VaultManager {
                     keyDataStore.restore(state.getSignature().version());
                     keyStoreSigSecret = getData(SIGNATURE, null);
                 } catch (IOException e) {
-                    throw new GeneralSecurityException("Property signature do not match.  Local store vault signature does not match key store signature");
+                    throw new GeneralSecurityException("Property signature do not match.  Local store vault signature does not match key store signature", e);
                 }
             }
 
@@ -742,7 +797,7 @@ public class VaultManager {
                     logger.warn("Restoring key data store to version " + state.getSignature().version());
                     keyDataStore.restore(state.getSignature().version());
                 } catch (IOException e) {
-                    throw new GeneralSecurityException("Local store vault signature does not match key store signature");
+                    throw new GeneralSecurityException("Local store vault signature does not match key store signature", e);
                 }
             }
         }
@@ -751,7 +806,7 @@ public class VaultManager {
             try {
                 keyDataStore.save();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new SystemException(e);
             }
         }
     }
@@ -780,10 +835,12 @@ public class VaultManager {
         if (version != null) {
             String key = keyAlias + ":" + version;
             ClearText ct = state.getCachedKeys().get(key);
-            if (ct != null) return ct;
+            if (ct != null)
+                return ct;
         }
         Secret key = keyDataStore.getVault(KEY_VAULT).getSecret(keyAlias, version);
-        if (key == null) return null;
+        if (key == null)
+            return null;
         ClearText ct = pwd.unseal(key, getPassphrase(key));
         state.getCachedKeys().put(ct.alias() + ":" + ct.version(), ct);
         return ct;
@@ -814,34 +871,40 @@ public class VaultManager {
 
     // this function is different from the other addXXX function because we don't version users.
     private void addUser(Secret secret) throws GeneralSecurityException {
-        if (!userLocalOpened) throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+        if (!userLocalOpened)
+            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
         userLocalStore.getVault(USER_VAULT).addSecret(secret);
     }
 
     private Secret getUser(String alias, String version) throws GeneralSecurityException {
-        if (!userLocalOpened) throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+        if (!userLocalOpened)
+            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
         return userLocalStore.getVault(USER_VAULT).getSecret(alias, version);
     }
 
     private void removeUser(String alias, String version) throws GeneralSecurityException {
-        if (!userLocalOpened) throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+        if (!userLocalOpened)
+            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
         userLocalStore.getVault(USER_VAULT).removeSecret(alias, version);
     }
 
     public Set<String> listUsers() throws GeneralSecurityException {
-        if (!userLocalOpened) throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+        if (!userLocalOpened)
+            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
         return userLocalStore.getVault(USER_VAULT).aliases();
     }
 
     private void addLocal(ClearText ct, ClearText passphrase) throws GeneralSecurityException {
-        if (!userLocalOpened) throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+        if (!userLocalOpened)
+            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
         setCreationTimeVersion(ct);
         Secret secret = pwd.seal(ct, passphrase);
         userLocalStore.getVault(LOCAL_VAULT).addSecret(secret);
     }
 
     private Secret getLocal(String alias, String version) throws GeneralSecurityException {
-        if (!userLocalOpened) throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+        if (!userLocalOpened)
+            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
         return userLocalStore.getVault(LOCAL_VAULT).getSecret(alias, version);
     }
 }

@@ -15,7 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.persist;
 
-import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationCenter;
 import net.e6tech.elements.common.resources.*;
@@ -34,9 +34,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by futeh.
  */
 public abstract class EntityManagerProvider implements ResourceProvider, Initializable {
-
-    private static final String MONITOR_TRANSACTION = EntityManagerProvider.class.getName() + ".transaction.monitor";
-    private static final String LONG_TRANSACTION = EntityManagerProvider.class.getName() + ".transaction.longTransaction";
 
     private static final Logger logger = Logger.getLogger();
 
@@ -61,15 +58,15 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private long monitorIdle = 60000;
     private boolean monitoring = false;
 
+    public EntityManagerProvider() {
+    }
+
     public long getMonitorIdle() {
         return monitorIdle;
     }
 
     public void setMonitorIdle(long monitorIdle) {
         this.monitorIdle = monitorIdle;
-    }
-
-    public EntityManagerProvider() {
     }
 
     public Broadcast getBroadcast() {
@@ -121,7 +118,8 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     }
 
     public int getIgnoreInitialLongTransactions() {
-        if (ignoreInitialLongTransactions == null) return 0;
+        if (ignoreInitialLongTransactions == null)
+            return 0;
         return ignoreInitialLongTransactions.get();
     }
 
@@ -150,41 +148,43 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                 type.getPersistenceType();
             });
         } finally {
-            if (em != null) em.close();
+            if (em != null)
+                em.close();
         }
 
-        NotificationCenter center = resources.getNotificationCenter();
-        center.subscribe(EvictCollectionRegion.class, (notice) -> {
-            evictCollectionRegion((EvictCollectionRegion) notice.getUserObject());
-        });
+        NotificationCenter notificationCenter = resources.getNotificationCenter();
+        notificationCenter.subscribe(EvictCollectionRegion.class,
+                notice -> evictCollectionRegion((EvictCollectionRegion) notice.getUserObject()));
 
-        center.subscribe(EvictEntityRegion.class, (notice) -> {
-            evictEntityRegion((EvictEntityRegion) notice.getUserObject());
-        });
+        notificationCenter.subscribe(EvictEntityRegion.class,
+                notice -> evictEntityRegion((EvictEntityRegion) notice.getUserObject()));
 
-        center.subscribe(EvictEntity.class, (notice) -> {
-            evictEntity(notice.getUserObject());
-        });
+        notificationCenter.subscribe(EvictEntity.class,
+                notice -> evictEntity(notice.getUserObject()));
     }
 
     @Override
     public void onOpen(Resources resources) {
         Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
-        if (config.isPresent() && config.get().disable()) throw new NotAvailableException();
+        if (config.isPresent() && config.get().disable())
+            throw new NotAvailableException();
 
-        long timeout = config.map(c -> c.timeout()).orElse(transactionTimeout);
-        if (timeout == 0L) timeout = transactionTimeout;
-        long timeoutExt = config.map(c -> c.timeoutExtension()).orElse(0L);
+        long timeout = config.map(EntityManagerConfig::timeout).orElse(transactionTimeout);
+        if (timeout == 0L)
+            timeout = transactionTimeout;
+        long timeoutExt = config.map(EntityManagerConfig::timeoutExtension).orElse(0L);
         timeout += timeoutExt;
 
-        boolean monitor = config.map(c -> c.monitor()).orElse(monitorTransaction);
+        boolean monitor = config.map(EntityManagerConfig::monitor).orElse(monitorTransaction);
 
-        long longQuery = config.map(c -> c.longTransaction()).orElse(longTransaction);
-        if (longQuery == 0L) longQuery = longTransaction;
+        long longQuery = config.map(EntityManagerConfig::longTransaction).orElse(longTransaction);
+        if (longQuery == 0L)
+            longQuery = longTransaction;
 
         if (firstQuery) {
             firstQuery = false;
-            if (longQuery < 1000L) longQuery = 1000L;
+            if (longQuery < 1000L)
+                longQuery = 1000L;
         }
 
         EntityManager em = emf.createEntityManager();
@@ -203,6 +203,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     // Submits a thread task to monitor expired EntityManagers.
     // the thread would break out after monitorIdle time.
     // when another monitor shows up, the thread task would resume.
+    @SuppressWarnings({"squid:S1188", "squid:S134"})
     private void monitor(EntityManagerMonitor monitor) {
 
         // entityManagerMonitors contains open, committed and aborted entityManagers.
@@ -258,7 +259,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                         sleep = expiration - System.currentTimeMillis();
                         if (sleep < 0) {
                             // probably due to debugging
-                            if (entityManagerMonitors.size() > 0) sleep = 1;
+                            if (!entityManagerMonitors.isEmpty()) sleep = 1;
                             else sleep = 0;
                         }
                     }
@@ -272,6 +273,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                             newMonitor = monitorQueue.poll(sleep, TimeUnit.MILLISECONDS);
                         }
                     } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     }
 
                     if (newMonitor != null) {
@@ -283,8 +285,8 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                         // we need to check the monitorQueue size before we break out.
                         // Also, we need to make sure entityManagerMonitors is empty as well.
                         synchronized (monitorQueue) {
-                            if (monitorQueue.size() == 0
-                                    && entityManagerMonitors.size() == 0
+                            if (monitorQueue.isEmpty()
+                                    && entityManagerMonitors.isEmpty()
                                     && System.currentTimeMillis() - start > monitorIdle) {
                                 monitoring = false;
                                 break;
@@ -310,12 +312,12 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             em.close();
             // to break out the
             Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
-            boolean monitor = config.map(c -> c.monitor()).orElse(monitorTransaction);
+            boolean monitor = config.map(EntityManagerConfig::monitor).orElse(monitorTransaction);
             if (monitor) {
                 monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
             }
         } catch (InstanceNotFoundException ex) {
-
+            Logger.suppress(ex);
         } finally {
             cleanup(resources);
         }
@@ -333,12 +335,12 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             em.clear();
             em.close();
             Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
-            boolean monitor = config.map(c -> c.monitor()).orElse(monitorTransaction);
+            boolean monitor = config.map(EntityManagerConfig::monitor).orElse(monitorTransaction);
             if (monitor) {
                 monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
             }
-        } catch (Throwable th) {
-
+        } catch (Exception th) {
+            Logger.suppress(th);
         }  finally {
             cleanup(resources);
         }

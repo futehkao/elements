@@ -15,6 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.security.vault;
 
+import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.Hex;
 
 import javax.crypto.SecretKey;
@@ -35,6 +37,7 @@ import static net.e6tech.elements.security.vault.Constants.*;
  */
 public class ClearText implements Serializable {
     private static final long serialVersionUID = -6495396359046821847L;
+    private static final String UTF8 = "UTF-8";
 
     public static final String PUBLIC_KEY_MOD = "public-key-mod";
     public static final String PUBLIC_KEY_EXP= "public-key-exp";
@@ -61,20 +64,21 @@ public class ClearText implements Serializable {
 
     // not a getter so that ObjectMapper won't pick it up
     public String toText() {
-        if (bytes == null) return null;
+        if (bytes == null)
+            return null;
         try {
-            return new String(bytes, "UTF-8");
+            return new String(bytes, UTF8);
         } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
     // not a setter so that ObjectMapper won't pick it up
     public void resetText(String text) {
         try {
-            setBytes(text.getBytes("UTF-8"));
+            setBytes(text.getBytes(UTF8));
         } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -87,30 +91,36 @@ public class ClearText implements Serializable {
     }
 
     public String getProperty(String key) {
-        if (getProperties() == null) return null;
+        if (getProperties() == null)
+            return null;
         return getProperties().getProperty(key);
     }
 
     public void setProperty(String key, String value) {
-        if (getProperties() == null) properties = new Properties();
+        if (getProperties() == null)
+            properties = new Properties();
         properties.setProperty(key, value);
     }
 
     public String getProtectedProperty(String key) {
-        if (getProtectedProperties() == null) return null;
+        if (getProtectedProperties() == null)
+            return null;
         return getProtectedProperties().getProperty(key);
     }
 
     public void setProtectedProperty(String key, String value) {
-        if (getProtectedProperties() == null) protectedProperties = new Properties();
+        if (getProtectedProperties() == null)
+            protectedProperties = new Properties();
         protectedProperties.setProperty(key, value);
     }
 
     public void protect() {
-        if (getProtectedProperties() == null) protectedProperties = new Properties();
+        if (getProtectedProperties() == null)
+            protectedProperties = new Properties();
         for (String key : properties.stringPropertyNames()) {
             String value = properties.getProperty(key);
-            if (value != null && !protectedProperties.containsKey(key)) protectedProperties.setProperty(key, properties.getProperty(key));
+            if (value != null && !protectedProperties.containsKey(key))
+                protectedProperties.setProperty(key, properties.getProperty(key));
         }
     }
 
@@ -139,13 +149,12 @@ public class ClearText implements Serializable {
     }
 
     public SecretKey asSecretKey() {
-        SecretKey secretKey = new SecretKeySpec(getBytes(), getProperty(ALGORITHM));
-        return secretKey;
+        return new SecretKeySpec(getBytes(), getProperty(ALGORITHM));
     }
 
     public KeyPair asKeyPair() throws GeneralSecurityException {
         try {
-            String text = new String(getBytes(), "UTF-8");
+            String text = new String(getBytes(), UTF8);
             String[] components = text.split("\\$");
             if (components.length != 2) {
                 throw new IllegalStateException("Invalid encryption format");
@@ -161,6 +170,7 @@ public class ClearText implements Serializable {
             PrivateKey privateKey = fact.generatePrivate(priv);
             return new KeyPair(pubKey, privateKey);
         } catch (UnsupportedEncodingException e) {
+            Logger.suppress(e);
             return null;
         }
     }

@@ -16,6 +16,8 @@ limitations under the License.
 
 package net.e6tech.elements.security;
 
+import net.e6tech.elements.common.util.SystemException;
+
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -27,19 +29,20 @@ import java.security.NoSuchAlgorithmException;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S00100")
 public class Hash {
 
-    private static final int iterations = 20*1000;
+    private static final int ITERATIONS = 20*1000;
 
     public static String pbkdf2_256(String text, byte[] salt) throws GeneralSecurityException {
         SecretKeyFactory f = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-        SecretKey key = f.generateSecret(new PBEKeySpec(text.toCharArray(), salt, iterations, 256));
+        SecretKey key = f.generateSecret(new PBEKeySpec(text.toCharArray(), salt, ITERATIONS, 256));
         return Hex.toString(key.getEncoded());
     }
 
     public static String pbkdf2_512(String text, byte[] salt) throws GeneralSecurityException {
         SecretKeyFactory f = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
-        SecretKey key = f.generateSecret(new PBEKeySpec(text.toCharArray(), salt, iterations, 512));
+        SecretKey key = f.generateSecret(new PBEKeySpec(text.toCharArray(), salt, ITERATIONS, 512));
         return Hex.toString(key.getEncoded());
     }
 
@@ -58,19 +61,20 @@ public class Hash {
             md.update(text.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
             // should not happen
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
-        byte byteData[] = md.digest();
+        byte[] byteData = md.digest();
 
         return Hex.toString(byteData);
     }
 
+    @SuppressWarnings({"squid:S106", "squid:S1192"})
     public static void main(String ... args) throws Exception {
         StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < 50; i++) builder.append((char) i);
+        for (int i = 0; i < 50; i++)
+            builder.append((char) i);
         String str = "";
         byte[] salt = RNG.getSecureRandom().generateSeed(32);
-        str = pbkdf2_256(builder.toString(), salt);
 
         long start = System.currentTimeMillis();
         str = pbkdf2_256(builder.toString(), salt);

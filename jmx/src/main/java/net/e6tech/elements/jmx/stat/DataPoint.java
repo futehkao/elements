@@ -20,6 +20,7 @@ package net.e6tech.elements.jmx.stat;
  */
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class DataPoint implements Serializable, Comparable<DataPoint> {
     private static final long serialVersionUID = -6790697881387398412L;
@@ -50,9 +51,24 @@ public class DataPoint implements Serializable, Comparable<DataPoint> {
     }
 
     @Override
+    @SuppressWarnings("squid:S1244")
     public int compareTo(DataPoint o) {
-        if (value < o.getValue()) return -1;
-        if (value == o.getValue()) return 0;
+        if (value < o.getValue())
+            return -1;
+        if (value == o.getValue())
+            return 0;
         return 1;
+    }
+
+    @SuppressWarnings("squid:S1244")
+    public boolean equals(Object object) {
+        if (!(object instanceof DataPoint))
+            return false;
+        return timestamp == ((DataPoint) object).timestamp
+                && value == ((DataPoint) object).value;
+    }
+
+    public int hashCode() {
+        return Objects.hash(value, timestamp);
     }
 }

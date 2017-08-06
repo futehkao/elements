@@ -16,9 +16,9 @@ limitations under the License.
 
 package net.e6tech.elements.security.vault;
 
-import java.util.Arrays;
-import java.util.Hashtable;
-import java.util.Map;
+import net.e6tech.elements.common.util.SystemException;
+
+import java.util.*;
 
 /**
  * Created by futeh.
@@ -27,20 +27,19 @@ public class VaultManagerState implements Cloneable {
 
     private char[] password;
     private ClearText signature;
-    private Map<String, ClearText> cachedKeys = new Hashtable<>();
+    private Map<String, ClearText> cachedKeys = Collections.synchronizedMap(new HashMap<>());
 
-    public VaultManagerState() {
-
-    }
-
+    @SuppressWarnings("squid:S2975")
     public VaultManagerState clone() {
         VaultManagerState state = null;
         try {
             state = (VaultManagerState) super.clone();
         } catch (CloneNotSupportedException e) {
+            throw new SystemException(e);
         }
 
-        if (password != null) state.password = Arrays.copyOf(password, password.length);
+        if (password != null)
+            state.password = Arrays.copyOf(password, password.length);
         return state;
     }
 

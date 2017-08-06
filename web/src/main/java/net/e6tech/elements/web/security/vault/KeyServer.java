@@ -15,9 +15,11 @@ limitations under the License.
 */
 package net.e6tech.elements.web.security.vault;
 
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.cache.CacheFacade;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.vault.ClearText;
 import net.e6tech.elements.security.vault.Credential;
 import net.e6tech.elements.security.vault.VaultManager;
@@ -26,7 +28,6 @@ import net.e6tech.elements.web.security.vault.client.*;
 import javax.crypto.BadPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import javax.inject.Inject;
 import javax.security.auth.login.LoginException;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -52,27 +53,23 @@ public class KeyServer {
     @Inject
     CacheFacade<String, SecretKey> clientKeys;
 
-    /*@Override
-    public void injected() {
-        clientKeys = new CacheFacade<String, SecretKey>(getClass() + ".clientKeys") {};
-        provision.inject(clientKeys);
-    }*/
-
     @GET
     @Produces({MediaType.APPLICATION_JSON})
     @Path("publicKey")
     public String getPublicKey() {
         try {
             RSAPublicKeySpec keySpec = vaultManager.getPublicKey();
+            if (keySpec == null)
+                return null;
             SharedKey sharedKey = new SharedKey();
             sharedKey.setModulus(keySpec.getModulus());
             sharedKey.setPublicExponent(keySpec.getPublicExponent());
             return mapper.writeValueAsString(sharedKey);
         } catch (BadPaddingException ex) {
            logger.error("bad vault");
-            throw new RuntimeException(ex);
+            throw new SystemException(ex);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new SystemException(e);
         }
     }
 
@@ -95,7 +92,7 @@ public class KeyServer {
             Class requestClass = getClass().getClassLoader().loadClass(clsName);
             action = (Action) mapper.readValue(encoded, requestClass);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.debug(e.getMessage(), e);
         }
 
         String value = null;
@@ -127,20 +124,18 @@ public class KeyServer {
                 }
                 return vaultManager.getSymmetricCipher().encrypt(clientKey, result, null);
             } else {
-                throw new RuntimeException("Unsupported action " + action);
+                throw new SystemException("Unsupported action " + action);
             }
 
             return vaultManager.getSymmetricCipher().encrypt(clientKey, value.getBytes("UTF-8"), null);
         } catch (LoginException ex) {
             logger.warn("" + action, ex);
             throw new NotAuthorizedException(Response.status(Response.Status.UNAUTHORIZED).build());
-        } catch(NullPointerException ex) {
+        } catch(RuntimeException ex) {
             throw ex;
-        }  catch(RuntimeException ex) {
-            throw ex;
-        } catch (Exception ex) {
+        }  catch (Exception ex) {
             logger.warn("" + action, ex);
-            throw new RuntimeException(ex);
+            throw new SystemException(ex);
         }
     }
 }

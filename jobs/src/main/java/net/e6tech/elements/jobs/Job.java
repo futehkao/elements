@@ -25,6 +25,7 @@ import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.Startable;
+import net.e6tech.elements.common.util.SystemException;
 import org.quartz.*;
 import org.quartz.impl.JobDetailImpl;
 import org.quartz.impl.StdSchedulerFactory;
@@ -71,7 +72,7 @@ public class Job implements Initializable, Startable, LaunchListener {
     }
 
     @JmxOperation
-    public void resume() throws SchedulerException, ParseException {
+    public void resume() throws SchedulerException {
         if (scheduler.getJobDetail(new JobKey(name, group))!= null) {
             // job is still scheduled so that we just make sure the trigger is still running.
             CronTriggerImpl trigger = (CronTriggerImpl) scheduler.getTrigger(new TriggerKey(name, group));
@@ -81,17 +82,21 @@ public class Job implements Initializable, Startable, LaunchListener {
         } else {
             JobDetail jobDetail = newJobDetail();
             CronTriggerImpl trigger = (CronTriggerImpl) scheduler.getTrigger(new TriggerKey(name, group));
-            if (trigger != null) {
-                updateTrigger(trigger);
-            } else {
-                trigger = newCronTrigger();
+            try {
+                if (trigger != null) {
+                    updateTrigger(trigger);
+                } else {
+                    trigger = newCronTrigger();
+                }
+            } catch (ParseException ex) {
+                throw new SchedulerException(ex);
             }
             scheduler.scheduleJob(jobDetail, trigger);
         }
     }
 
     @JmxOperation
-    public void reschedule(String cronExpression) throws ParseException, SchedulerException {
+    public void reschedule(String cronExpression) throws SchedulerException {
         setCronExpression(cronExpression);
         stop();
         resume();
@@ -103,7 +108,9 @@ public class Job implements Initializable, Startable, LaunchListener {
             Trigger trigger = scheduler.getTrigger(new TriggerKey(name, group));
             return trigger.getNextFireTime().toString();
         } catch (SchedulerException e) {
-        } catch (Throwable th) {
+            Logger.suppress(e);
+        } catch (Exception th) {
+            Logger.suppress(th);
         }
         return "NA";
     }
@@ -111,11 +118,11 @@ public class Job implements Initializable, Startable, LaunchListener {
     @JmxAttributeMethod
     public boolean isRunning() {
         try {
-            JobDetail detail = scheduler.getJobDetail(new JobKey(name, group));
-            if (detail == null) return false;
-            else return true;
+            return scheduler.getJobDetail(new JobKey(name, group)) != null;
         } catch (SchedulerException e) {
-        } catch (Throwable th) {
+            Logger.suppress(e);
+        } catch (Exception th) {
+            Logger.suppress(th);
         }
         return false;
     }
@@ -126,23 +133,18 @@ public class Job implements Initializable, Startable, LaunchListener {
                 target = ((Class) target).newInstance();
             }
             invocation = target.getClass().getMethod(targetMethod);
-        } catch (Throwable e) {
-            throw logger.runtimeException(e);
+        } catch (Exception e) {
+            throw logger.systemException(e);
         }
     }
 
     @Override
     public void initialize(Resources resources) {
-        /* if (target instanceof Initializable) {
-            ((Initializable) target).initialize(resources);
-        }*/
+        // do nothing
     }
 
     public void start() {
         try {
-            // if (target instanceof Startable) {
-            //    ((Startable) target).start();
-            //}
             logger.info("Scheduled job=" + getName());
             init();
             JobDetail jobDetail = newJobDetail();
@@ -158,15 +160,13 @@ public class Job implements Initializable, Startable, LaunchListener {
             }
             scheduler.scheduleJob(jobDetail, trigger);
         } catch (Exception ex) {
-            throw new RuntimeException(ex);
+            throw new SystemException(ex);
         }
     }
 
     @Override
     public void launched(Provision provision) {
-        /* if (target instanceof LaunchListener) {
-            ((LaunchListener) target).launched(provision);
-        } */
+        // do nothing
     }
 
     protected JobDetail newJobDetail() {
@@ -197,6 +197,7 @@ public class Job implements Initializable, Startable, LaunchListener {
         return trigger;
     }
 
+    @SuppressWarnings("squid:S00112")
     public Object execute() throws Throwable {
         try {
             // this call is executed using a different thread so that we need to set up
@@ -207,6 +208,7 @@ public class Job implements Initializable, Startable, LaunchListener {
             }
             return invocation.invoke(target);
         } catch (InvocationTargetException ex) {
+            Logger.suppress(ex);
             throw ex.getTargetException();
         }
     }

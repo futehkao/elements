@@ -21,6 +21,7 @@ import java.lang.reflect.Method;
 /**
  * Created by futeh on 1/21/16.
  */
+@SuppressWarnings("squid:S1948")
 public class MethodCallNotification implements Notification {
 
     private static final long serialVersionUID = -2485748840848997423L;

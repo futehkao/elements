@@ -15,16 +15,16 @@ limitations under the License.
 */
 package net.e6tech.elements.persist.hibernate;
 
-import com.google.inject.Inject;
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.notification.NotificationCenter;
 import net.e6tech.elements.common.resources.PersistenceListener;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.serialization.ObjectReference;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.persist.EvictCollectionRegion;
 import net.e6tech.elements.persist.EvictEntity;
 import net.e6tech.elements.persist.PersistenceInterceptor;
 import net.e6tech.elements.persist.Watcher;
-import org.hibernate.CallbackException;
 import org.hibernate.EmptyInterceptor;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -46,13 +46,13 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
     // below @Inject happens during HibernateEntityManagerProvider.onOpen(Resources resources)
 
     @Inject(optional = true)
-    protected Resources resources;
+    protected transient Resources resources;
 
     @Inject(optional = true)
-    protected SessionFactoryImplementor sessionFactory;
+    protected transient SessionFactoryImplementor sessionFactory;
 
     @Inject(optional = true)
-    protected NotificationCenter center;
+    protected transient NotificationCenter center;
 
     public Resources getResources() {
         return resources;
@@ -79,7 +79,8 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             Type[] types) {
         boolean modified = false;
         if (entity instanceof PersistenceListener) {
-            if (resources != null) resources.inject(entity);
+            if (resources != null)
+                resources.inject(entity);
             long start = System.currentTimeMillis();
             modified = ((PersistenceListener) entity).onFlush(id, currentState, previousState, propertyNames);
             Watcher.addGracePeriod(System.currentTimeMillis() - start);
@@ -96,10 +97,13 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             String[] propertyNames,
             Type[] types) {
         // commented out because of performance impact
-        // if (resources != null) resources.inject(entity);
+        // we could consider if resources is not null then resources.inject(entity)
+        // however, performance may be problem
+        // UPDATE: performance definitely be problematic
         boolean modified = false;
         if (entity instanceof PersistenceListener) {
-            if (resources != null) resources.inject(entity);
+            if (resources != null)
+                resources.inject(entity);
             long start = System.currentTimeMillis();
             modified = ((PersistenceListener) entity).onLoad(id, state, propertyNames);
             Watcher.addGracePeriod(System.currentTimeMillis() - start);
@@ -118,10 +122,13 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             String[] propertyNames,
             Type[] types) {
         // commented out because of performance impact
-        // if (resources != null) resources.inject(entity);
+        // we could consider if resources is not null then resources.inject(entity)
+        // however, performance may be problem.
+        // UPDATE: performance definitely be problematic
         boolean modified = false;
         if (entity instanceof PersistenceListener) {
-            if (resources != null) resources.inject(entity);
+            if (resources != null)
+                resources.inject(entity);
             long start = System.currentTimeMillis();
             modified = ((PersistenceListener) entity).onSave(id, state, propertyNames);
             Watcher.addGracePeriod(System.currentTimeMillis() - start);
@@ -141,7 +148,8 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
         while (entities.hasNext()) {
             Object entity = entities.next();
             if (entity instanceof PersistenceListener) {
-                if (listeners == null) listeners = new ArrayList<>();
+                if (listeners == null)
+                    listeners = new ArrayList<>();
                 listeners.add((PersistenceListener) entity);
             }
         }
@@ -149,27 +157,29 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             // this can be parallelized.
             try {
                 long start = System.currentTimeMillis();
-                listeners.stream().map(listener ->  CompletableFuture.runAsync(()-> listener.preFlush()))
+                listeners.stream()
+                        .map(listener -> CompletableFuture.runAsync(listener::preFlush))
                         .collect(Collectors.toList())
-                        .forEach(future -> future.join());
+                        .forEach(CompletableFuture::join);
                 Watcher.addGracePeriod(System.currentTimeMillis() - start);
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
+            } catch (Exception e) {
+                throw new SystemException(e);
             }
         }
     }
 
     @Override
-    public void onCollectionUpdate(Object collection, Serializable key) throws CallbackException {
-        publishCollectionChanged(collection, key);
+    public void onCollectionUpdate(Object collection, Serializable key) {
+        publishCollectionChanged(collection);
     }
 
     @Override
-    public void onCollectionRemove(Object collection, Serializable key) throws CallbackException {
-        publishCollectionChanged(collection, key);
+    public void onCollectionRemove(Object collection, Serializable key) {
+        publishCollectionChanged(collection);
     }
 
-    protected void publishCollectionChanged(Object collection, Serializable key) {
+    @SuppressWarnings("squid:CommentedOutCodeLine")
+    protected void publishCollectionChanged(Object collection) {
 
         if (center != null && collection instanceof PersistentCollection) {
             PersistentCollection coll = (PersistentCollection) collection;
@@ -184,13 +194,14 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             boolean cached = cache.containsCollection(coll.getRole(), key);
             */
             if (cached) {
-                //publisher.publish(EntityManagerProvider.CACHE_EVICT_COLLECTION_REGION, coll.getRole());
+                // publisher.publish(EntityManagerProvider.CACHE_EVICT_COLLECTION_REGION, coll.getRole());
                 // center.fireNotification(new EvictCollectionRegion(coll.getRole()));
                 center.publish(EvictCollectionRegion.class, new EvictCollectionRegion(coll.getRole()));
             }
         }
     }
 
+    @SuppressWarnings("squid:CommentedOutCodeLine")
     protected void publishEntityChanged(Object entity, Serializable key) {
         boolean cached = false;
         if (center != null) {

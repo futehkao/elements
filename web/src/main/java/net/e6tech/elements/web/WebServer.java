@@ -31,14 +31,17 @@ import javax.servlet.Servlet;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * This code is derived from http://www.eclipse.org/jetty/documentation/current/embedding-jetty.html
  * Created by futeh.
  */
+@SuppressWarnings("squid:CommentedOutCodeLine")
 public class WebServer implements Startable {
 
     protected static Logger logger = Logger.getLogger();
@@ -57,8 +60,10 @@ public class WebServer implements Startable {
 
     protected void init() {
         QueuedThreadPool threadPool = new QueuedThreadPool();
-        if (maxThreads > 0) threadPool.setMaxThreads(maxThreads);
-        if (minThreads > 0) threadPool.setMinThreads(minThreads);
+        if (maxThreads > 0)
+            threadPool.setMaxThreads(maxThreads);
+        if (minThreads > 0)
+            threadPool.setMinThreads(minThreads);
 
         server = new org.eclipse.jetty.server.Server(threadPool);
 
@@ -78,7 +83,7 @@ public class WebServer implements Startable {
             // see http://www.eclipse.org/jetty/documentation/current/embedding-jetty.html
             // in the Like Jetty XML section
             if (keyStoreFile == null) {
-                throw logger.runtimeException("Null keystore");
+                throw logger.systemException("Null keystore");
             }
 
             // SSL Context Factory
@@ -97,16 +102,16 @@ public class WebServer implements Startable {
 
             // SSL HTTP Configuration
 
-            HttpConfiguration https_config = new HttpConfiguration();
-            https_config.setSecureScheme("https");
-            https_config.setSecurePort(httpsPort);
-            https_config.setSendDateHeader(false);
-            https_config.addCustomizer(new SecureRequestCustomizer());
+            HttpConfiguration httpsConfig = new HttpConfiguration();
+            httpsConfig.setSecureScheme("https");
+            httpsConfig.setSecurePort(httpsPort);
+            httpsConfig.setSendDateHeader(false);
+            httpsConfig.addCustomizer(new SecureRequestCustomizer());
 
             // SSL Connector
             ServerConnector sslConnector = new ServerConnector(server,
                     new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
-                    new HttpConnectionFactory(https_config));
+                    new HttpConnectionFactory(httpsConfig));
             sslConnector.setPort(httpsPort);
             server.addConnector(sslConnector);
         }
@@ -122,15 +127,15 @@ public class WebServer implements Startable {
         try {
             server.start();
         } catch (Exception e) {
-            throw logger.runtimeException(e);
+            throw logger.systemException(e);
         }
     }
 
     protected void initServlets(HandlerCollection handlers) {
         if (servlets.size() > 0) {
             ServletContextHandler handler = new ServletContextHandler(server, rootContext);
-            for (String context : servlets.keySet()) {
-                handler.addServlet(new ServletHolder(servlets.get(context)), context);
+            for (Map.Entry<String, Servlet> entry : servlets.entrySet()) {
+                handler.addServlet(new ServletHolder(entry.getValue()), entry.getKey());
             }
             handlers.addHandler(handler);
         }
@@ -140,7 +145,8 @@ public class WebServer implements Startable {
         // see http://www.eclipse.org/jetty/documentation/current/embedding-jetty.html
         // in Embedding Web Applications section
         if (webapps.size() > 0) {
-            for (String context : webapps.keySet()) {
+            for (Map.Entry<String, String> entry : webapps.entrySet()) {
+                String context = entry.getKey();
                 WebAppContext webapp = new WebAppContext();
                 String root = rootContext;
                 while (root.endsWith("/")) {
@@ -148,7 +154,7 @@ public class WebServer implements Startable {
                 }
                 String fullContext = (context.startsWith("/")) ? root + context : root + "/" + context;
                 webapp.setContextPath(fullContext);
-                File warFile = new File(webapps.get(context));
+                File warFile = new File(entry.getValue());
                 webapp.setWar(warFile.getAbsolutePath());
                 webapp.addAliasCheck(new AllowSymLinkAliasChecker());
                 handlers.addHandler(webapp);
@@ -166,13 +172,13 @@ public class WebServer implements Startable {
 
     public void addWebApps(String path) {
         if (Files.isDirectory(Paths.get(path))) {
-            try {
-                Files.list(Paths.get(path)).forEach((subdir) -> {
+            try (Stream<Path> stream = Files.list(Paths.get(path))) {
+                stream.forEach(subdir -> {
                     String context = subdir.getFileName().toString();
                     webapps.put(context, subdir.toFile().getAbsolutePath());
                 });
             } catch (IOException e) {
-                logger.runtimeException(e);
+                logger.systemException(e);
             }
         }
     }

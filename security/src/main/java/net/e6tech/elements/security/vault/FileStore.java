@@ -59,7 +59,8 @@ public class FileStore implements VaultStore {
 
     @Override
     public VaultStore manage(String ... vaultNames) {
-        if (vaultNames == null) return this;
+        if (vaultNames == null)
+            return this;
         for (String vaultName : vaultNames) {
             VaultImpl vault = vaults.get(vaultName);
             if (vault == null) {
@@ -84,7 +85,8 @@ public class FileStore implements VaultStore {
             manage(vaultName);
             return (Vault) Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] {Vault.class}, new VaultInvocationHandler(vaultName));
         }
-        if (vault == null) return null;
+        if (vault == null)
+            return null;
         return (Vault) Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] {Vault.class}, new VaultInvocationHandler(vaultName));
     }
 
@@ -112,7 +114,8 @@ public class FileStore implements VaultStore {
             if (!file.exists()) {
                 throw new IOException("Vault file does not exist: " + fileName);
             }
-            if (!Files.exists(Paths.get(backupFile))) Files.copy(Paths.get(fileName), Paths.get(backupFile));
+            if (!Files.exists(Paths.get(backupFile)))
+                Files.copy(Paths.get(fileName), Paths.get(backupFile));
         } else {
             File file = new File(backupFile);
             if (!file.exists()) {
@@ -124,21 +127,22 @@ public class FileStore implements VaultStore {
 
     @Override
     public void save() throws IOException {
-        if (fileName == null) throw new IOException("null fileName");
+        if (fileName == null)
+            throw new IOException("null fileName");
 
         if (!backup) {
             File file = new File(fileName);
             if (file.exists()) {
                 SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss");
-                String backup;
+                String backupFile;
                 int index = fileName.lastIndexOf('.');
                 if (index > 0) {
                     String extension = fileName.substring(index);
-                    backup = fileName.substring(0, index) + "-" + format.format(new Date()) + extension;
+                    backupFile = fileName.substring(0, index) + "-" + format.format(new Date()) + extension;
                 } else {
-                    backup = fileName + "-" + format.format(new Date());
+                    backupFile = fileName + "-" + format.format(new Date());
                 }
-                Files.copy(Paths.get(fileName), Paths.get(backup));
+                Files.copy(Paths.get(fileName), Paths.get(backupFile));
             }
             backup = true;
         }
@@ -147,7 +151,8 @@ public class FileStore implements VaultStore {
 
     @Override
     public void open() throws IOException {
-        if (fileName == null) throw new IOException("null fileName");
+        if (fileName == null)
+            throw new IOException("null fileName");
 
         logger.info( "Opening file vault " + fileName);
 
@@ -164,17 +169,14 @@ public class FileStore implements VaultStore {
 
         for (String v : managedVaults) {
             VaultImpl impl = format.getVaults().get(v);
-            if (impl != null) vaults.put(v, impl);
+            if (impl != null)
+                vaults.put(v, impl);
         }
     }
 
     @Override
     public void close() throws IOException {
-
-    }
-
-    public Secret loadSecret(String vaultName, String alias, String version) throws IOException {
-        return null;
+        // do nothing
     }
 
     public String writeString() throws IOException {
@@ -195,9 +197,11 @@ public class FileStore implements VaultStore {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             VaultImpl impl = vaults.get(vaultName);
-            Object ret =  method.invoke(impl, args);
-            if (method.getName().equals("getSecretData") && ret == null) {
-                ret = loadSecret(vaultName, (String) args[0], (String) args[1]);
+            Object ret = null;
+            if ("getSecretData".equals(method.getName()) && ret == null) {
+                ret = null;
+            } else {
+                ret = method.invoke(impl, args);
             }
             return ret;
         }

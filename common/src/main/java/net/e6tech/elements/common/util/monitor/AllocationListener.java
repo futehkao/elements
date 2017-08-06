@@ -20,6 +20,7 @@ package net.e6tech.elements.common.util.monitor;
  *
  * IMPORTANT: implementer must not hold on to any references.
  */
+@FunctionalInterface
 public interface AllocationListener {
     void onPotentialLeak();
 }
