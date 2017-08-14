@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Elements is a framework that is used to build applications.  With it, an application consists of many components (which are called Atoms).  To create an application, one only has to declare a set of Atoms and a "provision" file that references them.  Within an Atom, the objects' inter-dependencies are wired using Google Guice and their properties are configured using YAML.  In a way, it is similar to the Spring Framework.  However, it does away with XML and allows developers to use Groovy directly whenever necessary.  The end result is that the configuration files are much more terse and flexible.  
+Elements is a framework that is used to build applications.  With it, an application consists of many components (which are called Atoms).  To create an application, one only has to declare a set of Atoms and a "provision" file that references them.  Within an Atom, the objects' inter-dependencies are wired using dependency injection and their properties are configured using YAML.  In a way, it is similar to the Spring Framework.  However, it does away with XML and allows developers to use Groovy directly whenever necessary.  The end result is that the configuration files are much more terse and flexible.  
 
 When compared to Spring Boot, Elements stays away from configuration in code, i.e. via annotations.  Rather, the prefer method is to use a provision file and Atoms.  The fundamental philosophy is that given a set of Atoms, one can deploy different applications using different provision files.  The bottom line is that it aims to be simpler and less verbose than Spring and it allows configuration using groovy scripts so that with a deployment bundle, one can employ different provision files to start different applications.  Think of it as analogous to Java's WORA (write once, run anywhere), but in this case BORA (build once, run applications)
 
@@ -138,7 +138,7 @@ Atom must have a name and it must be unique so that it won't be loaded twice.  W
 
 As mentioned, the YAML string is used to configured POJOs.  In this example, _helloworld is declared to be an instance of JaxRSServer so that at this point of the script, an instance of JaxRSServer is  instantiated.  It has two fields, addresses (List<String>) and resources (List<Map<String, Object>>), and they are set up by the "_helloword" section of the YAML string.
 
-In this example, it also demonstrates injection.  HelloWord requires a Utility instance to be injected.  By declaring a Utility instance in the Atom, it is automatically injected into _helloworld and it must be noted that because of the dependency, the Utility instance must be declared first.  Circular dependencies are allowed only if the Inject's optional is set to true.  In such a case, the order of declaration is not important.  For further information, please see Google Guice.
+In this example, it also demonstrates injection.  HelloWord requires a Utility instance to be injected.  By declaring a Utility instance in the Atom, it is automatically injected into _helloworld and it must be noted that because of the dependency, the Utility instance must be declared first.  Circular dependencies are allowed only if the Inject's optional is set to true.  In such a case, the order of declaration is not important.
 
     
 ## Resource Providers
@@ -231,8 +231,3 @@ This file is a standard Hibernate configuration file and the only notable entry 
         ...
       </session-factory>
     </hibernate-configuration>
-
-## RESTful Services
-
-
-## Batch Jobs
