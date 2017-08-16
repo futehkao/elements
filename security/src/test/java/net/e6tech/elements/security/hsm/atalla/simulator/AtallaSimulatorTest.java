@@ -37,7 +37,21 @@ public class AtallaSimulatorTest {
         AKB akb = simulator.asAKB(simulator.KEK_KPE);
         byte[] recovered = simulator.decryptKey(akb);
         String plainKey = simulator.KEK_KPE.split(",")[1];
+        // complicated conversion using Hex because of spaces in string.
         assertTrue(Hex.toString(Hex.toBytes(plainKey)).equals(Hex.toString(recovered)));
+    }
+
+    @Test void importWorking() throws Exception {
+        String clearKeK ="1CDNN0I0,0123456789ABCDEFFEDCBA9876543210";
+        String plainWorkingKey = "0123456789ABCDEFFEDCBA9876543210";
+        AKB kek = simulator.asAKB(clearKeK);
+        String recovered = Hex.toString(simulator.decryptKey(kek));
+        String plainKekKey = clearKeK.split(",")[1];
+        assertTrue(plainKekKey.equals(recovered));
+
+        byte[] encryptedWorkingKey = simulator.encrypt(kek, plainWorkingKey);
+        AKB akb = simulator.importKey(kek, encryptedWorkingKey);
+        assertTrue(akb.getKeyBlock().equals("1CDNN000,64A883D036BBEF32BF146E43A1BC6DF0B1264D674A68E267,88D88EA266E7D54F"));
     }
 
     @Test

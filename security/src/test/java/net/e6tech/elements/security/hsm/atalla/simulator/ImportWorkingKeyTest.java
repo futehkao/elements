@@ -21,29 +21,25 @@ import net.e6tech.elements.security.hsm.atalla.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 /**
  * Created by futeh.
  */
-public class GenerateCVVTest extends CommandTest<GenerateCVV> {
+public class ImportWorkingKeyTest extends CommandTest<ImportWorkingKey> {
 
     @Test
-    public void basic() throws Exception {
-        String[] headerAndKey = simulator.KCVV.split(",");
-        String header = headerAndKey[0];
-        byte[] key = Hex.toBytes(headerAndKey[1]);
-
-        AKB akb = simulator.asAKB(header, key);
-        String[] fields = new String[5];
-        fields[0] = "5D";
-        fields[1] = "3";
-        fields[2] = akb.getKeyBlock();
-        fields[3] = "";
-        fields[4] = "41234567890123458701101";
+    public void importWorkingKey() throws Exception {
+        String clearKeK ="1CDNN0I0,0123456789ABCDEFFEDCBA9876543210";
+        String plainWorkingKey = "0123456789ABCDEFFEDCBA9876543210";
+        AKB kek = simulator.asAKB(clearKeK);
+        byte[] encryptedWorkingKey = simulator.encrypt(kek, plainWorkingKey);
+        String[] fields = new String[4];
+        fields[0] = "11B";
+        fields[1] = "0"; // variant
+        fields[2] = Hex.toString(encryptedWorkingKey);
+        fields[3] = kek.getKeyBlock();
         getCommand().setFields(fields);
         Message message = getCommand().process();
-        assertTrue(message.getField(1).equals("56149820"));
-        assertTrue(message.getField(2).equals("08D7"));
+        message.getField(1).equals("1CDNN000,64A883D036BBEF32BF146E43A1BC6DF0B1264D674A68E267,88D88EA266E7D54F");
+        message.getField(2).equals("08D7");
     }
 }

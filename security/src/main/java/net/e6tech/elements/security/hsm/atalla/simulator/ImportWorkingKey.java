@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
+import net.e6tech.elements.security.Hex;
+
 /**
  * field 0 - 11B
  * field 1 - variant, only 0 is supported
@@ -30,10 +32,11 @@ public class ImportWorkingKey extends Command {
     @Override
     protected String doProcess() throws CommandException {
         try {
-            byte[] plainKey = decrypt(2, 3);
-            return null;
+            AKB akb = simulator.importKey(new AKB(getField(3)), Hex.toBytes(getField(2)));
+            return "21B#" + akb.getKeyBlock() + "#" + akb.getCheckDigit();
         } catch (Exception e) {
-            throw new CommandException(3, e);
+            AtallaSimulator.logger.error("ImportWorkingKey", e);
         }
+        return "00#000000";
     }
 }

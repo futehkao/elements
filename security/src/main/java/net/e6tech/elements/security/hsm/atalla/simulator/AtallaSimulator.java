@@ -54,7 +54,7 @@ public class AtallaSimulator {
     static String KPE_INTERCHANGE = "1PUNE000,5555 5555 5555 5555 6666 6666 6666 6666";
     static String KPE_BANK = "1PUNE000,1111 1111 1111 1111 2222 2222 2222 2222";
     static String KCVV = "1CDNE000,0123 4567 89AB CDEF FEDC BA98 7654 3210";
-    static String KEK_KPE = "1KDEE000,0123 4567 89AB CDEF FEDC BA98 7654 3210";
+    static String KEK_KPE = "1PUNE000,0123 4567 89AB CDEF FEDC BA98 7654 3210";
     static String DEC = "1nCNE000,0123456789012345";
 
     static Logger logger = Logger.getLogger();
@@ -126,7 +126,7 @@ public class AtallaSimulator {
     }
 
     public byte[] encrypt(AKB akb, String clearText) throws GeneralSecurityException {
-        return decrypt(akb, Hex.toBytes(clearText));
+        return encrypt(akb, Hex.toBytes(clearText));
     }
 
     public byte[] encrypt(AKB akb, byte[] clearText) throws GeneralSecurityException {
@@ -135,6 +135,19 @@ public class AtallaSimulator {
         SecretKey secretKey = new SecretKeySpec(AKB.normalizeKey(key), "DESede");
         cipher.init(Cipher.ENCRYPT_MODE, secretKey);
         return cipher.doFinal(clearText);
+    }
+
+    /**
+     * Imports a key encrypted under kek. Returns an AKB that is encrypted under master key.
+     * @param akb
+     * @param encryptedKey Key encryted with akb
+     * @return
+     * @throws GeneralSecurityException
+     */
+    public AKB importKey(AKB akb, byte[] encryptedKey) throws GeneralSecurityException {
+        String header = akb.getHeader().substring(0, 5) + "000";
+        byte[] plainKey =  decrypt(akb, encryptedKey);
+        return asAKB(header, plainKey);
     }
 
     public boolean isStopped() {

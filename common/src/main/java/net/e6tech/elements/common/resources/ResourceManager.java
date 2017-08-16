@@ -69,7 +69,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public ResourceManager(Provision provision) {
         initialize(pluginManager.getPluginClassLoader(), provision.getProperties());
-        privateInit(provision.getProperties());
+        selfInit(provision.getProperties());
 
         Provision myProvision = loadProvision(provision.getClass());
         myProvision.load(provision.getResourceManager().getScripting().getVariables());
@@ -77,10 +77,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public ResourceManager(Properties properties) {
         initialize(pluginManager.getPluginClassLoader(), updateProperties(properties));
-        privateInit(properties);
+        selfInit(properties);
     }
 
-    private void privateInit(Properties properties) {
+    private void selfInit(Properties properties) {
         String logDir = properties.getProperty(LOG_DIR_ABBREV);
         if (logDir != null)
             ThreadContext.put(LOG_DIR_ABBREV, logDir);

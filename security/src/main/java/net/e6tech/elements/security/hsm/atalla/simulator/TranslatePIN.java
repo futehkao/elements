@@ -23,7 +23,7 @@ import java.security.GeneralSecurityException;
 
 /**
  * Created by futeh.
- * Command 31
+ * Command 31 Translate pin block from
  *
  * 1 pin block format - 1 for ANSI
  * 2 kpe incoming

@@ -28,16 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
-public class ChangePINTest {
-    private AtallaSimulator simulator;
-    private ChangePIN generate;
-
-    @BeforeEach
-    public void setup() throws Exception {
-        simulator = new AtallaSimulator();
-        generate = new ChangePIN();
-        generate.simulator = simulator;
-    }
+public class ChangePINTest extends CommandTest<ChangePIN> {
 
     @Test
     public void ibm3624() throws Exception {
@@ -73,7 +64,7 @@ public class ChangePINTest {
         fields[10] = kpv3.getKeyBlock(); // kpv_3
         fields[11] = Hex.toString(simulator.encrypt(kpe, pinBlock.getEncoding())); // new pin block
         fields[12] = partialPan; // partial pan
-        generate.setFields(fields);
-        return generate.process();
+        getCommand().setFields(fields);
+        return getCommand().process();
     }
 }
