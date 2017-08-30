@@ -121,7 +121,7 @@ public class CXFServer implements Initializable, Startable {
             servers.add(server);
     }
 
-    /** see http://aruld.info/programming-ssl-for-jetty-based-cxf-services/
+    /* see http://aruld.info/programming-ssl-for-jetty-based-cxf-services/
      on how to setup TLS for CXF server.  The article also includes an example
      for setting up client TLS.
      We can use filters to control cipher suites<br>
@@ -195,7 +195,7 @@ public class CXFServer implements Initializable, Startable {
         return started;
     }
 
-    /**
+    /*
     COMMENT
     To change threading parameters for the engine:
     ThreadingParameters params = new ThreadingParameters();

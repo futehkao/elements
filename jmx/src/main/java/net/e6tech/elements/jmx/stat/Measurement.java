@@ -38,15 +38,13 @@ public class Measurement implements Serializable, MeasurementMXBean {
     private double sum =0.0;
     private double sum_x_2 = 0.0;  //i.e. sum of x^2, which is not sum^2!!!
     private double stdDev = 0.0;
-    private long windowSize = 300000l;  // default is 5 minutes
-    // private long windowSize = 10000l;  // 10 seconds
-    private long lastUpdate = 0l;
-    private long firstUpdate = 0l;
+    private long windowWidth = 300000l;  // default is 5 minutes
+    private int windowMaxCount = 0;     // limits the total number of samples in the window
     private boolean dirty = false;
     private boolean enabled = true;
     protected transient LinkedList<DataPoint> sortedByTime = new LinkedList<>(); // sorted by timestamp
     protected transient LinkedList<Long> failures = new LinkedList<>();
-    protected transient BinarySearchList sortedByValue = new BinarySearchList(); // sorted by value
+    protected transient BinarySearchList<DataPoint> sortedByValue = new BinarySearchList<>(); // sorted by value
 
     public Measurement() {}
 
@@ -111,12 +109,20 @@ public class Measurement implements Serializable, MeasurementMXBean {
         return stdDev;
     }
 
-    public long getWindowSize() {
-        return windowSize;
+    public long getWindowWidth() {
+        return windowWidth;
     }
 
-    public void setWindowSize(long windowSize) {
-        this.windowSize = windowSize;
+    public void setWindowWidth(long windowWidth) {
+        this.windowWidth = windowWidth;
+    }
+
+    public int getWindowMaxCount() {
+        return windowMaxCount;
+    }
+
+    public void setWindowMaxCount(int windowMaxCount) {
+        this.windowMaxCount = windowMaxCount;
     }
 
     public long getFailureCount() {
@@ -136,13 +142,9 @@ public class Measurement implements Serializable, MeasurementMXBean {
     public synchronized void fail() {
         if (!isEnabled())
             return;
-        long now = System.currentTimeMillis();
-        if (firstUpdate == 0L)
-            firstUpdate = System.currentTimeMillis();
-        failures.add(now);
+        failures.add(System.currentTimeMillis());
         dirty = true;
-        if (System.currentTimeMillis() - firstUpdate > windowSize)
-            recalculate();
+        trimFailures();
     }
 
     /**
@@ -153,11 +155,7 @@ public class Measurement implements Serializable, MeasurementMXBean {
         if (!isEnabled())
             return;
         total ++;
-        long now = System.currentTimeMillis();
-        if (firstUpdate == 0L) {
-            firstUpdate = System.currentTimeMillis();
-        }
-        add(new DataPoint(now, value));
+        add(new DataPoint(System.currentTimeMillis(), value));
     }
 
     public Measurement append(double value) {
@@ -168,25 +166,8 @@ public class Measurement implements Serializable, MeasurementMXBean {
     }
 
     protected synchronized void recalculate() {
-        lastUpdate = System.currentTimeMillis();
-        long expire = lastUpdate - windowSize;
-        while (!failures.isEmpty() && failures.getFirst() < expire) {
-            failures.remove();
-        }
-
-        long firstFailure = 0l;
-        if (!failures.isEmpty()) {
-            firstFailure = failures.getFirst();
-        }
-
-        if (sortedByTime.isEmpty()) {
-            firstUpdate = firstFailure;
-            return;
-        }
-
-        while (!sortedByTime.isEmpty() && sortedByTime.getFirst().getTimestamp() < expire) {
-            remove();
-        }
+        trimFailures();
+        trimData();
 
         count = sortedByTime.size();
 
@@ -215,37 +196,48 @@ public class Measurement implements Serializable, MeasurementMXBean {
             stdDev = 0.0;
         }
 
-        long firstDataUpdate = 0l;
-        if (!sortedByTime.isEmpty()) {
-            firstDataUpdate = sortedByTime.getFirst().getTimestamp();
-        }
-
-        firstUpdate = 0L;
-        if (firstFailure > 0)
-            firstUpdate = firstFailure;
-        if (firstDataUpdate > 0)
-            firstUpdate = Math.min(firstUpdate, firstDataUpdate);
-
         dirty = false;
     }
 
-    protected void add(DataPoint dp) {
+    protected synchronized void add(DataPoint dp) {
         if (!isEnabled())
             return;
         sortedByTime.add(dp);
         sortedByValue.add(dp);
+
         double value = dp.getValue();
         sum += value;
         sum_x_2 += (value * value);
         dirty = true;
-        if (System.currentTimeMillis() - firstUpdate > windowSize)
-            recalculate();
+        trimData();
+    }
+
+    private synchronized void trimData() {
+        long expire = System.currentTimeMillis() - windowWidth;
+        while (!sortedByTime.isEmpty() && sortedByTime.getFirst().getTimestamp() < expire) {
+            remove();
+        }
+
+        while (windowMaxCount > 0 && sortedByTime.size() > windowMaxCount) {
+            remove();
+        }
+    }
+
+    private synchronized void trimFailures() {
+        long expire = System.currentTimeMillis() - windowWidth;
+        while (!failures.isEmpty() && failures.getFirst() < expire) {
+            failures.remove();
+        }
+
+        while (windowMaxCount > 0 && failures.size() > windowMaxCount) {
+            failures.remove();
+        }
     }
 
     protected DataPoint remove() {
         if (!sortedByTime.isEmpty()) {
             DataPoint dp = sortedByTime.removeFirst();
-            sortedByValue.remove(dp);
+            sortedByValue.removeFirst(dp);
             double removed = dp.getValue();
             sum -= removed;
             sum_x_2 = sum_x_2 - (removed * removed);
@@ -264,7 +256,7 @@ public class Measurement implements Serializable, MeasurementMXBean {
         builder.append("average=" + average + " ");
         builder.append("stddev=" + stdDev + " ");
         builder.append("failureCount=" + failures.size() + " ");
-        builder.append("windowSize=" + windowSize + " ");
+        builder.append("windowWidth=" + windowWidth + " ");
         return builder.toString();
     }
 }

@@ -27,8 +27,8 @@ public interface Rethrowable {
 
     /**
      * Creates a SystemException to wrap a Throwable
-     * @param e
-     * @return
+     * @param e throwable to be wrapped
+     * @return SystemException
      */
     default SystemException systemException(Throwable e) {
         return systemException(e.getMessage(), e);
@@ -50,11 +50,11 @@ public interface Rethrowable {
 
     /**
      * Creating a exception with msg and throwable
-     * @param exceptionClass
-     * @param msg
-     * @param e
-     * @param <T>
-     * @return
+     * @param exceptionClass class of exception to be created
+     * @param msg message
+     * @param e   cause
+     * @param <T> type of throwable
+     * @return exception instance
      */
     default <T extends Throwable> T  exception(Class<T> exceptionClass, String msg, Throwable e) {
         Constructor constructor = null;

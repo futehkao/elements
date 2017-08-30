@@ -38,10 +38,8 @@ public class PasswordEncryption {
     private static final int KEYLEN_BITS = 256; // see notes below where this is used.
     private static final int ITERATIONS = 1000;
 
-    /**
+    /*
      * create an object with just the passphrase from the user. Don't do anything else yet
-     *
-     * @param password
      */
     public PasswordEncryption(char[] password) {
         this.password = password;

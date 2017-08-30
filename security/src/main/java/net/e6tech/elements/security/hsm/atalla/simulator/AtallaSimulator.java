@@ -137,12 +137,8 @@ public class AtallaSimulator {
         return cipher.doFinal(clearText);
     }
 
-    /**
+    /*
      * Imports a key encrypted under kek. Returns an AKB that is encrypted under master key.
-     * @param akb
-     * @param encryptedKey Key encryted with akb
-     * @return
-     * @throws GeneralSecurityException
      */
     public AKB importKey(AKB akb, byte[] encryptedKey) throws GeneralSecurityException {
         String header = akb.getHeader().substring(0, 5) + "000";

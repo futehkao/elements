@@ -19,7 +19,6 @@ package net.e6tech.elements.jmx;
 import com.j256.simplejmx.common.JmxResource;
 import com.j256.simplejmx.server.JmxServer;
 import com.sun.jdmk.comm.AuthInfo;
-import com.sun.jdmk.comm.HtmlAdaptorServer;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
 import net.e6tech.elements.common.util.SystemException;
@@ -31,6 +30,7 @@ import javax.management.remote.JMXConnectorServerFactory;
 import javax.management.remote.JMXServiceURL;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Type;
+import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
@@ -49,9 +49,14 @@ public class JMXService {
     private JMXService() {
     }
 
-    @SuppressWarnings("squid:S00112")
     public static void start(int port, int jmxrmiPort,  String user, char[] password) throws Exception {
-        HtmlAdaptorServer adapter = new HtmlAdaptorServer(port);
+        start(InetAddress.getLoopbackAddress(), port, jmxrmiPort, user, password);
+    }
+
+    @SuppressWarnings("squid:S00112")
+    public static void start(InetAddress bindAddress, int port, int jmxrmiPort, String user, char[] password) throws Exception {
+        JMXHtmlServer adapter = new JMXHtmlServer(port);
+        adapter.setBindAddress(bindAddress);
         if (user != null && user.length() > 0) {
             AuthInfo authInfo = new AuthInfo(user, new String(password));
             adapter.addUserAuthenticationInfo(authInfo);

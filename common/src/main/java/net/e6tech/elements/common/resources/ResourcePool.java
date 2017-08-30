@@ -68,10 +68,10 @@ public interface ResourcePool {
     /**
      * This method should be implemented by a subclass that is capable of finding an object by id.  It is
      * typically used by database aware resources.
-     * @param cls
-     * @param id
-     * @param <T>
-     * @return
+     * @param cls class of the object to be found.
+     * @param id primary key
+     * @param <T> type of instance
+     * @return instance.
      */
     default <T> T findById(Class<T> cls, Object id) {
         return null;
@@ -79,10 +79,12 @@ public interface ResourcePool {
 
     /**
      * This method is used to map entity found by id into something else.
-     * @param cls
-     * @param id
-     * @param <T>
-     * @return
+     * @param cls class of the entity to be mapped
+     * @param id primary key
+     * @param mapper mapper function to convert entity into desired output
+     * @param <T> type of entity
+     * @param <U> type of output object
+     * @return output
      */
     default <T, U> U mapById(Class<T> cls, Object id, Function<T, U> mapper) {
         return Optional.ofNullable(findById(cls, id)).map(mapper).orElse(null);

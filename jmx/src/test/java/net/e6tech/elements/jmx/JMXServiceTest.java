@@ -14,20 +14,23 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.inject;
+package net.e6tech.elements.jmx;
 
-import javax.inject.Qualifier;
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
+import org.junit.jupiter.api.Test;
 
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import java.net.InetAddress;
 
 /**
  * Created by futeh.
  */
-@Qualifier
-@Documented
-@Retention(RUNTIME)
-public @interface Named {
-    String value() default "";
+public class JMXServiceTest {
+
+    @Test
+    public void start() throws Exception {
+        JMXService.start(InetAddress.getLoopbackAddress(), 8080, 18080, "futeh", "password".toCharArray());
+
+        synchronized (this) {
+            this.wait();
+        }
+    }
 }

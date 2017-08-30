@@ -32,8 +32,9 @@ public interface CopyListener {
      * @param owner             The owner which has the properties to be copied over to the target.
      * @param ownerDescriptor   The PropertyDescriptor of the owner's property to be copied over to the target.
      *                          One may use its read method to retrieve the property's value.
-     * @return
-     * @throws PropertyVetoException
+     * @return whether copying was handled.
+     * @throws PropertyVetoException veto exception
+     * @return whether copying was handled.
      */
     boolean copy(Object target, PropertyDescriptor targetDescriptor,
                  Object owner, PropertyDescriptor ownerDescriptor) throws PropertyVetoException;

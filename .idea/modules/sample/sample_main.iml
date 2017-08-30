@@ -62,7 +62,7 @@
     <orderEntry type="library" name="Gradle: com.betfair.net.java.opendmk:core:1.0-b02" level="project" />
     <orderEntry type="library" name="Gradle: com.betfair.net.java.opendmk:core-rmic:1.0-b02" level="project" />
     <orderEntry type="library" name="Gradle: com.betfair.net.java.opendmk:jmx-optional:1.0-b02" level="project" />
-    <orderEntry type="library" name="Gradle: com.j256.simplejmx:simplejmx:1.13" level="project" />
+    <orderEntry type="library" name="Gradle: com.j256.simplejmx:simplejmx:1.15" level="project" />
     <orderEntry type="module" module-name="persist_main" />
     <orderEntry type="library" name="Gradle: org.hibernate:hibernate-core:5.2.10.Final" level="project" />
     <orderEntry type="library" name="Gradle: org.hibernate:hibernate-entitymanager:5.2.10.Final" level="project" />

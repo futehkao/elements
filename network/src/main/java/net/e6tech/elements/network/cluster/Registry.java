@@ -121,7 +121,7 @@ public class Registry {
      * @param interfaceClass Interface class.  Its methods will be registered and, therefore, it is important
      *                       for the qualifier to be unique.
      * @param implementation implementation of the interface
-     * @param <T>
+     * @param <T> type of implementation
      */
     @SuppressWarnings("squid:S1067")
     public <T> void register(String qualifier, Class<T> interfaceClass, T implementation) {

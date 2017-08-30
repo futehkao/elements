@@ -17,15 +17,10 @@ dependencies {
     compile project(':common')
     compile project(':security')
     compile project(':network')
- //   compile 'org.glassfish.web:javax.el:2.2.+'
- //   compile 'javax.servlet.jsp.jstl:jstl-api:1.+'
- //   compile 'javax.servlet.jsp:jsp-api:2.2.+'
 
     compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.8.9'
     compile 'org.eclipse.jetty:jetty-webapp:9.4.6.v20170531'
     compile 'org.eclipse.jetty:jetty-continuation:9.4.6.v20170531'
-//    compile 'org.eclipse.jetty.orbit:org.apache.jasper.glassfish:2.2.+'
-//    compile 'org.eclipse.jetty.orbit:org.apache.taglibs.standard.glassfish:1.2.+'
 
     // compile 'javax.ws.rs:jsr311-api:1.1.1'
     compile 'org.apache.cxf:cxf-rt-frontend-jaxws:3.1.12'

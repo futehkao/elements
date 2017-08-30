@@ -179,18 +179,11 @@ public class Resources implements AutoCloseable, ResourcePool {
         return resourceManager;
     }
 
-    /**
+    /*
      * Plugins are identified by class, a name and then a particular plugin class.  The argument are injected into the plugin.
      * For example, let say there is a class called Partner and it may be associated with several plugin types.  Furthermore,
      * the plugins associated with a Partner may vary based on the partner.  To create the plugin, one may search based on
      * Partner.class, partner name, plugin class and a list of arguments to be injected into the plugin.
-     * @param c1
-     * @param n1
-     * @param c2
-     * @param args
-     * @param <T> type of Plugin
-     * @param <S> owner class type
-     * @return plugin
      */
     public <S, T extends Plugin> T getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
         return getPlugin(PluginPath.of(c1, n1).and(c2), args);

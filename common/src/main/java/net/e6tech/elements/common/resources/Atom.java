@@ -373,10 +373,8 @@ public class Atom implements Map<String, Object> {
         return resources.getInstance(cl);
     }
 
-    /**
+    /*
      * runs callable after every script is loaded
-     *
-     * @param callable
      */
     public void runAfter(Object callable) {
         resourceManager.runAfter(callable);
@@ -386,10 +384,8 @@ public class Atom implements Map<String, Object> {
         resourceManager.runNow(this, callable);
     }
 
-    /**
+    /*
      * runs after all resourceManagers are launched.
-     *
-     * @param callable
      */
     public void runLaunched(Object callable) {
         resourceManager.getScripting().runLaunched(callable);

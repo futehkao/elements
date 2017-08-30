@@ -50,10 +50,10 @@ public class Interceptor {
     /**
      * Creates a prototype class.  When an instance is created, its bean properties are copied from the prototype.
      * Afterward, the instance functions independently from the prototype.
-     * @param cls
-     * @param prototype
-     * @param <T>
-     * @return
+     * @param cls prototype class
+     * @param prototype prototype instance
+     * @param <T> type of prototype
+     * @return byte manipulated prototype class
      */
     public static <T> Class<T> newPrototypeClass(Class<T> cls, T prototype) {
         return (Class) new ByteBuddy()
@@ -79,16 +79,10 @@ public class Interceptor {
         }
     }
 
-    /**
+    /*
      * Create a class that returns a singleton.  When new instance of the class is created, all operations, except
      * for finalize, are delegated to the singleton.
-     *
-     * @param cls
-     * @param singleton
-     * @param <T>
-     * @return
      */
-
     public static <T> Class<T> newSingletonClass(Class<T> cls, T singleton) {
         return newSingletonClass(cls, singleton, null);
     }
@@ -123,11 +117,10 @@ public class Interceptor {
     /**
      * Creates an interceptor for an instance.  All calls for the interceptor, except for methods declared in Object, are
      * forwarded to the handler.
-     *
-     * @param instance
-     * @param handler
-     * @param <T>
-     * @return
+     * @param instance the instance of which calls are to be intercepted
+     * @param handler handler of intercepted calls
+     * @param <T> type of instance
+     * @return an instance of interceptor
      */
     public <T> T newInterceptor(T instance, InterceptorHandler handler) {
         return newInterceptor(instance, handler, null);
@@ -143,10 +136,10 @@ public class Interceptor {
 
     /**
      * Create an interceptor just like the newInterceptor method.  However, the instance is set to cls.newInstance().
-     * @param cls
-     * @param handler
-     * @param <T>
-     * @return
+     * @param cls instance class
+     * @param handler handler
+     * @param <T> type of instance
+     * @return byte enhanced instance.
      */
     public <T> T newInstance(Class cls, InterceptorHandler handler) {
         return newInstance(cls, handler, null);
@@ -259,7 +252,7 @@ public class Interceptor {
         Object handle(@Origin Method interceptorMethod, @AllArguments() Object[] arguments) throws Throwable;
     }
 
-    /**
+    /*
      * Implemented by an interceptor class so that handler can be set.
      */
     public interface HandlerAccessor {

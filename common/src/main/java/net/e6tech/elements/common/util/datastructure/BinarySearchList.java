@@ -24,11 +24,11 @@ import java.util.List;
  * Created by futeh.
  */
 @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134"})
-public class BinarySearchList implements Iterable<Comparable> {
+public class BinarySearchList<T extends Comparable> implements Iterable<T> {
 
-    private List<Comparable> sortedList = new ArrayList<>(); // Needs ArrayList for it O(1) get
+    private List<T> sortedList = new ArrayList<>(); // Needs ArrayList for it O(1) get
 
-    public Iterator<Comparable> iterator() {
+    public Iterator<T> iterator() {
         return sortedList.iterator();
     }
 
@@ -36,8 +36,8 @@ public class BinarySearchList implements Iterable<Comparable> {
         return sortedList.size();
     }
 
-    public boolean add(Comparable cmp) {
-        _add(0, sortedList.size() - 1, cmp);
+    public boolean add(T cmp) {
+        privateAdd(0, sortedList.size() - 1, cmp);
         return true;
     }
 
@@ -53,13 +53,12 @@ public class BinarySearchList implements Iterable<Comparable> {
         }
     }
 
-    public Comparable get(int i) {
+    public T get(int i) {
         return sortedList.get(i);
     }
 
     // binary search insert.
-    @SuppressWarnings("squid:S00100")
-    private void _add(int min, int max, Comparable cmp) {
+    private void privateAdd(int min, int max, T cmp) {
         if (size() == 0) {
             sortedList.add(cmp);
             return;
@@ -82,19 +81,23 @@ public class BinarySearchList implements Iterable<Comparable> {
             sortedList.add(index, cmp);
             return;
         } else if (candidate.compareTo(cmp) > 0) { // next candidate needs to be of lower index
-            _add(min, (max + min) / 2, cmp); // because (max + min + 1)/2 is biased toward upper value which may end up
+            privateAdd(min, (max + min) / 2, cmp); // because (max + min + 1)/2 is biased toward upper value which may end up
                                              // being equal to max
         } else if (candidate.compareTo(cmp) < 0) { // next candidate needs to be of higher index
-            _add(index, max, cmp);
+            privateAdd(index, max, cmp);
         }
     }
 
-    public boolean remove(Comparable cmp) {
-        return _remove(0, sortedList.size() - 1, cmp);
+    public boolean removeAll(T cmp) {
+        return _remove(0, sortedList.size() - 1, cmp, false);
+    }
+
+    public boolean removeFirst(T cmp) {
+        return _remove(0, sortedList.size() - 1, cmp, true);
     }
 
     @SuppressWarnings({"squid:S3776", "squid:ForLoopCounterChangedCheck", "squid:S00100"})
-    private boolean _remove(int min, int max, Comparable cmp) {
+    private boolean _remove(int min, int max, T cmp, boolean onlyOne) {
         if (size() == 0) {
             return false;
         }
@@ -113,6 +116,8 @@ public class BinarySearchList implements Iterable<Comparable> {
                             i --;
                             modifiableSize --;
                             found = true;
+                            if (onlyOne)
+                                return true;
                         }
                     } else {
                         break;
@@ -124,6 +129,8 @@ public class BinarySearchList implements Iterable<Comparable> {
                         if (left.equals(cmp)) {
                             sortedList.remove(i);
                             found = true;
+                            if (onlyOne)
+                                return true;
                         }
                     } else {
                         break;
@@ -137,11 +144,11 @@ public class BinarySearchList implements Iterable<Comparable> {
         int index = (max + min + 1) / 2;
         Comparable candidate = get(index);
         if (candidate.compareTo(cmp) == 0) {
-            return _remove(index, index, cmp);
+            return _remove(index, index, cmp, onlyOne);
         } else if (candidate.compareTo(cmp) > 0) { // next candidate needs to be of lower index
-            return _remove(min, (max + min) / 2, cmp);
+            return _remove(min, (max + min) / 2, cmp, onlyOne);
         } else if (candidate.compareTo(cmp) < 0) { // next candidate needs to be of higher index
-            return _remove(index, max, cmp);
+            return _remove(index, max, cmp, onlyOne);
         }
         return false;
     }

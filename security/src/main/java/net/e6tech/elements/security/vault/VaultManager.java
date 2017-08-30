@@ -286,6 +286,7 @@ public class VaultManager {
      * Adding secret to the data vault.  It will be encrypted by m-key when stored.
      *
      * @param alias alias of the secret data
+     * @param ct clear text of the secret
      * @param dualEntry dual entry containing authentication info for two users.
      * @throws GeneralSecurityException general exception
      */
@@ -524,6 +525,7 @@ public class VaultManager {
      * 4. re-encrypt everything in local vault
      * 5. re-encrypt keys in the database.  We need to iterate through all version for each alias.
      * @param dualEntry dual entry containing authentication info for two users.
+     * @throws GeneralSecurityException general security exception
      */
     public void changePassphrase(DualEntry dualEntry) throws GeneralSecurityException {
         checkAccess(dualEntry);

@@ -37,7 +37,7 @@ public interface MeasurementMXBean {
     double getStdDev();
 
     /* The window size determines the length of window in millisecond within which data points are kept. */
-    long getWindowSize();
+    long getWindowWidth();
 
     long getFailureCount();
 
