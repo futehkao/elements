@@ -24,6 +24,7 @@ import javax.cache.Cache;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 /**
  * This class should be instantiated as an anonymous class.  For example,
@@ -33,28 +34,18 @@ import java.util.concurrent.Callable;
 public abstract class CacheFacade<K, V> {
 
     @Inject(optional = true)
-    protected CachePool pool;
+    protected CachePool<K, V> pool;
     protected String name;
     protected Class keyClass;
     protected Class valueClass;
-    private boolean storeByValue = false;
     Cache<K, V> cache;
 
     public CacheFacade() {
-        this(null);
-    }
-
-    public CacheFacade(long expiry) {
-        this(null, expiry);
+        this(Reflection.getCallingClass(), null);
     }
 
     public CacheFacade(String name) {
         this(Reflection.getCallingClass(), name);
-    }
-
-    public CacheFacade(String name, long expiry) {
-        this(Reflection.getCallingClass(), name);
-        initPool(expiry);
     }
 
     public CacheFacade(Class cls, String name) {
@@ -88,17 +79,19 @@ public abstract class CacheFacade<K, V> {
             this.name = clsName;
     }
 
-    public CacheFacade<K,V> initPool(long expiry) {
+    public CacheFacade<K,V> initPool(Consumer<CachePool> configurator) {
         if (pool == null) {
-            pool = new CachePool();
-            pool.setExpiry(expiry);
-            pool.setStoreByValue(storeByValue);
+            pool = new CachePool<K,V>();
+            pool.setName(name);
+            pool.setKeyClass(keyClass);
+            pool.setValueClass(valueClass);
+            configurator.accept(pool);
         }
         return this;
     }
 
     public CacheFacade<K,V> initPool() {
-        return initPool(CachePool.DEFAULT_EXPIRY);
+        return initPool(p -> p.setExpiry(CachePool.DEFAULT_EXPIRY));
     }
 
     public String getName() {
@@ -115,14 +108,6 @@ public abstract class CacheFacade<K, V> {
 
     public void setPool(CachePool pool) {
         this.pool = pool;
-    }
-
-    public boolean isStoreByValue() {
-        return storeByValue;
-    }
-
-    public void setStoreByValue(boolean storeByValue) {
-        this.storeByValue = storeByValue;
     }
 
     public V get(K key) {
@@ -156,9 +141,9 @@ public abstract class CacheFacade<K, V> {
         if (cache != null)
             return cache;
         if (pool == null) {
-            pool = new CachePool();
+            initPool();
         }
-        cache = pool.getCache(name, keyClass, valueClass);
+        cache = pool.getCache();
         return cache;
     }
 }

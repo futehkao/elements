@@ -1,0 +1,89 @@
+/*
+ * Copyright 2017 Futeh Kao
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.e6tech.elements.common.cache.ehcache;
+
+import net.e6tech.elements.common.cache.CachePool;
+import net.e6tech.elements.common.cache.CacheProvider;
+import org.ehcache.config.CacheConfiguration;
+import org.ehcache.config.builders.CacheConfigurationBuilder;
+import org.ehcache.config.builders.ResourcePoolsBuilder;
+import org.ehcache.expiry.Duration;
+import org.ehcache.expiry.Expirations;
+import org.ehcache.jsr107.Eh107Configuration;
+import org.ehcache.jsr107.EhcacheCachingProvider;
+
+import javax.cache.Cache;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Created by futeh.
+ */
+public class EhcacheProvider implements CacheProvider {
+
+    private static ExecutorService executorService = Executors.newSingleThreadExecutor(r -> new Thread(r, "EhcacheProviderCleaner"));
+
+    @Override
+    public String getProviderClassName() {
+        return EhcacheCachingProvider.class.getName();
+    }
+
+    public <K,V> Cache<K,V> createCache(CachePool<K, V> cachePool) {
+
+        ResourcePoolsBuilder builder = (cachePool.getMaxEntries() > 0)
+                ? ResourcePoolsBuilder.heap(cachePool.getMaxEntries())
+                : ResourcePoolsBuilder.newResourcePoolsBuilder();
+
+        CacheConfiguration<K, V> cacheConfiguration = CacheConfigurationBuilder
+                .newCacheConfigurationBuilder(cachePool.getKeyClass(), cachePool.getValueClass(), builder)
+                .withExpiry(Expirations.timeToLiveExpiration(Duration.of(cachePool.getExpiry(), TimeUnit.MILLISECONDS)))
+                .build();
+
+        Cache<K, V> cache = cachePool.getCacheManager().createCache(cachePool.getName(), Eh107Configuration.fromEhcacheCacheConfiguration(cacheConfiguration));
+        return (Cache<K, V>) Proxy.newProxyInstance(Cache.class.getClassLoader(), new Class[] { Cache.class}, new CacheInvocationHandler<K,V>(cache, cachePool));
+    }
+
+    private class CacheInvocationHandler<K, V> implements InvocationHandler {
+        Cache<K, V> cache;
+        long lastPut;
+        long expiry;
+
+        CacheInvocationHandler(Cache<K, V> cache, CachePool<K, V> cachePool) {
+            this.cache = cache;
+            this.expiry = cachePool.getExpiry();
+            this.lastPut = System.currentTimeMillis();
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            if (method.getName().startsWith("put")
+                    && System.currentTimeMillis() - lastPut > expiry) {
+                executorService.submit(() ->
+                    cache.iterator().forEachRemaining(entry -> {
+                        // expire entries by accessing
+                    })
+                );
+                lastPut = System.currentTimeMillis();
+            }
+            return method.invoke(cache, args);
+        }
+    }
+}

@@ -16,6 +16,7 @@
 package net.e6tech.elements.common.cache;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 
 import javax.cache.Cache;
 import javax.cache.CacheException;
@@ -30,21 +31,50 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by futeh.
  */
-public class CachePool {
+public class CachePool<K, V>{
 
     public static final long DEFAULT_EXPIRY = 15 * 60 * 1000L;
 
+    private static final String DEFAULT_PROVIDER = "net.e6tech.elements.common.cache.ehcache.EhcacheProvider";
     private static Map<String, CacheManager> managers = new HashMap<>();
 
-    private String provider = "org.ehcache.jsr107.EhcacheCachingProvider";
-    protected long expiry = DEFAULT_EXPIRY;
-    protected boolean storeByValue = false;
+    private CacheProvider provider;
+    private String name;
+    private Class keyClass;
+    private Class valueClass;
+    private long expiry = DEFAULT_EXPIRY;
+    private long maxEntries = 1024L;
+    private boolean storeByValue = false;
 
-    public String getProvider() {
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Class getKeyClass() {
+        return keyClass;
+    }
+
+    public void setKeyClass(Class keyClass) {
+        this.keyClass = keyClass;
+    }
+
+    public Class getValueClass() {
+        return valueClass;
+    }
+
+    public void setValueClass(Class valueClass) {
+        this.valueClass = valueClass;
+    }
+
+    public CacheProvider getProvider() {
         return provider;
     }
 
-    public void setProvider(String provider) {
+    public void setProvider(CacheProvider provider) {
         this.provider = provider;
     }
 
@@ -58,6 +88,14 @@ public class CachePool {
         this.expiry = expiry;
     }
 
+    public long getMaxEntries() {
+        return maxEntries;
+    }
+
+    public void setMaxEntries(long maxEntries) {
+        this.maxEntries = maxEntries;
+    }
+
     public boolean isStoreByValue() {
         return storeByValue;
     }
@@ -66,15 +104,27 @@ public class CachePool {
         this.storeByValue = storeByValue;
     }
 
-    protected synchronized CacheManager getCacheManager() {
-        return managers.computeIfAbsent(provider, key -> Caching.getCachingProvider(key).getCacheManager());
+    public synchronized CacheManager getCacheManager() {
+        if (provider == null) {
+            try {
+                provider = (CacheProvider) getClass().getClassLoader().loadClass(DEFAULT_PROVIDER).newInstance();
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
+        }
+        return managers.computeIfAbsent(provider.getProviderClassName(), key -> Caching.getCachingProvider(key).getCacheManager());
     }
 
-    public <K,V> Cache<K,V> getCache(String name, Class<K> keyClass, Class<V> valueClass) {
+    public Cache<K,V> getCache() {
         CacheManager cacheManager = getCacheManager();
         Cache<K, V> cache = cacheManager.getCache(name, keyClass, valueClass);
         if (cache != null)
             return cache;
+        return provider.createCache(this);
+    }
+
+    private <K,V> Cache<K,V> buildJsr107Cache() {
+        CacheManager cacheManager = getCacheManager();
         MutableConfiguration<K, V> configuration = new MutableConfiguration<>();
         configuration.setTypes(keyClass, valueClass);
         configuration.setExpiryPolicyFactory(TouchedExpiryPolicy.factoryOf(new javax.cache.expiry.Duration(TimeUnit.MILLISECONDS, expiry)));
@@ -86,5 +136,6 @@ public class CachePool {
             return cacheManager.getCache(name, keyClass, valueClass);
         }
     }
+
 
 }
