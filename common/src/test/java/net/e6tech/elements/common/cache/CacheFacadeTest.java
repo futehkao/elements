@@ -102,7 +102,7 @@ public class CacheFacadeTest {
     public void facade() {
         CacheFacade<Long, Map<String, String>> facade = new CacheFacade<Long, Map<String, String>>() {};
         System.out.println(facade.getClass());
-        facade.pool = new CachePool();
+        facade.pool = new CachePool("test", String.class, String.class);
 
         Map<String, String> value = facade.get(1L, ()-> new HashMap<String, String>());
         System.out.println(value);

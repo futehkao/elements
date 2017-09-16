@@ -22,6 +22,7 @@ import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.resources.plugin.PluginPath;
+import net.e6tech.elements.common.resources.plugin.PluginPaths;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 
@@ -185,17 +186,22 @@ public class Resources implements AutoCloseable, ResourcePool {
      * the plugins associated with a Partner may vary based on the partner.  To create the plugin, one may search based on
      * Partner.class, partner name, plugin class and a list of arguments to be injected into the plugin.
      */
-    public <S, T extends Plugin> T getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
+    public <S, T extends Plugin> Optional<T> getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
         return getPlugin(PluginPath.of(c1, n1).and(c2), args);
     }
 
-    public <R,S,T extends Plugin> T getPlugin(Class<R> c1, String n1, Class<S> c2, String n2, Class<T> c3, Object ... args) {
+    public <R,S,T extends Plugin> Optional<T> getPlugin(Class<R> c1, String n1, Class<S> c2, String n2, Class<T> c3, Object ... args) {
         return getPlugin(PluginPath.of(c1, n1).and(c2, n2).and(c3), args);
     }
 
-    public <T extends Plugin> T getPlugin(PluginPath<T> path, Object ... args) {
+    public <T extends Plugin> Optional<T> getPlugin(PluginPath<T> path, Object ... args) {
         PluginManager plugin = getInstance(PluginManager.class);
         return plugin.from(this).get(path, args);
+    }
+
+    public <T extends Plugin> Optional<T> getPlugin(PluginPaths<T> paths, Object ... args) {
+        PluginManager plugin = getInstance(PluginManager.class);
+        return plugin.from(this).get(paths, args);
     }
 
     public <T> T getVariable(String variable) {
@@ -341,8 +347,13 @@ public class Resources implements AutoCloseable, ResourcePool {
         if (!isOpen()) {
             state.setState(ResourcesState.State.OPEN);
             // this loop can produce recursive onOpen call
-            for (ResourceProvider resourceProvider : state.getResourceProviders()) {
-                resourceProvider.onOpen(this);
+            try {
+                for (ResourceProvider resourceProvider : state.getResourceProviders()) {
+                    resourceProvider.onOpen(this);
+                }
+            } catch (Exception ex) {
+                abort();
+                throw ex;
             }
             state.onOpen(this);
         }

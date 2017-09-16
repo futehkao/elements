@@ -20,19 +20,21 @@ import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.resources.*;
-import net.e6tech.elements.common.util.InitialContextFactory;
+import net.e6tech.elements.common.resources.Binding;
+import net.e6tech.elements.common.resources.InjectionListener;
+import net.e6tech.elements.common.resources.ResourceManager;
+import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
 
-import javax.naming.Context;
-import javax.naming.NamingException;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Created by futeh.
@@ -41,23 +43,22 @@ import java.util.*;
 public class PluginManager {
 
     private static final String DEFAULT_PLUGIN = "defaultPlugin";
+    private static final Object NULL_OBJECT = new Object();
 
     private PluginClassLoader classLoader;
-    private Context context;
     private ResourceManager resourceManager;
     private Resources resources;
+    private Map<String, Object> plugins = new HashMap<>();
     private Map<Class, Object> defaultPlugins = new HashMap<>();
 
     public PluginManager(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
         classLoader = new PluginClassLoader(resourceManager.getClass().getClassLoader());
-        context = (new InitialContextFactory()).createContext(new Hashtable());
     }
 
     public PluginManager from(Resources resources) {
         PluginManager plugin = new PluginManager(resourceManager);
         plugin.resources = resources;
-        plugin.context = context;
         plugin.defaultPlugins = defaultPlugins;
         plugin.classLoader = classLoader;
         return plugin;
@@ -85,33 +86,49 @@ public class PluginManager {
         return classLoader;
     }
 
-    public <T extends Plugin> T get(PluginPath<T> path, Object ... args) {
-        String fullPath = path.path();
-        Object lookup = null;
-        try {
-            lookup =  context.lookup(fullPath);
-        } catch (NamingException e) {
-            Logger.suppress(e);
-            Class type = path.getType();
-            lookup = defaultPlugins.get(type);
-            if (lookup == null) {
-                while (type != null && !type.equals(Object.class)) {
-                    try {
-                        Field field = type.getField(DEFAULT_PLUGIN);
-                        lookup = field.get(null);
-                        defaultPlugins.put(path.getType(), lookup);
-                        break;
-                    } catch (NoSuchFieldException | IllegalAccessException e1) {
-                        Logger.suppress(e1);
-                    }
-                    type = type.getSuperclass();
+    protected Optional getDefaultPlugin(Class type) {
+        Object lookup = defaultPlugins.get(type);
+        if (lookup == NULL_OBJECT)
+            return Optional.empty();
+
+        if (lookup == null) {
+            while (type != null && !type.equals(Object.class)) {
+                try {
+                    Field field = type.getField(DEFAULT_PLUGIN);
+                    lookup = field.get(null);
+                    defaultPlugins.put(type, lookup);
+                    break;
+                } catch (NoSuchFieldException | IllegalAccessException e1) {
+                    Logger.suppress(e1);
                 }
-                if (lookup == null)
-                    throw new SystemException("Invalid plugin path: " + fullPath);
+                type = type.getSuperclass();
             }
+            if (lookup == null)
+                defaultPlugins.put(type, NULL_OBJECT);
         }
 
-        Plugin plugin;
+        return Optional.ofNullable(lookup);
+    }
+
+    public <T extends Plugin> Optional<T> get(PluginPaths<T> paths, Object ... args) {
+        Object lookup = null;
+
+        for (PluginPath path : paths.getPaths()) {
+            String fullPath = path.path();
+            lookup = plugins.get(fullPath);
+            if (lookup != null)
+                break;
+        }
+
+        if (lookup == null) {
+            // get default plugin
+            Optional defaultPlugin = getDefaultPlugin(paths.getType());
+            if (!defaultPlugin.isPresent())
+                return Optional.empty();
+            lookup = defaultPlugin.get();
+        }
+
+        T plugin;
         if (lookup instanceof Class) {
             try {
                 plugin = (T) ((Class) lookup).newInstance();
@@ -152,30 +169,26 @@ public class PluginManager {
         }
 
         plugin.initialize();
-        return (T) plugin;
+        return Optional.of((T)plugin);
     }
 
-    public <T extends Plugin> void add(PluginPath<T> path, Class<T> cls) {
-        try {
-            context.rebind(path.path(), cls);
-        } catch (NamingException e) {
-            throw new SystemException(e);
-        }
+    public <T extends Plugin> Optional<T> get(PluginPath<T> path, Object ... args) {
+        return get(PluginPaths.of(path), args);
     }
 
-    public <T extends Plugin> void add(PluginPath<T> path, T object) {
-        try {
-            context.rebind(path.path(), object);
-        } catch (NamingException e) {
-            throw new SystemException(e);
-        }
+    public synchronized <T extends Plugin> void add(PluginPath<T> path, Class<T> cls) {
+        plugins.put(path.path(), cls);
     }
 
-    public <T extends Plugin, U extends T> void addDefault(Class<T> cls, U object) {
+    public synchronized <T extends Plugin> void add(PluginPath<T> path, T object) {
+        plugins.put(path.path(), object);
+    }
+
+    public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, U object) {
         defaultPlugins.put(cls, object);
     }
 
-    public <T extends Plugin, U extends T> void addDefault(Class<T> cls, Class<U> implClass) {
+    public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, Class<U> implClass) {
         defaultPlugins.put(cls, implClass);
     }
 

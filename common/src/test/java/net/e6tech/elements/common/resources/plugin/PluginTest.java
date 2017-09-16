@@ -28,22 +28,31 @@ public class PluginTest {
 
     @Test
     public void defaultPlugin() {
-        PluginManager plugin = new PluginManager(new ResourceManager());
-        plugin.add(PluginPath.of(PluginTest.class, "1").and(PluginX.class), new DefaultPluginX("1"));
+        PluginManager manager = new PluginManager(new ResourceManager());
+        manager.add(PluginPath.of(PluginTest.class, "1").and(PluginX.class), new DefaultPluginX("1"));
 
-        PluginX x1 = plugin.get(PluginPath.of(PluginTest.class, "1").and(PluginX.class));
+        PluginX x1 = manager.get(PluginPath.of(PluginTest.class, "1").and(PluginX.class)).get();
         assertTrue(x1.name().equals("1"));
 
         // using default
-        PluginX x2 = plugin.get(PluginPath.of(PluginTest.class, "abc").and(PluginX.class)); // abc doesn't exist, so default is return.
+        PluginX x2 = manager.get(PluginPath.of(PluginTest.class, "abc").and(PluginX.class)).get(); // abc doesn't exist, so default is return.
         assertTrue(x2.name().equals("default"));
+    }
+
+    @Test
+    public void paths() {
+        PluginManager manager = new PluginManager(new ResourceManager());
+        manager.add(PluginPath.of(PluginTest.class, "1").and(PluginX.class), new DefaultPluginX("1"));
+
+        PluginPaths<PluginX> paths = PluginPaths.of(PluginPath.of(PluginTest.class, "2").and(PluginX.class));
+        assertTrue(manager.get(paths).get().name().equals("default"));
+
     }
 
     interface  PluginX extends Plugin {
         static Class defaultPlugin = DefaultPluginX.class;
 
         String name();
-
     }
 
     private static class DefaultPluginX implements PluginX {

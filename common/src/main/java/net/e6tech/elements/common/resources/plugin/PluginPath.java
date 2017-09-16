@@ -23,7 +23,7 @@ import java.util.List;
  * Created by futeh.
  */
 public class PluginPath<T> {
-    private PluginPath parent;
+    PluginPath parent;
     private Class<T> type;
     private String name;
 

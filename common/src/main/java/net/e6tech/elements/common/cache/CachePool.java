@@ -40,34 +40,28 @@ public class CachePool<K, V>{
 
     private CacheProvider provider;
     private String name;
-    private Class keyClass;
-    private Class valueClass;
+    private Class<K> keyClass;
+    private Class<V> valueClass;
     private long expiry = DEFAULT_EXPIRY;
     private long maxEntries = 1024L;
     private boolean storeByValue = false;
 
-    public String getName() {
-        return name;
+    public CachePool(String name, Class<K> keyClass, Class<V> valueClass) {
+        this.name = name;
+        this.keyClass = keyClass;
+        this.valueClass = valueClass;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public String getName() {
+        return name;
     }
 
     public Class getKeyClass() {
         return keyClass;
     }
 
-    public void setKeyClass(Class keyClass) {
-        this.keyClass = keyClass;
-    }
-
     public Class getValueClass() {
         return valueClass;
-    }
-
-    public void setValueClass(Class valueClass) {
-        this.valueClass = valueClass;
     }
 
     public CacheProvider getProvider() {
@@ -123,7 +117,7 @@ public class CachePool<K, V>{
         return provider.createCache(this);
     }
 
-    private <K,V> Cache<K,V> buildJsr107Cache() {
+    private Cache<K,V> buildJsr107Cache() {
         CacheManager cacheManager = getCacheManager();
         MutableConfiguration<K, V> configuration = new MutableConfiguration<>();
         configuration.setTypes(keyClass, valueClass);

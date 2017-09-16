@@ -131,15 +131,15 @@ public class Provision {
         return Resources.class;
     }
 
-    public <S, T extends Plugin> T getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
+    public <S, T extends Plugin> Optional<T> getPlugin(Class<S> c1, String n1, Class<T> c2, Object ... args) {
         return getPlugin(PluginPath.of(c1, n1).and(c2), args);
     }
 
-    public <R,S,T extends Plugin> T getPlugin(Class<R> c1, String n1, Class<S> c2, String n2, Class<T> c3, Object ... args) {
+    public <R,S,T extends Plugin> Optional<T> getPlugin(Class<R> c1, String n1, Class<S> c2, String n2, Class<T> c3, Object ... args) {
         return getPlugin(PluginPath.of(c1, n1).and(c2, n2).and(c3), args);
     }
 
-    public <T extends Plugin> T getPlugin(PluginPath<T> path, Object ... args) {
+    public <T extends Plugin> Optional<T> getPlugin(PluginPath<T> path, Object ... args) {
         return getInstance(PluginManager.class).get(path, args);
     }
 

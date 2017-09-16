@@ -81,10 +81,7 @@ public abstract class CacheFacade<K, V> {
 
     public CacheFacade<K,V> initPool(Consumer<CachePool> configurator) {
         if (pool == null) {
-            pool = new CachePool<K,V>();
-            pool.setName(name);
-            pool.setKeyClass(keyClass);
-            pool.setValueClass(valueClass);
+            pool = new CachePool<K,V>(name, keyClass, valueClass);
             configurator.accept(pool);
         }
         return this;
