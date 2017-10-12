@@ -34,7 +34,7 @@ import java.util.function.Consumer;
 public abstract class CacheFacade<K, V> {
 
     @Inject(optional = true)
-    protected CachePool<K, V> pool;
+    protected CacheConfiguration pool;
     protected String name;
     protected Class keyClass;
     protected Class valueClass;
@@ -79,16 +79,16 @@ public abstract class CacheFacade<K, V> {
             this.name = clsName;
     }
 
-    public CacheFacade<K,V> initPool(Consumer<CachePool> configurator) {
+    public CacheFacade<K,V> initPool(Consumer<CacheConfiguration> configurator) {
         if (pool == null) {
-            pool = new CachePool<K,V>(name, keyClass, valueClass);
+            pool = new CacheConfiguration();
             configurator.accept(pool);
         }
         return this;
     }
 
     public CacheFacade<K,V> initPool() {
-        return initPool(p -> p.setExpiry(CachePool.DEFAULT_EXPIRY));
+        return initPool(p -> p.setExpiry(CacheConfiguration.DEFAULT_EXPIRY));
     }
 
     public String getName() {
@@ -99,11 +99,11 @@ public abstract class CacheFacade<K, V> {
         this.name = name;
     }
 
-    public CachePool getPool() {
+    public CacheConfiguration getPool() {
         return pool;
     }
 
-    public void setPool(CachePool pool) {
+    public void setPool(CacheConfiguration pool) {
         this.pool = pool;
     }
 
@@ -140,7 +140,7 @@ public abstract class CacheFacade<K, V> {
         if (pool == null) {
             initPool();
         }
-        cache = pool.getCache();
+        cache = pool.getCache(name, keyClass, valueClass);
         return cache;
     }
 }

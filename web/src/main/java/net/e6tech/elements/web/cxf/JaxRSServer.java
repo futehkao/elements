@@ -390,17 +390,7 @@ public class JaxRSServer extends CXFServer {
                     }
                     res.inject(instance);
                 });
-            message.getExchange().put(UnitOfWork.class, uow);
             return interceptor.newInterceptor(instance, new Handler(instance, uow, map, methods, cloneObserver, message));
-        }
-
-        @Override
-        public void releaseInstance(Message m, Object o) {
-            try {
-                super.releaseInstance(m, o);
-            } finally {
-                commit(m);
-            }
         }
     }
 
@@ -433,18 +423,18 @@ public class JaxRSServer extends CXFServer {
         @Override
         public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
             boolean abort = false;
-            UnitOfWork resourceUoW = null;
             Object result = null;
             boolean ignored = false;
 
             // Note PostConstruct is handled by CXF during createInstance
-            if (thisMethod.getAnnotation(PreDestroy.class) != null)
+            boolean uowOpen = false;
+            if (thisMethod.getAnnotation(PreDestroy.class) != null) {
                 ignored = true;
-            else {
+            } else {
                 try {
                     open(thisMethod);
+                    uowOpen = true;
                 } catch (Exception th) {
-                    message.getExchange().remove(UnitOfWork.class);
                     logger.debug(th.getMessage(), th);
                     handleException(target, thisMethod, args, th);
                 }
@@ -453,12 +443,8 @@ public class JaxRSServer extends CXFServer {
             try {
                 checkInvocation(thisMethod, args);
                 if (!ignored) {
-                    resourceUoW = message.getExchange().get(UnitOfWork.class);
-                    if (resourceUoW.getResources() != null) // could be null when PreDestroy is called.
-                        resourceUoW.getResources().inject(target);
-
                     long start = System.currentTimeMillis();
-                    result = resourceUoW.submit(() -> {
+                    result = uow.submit(() -> {
                         if (observer != null) {
                             observer.beforeInvocation(target, thisMethod, args);
                         }
@@ -475,9 +461,9 @@ public class JaxRSServer extends CXFServer {
                     long duration = System.currentTimeMillis() - start;
                     computePerformance(thisMethod, methods, map, duration);
                 } else {
+                    // PreDestroy is called
                     result = thisMethod.invoke(target, args);
                 }
-
             } catch (Exception th) {
                 recordFailure(thisMethod, methods, map);
                 abort = true;
@@ -485,11 +471,11 @@ public class JaxRSServer extends CXFServer {
                 logger.debug(th.getMessage(), th);
                 handleException(target, thisMethod, args, th);
             } finally {
-                if (resources != null && !ignored) {
+                if (uowOpen) {
                     if (abort)
-                        abort(message);
-                    else
-                        commit(message);
+                        uow.abort();
+                    else if (!uow.isAborted()) // application can call abort
+                        uow.commit();
                 }
             }
             return result;
@@ -626,32 +612,6 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
-    static void abort(Message message) {
-        commitOrAbort(message, false);
-    }
-
-    static void commit(Message message) {
-        commitOrAbort(message, true);
-    }
-
-    @SuppressWarnings("squid:S134")
-    static void commitOrAbort(Message message, boolean commit) {
-        try {
-            UnitOfWork uow = message.getExchange().get(UnitOfWork.class);
-            if (uow != null) {
-                if (commit) {
-                    // application may have aborted programmatically
-                    if (!uow.isAborted() && uow.isOpened())
-                        uow.commit();
-                } else {
-                    uow.abort();
-                }
-            }
-        } finally {
-            message.getExchange().remove(UnitOfWork.class);
-        }
-    }
-
     @SuppressWarnings("squid:S1172")
     private void computePerformance(Method method, Map<Method,String> methods,  Map<String, Object> map, long duration) {
         ObjectInstance instance = null;
@@ -698,7 +658,7 @@ public class JaxRSServer extends CXFServer {
         Parameter[] params = method.getParameters();
         int idx = 0;
         StringBuilder builder = null;
-        final String CANOT_BE_NULL = " cannot be null. \n";
+        final String CANNOT_BE_NULL = " cannot be null. \n";
         for (Parameter param : params) {
             QueryParam queryParam =  param.getAnnotation(QueryParam.class);
             PathParam pathParam =  param.getAnnotation(PathParam.class);
@@ -706,18 +666,18 @@ public class JaxRSServer extends CXFServer {
                 if (pathParam != null) {
                     if (builder == null)
                         builder = new StringBuilder();
-                    builder.append("path parameter ").append(pathParam.value()).append(CANOT_BE_NULL);
+                    builder.append("path parameter ").append(pathParam.value()).append(CANNOT_BE_NULL);
                 }
 
                 if (param.getAnnotation(Nonnull.class) != null) {
                     if (queryParam != null) {
                         if (builder == null)
                             builder = new StringBuilder();
-                        builder.append("query parameter ").append(queryParam.value()).append(CANOT_BE_NULL);
+                        builder.append("query parameter ").append(queryParam.value()).append(CANNOT_BE_NULL);
                     } else if (pathParam == null) {
                         if (builder == null)
                             builder = new StringBuilder();
-                        builder.append("post parameter ").append("arg").append(idx).append(CANOT_BE_NULL);
+                        builder.append("post parameter ").append("arg").append(idx).append(CANNOT_BE_NULL);
                     }
                 }
             }

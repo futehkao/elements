@@ -102,6 +102,14 @@ public class RestfulProxy {
         return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, printer), listener);
     }
 
+    public Map<String, String> getRequestProperties() {
+        return Collections.unmodifiableMap(requestProperties);
+    }
+
+    public void setRequestProperties(Map<String, String> map) {
+        requestProperties.putAll(map);
+    }
+
     public void setRequestProperty(String key, String value) {
         requestProperties.put(key, value);
     }

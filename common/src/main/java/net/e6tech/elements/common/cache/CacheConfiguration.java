@@ -24,6 +24,7 @@ import javax.cache.CacheManager;
 import javax.cache.Caching;
 import javax.cache.configuration.MutableConfiguration;
 import javax.cache.expiry.TouchedExpiryPolicy;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -31,37 +32,21 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by futeh.
  */
-public class CachePool<K, V>{
+public class CacheConfiguration {
 
     public static final long DEFAULT_EXPIRY = 15 * 60 * 1000L;
 
     private static final String DEFAULT_PROVIDER = "net.e6tech.elements.common.cache.ehcache.EhcacheProvider";
-    private static Map<String, CacheManager> managers = new HashMap<>();
+    private static Map<String, CacheManager> managers = Collections.synchronizedMap(new HashMap<>());
 
     private CacheProvider provider;
+    private CacheManager cacheManager;
     private String name;
-    private Class<K> keyClass;
-    private Class<V> valueClass;
     private long expiry = DEFAULT_EXPIRY;
     private long maxEntries = 1024L;
     private boolean storeByValue = false;
 
-    public CachePool(String name, Class<K> keyClass, Class<V> valueClass) {
-        this.name = name;
-        this.keyClass = keyClass;
-        this.valueClass = valueClass;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Class getKeyClass() {
-        return keyClass;
-    }
-
-    public Class getValueClass() {
-        return valueClass;
+    public CacheConfiguration() {
     }
 
     public CacheProvider getProvider() {
@@ -99,6 +84,9 @@ public class CachePool<K, V>{
     }
 
     public synchronized CacheManager getCacheManager() {
+        if (cacheManager != null)
+            return cacheManager;
+
         if (provider == null) {
             try {
                 provider = (CacheProvider) getClass().getClassLoader().loadClass(DEFAULT_PROVIDER).newInstance();
@@ -106,30 +94,24 @@ public class CachePool<K, V>{
                 throw new SystemException(e);
             }
         }
-        return managers.computeIfAbsent(provider.getProviderClassName(), key -> Caching.getCachingProvider(key).getCacheManager());
+        cacheManager = managers.computeIfAbsent(provider.getProviderClassName(), key ->  Caching.getCachingProvider(key).getCacheManager());
+        return cacheManager;
     }
 
-    public Cache<K,V> getCache() {
+    public <K, V> Cache<K, V> getCache(String name, Class<K> keyClass, Class<V> valueClass) {
         CacheManager cacheManager = getCacheManager();
         Cache<K, V> cache = cacheManager.getCache(name, keyClass, valueClass);
         if (cache != null)
             return cache;
-        return provider.createCache(this);
-    }
 
-    private Cache<K,V> buildJsr107Cache() {
-        CacheManager cacheManager = getCacheManager();
-        MutableConfiguration<K, V> configuration = new MutableConfiguration<>();
-        configuration.setTypes(keyClass, valueClass);
-        configuration.setExpiryPolicyFactory(TouchedExpiryPolicy.factoryOf(new javax.cache.expiry.Duration(TimeUnit.MILLISECONDS, expiry)));
-        configuration.setStoreByValue(storeByValue);
         try {
-            return cacheManager.createCache(name, configuration);
+            return provider.createCache(this, name, keyClass, valueClass);
         } catch (CacheException ex) {
-            Logger.suppress(ex);
-            return cacheManager.getCache(name, keyClass, valueClass);
+            cache = cacheManager.getCache(name, keyClass, valueClass);
+            if (cache != null)
+                return cache;
+            else
+                throw ex;
         }
     }
-
-
 }

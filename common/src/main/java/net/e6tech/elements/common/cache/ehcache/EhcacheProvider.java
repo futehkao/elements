@@ -16,9 +16,8 @@
 
 package net.e6tech.elements.common.cache.ehcache;
 
-import net.e6tech.elements.common.cache.CachePool;
+import net.e6tech.elements.common.cache.CacheConfiguration;
 import net.e6tech.elements.common.cache.CacheProvider;
-import org.ehcache.config.CacheConfiguration;
 import org.ehcache.config.builders.CacheConfigurationBuilder;
 import org.ehcache.config.builders.ResourcePoolsBuilder;
 import org.ehcache.expiry.Duration;
@@ -46,18 +45,18 @@ public class EhcacheProvider implements CacheProvider {
         return EhcacheCachingProvider.class.getName();
     }
 
-    public <K,V> Cache<K,V> createCache(CachePool<K, V> cachePool) {
+    public <K,V> Cache<K,V> createCache(CacheConfiguration cachePool, String poolName, Class<K> keyClass, Class<V> valueClass) {
 
         ResourcePoolsBuilder builder = (cachePool.getMaxEntries() > 0)
                 ? ResourcePoolsBuilder.heap(cachePool.getMaxEntries())
                 : ResourcePoolsBuilder.newResourcePoolsBuilder();
 
-        CacheConfiguration<K, V> cacheConfiguration = CacheConfigurationBuilder
-                .newCacheConfigurationBuilder(cachePool.getKeyClass(), cachePool.getValueClass(), builder)
+        org.ehcache.config.CacheConfiguration cacheConfiguration = CacheConfigurationBuilder
+                .newCacheConfigurationBuilder(keyClass, valueClass, builder)
                 .withExpiry(Expirations.timeToLiveExpiration(Duration.of(cachePool.getExpiry(), TimeUnit.MILLISECONDS)))
                 .build();
 
-        Cache<K, V> cache = cachePool.getCacheManager().createCache(cachePool.getName(), Eh107Configuration.fromEhcacheCacheConfiguration(cacheConfiguration));
+        Cache<K, V> cache = cachePool.getCacheManager().createCache(poolName, Eh107Configuration.fromEhcacheCacheConfiguration(cacheConfiguration));
         return (Cache<K, V>) Proxy.newProxyInstance(Cache.class.getClassLoader(), new Class[] { Cache.class}, new CacheInvocationHandler<K,V>(cache, cachePool));
     }
 
@@ -66,7 +65,7 @@ public class EhcacheProvider implements CacheProvider {
         long lastPut;
         long expiry;
 
-        CacheInvocationHandler(Cache<K, V> cache, CachePool<K, V> cachePool) {
+        CacheInvocationHandler(Cache<K, V> cache, CacheConfiguration cachePool) {
             this.cache = cache;
             this.expiry = cachePool.getExpiry();
             this.lastPut = System.currentTimeMillis();

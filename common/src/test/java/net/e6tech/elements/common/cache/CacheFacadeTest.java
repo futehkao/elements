@@ -17,25 +17,14 @@ package net.e6tech.elements.common.cache;
 
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;
-import org.ehcache.config.CacheRuntimeConfiguration;
-import org.ehcache.config.ResourceType;
 import org.ehcache.config.builders.CacheConfigurationBuilder;
 import org.ehcache.config.builders.CacheManagerBuilder;
 import org.ehcache.config.builders.ResourcePoolsBuilder;
-import org.ehcache.core.Ehcache;
 import org.ehcache.expiry.Duration;
 import org.ehcache.expiry.Expirations;
-import org.ehcache.jsr107.Eh107Configuration;
-import org.ehcache.jsr107.EhcacheCachingProvider;
 import org.junit.jupiter.api.Test;
 
-import javax.cache.Caching;
-import javax.cache.configuration.CompleteConfiguration;
-import javax.cache.configuration.MutableConfiguration;
-import javax.cache.expiry.TouchedExpiryPolicy;
-import javax.cache.spi.CachingProvider;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -74,7 +63,7 @@ public class CacheFacadeTest {
     }
 
     @Test void expiry() throws Exception {
-        CacheFacade<Long, String> facade = new CacheFacade<Long, String>() {}
+        CacheFacade<Long, String> facade = new CacheFacade<Long, String>("expiry") {}
         .initPool(pool -> {
             pool.setMaxEntries(20);
             pool.setExpiry(100L);
@@ -100,9 +89,9 @@ public class CacheFacadeTest {
 
     @Test
     public void facade() {
-        CacheFacade<Long, Map<String, String>> facade = new CacheFacade<Long, Map<String, String>>() {};
+        CacheFacade<Long, Map<String, String>> facade = new CacheFacade<Long, Map<String, String>>("facade") {};
         System.out.println(facade.getClass());
-        facade.pool = new CachePool("test", String.class, String.class);
+        facade.pool = new CacheConfiguration();
 
         Map<String, String> value = facade.get(1L, ()-> new HashMap<String, String>());
         System.out.println(value);

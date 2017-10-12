@@ -25,5 +25,5 @@ public interface CacheProvider {
 
     String getProviderClassName();
 
-    <K,V> Cache<K,V> createCache(CachePool<K, V> cachePool);
+    <K,V> Cache<K,V> createCache(CacheConfiguration cachePool, String poolName, Class<K> keyClass, Class<V> valueClass);
 }
