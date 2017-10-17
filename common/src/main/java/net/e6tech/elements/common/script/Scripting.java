@@ -83,6 +83,11 @@ public class Scripting {
         return engine.get(key);
     }
 
+    public <T> T get(String key, T defaultValue) {
+        T t = (T) engine.get(key);
+        return (t== null) ? defaultValue : t;
+    }
+
     public Map<String, Object> getVariables() {
         return engine.getVariables();
     }
