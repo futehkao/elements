@@ -61,7 +61,8 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
         if (resources != null && resources.isOpen())
             return (T) resources;
         resources = resourceManager.open(this.configurator, r -> {
-            if (preOpen != null) preOpen.accept(r);
+            if (preOpen != null)
+                preOpen.accept(r);
             for (ResourceProvider p : resourceProviders) {
                 r.addResourceProvider(p);
             }

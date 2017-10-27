@@ -38,6 +38,7 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
     private String defaultTableName = "sequence";
     private int defaultInitialValue = 1;
     private int defaultIncrementSize = 100;
+    private String defaultOptimizer = StandardOptimizerDescriptor.POOLED_LO.getExternalName();
 
     @SuppressWarnings("squid:S2975") // we really want clone!
     public TableIdGenerator clone() {
@@ -70,6 +71,14 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
 
     public void setDefaultIncrementSize(int defaultIncrementSize) {
         this.defaultIncrementSize = defaultIncrementSize;
+    }
+
+    public String getDefaultOptimizer() {
+        return defaultOptimizer;
+    }
+
+    public void setDefaultOptimizer(String defaultOptimizer) {
+        this.defaultOptimizer = defaultOptimizer;
     }
 
     @Override
@@ -111,7 +120,7 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
     @Override
     public void configure(Type type, Properties params, ServiceRegistry serviceRegistry) {
         if (params.getProperty(OPT_PARAM) == null) {
-            params.setProperty(OPT_PARAM, StandardOptimizerDescriptor.POOLED_LO.getExternalName());
+            params.setProperty(OPT_PARAM, defaultOptimizer);
         }
         super.configure(type, params, serviceRegistry);
     }

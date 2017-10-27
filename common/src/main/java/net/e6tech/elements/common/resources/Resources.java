@@ -48,7 +48,6 @@ import java.util.function.Supplier;
 public class Resources implements AutoCloseable, ResourcePool {
 
     private static Logger logger = Logger.getLogger(Resources.class);
-    private static final List<ResourceProvider> emptyResourceProviders = Collections.unmodifiableList(new ArrayList<>());
     private static final String ABORT_DUE_TO_EXCEPTION = "Aborting due to exception";
 
     private ResourceManager resourceManager;
@@ -58,7 +57,7 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     protected ResourcesState state;
     protected Configurator configurator = new Configurator();
-    private List<ResourceProvider> externalResourceProviders;
+    protected Configurator initialConfigurator;
     private Consumer<? extends Resources> preOpen;
     private List<Replay<? extends Resources, ?>> replays = new LinkedList<>();
     Object lastResult;
@@ -95,13 +94,11 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     List<ResourceProvider> getExternalResourceProviders() {
-        if (externalResourceProviders == null)
-            return emptyResourceProviders;
-        return externalResourceProviders;
+        return state.getExternalResourceProviders();
     }
 
     void setExternalResourceProviders(List<ResourceProvider> externalResourceProviders) {
-        this.externalResourceProviders = externalResourceProviders;
+        state.setExternalResourceProviders(externalResourceProviders);
     }
 
     private List<ResourceProvider> getResourceProviders() {
@@ -338,8 +335,15 @@ public class Resources implements AutoCloseable, ResourcePool {
         return configurator;
     }
 
+    // configurator can be changed by preOpen
+    // whereas initialConfigurator records the initial configuration values when Resources is opeen
+    // It is then used in replay.
     public void configure(Configurator configurator) {
         this.configurator.putAll(configurator);
+        if (this.initialConfigurator == null) {
+            this.initialConfigurator = new Configurator();
+        }
+        this.initialConfigurator.putAll(configurator);
     }
 
     public synchronized void onOpen() {
@@ -380,7 +384,7 @@ public class Resources implements AutoCloseable, ResourcePool {
 
                 try { abort(); } catch (Exception th2) { Logger.suppress(th2); }
 
-                T retryResources = (T) resourceManager.open(null, preOpen);
+                T retryResources = (T) resourceManager.open(initialConfigurator, preOpen);
                 // copy retryResources to this.  retryResources is not used.  We only need to create a new ResourcesState.
                 state = retryResources.state;
                 Iterator<Replay<? extends Resources, ?>> iterator = replays.iterator();
@@ -545,7 +549,6 @@ public class Resources implements AutoCloseable, ResourcePool {
         }
         state.cleanup();
         configurator.clear();
-        externalResourceProviders = null;
         replays.clear();  // cannot be set to null because during replay abort may be called.
         lastResult = null;
         submitting = false;

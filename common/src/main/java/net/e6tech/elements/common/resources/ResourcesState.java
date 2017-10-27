@@ -29,6 +29,8 @@ import java.util.concurrent.Callable;
  */
 class ResourcesState {
 
+    private static final List<ResourceProvider> emptyResourceProviders = Collections.unmodifiableList(new ArrayList<>());
+
     enum State {
         INITIAL,
         OPEN,
@@ -45,6 +47,7 @@ class ResourcesState {
     private boolean dirty = false; // dirty if not open and bind is call.
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private LinkedList<Object> injectionList = new LinkedList<>();
+    private List<ResourceProvider> externalResourceProviders;
 
     ResourcesState(Resources resources) {
         factory = resources.getResourceManager().getModule().getFactory();
@@ -58,6 +61,7 @@ class ResourcesState {
         injectionList.clear();
         injector = null;
         dirty = false;
+        externalResourceProviders = null;
     }
 
     public Module getModule() {
@@ -94,6 +98,16 @@ class ResourcesState {
 
     public void setResourceProviders(List<ResourceProvider> resourceProviders) {
         this.resourceProviders = resourceProviders;
+    }
+
+    List<ResourceProvider> getExternalResourceProviders() {
+        if (externalResourceProviders == null)
+            return emptyResourceProviders;
+        return externalResourceProviders;
+    }
+
+    void setExternalResourceProviders(List<ResourceProvider> externalResourceProviders) {
+        this.externalResourceProviders = externalResourceProviders;
     }
 
     public List<Object> getInjectionList() {
