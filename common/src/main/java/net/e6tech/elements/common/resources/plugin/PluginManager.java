@@ -20,10 +20,7 @@ import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.resources.Binding;
-import net.e6tech.elements.common.resources.InjectionListener;
-import net.e6tech.elements.common.resources.ResourceManager;
-import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
 
@@ -61,6 +58,7 @@ public class PluginManager {
         plugin.resources = resources;
         plugin.defaultPlugins = defaultPlugins;
         plugin.classLoader = classLoader;
+        plugin.plugins = plugins;
         return plugin;
     }
 
@@ -113,11 +111,14 @@ public class PluginManager {
     public <T extends Plugin> Optional<T> get(PluginPaths<T> paths, Object ... args) {
         Object lookup = null;
 
+        PluginPath pluginPath = null;
         for (PluginPath path : paths.getPaths()) {
             String fullPath = path.path();
             lookup = plugins.get(fullPath);
-            if (lookup != null)
+            if (lookup != null) {
+                pluginPath = path;
                 break;
+            }
         }
 
         if (lookup == null) {
@@ -126,12 +127,15 @@ public class PluginManager {
             if (!defaultPlugin.isPresent())
                 return Optional.empty();
             lookup = defaultPlugin.get();
+            pluginPath = PluginPath.of(paths.getType(), DEFAULT_PLUGIN);
         }
 
         T plugin;
         if (lookup instanceof Class) {
             try {
                 plugin = (T) ((Class) lookup).newInstance();
+                inject(plugin, args);
+                plugin.initialize(pluginPath);
             } catch (Exception e) {
                 throw new SystemException(e);
             }
@@ -139,7 +143,17 @@ public class PluginManager {
             plugin = (T) lookup;
         }
 
-        if (args != null && args.length > 0) {
+        if (plugin instanceof PluginFactory) {
+            plugin = ((PluginFactory) plugin).create(resources);
+            inject(plugin, args);
+            plugin.initialize(pluginPath);
+        }
+
+        return Optional.of(plugin);
+    }
+
+    public void inject(Object instance, Object ... args) {
+        if (instance != null && args != null && args.length > 0) {
             ModuleFactory factory = (resources != null) ? resources.getModule().getFactory() :
                     resourceManager.getModule().getFactory();
             Module module = factory.create();
@@ -159,17 +173,16 @@ public class PluginManager {
             Injector injector = (resources != null) ?
                     module.build(resources.getModule(), resourceManager.getModule())
                     : module.build(resourceManager.getModule());
-            if (plugin instanceof InjectionListener) {
-                ((InjectionListener) plugin).preInject(resources);
+            InjectionListener injectionListener = null;
+            ResourcePool resourcePool = (resources != null) ? resources : resourceManager;
+            if (instance instanceof InjectionListener) {
+                injectionListener = (InjectionListener) instance;
+                injectionListener.preInject(resourcePool);
             }
-            injector.inject(plugin);
-            if (plugin instanceof InjectionListener) {
-                ((InjectionListener) plugin).injected(resources);
-            }
+            injector.inject(instance);
+            if (injectionListener != null)
+                injectionListener.injected(resourcePool);
         }
-
-        plugin.initialize();
-        return Optional.of((T)plugin);
     }
 
     public <T extends Plugin> Optional<T> get(PluginPath<T> path, Object ... args) {
@@ -180,12 +193,14 @@ public class PluginManager {
         plugins.put(path.path(), cls);
     }
 
-    public synchronized <T extends Plugin> void add(PluginPath<T> path, T object) {
-        plugins.put(path.path(), object);
+    public synchronized <T extends Plugin> void add(PluginPath<T> path, T singleton) {
+        plugins.put(path.path(), singleton);
+        singleton.initialize(path);
     }
 
-    public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, U object) {
-        defaultPlugins.put(cls, object);
+    public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, U singleton) {
+        defaultPlugins.put(cls, singleton);
+        singleton.initialize(PluginPath.of(cls, DEFAULT_PLUGIN));
     }
 
     public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, Class<U> implClass) {

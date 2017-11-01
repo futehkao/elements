@@ -38,6 +38,7 @@ public class Select<T> extends Statement<T> {
 
     Select parent;
     int maxResults = -1;
+    int firstResult = -1;
     List<Selection<?>> selections = new ArrayList<>();
 
     public Select(Where where, Root<T> root) {
@@ -79,9 +80,14 @@ public class Select<T> extends Statement<T> {
         } else {
             getQuery().select(getFrom());
         }
+
         Query query = where.getEntityManager().createQuery(getQuery());
         if (maxResults >= 0)
             query.setMaxResults(maxResults);
+
+        if (firstResult >= 0)
+            query.setFirstResult(firstResult);
+
         return (R) query.getSingleResult();
     }
 
@@ -94,9 +100,14 @@ public class Select<T> extends Statement<T> {
         } else {
             getQuery().select(getFrom());
         }
+
         Query query = where.getEntityManager().createQuery(getQuery());
         if (maxResults >= 0)
             query.setMaxResults(maxResults);
+
+        if (firstResult >= 0)
+            query.setFirstResult(firstResult);
+
         return query.getResultList();
     }
 
@@ -292,6 +303,13 @@ public class Select<T> extends Statement<T> {
         this.maxResults = maxResults;
         if (parent != null)
             parent.setMaxResults(maxResults);
+        return this;
+    }
+
+    public Select<T> setFirstResult(int firstResult) {
+        this.firstResult = firstResult;
+        if (parent != null)
+            parent.setFirstResult(firstResult);
         return this;
     }
 

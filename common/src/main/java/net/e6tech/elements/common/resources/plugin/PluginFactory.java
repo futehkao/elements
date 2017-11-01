@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import net.e6tech.elements.common.resources.Resources;
 /**
  * Created by futeh.
  */
-public interface Plugin {
-    default void initialize(PluginPath path) {
-    }
+public interface PluginFactory extends Plugin {
+    <T extends Plugin> T create(Resources resources);
 }
