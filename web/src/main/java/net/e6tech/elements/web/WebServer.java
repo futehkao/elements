@@ -171,7 +171,7 @@ public class WebServer implements Startable {
     }
 
     public void addWebApps(String path) {
-        if (Files.isDirectory(Paths.get(path))) {
+        if (Paths.get(path).toFile().isDirectory()) {
             try (Stream<Path> stream = Files.list(Paths.get(path))) {
                 stream.forEach(subdir -> {
                     String context = subdir.getFileName().toString();

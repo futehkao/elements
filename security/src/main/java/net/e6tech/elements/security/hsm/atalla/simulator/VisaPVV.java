@@ -44,7 +44,7 @@ public class VisaPVV {
         System.out.println(visa.generatePVV(kpv, partialPan, pvki, "4321"));  // should be 8449
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2131"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2131", "squid:S2278"})
     public String generatePVV(byte[] pvvKey, String partialPan, int pvki, String pin) throws GeneralSecurityException {
         if (partialPan.length() != 11)
             throw new GeneralSecurityException("invalid partial pan length, must be 11");

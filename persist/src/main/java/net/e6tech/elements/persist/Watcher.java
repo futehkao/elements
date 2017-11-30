@@ -171,7 +171,9 @@ public class Watcher implements InvocationHandler {
         }
         if (trace.length > 20)
             builder.append("...\n");
-        logger.debug(builder.toString());
+
+        if (logger.isDebugEnabled())
+            logger.debug(builder.toString());
 
     }
 }

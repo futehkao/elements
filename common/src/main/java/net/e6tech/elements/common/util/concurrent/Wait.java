@@ -48,6 +48,7 @@ public class Wait<K, V> {
         }
     }
 
+    @SuppressWarnings("squid:S3776")
     public void newEntry(K key, Object userData, long expired) {
         Entry<V> entry = new Entry<>();
         entry.userData = userData;

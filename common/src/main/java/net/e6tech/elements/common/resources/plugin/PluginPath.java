@@ -26,10 +26,15 @@ public class PluginPath<T> {
     PluginPath parent;
     private Class<T> type;
     private String name;
+    private String toString;
 
     protected PluginPath(Class<T> cls, String name) {
         this.type = cls;
         this.name = name;
+    }
+
+    public static <T> PluginPath<T> of(Class<T> cls) {
+        return new PluginPath<>(cls, null);
     }
 
     public static <T> PluginPath<T> of(Class<T> cls, String name) {
@@ -42,6 +47,7 @@ public class PluginPath<T> {
 
     public void setType(Class<T> type) {
         this.type = type;
+        toString = null;
     }
 
     public String getName() {
@@ -50,6 +56,7 @@ public class PluginPath<T> {
 
     public void setName(String name) {
         this.name = name;
+        toString = null;
     }
 
     public <R> PluginPath<R> and(Class<R> cls, String name) {
@@ -75,6 +82,9 @@ public class PluginPath<T> {
     }
 
     public String path() {
+        if (toString != null)
+            return toString;
+
         StringBuilder builder = new StringBuilder();
         List<PluginPath> list = list();
         boolean first = true;
@@ -89,7 +99,12 @@ public class PluginPath<T> {
                 builder.append("/").append(p.getName());
             }
         }
-        return builder.toString();
+        toString = builder.toString();
+        return toString;
+    }
+
+    public String toString() {
+        return path();
     }
 
 }

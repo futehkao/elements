@@ -516,6 +516,11 @@ public class Atom implements Map<String, Object> {
         if (object == null) {
             object = resourceManager.getScripting().get(key.toString());
         }
+
+        if (object == null
+                && !directives.containsKey(key)) {
+            logger.warn("variable {} not found", key);
+        }
         return object;
     }
 

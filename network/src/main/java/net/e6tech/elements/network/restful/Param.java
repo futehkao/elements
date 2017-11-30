@@ -38,7 +38,7 @@ public class Param implements Serializable{
                 this.encodedValue = URLEncoder.encode(value, "UTF-8");
         } catch (UnsupportedEncodingException e) {
             throw new SystemException(e);
-        };
+        }
     }
 
     public String getField() {

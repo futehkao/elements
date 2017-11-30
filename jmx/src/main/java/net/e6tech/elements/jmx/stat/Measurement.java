@@ -179,11 +179,11 @@ public class Measurement implements Serializable, MeasurementMXBean {
             average = sum / count;
             int index = (int) count / 2;
             if (count == 2 * index) {
-                DataPoint dp1 = (DataPoint) sortedByValue.get(index);
-                DataPoint dp2 = (DataPoint) sortedByValue.get(index - 1);
+                DataPoint dp1 = sortedByValue.get(index);
+                DataPoint dp2 =  sortedByValue.get(index - 1);
                 median = (dp1.getValue() + dp2.getValue()) / 2f;
             } else {
-                median = ((DataPoint) sortedByValue.get(index)).getValue();
+                median = (sortedByValue.get(index)).getValue();
             }
         }
 

@@ -77,7 +77,7 @@ public class PluginManager {
                     throw new SystemException(e);
                 }
             }
-        };
+        }
     }
 
     public ClassLoader getPluginClassLoader() {
@@ -152,6 +152,7 @@ public class PluginManager {
         return Optional.of(plugin);
     }
 
+    @SuppressWarnings("squid:S3776")
     public void inject(Object instance, Object ... args) {
         if (instance != null && args != null && args.length > 0) {
             ModuleFactory factory = (resources != null) ? resources.getModule().getFactory() :

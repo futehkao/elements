@@ -39,7 +39,7 @@ import java.util.concurrent.Executors;
 /**
  * Created by futeh.
  */
-@SuppressWarnings("squid:S3008")
+@SuppressWarnings({"squid:S3008", "squid:S2278"})
 public class AtallaSimulator {
 
     static String MASTER_KEY = "2ABC3DEF4567018998107645FED3CBA20123456789ABCDEF";
@@ -213,6 +213,5 @@ public class AtallaSimulator {
         AtallaSimulator atalla = (new AtallaSimulator());
         AKB akb = new AKB(header, atalla.masterKey, kekKey);
         byte[] recoveredKek = akb.decryptKey(atalla.masterKey);
-        logger.info(Boolean.toString(Arrays.equals(kekKey, recoveredKek)));
     }
 }

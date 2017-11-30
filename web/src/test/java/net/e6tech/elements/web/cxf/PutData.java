@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,29 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.resources.plugin;
+package net.e6tech.elements.web.cxf;
 
-/**
- * Created by futeh.
- */
-public interface Plugin {
-    default void initialize(PluginPath path) {
+public class PutData {
+    private int intValue;
+    private String stringValue;
+
+    public int getIntValue() {
+        return intValue;
+    }
+
+    public void setIntValue(int intValue) {
+        this.intValue = intValue;
+    }
+
+    public String getStringValue() {
+        return stringValue;
+    }
+
+    public void setStringValue(String stringValue) {
+        this.stringValue = stringValue;
+    }
+
+    public String toString() {
+        return "stringValue=" + stringValue + " intValue=" + intValue;
     }
 }

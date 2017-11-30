@@ -48,6 +48,7 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S3776")
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();

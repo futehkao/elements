@@ -17,10 +17,7 @@
 package net.e6tech.elements.web.cxf;
 
 import javax.jws.WebParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
 /**
@@ -33,5 +30,11 @@ public class HelloWorldRS {
     @Produces({MediaType.APPLICATION_JSON})
     public String sayHi( @QueryParam("text") String text) {
         return "Hello " + text;
+    }
+
+    @PUT
+    @Produces({MediaType.APPLICATION_JSON})
+    public void putMethod(@QueryParam("ext") String text, PutData data) {
+        System.out.println(text + " " + data);
     }
 }

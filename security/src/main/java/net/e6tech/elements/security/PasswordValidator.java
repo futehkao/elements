@@ -108,7 +108,7 @@ public class PasswordValidator {
         if (nDigits > 0)
             count++;
 
-        return ! (count < minNumberOfGroups);
+        return count >= minNumberOfGroups;
     }
 
     public static boolean validate(String password) {

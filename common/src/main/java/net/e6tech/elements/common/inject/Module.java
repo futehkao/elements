@@ -30,7 +30,7 @@ import java.util.Objects;
  */
 public interface Module {
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:CommentedOutCodeLine"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:CommentedOutCodeLine", "squid:S3776"})
     default Type[] getBindClass(Class<?> cls) {
         Objects.requireNonNull(cls);
         Class<?> c = cls;

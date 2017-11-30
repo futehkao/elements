@@ -59,6 +59,11 @@ public class JaxRSServerTest {
 
         server.start();
         reply = api.sayHi("Mr. Anderson");
+
+        PutData data = new PutData();
+        data.setIntValue(10);
+        data.setStringValue("Hello");
+        api.putMethod("Test" , data);
     }
 
 }

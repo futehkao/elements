@@ -25,6 +25,7 @@ import net.e6tech.elements.jmx.JMXService;
 import javax.script.ScriptException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 
 /**
@@ -40,6 +41,7 @@ public class RuleSet extends AbstractScriptShell {
     private Map<String, Rule> rootSet = new LinkedHashMap<>();
     private Map<String, Map<String, Rule>> rootRules = new LinkedHashMap<>();
     private boolean measurement = false;
+    private String mbeanPrefix = "";
 
     public RuleSet(Properties properties) {
         super(properties);
@@ -56,6 +58,14 @@ public class RuleSet extends AbstractScriptShell {
             resourceManager.registerBean(beanName, this);
     }
 
+    public String getMbeanPrefix() {
+        return mbeanPrefix;
+    }
+
+    public void setMbeanPrefix(String mbeanPrefix) {
+        this.mbeanPrefix = mbeanPrefix;
+    }
+
     public void loadRoots(String ... rootSet) throws ScriptException {
         for (String rt : rootSet)
             load(rt);
@@ -66,12 +76,15 @@ public class RuleSet extends AbstractScriptShell {
     public void load(String str) throws ScriptException {
         rules = new LinkedHashMap<>();
         super.load(str);
-        registerMBean("", root);
+        registerMBean(getMbeanPrefix(), root);
         root = null;
         rules = null;
     }
 
     protected void registerMBean(String path, Rule rule) {
+        if (!measurement)
+            return;
+
         if (rule.getMeasurement() != null) {
             rule.getMeasurement().setName(rule.getName());
             rule.getMeasurement().setUnit("ms");
@@ -119,16 +132,15 @@ public class RuleSet extends AbstractScriptShell {
         return rules.get(key);
     }
 
-    public Rule getRoot(String ruleSetName) {
+    public Optional<Rule> getRoot(String ruleSetName) {
         String ruleSet = ruleSetName;
         if (rootSet.size() == 0)
             throw new SystemException("root not set");
         if (ruleSet == null || DEFAULT.equalsIgnoreCase(ruleSet.trim())) {
             ruleSet = DEFAULT;
         }
-        if (rootSet.get(ruleSet) == null)
-            throw new SystemException("ruleSet " + ruleSet + " not found");
-        return rootSet.get(ruleSet);
+
+        return Optional.ofNullable(rootSet.get(ruleSet));
     }
 
     public void runRule(String ruleSetName, RuleContext context) {

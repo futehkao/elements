@@ -230,7 +230,6 @@ public class CXFServer implements Initializable, Startable {
     public void stop() {
         for (Server server : servers )
             server.stop();
-        initialized = false;
         started = false;
     }
 }

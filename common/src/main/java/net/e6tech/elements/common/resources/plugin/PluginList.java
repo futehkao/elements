@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
-import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Resources;
 
 import java.util.ArrayList;

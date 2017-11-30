@@ -257,7 +257,7 @@ public class RestfulProxy {
             }
         }
 
-        @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134"})
+        @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S3776"})
         Pair<Response, Object> forward(Request request, Object[] args) throws Throwable {
 
             List<Param> paramList = new ArrayList<>();

@@ -496,7 +496,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         load(str, true);
     }
 
-    @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity"})
+    @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity", "squid:S3776"})
     public synchronized void load(String str, boolean logInfo) throws ScriptException {
         long start = System.currentTimeMillis();
         super.load(str);
@@ -536,13 +536,15 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
                 len = message2.length();
             char[] line = new char[len];
             Arrays.fill(line, '*');
-            logger.info(new String(line));
-            logger.info(message);
-            logger.info(message2);
-            logger.info("Loaded atoms:");
-            for (String msg : atomString)
-                logger.info(msg);
-            logger.info(new String(line));
+            if (logger.isInfoEnabled()) {
+                logger.info(new String(line));
+                logger.info(message);
+                logger.info(message2);
+                logger.info("Loaded atoms:");
+                for (String msg : atomString)
+                    logger.info(msg);
+                logger.info(new String(line));
+            }
         }
     }
 

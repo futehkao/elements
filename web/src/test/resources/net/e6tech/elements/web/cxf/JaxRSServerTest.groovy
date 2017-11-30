@@ -15,7 +15,7 @@ import net.e6tech.elements.web.cxf.JaxRSServer
  * limitations under the License.
  */
 
-component("helloworld") {
+atom("helloworld") {
     configuration =  """
     _helloworld.addresses:
         - "http://0.0.0.0:9000/restful/"

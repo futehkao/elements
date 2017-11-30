@@ -70,7 +70,7 @@ public class ObjectConverter {
         return convert(from, field.getGenericType(), listener);
     }
 
-    @SuppressWarnings("squid:S134")
+    @SuppressWarnings({"squid:S134", "squid:S3776"})
     public Object convert(Object from, Type toType, InstanceCreationListener listener) throws IOException {
         Object converted;
         if (toType instanceof Class) {
@@ -107,7 +107,7 @@ public class ObjectConverter {
         return converted;
     }
 
-    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S3776"})
     private Object convert(Object val, Class toType, InstanceCreationListener instanceCreation) throws IOException {
         Object value = val;
         Class fromType = value.getClass();

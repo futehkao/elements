@@ -100,7 +100,7 @@ public class MultiProxy {
         }
 
         @Override
-        @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity"})
+        @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity", "squid:S3776"})
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             Object ret = null;
 
