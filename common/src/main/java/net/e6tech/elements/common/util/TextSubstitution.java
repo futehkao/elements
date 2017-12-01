@@ -85,7 +85,7 @@ public class TextSubstitution {
         return text.replace("${" + key + "}", value);
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135", "squid:S3776"})
     private void parseVariableNames(String text) {
         variables.clear();
         List<String> expressions = new LinkedList<>();
@@ -206,7 +206,7 @@ public class TextSubstitution {
             this.defaultValue = defaultValue;
         }
 
-        @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135", "squid:S1141", "squid:S134"})
+        @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135", "squid:S1141", "squid:S134", "squid:S3776"})
         public String build(Object object) {
             Object result = object;
             PropertyDescriptor desc;

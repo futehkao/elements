@@ -55,11 +55,7 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
 
     public void addSecret(Secret secret) {
         String alias = secret.alias();
-        SortedMap<Long, Secret> versions = secrets.get(alias);
-        if (versions == null) {
-            versions = new TreeMap<>(comparator);
-            secrets.put(alias, versions);
-        }
+        SortedMap<Long, Secret> versions  = secrets.computeIfAbsent(alias, key -> new TreeMap<>(comparator));
         String version = secret.version();
         if (version == null)
             version = "0";

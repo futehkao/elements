@@ -38,54 +38,59 @@ public class FileUtil {
         Path[] paths = EMPTY_FILE_LIST;
         if (path.endsWith("**")) {
             String dir = path.substring(0, path.length() - 2);
-            if (Files.isDirectory(Paths.get(dir))) {
+            if (Paths.get(dir).toFile().isDirectory()) {
                 paths = listFiles(Paths.get(dir), extension, true);
-            } else if (!Files.exists(Paths.get(dir))) {
+            } else if (!Paths.get(dir).toFile().exists()) {
                 throw new IOException("Directory " + dir + " does not exist");
             }
         } else if (path.endsWith("*")) {
             String dir = path.substring(0, path.length() - 1);
-            if (Files.isDirectory(Paths.get(dir))) {
+            if (Paths.get(dir).toFile().isDirectory()) {
                 paths = listFiles(Paths.get(dir), extension, false);
-            } else if (!Files.exists(Paths.get(dir))) {
+            } else if (!Paths.get(dir).toFile().exists()) {
                 throw new IOException("Directory " + dir + " does not exist");
             }
         } else {
-            if (extension != null) {
-                paths = path.endsWith(extension) ? new Path[]{Paths.get(path)} : new Path[]{Paths.get(path + extension)};
-            } else {
-                paths = new Path[]{Paths.get(path)};
-            }
+            paths = getSingleFile(path, extension);
         }
         return paths;
+    }
+
+    private static Path[] getSingleFile(String path, String extension) {
+        if (path.startsWith("classpath:")) {
+            Path p = path.endsWith(extension) ? Paths.get(path) : Paths.get(path + extension);
+            return new Path[]{ p };
+        } else {
+            Path p = Paths.get(path);
+            if (extension != null) {
+                p = path.endsWith(extension) ? Paths.get(path) : Paths.get(path + extension);
+            }
+
+            if (!p.toFile().isDirectory() && p.toFile().exists())
+                return new Path[] { p };
+
+            return EMPTY_FILE_LIST;
+        }
     }
 
     private static Path[] listFiles(Path path, String extension, boolean recursive) throws IOException {
         List<Path> directories = new LinkedList<>();
         List<Path> list = new LinkedList<>();
 
-        if (Files.isDirectory(path)) {
+        if (path.toFile().isDirectory()) { // a directory
             directories.add(path);
-        } else {
-            if (extension != null && path.toString().endsWith(extension))
-                list.add(path);
-            else if (extension == null)
-                list.add(path);
+        } else if(extension == null || path.toString().endsWith(extension)) {
+            list.add(path);
         }
 
         while (!directories.isEmpty()) {
             Path parent = directories.remove(0);
             try (Stream<Path> stream = Files.list(parent)) {
                 stream.forEach(f -> {
-                    if (Files.isDirectory(f)) {
+                    if (f.toFile().isDirectory()) {
                         if (recursive) directories.add(f);
-                    } else {
-                        // f is a file
-                        if (extension != null && f.toString().endsWith(extension)) {
-                            list.add(f);
-                        } else if (extension == null) {
-                            list.add(f);
-                        }
+                    } else if (extension == null ||f.toString().endsWith(extension)) {
+                        list.add(f);
                     }
                 });
             }

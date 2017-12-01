@@ -337,7 +337,7 @@ public class Scripting {
         Path[] paths;
         try {
             String path = normalizePath(originalPath);
-            paths = listFiles(path);
+            paths = FileUtil.listFiles(path, getExtension());
         } catch (IOException e) {
             throw new ScriptException(e);
         }
@@ -349,10 +349,6 @@ public class Scripting {
                 ret = val;
         }
         return ret;
-    }
-
-    private Path[] listFiles(String path) throws IOException {
-        return FileUtil.listFiles(path, getExtension());
     }
 
     // This class encapsulates the differences between GroovyShell and GroovyScriptEngineImpl.

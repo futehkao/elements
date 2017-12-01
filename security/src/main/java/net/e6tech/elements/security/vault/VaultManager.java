@@ -460,11 +460,11 @@ public class VaultManager {
         ClearText ct = getUser(credential);
         if (ct == null)
             throw new GeneralSecurityException("Cannot find user " + credential.getUser());
-        if (!ct.getProperty(GUARDIAN).equals(GROUP_1) || !ct.getProperty(GUARDIAN).equals(GROUP_2))
-            new GeneralSecurityException("User " + ct.getProperty(USERNAME) + " is not a guardian");
+        if (!(ct.getProperty(GUARDIAN).equals(GROUP_1) || ct.getProperty(GUARDIAN).equals(GROUP_2)))
+            throw new GeneralSecurityException("User " + ct.getProperty(USERNAME) + " is not a guardian");
 
-        if (ct.getProperty(GUARDIAN).equals(ct.getProtectedProperty(GUARDIAN))) {
-            new GeneralSecurityException("User " + ct.getProperty(USERNAME) + " guardian property has been tempered");
+        if (!ct.getProperty(GUARDIAN).equals(ct.getProtectedProperty(GUARDIAN))) {
+            throw new GeneralSecurityException("User " + ct.getProperty(USERNAME) + " guardian property has been tempered");
         }
     }
 
@@ -491,12 +491,12 @@ public class VaultManager {
                     + ct2.getProperty(USERNAME) + " cannot be in the same group");
         }
 
-        if (ct1.getProperty(GUARDIAN).equals(ct1.getProtectedProperty(GUARDIAN))) {
-            new GeneralSecurityException("User " + ct1.getProperty(USERNAME) + " guardian property has been tempered");
+        if (!ct1.getProperty(GUARDIAN).equals(ct1.getProtectedProperty(GUARDIAN))) {
+            throw new GeneralSecurityException("User " + ct1.getProperty(USERNAME) + " guardian property has been tempered");
         }
 
-        if (ct2.getProperty(GUARDIAN).equals(ct2.getProtectedProperty(GUARDIAN))) {
-            new GeneralSecurityException("User " + ct2.getProperty(USERNAME) + " guardian property has been tempered");
+        if (!ct2.getProperty(GUARDIAN).equals(ct2.getProtectedProperty(GUARDIAN))) {
+            throw new GeneralSecurityException("User " + ct2.getProperty(USERNAME) + " guardian property has been tempered");
         }
     }
 
@@ -527,6 +527,7 @@ public class VaultManager {
      * @param dualEntry dual entry containing authentication info for two users.
      * @throws GeneralSecurityException general security exception
      */
+    @SuppressWarnings("squid:S3776")
     public void changePassphrase(DualEntry dualEntry) throws GeneralSecurityException {
         checkAccess(dualEntry);
 
@@ -741,7 +742,7 @@ public class VaultManager {
 
     }
 
-    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S3776"})
     private void openKeyData() throws GeneralSecurityException {
         if (keyDataOpened)
             return;

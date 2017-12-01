@@ -67,7 +67,7 @@ public class LoggerAdapter extends java.util.logging.Logger {
     @Override
     public boolean isLoggable(final Level level) {
         if (Level.ALL.equals(level)) return true;
-        else if (Level.CONFIG.equals(level)) logger.isInfoEnabled();
+        else if (Level.CONFIG.equals(level)) return logger.isInfoEnabled();
         return true;
     }
 

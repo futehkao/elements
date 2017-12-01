@@ -29,7 +29,6 @@ import java.lang.reflect.Modifier;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -212,6 +211,6 @@ public class AtallaSimulator {
         String header = "1KDEE000";
         AtallaSimulator atalla = (new AtallaSimulator());
         AKB akb = new AKB(header, atalla.masterKey, kekKey);
-        byte[] recoveredKek = akb.decryptKey(atalla.masterKey);
+        akb.decryptKey(atalla.masterKey);
     }
 }

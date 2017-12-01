@@ -17,7 +17,6 @@
 package net.e6tech.elements.common.resources.plugin;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -67,8 +66,8 @@ public class PluginPaths<T> {
     }
 
     public PluginPaths<T> add(List<PluginPath<T>> paths) {
-        paths.addAll(paths);
-        if (paths.size() > 0) {
+        this.paths.addAll(paths);
+        if (!paths.isEmpty()) {
             type = paths.get(paths.size() - 1).getType();
             toString = null;
         }

@@ -58,7 +58,7 @@ public class InjectorImpl implements Injector {
         return privateGetNamedInstance(boundClass, name).<T>map(entry -> (T) entry.value).orElse(null);
     }
 
-    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S3776"})
     private Optional<Entry> privateGetNamedInstance(Type boundClass, String name) {
         BoundInstances boundInstances = instances.get(boundClass);
         Entry entry = null;
@@ -141,6 +141,7 @@ public class InjectorImpl implements Injector {
         return false;
     }
 
+    @SuppressWarnings("squid:S3776")
     List<InjectionPoint> parseInjectionPoints(Class instanceClass) {
         Class cls = instanceClass;
         List<InjectionPoint> list = new ArrayList<>();

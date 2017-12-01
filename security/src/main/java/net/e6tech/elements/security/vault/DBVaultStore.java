@@ -84,9 +84,7 @@ public class DBVaultStore implements VaultStore {
         if (vaultNames == null)
             return this;
         for (String vaultName : vaultNames) {
-            if (vaults.get(vaultName) == null) {
-                vaults.put(vaultName, new DBVault(vaultName));
-            }
+            vaults.computeIfAbsent(vaultName, key -> new DBVault(vaultName));
         }
         return this;
     }

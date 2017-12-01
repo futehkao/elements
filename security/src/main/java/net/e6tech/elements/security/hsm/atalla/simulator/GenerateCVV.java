@@ -26,6 +26,7 @@ import java.security.GeneralSecurityException;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S2278")
 public class GenerateCVV extends Command {
 
     // <5D#Algorithm#Header,EMFK.E(KCVV),MAC#Reserved#Data#>

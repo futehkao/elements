@@ -189,7 +189,7 @@ public class TimedLogger {
         return _log(message, 0);
     }
 
-    @SuppressWarnings({"squid:S0010", "squid:S00100"})
+    @SuppressWarnings({"squid:S0010", "squid:S00100", "squid:S2629"})
     private TimedLogger _log(String message, long timeout) {
         long duration = System.currentTimeMillis() - start;
         start = System.currentTimeMillis();

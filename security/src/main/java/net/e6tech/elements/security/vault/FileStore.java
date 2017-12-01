@@ -62,11 +62,7 @@ public class FileStore implements VaultStore {
         if (vaultNames == null)
             return this;
         for (String vaultName : vaultNames) {
-            VaultImpl vault = vaults.get(vaultName);
-            if (vault == null) {
-                vault = new VaultImpl();
-                vaults.put(vaultName, vault);
-            }
+            vaults.computeIfAbsent(vaultName, key -> new VaultImpl());
             managedVaults.add(vaultName);
         }
         return this;

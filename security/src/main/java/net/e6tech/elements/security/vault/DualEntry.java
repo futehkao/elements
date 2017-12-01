@@ -61,16 +61,20 @@ public class DualEntry {
         this.user2 = user2;
     }
 
+    @SuppressWarnings("squid:EmptyStatementUsageCheck")
     public void run(String text, int port) {
         while(!nestedRun(text, port));
     }
 
+    @SuppressWarnings("squid:EmptyStatementUsageCheck")
     public void run(String text, ServerSocket serverSocket) {
         Terminal terminal = new Terminal();
         while (!_user1(terminal, text, serverSocket));
+
         while(!_user2(terminal, serverSocket));
     }
 
+    @SuppressWarnings("squid:S3776")
     private boolean nestedRun(String text, int port) {
         ServerSocket serverSocket = null;
         try {
@@ -105,7 +109,8 @@ public class DualEntry {
         }
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S2093"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S2093",
+            "squid:S3776"})
     private boolean _user1(Terminal terminal, String text, ServerSocket serverSocket) {
         if (user1 == null || user2 == null || user1.getUser() == null || user2.getUser() == null)
             terminal.println(text);
@@ -139,7 +144,7 @@ public class DualEntry {
         return true;
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S2093"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S2093", "squid:S3776"})
     private boolean _user2(Terminal terminal, ServerSocket serverSocket) {
         while (user2 == null || user2.getUser() == null) {
             Terminal t = null;

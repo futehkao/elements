@@ -103,6 +103,7 @@ public abstract class Balancer<T> {
 
     protected abstract void stop(T service) throws IOException;
 
+    @SuppressWarnings("squid:S899")
     private void recoverTask() {
         List<T> list = new LinkedList<>();
         while (!stopped) {
