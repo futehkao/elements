@@ -116,9 +116,9 @@ public class Scripting {
                 String prefix = path.substring(0, indexOfColon);
                 if (prefix.contains(File.separator)
                         || prefix.contains("/")) {
-                    relativePath = false;
-                } else {
                     relativePath = true;
+                } else {
+                    relativePath = false;
                 }
             } else {
                 relativePath = true;
