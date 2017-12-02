@@ -445,15 +445,13 @@ public class JaxRSServer extends CXFServer {
                 if (!ignored) {
                     long start = System.currentTimeMillis();
                     result = uow.submit(() -> {
-                        if (observer != null) {
+                        if (observer != null)
                             observer.beforeInvocation(target, thisMethod, args);
-                        }
 
                         Object ret = thisMethod.invoke(target, args);
 
-                        if (observer != null) {
+                        if (observer != null)
                             observer.afterInvocation(ret);
-                        }
 
                         return ret;
                     });
@@ -465,9 +463,10 @@ public class JaxRSServer extends CXFServer {
                     result = thisMethod.invoke(target, args);
                 }
             } catch (Exception th) {
+                if (!ignored && observer != null)
+                    observer.onException(th);
                 recordFailure(thisMethod, methods, map);
                 abort = true;
-                ignored = false;
                 logger.debug(th.getMessage(), th);
                 handleException(target, thisMethod, args, th);
             } finally {
@@ -508,18 +507,21 @@ public class JaxRSServer extends CXFServer {
                 proxy = interceptor.newInterceptor(super.getInstance(m), (target, thisMethod, args) -> {
                     try {
                         checkInvocation(thisMethod, args);
-                        if (cloneObserver != null) {
+                        if (cloneObserver != null)
                             cloneObserver.beforeInvocation(target, thisMethod, args);
-                        }
                         long start = System.currentTimeMillis();
+
                         Object result = thisMethod.invoke(target, args);
+
                         long duration = System.currentTimeMillis() - start;
                         computePerformance(thisMethod, methods, map, duration);
-                        if (cloneObserver != null) {
+                        if (cloneObserver != null)
                             cloneObserver.afterInvocation(result);
-                        }
+
                         return result;
                     } catch (Exception th) {
+                        if (cloneObserver != null)
+                            cloneObserver.onException(th);
                         recordFailure(thisMethod, methods, map);
                         logger.debug(th.getMessage(), th);
                         handleException(target, thisMethod, args, th);

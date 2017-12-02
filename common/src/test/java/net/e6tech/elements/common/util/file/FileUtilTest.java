@@ -18,16 +18,24 @@ package net.e6tech.elements.common.util.file;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class FileUtilTest {
 
     @Test
     public void basic() throws Exception {
-        Path[] paths = FileUtil.listFiles("./*", null);
+        File file = new File("./");
+        String dir = file.getCanonicalPath();
+        String[] paths = FileUtil.listFiles(dir + "/*", null);
         System.out.println(paths);
 
-        paths = FileUtil.listFiles("./**", null);
+        paths = FileUtil.listFiles(dir + "/**", null);
         System.out.println(paths);
+
+        URL url = Paths.get(paths[0]).toUri().toURL();
+        System.out.println(url.toExternalForm());
     }
 }

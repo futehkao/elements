@@ -21,6 +21,10 @@ public abstract class Observer implements Cloneable {
     public void afterInvocation(Object result) {
     }
 
+    public void onException(Exception exception) {
+
+    }
+
     @SuppressWarnings("squid:S2975")
     public Observer clone() {
         try {

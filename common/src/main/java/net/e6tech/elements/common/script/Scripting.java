@@ -129,12 +129,9 @@ public class Scripting {
         return path;
     }
 
-    public Object eval(Path script) throws ScriptException {
-        return eval(script, false);
-    }
-
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2093"})
-    private Object eval(Path script, boolean topLevel) throws ScriptException {
+    // script is the full path name
+    private Object eval(String script, boolean topLevel) throws ScriptException {
         String prevRootDir = null;
         String prevRootFile = null;
         if (topLevel) {
@@ -143,7 +140,7 @@ public class Scripting {
         }
 
         ScriptPath prev = scriptPath;
-        scriptPath = new ScriptPath(normalizePath(script.toString()));
+        scriptPath = new ScriptPath(normalizePath(script));
         Reader reader = null;
         try {
             if (Files.exists(scriptPath.getPath())) {
@@ -196,10 +193,10 @@ public class Scripting {
             // rethrow to let caller handle it, instead of logging erro
             throw new ScriptException(e);
         } catch (ScriptException e) {
-            logger.error("Error eval " + script.toString());
+            logger.error("Error eval " + script);
             throw e;
         } catch (Exception e) {
-            logger.error("Error eval " + script.toString(), e);
+            logger.error("Error eval " + script, e);
             throw new ScriptException(e.getMessage());
         } finally {
             if (reader != null)
@@ -334,7 +331,7 @@ public class Scripting {
     }
 
     private Object exec(String originalPath, boolean topLevel) throws ScriptException {
-        Path[] paths;
+        String[] paths;
         try {
             String path = normalizePath(originalPath);
             paths = FileUtil.listFiles(path, getExtension());
@@ -343,7 +340,7 @@ public class Scripting {
         }
 
         Object ret = null;
-        for (Path p : paths) {
+        for (String p : paths) {
             Object val = eval(p, topLevel);
             if (val != null)
                 ret = val;

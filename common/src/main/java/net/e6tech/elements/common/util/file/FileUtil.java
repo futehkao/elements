@@ -15,6 +15,7 @@
  */
 package net.e6tech.elements.common.util.file;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,24 +30,24 @@ import java.util.stream.Stream;
 @SuppressWarnings("squid:S134")
 public class FileUtil {
 
-    private static final Path[] EMPTY_FILE_LIST = new Path[0];
+    private static final String[] EMPTY_FILE_LIST = new String[0];
 
     private FileUtil() {
     }
 
-    public static Path[] listFiles(String path, String extension) throws IOException {
-        Path[] paths = EMPTY_FILE_LIST;
+    public static String[] listFiles(String path, String extension) throws IOException {
+        String[] paths = EMPTY_FILE_LIST;
         if (path.endsWith("**")) {
             String dir = path.substring(0, path.length() - 2);
             if (Paths.get(dir).toFile().isDirectory()) {
-                paths = listFiles(Paths.get(dir), extension, true);
+                paths = listFiles(dir, extension, true);
             } else if (!Paths.get(dir).toFile().exists()) {
                 throw new IOException("Directory " + dir + " does not exist");
             }
         } else if (path.endsWith("*")) {
             String dir = path.substring(0, path.length() - 1);
             if (Paths.get(dir).toFile().isDirectory()) {
-                paths = listFiles(Paths.get(dir), extension, false);
+                paths = listFiles(dir, extension, false);
             } else if (!Paths.get(dir).toFile().exists()) {
                 throw new IOException("Directory " + dir + " does not exist");
             }
@@ -56,45 +57,41 @@ public class FileUtil {
         return paths;
     }
 
-    private static Path[] getSingleFile(String path, String extension) {
+    private static String[] getSingleFile(String path, String extension) {
+        String p = path.endsWith(extension) ? path : path + extension;
         if (path.startsWith("classpath:")) {
-            Path p = path.endsWith(extension) ? Paths.get(path) : Paths.get(path + extension);
-            return new Path[]{ p };
+            return new String[]{ p };
         } else {
-            Path p = Paths.get(path);
-            if (extension != null) {
-                p = path.endsWith(extension) ? Paths.get(path) : Paths.get(path + extension);
-            }
-
-            if (!p.toFile().isDirectory() && p.toFile().exists())
-                return new Path[] { p };
+            File f = new File(p);
+            if (!f.isDirectory() && f.exists())
+                return new String[] { p };
 
             return EMPTY_FILE_LIST;
         }
     }
 
-    private static Path[] listFiles(Path path, String extension, boolean recursive) throws IOException {
-        List<Path> directories = new LinkedList<>();
-        List<Path> list = new LinkedList<>();
+    private static String[] listFiles(String path, String extension, boolean recursive) throws IOException {
+        List<String> directories = new LinkedList<>();
+        List<String> list = new LinkedList<>();
 
-        if (path.toFile().isDirectory()) { // a directory
+        if (new File(path).isDirectory()) { // a directory
             directories.add(path);
-        } else if(extension == null || path.toString().endsWith(extension)) {
+        } else if(extension == null || path.endsWith(extension)) {
             list.add(path);
         }
 
         while (!directories.isEmpty()) {
-            Path parent = directories.remove(0);
-            try (Stream<Path> stream = Files.list(parent)) {
+            String parent = directories.remove(0);
+            try (Stream<Path> stream = Files.list(Paths.get(parent))) {
                 stream.forEach(f -> {
                     if (f.toFile().isDirectory()) {
-                        if (recursive) directories.add(f);
-                    } else if (extension == null ||f.toString().endsWith(extension)) {
-                        list.add(f);
+                        if (recursive) directories.add(f.toString());
+                    } else if (extension == null || f.toString().endsWith(extension)) {
+                        list.add(f.toString());
                     }
                 });
             }
         }
-        return list.toArray(new Path[list.size()]);
+        return list.toArray(new String[list.size()]);
     }
 }

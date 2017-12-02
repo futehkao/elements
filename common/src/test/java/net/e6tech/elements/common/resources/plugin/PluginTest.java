@@ -33,6 +33,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class PluginTest {
 
     @Test
+    public void loadJars() throws Exception {
+        PluginManager manager = new PluginManager(new ResourceManager());
+        manager.loadPlugins(new String[] { "./src/test/test-plugins/plugin-test.jar" } );
+        Plugin plugin = (Plugin) manager.getPluginClassLoader().loadClass("net.e6tech.elements.common.resources.plugin.SimplePlugin").newInstance();
+        plugin.initialize(PluginPath.of(Plugin.class, "Test"));
+    }
+
+    @Test
+    public void loadJars2() throws Exception {
+        PluginManager manager = new PluginManager(new ResourceManager());
+        manager.loadPlugins(new String[] { "./src/test/test-plugins/*" } );
+        Plugin plugin = (Plugin) manager.getPluginClassLoader().loadClass("net.e6tech.elements.common.resources.plugin.SimplePlugin").newInstance();
+        plugin.initialize(PluginPath.of(Plugin.class, "Test"));
+    }
+
+    @Test
     public void defaultPlugin() {
         PluginManager manager = new PluginManager(new ResourceManager());
         manager.add(PluginPath.of(PluginTest.class, "1").and(PluginX.class), new DefaultPluginX("1"));

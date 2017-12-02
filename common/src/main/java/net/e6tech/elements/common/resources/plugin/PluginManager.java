@@ -24,11 +24,13 @@ import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -64,16 +66,23 @@ public class PluginManager {
 
     public void loadPlugins(String[] directories) {
         for (String dir: directories) {
-            java.nio.file.Path[] paths = new java.nio.file.Path[0];
+            String[] paths;
             try {
                 paths = FileUtil.listFiles(dir, "jar");
             } catch (IOException e) {
                 throw new SystemException(e);
             }
-            for (java.nio.file.Path p : paths) {
+            for (String p : paths) {
+                String fullPath;
                 try {
-                    classLoader.addURL(p.toUri().toURL());
-                } catch (MalformedURLException e) {
+                    fullPath = new File(p).getCanonicalPath();
+                } catch (IOException e) {
+                    continue;
+                }
+
+                try {
+                    classLoader.addURL(Paths.get(fullPath).toUri().toURL());
+                } catch (IOException e) {
                     throw new SystemException(e);
                 }
             }
