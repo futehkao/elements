@@ -21,7 +21,7 @@ import java.awt.image.BufferedImage;
 
 public class AsciiArt {
 
-    private AsciiArt() {
+    public AsciiArt() {
     }
 
     public static String generate(String text, int fontSize) {

@@ -143,39 +143,23 @@ public class Scripting {
         scriptPath = new ScriptPath(normalizePath(script));
         Reader reader = null;
         try {
-            if (Files.exists(scriptPath.getPath())) {
-                // this is handled later
+            String dir = scriptPath.getParent();
+            String file;
+
+            if (scriptPath.isClassPath()) {
+                InputStream stream = getClass().getClassLoader().getResourceAsStream(scriptPath.getFileName());
+                if (stream == null)
+                    throw new IOException("File not found: " + scriptPath.getClassPath());
+                reader = new InputStreamReader(stream, "UTF-8");
+                file = scriptPath.getFileName();
             } else {
-                String fileName = scriptPath.getFileName();
-                boolean loadFromClassPath = false;
-                if (fileName.startsWith("classpath://")) {
-                    fileName = fileName.substring("classpath://".length());
-                    loadFromClassPath = true;
-                } else if (fileName.startsWith("classpath:/")) {
-                    fileName = fileName.substring("classpath:/".length());
-                    loadFromClassPath = true;
-                } else if (fileName.startsWith("classpath:")) {
-                    fileName = fileName.substring("classpath:".length());
-                    loadFromClassPath = true;
-                }
-                scriptPath.setFileName(fileName);
-                scriptPath.setClassPath(true);
-                if (loadFromClassPath) {
-                    InputStream stream = getClass().getClassLoader().getResourceAsStream(fileName);
-                    if (stream == null)
-                        throw new IOException("File not found: " + fileName);
-                    reader = new InputStreamReader(stream, "UTF-8");
-                } else {
-                    throw new IOException("Script not found: " + script);
-                }
+                File f = new File(scriptPath.getFileName());
+                if (!f.exists())
+                    throw new IOException("File not found: " + scriptPath.getFileName());
+                dir = (new File(dir)).getCanonicalPath();
+                file = f.getCanonicalPath();
             }
 
-            String dir = scriptPath.getParent();
-            String file = scriptPath.getFileName();
-            if (!scriptPath.isClassPath()) {
-                dir = (new File(dir)).getCanonicalPath();
-                file = (new File(dir)).getCanonicalPath();
-            }
             privatePut(__DIR, dir);
             privatePut(__FILE, file);
             if (topLevel) {
@@ -184,10 +168,10 @@ public class Scripting {
             }
 
             // reader is not null for classpath
-            if (Files.exists(scriptPath.getPath())) {
-                return engine.eval(scriptPath.getPath().toFile());
-            } else {
+            if (reader != null) {
                 return engine.eval(reader, scriptPath.getFileName());
+            } else {
+                return engine.eval(scriptPath.getPath().toFile());
             }
         } catch (IOException e) {
             // rethrow to let caller handle it, instead of logging erro

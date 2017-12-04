@@ -28,6 +28,16 @@ public class ScriptPath {
 
     public ScriptPath(String path) {
         this.fileName = path;
+        if (fileName.startsWith("classpath://")) {
+            fileName = fileName.substring("classpath://".length());
+            classPath = true;
+        } else if (fileName.startsWith("classpath:/")) {
+            fileName = fileName.substring("classpath:/".length());
+            classPath = true;
+        } else if (fileName.startsWith("classpath:")) {
+            fileName = fileName.substring("classpath:".length());
+            classPath = true;
+        }
     }
 
     public String getParent() {
@@ -53,6 +63,11 @@ public class ScriptPath {
     public void setFileName(String fileName) {
         this.fileName = fileName;
     }
+
+    public String getClassPath() {
+        return "classpath://" + getFileName();
+    }
+
 
     public Path getPath() {
         return Paths.get(fileName);
