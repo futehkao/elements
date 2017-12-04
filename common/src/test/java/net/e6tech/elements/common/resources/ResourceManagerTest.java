@@ -29,4 +29,11 @@ public class ResourceManagerTest {
         resourceManager.load("src/test/conf/simple.groovy");
         resourceManager.getAtoms();
     }
+
+    @Test
+    public void loadFromClassPath() throws Exception {
+        ResourceManager resourceManager = new ResourceManager();
+        resourceManager.load("classpath://net/e6tech/elements/common/resources/FX Trader Joe's.groovy");
+        resourceManager.getAtoms();
+    }
 }
