@@ -34,6 +34,7 @@ public interface ResourceProvider {
     }
 
     default void onOpen(Resources resources) {}
+    default void afterOpen(Resources resources) {}
     default void onCommit(Resources resources) {}
     default void afterCommit(Resources resources) {}
     default void onAbort(Resources resources) {}

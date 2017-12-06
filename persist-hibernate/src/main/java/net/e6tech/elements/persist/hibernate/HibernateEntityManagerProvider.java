@@ -114,10 +114,21 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         SessionFactoryImplementor  factory = session.getSessionFactory();
         resources.bind(SessionImpl.class, session);
         resources.bind(SessionFactoryImplementor.class, factory);
+
+        // cannot call resources.inject(interceptor), resources is not fully open yet
         if (session.getInterceptor() instanceof PersistenceInterceptor) {
             PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
-            // cannot call resources.inject(interceptor), it is not open yet
             interceptor.setResources(resources);
+        }
+    }
+
+    @Override
+    public void afterOpen(Resources resources) {
+        EntityManager em = resources.getInstance(EntityManager.class);
+        SessionImpl session = (SessionImpl) em.getDelegate();
+        if (session.getInterceptor() instanceof PersistenceInterceptor) {
+            PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
+            resources.inject(interceptor);
         }
     }
 

@@ -355,11 +355,21 @@ public class Resources implements AutoCloseable, ResourcePool {
                 for (ResourceProvider resourceProvider : state.getResourceProviders()) {
                     resourceProvider.onOpen(this);
                 }
+
+                state.onOpen(this);
+
+                for (ResourceProvider p : getExternalResourceProviders()) {
+                    p.afterOpen(this);
+                }
+
+                for (ResourceProvider resourceProvider : state.getResourceProviders()) {
+                    resourceProvider.afterOpen(this);
+                }
+
             } catch (Exception ex) {
                 abort();
                 throw ex;
             }
-            state.onOpen(this);
         }
     }
 

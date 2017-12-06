@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  */
 public class Interceptor extends EmptyInterceptor implements PersistenceInterceptor {
 
-    // below @Inject happens during HibernateEntityManagerProvider.onOpen(Resources resources)
+    // below @Inject happens during HibernateEntityManagerProvider.afterOpen(Resources resources)
 
     @Inject(optional = true)
     protected transient Resources resources;
