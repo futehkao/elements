@@ -380,30 +380,19 @@ public class JaxRSServer extends CXFServer {
                     res.rebind(ExceptionMapper.class, exceptionMapper);
                     res.rebind((Class<ExceptionMapper>) exceptionMapper.getClass(), exceptionMapper);
                 }
-                }).onOpen(res -> {
-                    // call header observer.
-                    // exception is automatically handled by ResourceManager.  It will kill the resources and throw an exception.
-                    if (cloneObserver !=  null) {
-                        HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
-                        res.inject(cloneObserver);
-                        cloneObserver.service(request);
-                    }
-                    res.inject(instance);
                 });
-            return interceptor.newInterceptor(instance, new Handler(instance, uow, map, methods, cloneObserver, message));
+            return interceptor.newInterceptor(instance, new Handler(uow, map, methods, cloneObserver, message));
         }
     }
 
     private class Handler implements InterceptorHandler {
         UnitOfWork uow;
-        Object instance;
         Message message;
         Observer observer;
         Map<String, Object> map;  // map is the Map<String, Object> in JaxRSServer's resources. It's used to record measurement
         Map<Method, String> methods;
 
-        public Handler(Object instance, UnitOfWork uow, Map<String, Object> map, Map<Method, String> methods, Observer observer, Message message) {
-            this.instance = instance;
+        public Handler(UnitOfWork uow, Map<String, Object> map, Map<Method, String> methods, Observer observer, Message message) {
             this.uow = uow;
             this.message = message;
             this.observer = observer;
@@ -411,8 +400,8 @@ public class JaxRSServer extends CXFServer {
             this.methods = methods;
         }
 
-        private void open(Method method) {
-            Class cls = instance.getClass();
+        private void open(Object target, Method method) {
+            Class cls = target.getClass();
             for (Annotation annotation : cls.getAnnotations())
                 uow.put((Class) annotation.annotationType(), annotation);
             for (Annotation annotation : method.getAnnotations())
@@ -432,7 +421,7 @@ public class JaxRSServer extends CXFServer {
                 ignored = true;
             } else {
                 try {
-                    open(thisMethod);
+                    open(target, thisMethod);
                     uowOpen = true;
                 } catch (Exception th) {
                     logger.debug(th.getMessage(), th);
@@ -445,11 +434,13 @@ public class JaxRSServer extends CXFServer {
                 if (!ignored) {
                     long start = System.currentTimeMillis();
                     result = uow.submit(() -> {
-                        if (observer != null)
-                            observer.beforeInvocation(target, thisMethod, args);
-
+                        if (observer != null) {
+                            HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
+                            uow.getResources().inject(observer);
+                            observer.beforeInvocation(request, target, thisMethod, args);
+                        }
+                        uow.getResources().inject(target);
                         Object ret = thisMethod.invoke(target, args);
-
                         if (observer != null)
                             observer.afterInvocation(ret);
 
@@ -498,17 +489,15 @@ public class JaxRSServer extends CXFServer {
         @SuppressWarnings("squid:S1188")
         public Object getInstance(Message m) {
             Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
-            if (observer !=  null && m != null) {
-                HttpServletRequest request = (HttpServletRequest) m.get(AbstractHTTPDestination.HTTP_REQUEST);
-                provision.inject(cloneObserver);
-                cloneObserver.service(request);
-            }
             if (proxy == null) {
                 proxy = interceptor.newInterceptor(super.getInstance(m), (target, thisMethod, args) -> {
                     try {
                         checkInvocation(thisMethod, args);
-                        if (cloneObserver != null)
-                            cloneObserver.beforeInvocation(target, thisMethod, args);
+                        if (cloneObserver != null) {
+                            HttpServletRequest request = (HttpServletRequest) m.get(AbstractHTTPDestination.HTTP_REQUEST);
+                            provision.inject(cloneObserver);
+                            cloneObserver.beforeInvocation(request, target, thisMethod, args);
+                        }
                         long start = System.currentTimeMillis();
 
                         Object result = thisMethod.invoke(target, args);

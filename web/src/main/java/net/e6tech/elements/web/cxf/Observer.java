@@ -12,10 +12,7 @@ import java.lang.reflect.Method;
 @BindClass(Observer.class)
 public abstract class Observer implements Cloneable {
 
-    public void service(HttpServletRequest request) {
-    }
-
-    public void beforeInvocation(Object instance, Method method, Object[] args) {
+    public void beforeInvocation(HttpServletRequest request, Object instance, Method method, Object[] args) {
     }
 
     public void afterInvocation(Object result) {
