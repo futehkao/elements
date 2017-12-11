@@ -24,6 +24,8 @@ import java.beans.*;
 import java.lang.annotation.Annotation;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -41,6 +43,24 @@ public class Reflection {
         protected Class<?>[] getClassContext() {
             return super.getClassContext();
         }
+    }
+
+    private static Set<Class> convertibleTypes = new HashSet();
+    static {
+        convertibleTypes.add(Boolean.TYPE);
+        convertibleTypes.add(Boolean.class);
+        convertibleTypes.add(Double.TYPE);
+        convertibleTypes.add(Double.class);
+        convertibleTypes.add(Float.TYPE);
+        convertibleTypes.add(Float.class);
+        convertibleTypes.add(Integer.TYPE);
+        convertibleTypes.add(Integer.class);
+        convertibleTypes.add(Long.TYPE);
+        convertibleTypes.add(Long.class);
+        convertibleTypes.add(Short.TYPE);
+        convertibleTypes.add(Short.class);
+        convertibleTypes.add(BigDecimal.class);
+        convertibleTypes.add(BigInteger.class);
     }
 
     private static final PrivateSecurityManager securityManager = new PrivateSecurityManager();
@@ -403,6 +423,13 @@ public class Reflection {
             if (object == null)
                 return null;
 
+            T buildin = null;
+            if (toType instanceof Class) {
+                buildin = (T) convertBuiltinType((Class) toType, object);
+                if (buildin != null)
+                    return buildin;
+            }
+
             Integer hashCode = null;
             if (!object.getClass().isPrimitive()) {
                 hashCode = System.identityHashCode(object);
@@ -412,13 +439,25 @@ public class Reflection {
 
             T target = null;
             if (toType instanceof Class) {
+                Class cls = (Class) toType;
                 if (Enum.class.isAssignableFrom((Class)toType)) {
-                    target = (T) Enum.valueOf((Class)toType, object.toString());
-                } else if (Enum.class.isAssignableFrom(object.getClass()) && String.class.isAssignableFrom((Class) toType)) {
+                    target = (T) Enum.valueOf(cls, object.toString());
+                } else if (Enum.class.isAssignableFrom(object.getClass()) && String.class.isAssignableFrom(cls)) {
                     target = (T) ((Enum) object).name();
+                } else if (Collection.class.isAssignableFrom(cls)) {
+                    Collection collection = newCollection(cls);
+                    target = (T) collection;
+                    if (object instanceof Collection) {
+                        Collection c = (Collection) object;
+                        for (Object o : c) {
+                            collection.add(o);
+                        }
+                    } else {
+                        throw new IllegalStateException("Do not know how to convert " + object.getClass() + " to " + toType);
+                    }
                 } else {
                     try {
-                        target = (T) ((Class) toType).newInstance();
+                        target = (T) cls.newInstance();
                     } catch (Exception e) {
                         throw new SystemException(e);
                     }
@@ -429,23 +468,14 @@ public class Reflection {
                 Class enclosedType = (Class) parametrized.getRawType();
                 Type type = parametrized.getActualTypeArguments()[0];
                 if (Collection.class.isAssignableFrom(enclosedType)) {
-                    Collection collection = null;
-                    if (List.class.isAssignableFrom(enclosedType)) {
-                        collection = new ArrayList<>();
-                    } else if (Set.class.isAssignableFrom(enclosedType)) {
-                        collection = new LinkedHashSet<>();
-                    } else {
-                        collection = new ArrayList<>();
-                    }
+                    Collection collection = newCollection(enclosedType);
                     target = (T) collection;
-
                     if (object instanceof Collection) {
                         Collection c = (Collection) object;
                         for (Object o : c) {
                             Object converted = newInstance(type ,o, seen, listener);
                             collection.add(converted);
                         }
-
                     } else {
                         throw new IllegalStateException("Do not know how to convert " + object.getClass() + " to " + toType);
                     }
@@ -462,6 +492,46 @@ public class Reflection {
             if (hashCode != null)
                 seen.put(hashCode, target);
             return target;
+        }
+
+        protected Collection newCollection(Class cls) {
+            Collection collection = null;
+            if (List.class.isAssignableFrom(cls)) {
+                collection = new ArrayList<>();
+            } else if (Set.class.isAssignableFrom(cls)) {
+                collection = new LinkedHashSet<>();
+            } else {
+                collection = new ArrayList<>();
+            }
+            return collection;
+        }
+
+        protected Object convertBuiltinType(Class type, Object object) {
+            if (String.class.isAssignableFrom(type)) {
+                return object.toString();
+            }
+
+            if (!convertibleTypes.contains(type))
+                return null;
+
+            if (type == Boolean.TYPE || type == Boolean.class)
+                return new Boolean(object.toString());
+            else if (type == Double.TYPE || type == Double.class) {
+                return new Double(object.toString());
+            } else if (type == Float.TYPE || type == Float.class) {
+                return new Float(object.toString());
+            } else if (type == Integer.TYPE || type == Integer.class) {
+                return new Integer(object.toString());
+            } else if (type == Long.TYPE || type == Long.class) {
+                return new Long(object.toString());
+            } else if (type == Short.TYPE || type == Short.class) {
+                return new Short(object.toString());
+            } else if (type == BigDecimal.class) {
+                return new BigDecimal(object.toString());
+            } else if (type == BigInteger.class) {
+                return new BigInteger(object.toString());
+            }
+            return null;
         }
 
         public void copy(Object target, Object object, CopyListener copyListener) {
@@ -499,7 +569,9 @@ public class Reflection {
                                 }
                                 if (!handled) {
                                     Object value = prop.getReadMethod().invoke(object);
-                                    if (setter.getParameterTypes()[0].isAssignableFrom(prop.getReadMethod().getReturnType())) {
+
+                                    if (!(value instanceof Collection) &&
+                                            setter.getParameterTypes()[0].isAssignableFrom(prop.getReadMethod().getReturnType())) {
                                         setter.invoke(target, value);
                                     } else {
                                         try {

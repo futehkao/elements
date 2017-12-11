@@ -454,8 +454,13 @@ public class JaxRSServer extends CXFServer {
                     result = thisMethod.invoke(target, args);
                 }
             } catch (Exception th) {
-                if (!ignored && observer != null)
-                    observer.onException(th);
+                if (!ignored && observer != null) {
+                    try {
+                        observer.onException(th);
+                    } catch (Exception ex) {
+                        Logger.suppress(ex);
+                    }
+                }
                 recordFailure(thisMethod, methods, map);
                 abort = true;
                 logger.debug(th.getMessage(), th);

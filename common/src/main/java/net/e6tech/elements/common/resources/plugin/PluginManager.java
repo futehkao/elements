@@ -192,6 +192,8 @@ public class PluginManager {
             injector.inject(instance);
             if (injectionListener != null)
                 injectionListener.injected(resourcePool);
+        } else if (instance != null && resources != null) {
+            resources.inject(instance);
         }
     }
 
