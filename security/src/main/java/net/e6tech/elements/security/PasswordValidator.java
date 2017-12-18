@@ -22,7 +22,7 @@ public class PasswordValidator {
     private int maxPasswordLength;
     private int minNumberOfGroups;
 
-    private static final PasswordValidator DEFAULT_VALIDATOR = new PasswordValidator(8,20,3);
+    private static final PasswordValidator DEFAULT_VALIDATOR = new PasswordValidator(8,32,3);
 
     public PasswordValidator() {
     }
