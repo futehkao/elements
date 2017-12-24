@@ -243,7 +243,7 @@ public class Rule {
                 runClosure(context, proceed);
                 context.ruleExecuted(this);
                 if(measurement != null)
-                    measurement.add((double)(System.currentTimeMillis() - start));
+                    measurement.append((double)(System.currentTimeMillis() - start));
             } catch (Exception ex) {
                 return handleException(context, ex);
             }

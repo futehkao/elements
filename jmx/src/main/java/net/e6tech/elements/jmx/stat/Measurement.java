@@ -39,7 +39,7 @@ public class Measurement implements Serializable, MeasurementMXBean {
     private double sum_x_2 = 0.0;  //i.e. sum of x^2, which is not sum^2!!!
     private double stdDev = 0.0;
     private long windowWidth = 300000l;  // default is 5 minutes
-    private int windowMaxCount = 0;     // limits the total number of samples in the window
+    private int windowMaxCount = Integer.MAX_VALUE;     // limits the total number of samples in the window
     private boolean dirty = false;
     private boolean enabled = true;
     protected transient LinkedList<DataPoint> sortedByTime = new LinkedList<>(); // sorted by timestamp
@@ -148,24 +148,19 @@ public class Measurement implements Serializable, MeasurementMXBean {
     }
 
     /**
-     * Because dataPoints is transient, we have to record everything.
+     * This method is needed to JMX
      * @param value a measurement
      */
     public synchronized void add(double value) {
-        if (!isEnabled())
-            return;
-        total ++;
         add(new DataPoint(System.currentTimeMillis(), value));
     }
 
     public Measurement append(double value) {
-        if (!isEnabled())
-            return this;
         add(value);
         return this;
     }
 
-    protected synchronized void recalculate() {
+    synchronized void recalculate() {
         trimFailures();
         trimData();
 
@@ -199,9 +194,10 @@ public class Measurement implements Serializable, MeasurementMXBean {
         dirty = false;
     }
 
-    protected synchronized void add(DataPoint dp) {
+    private synchronized void add(DataPoint dp) {
         if (!isEnabled())
             return;
+        total ++;
         sortedByTime.add(dp);
         sortedByValue.add(dp);
 
@@ -218,7 +214,7 @@ public class Measurement implements Serializable, MeasurementMXBean {
             remove();
         }
 
-        while (windowMaxCount > 0 && sortedByTime.size() > windowMaxCount) {
+        while (sortedByTime.size() > windowMaxCount) {
             remove();
         }
     }
@@ -229,12 +225,12 @@ public class Measurement implements Serializable, MeasurementMXBean {
             failures.remove();
         }
 
-        while (windowMaxCount > 0 && failures.size() > windowMaxCount) {
+        while (failures.size() > windowMaxCount) {
             failures.remove();
         }
     }
 
-    protected DataPoint remove() {
+    DataPoint remove() {
         if (!sortedByTime.isEmpty()) {
             DataPoint dp = sortedByTime.removeFirst();
             sortedByValue.removeFirst(dp);
@@ -245,6 +241,24 @@ public class Measurement implements Serializable, MeasurementMXBean {
             return dp;
         }
         return null;
+    }
+
+    public String dump() {
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("count=" + sortedByValue.size() + " ");
+        boolean first = true;
+        for (DataPoint dp : sortedByTime) {
+            if (first)
+                first = false;
+            else
+                builder.append(',');
+            builder.append('[').append(dp.getTimestamp())
+                    .append(",")
+                    .append(dp.getValue())
+                    .append(']');
+        }
+        return builder.toString();
     }
 
     public String toString() {

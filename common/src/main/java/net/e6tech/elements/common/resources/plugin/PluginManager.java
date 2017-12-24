@@ -23,9 +23,11 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
+import org.apache.logging.log4j.core.config.plugins.processor.PluginCache;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -34,6 +36,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by futeh.
@@ -47,7 +51,7 @@ public class PluginManager {
     private PluginClassLoader classLoader;
     private ResourceManager resourceManager;
     private Resources resources;
-    private Map<String, Object> plugins = new HashMap<>();
+    private Map<PluginPath, Object> plugins = new HashMap<>();
     private Map<Class, Object> defaultPlugins = new HashMap<>();
 
     public PluginManager(ResourceManager resourceManager) {
@@ -119,17 +123,20 @@ public class PluginManager {
 
     public <T extends Plugin> Optional<T> get(PluginPaths<T> paths, Object ... args) {
         Object lookup = null;
-
         PluginPath pluginPath = null;
-        for (PluginPath path : paths.getPaths()) {
-            String fullPath = path.path();
-            lookup = plugins.get(fullPath);
-            if (lookup != null) {
-                pluginPath = path;
-                break;
+
+        // look up from paths
+        if (lookup == null) {
+            for (PluginPath path : paths.getPaths()) {
+                lookup = plugins.get(path);
+                if (lookup != null) {
+                    pluginPath = path;
+                    break;
+                }
             }
         }
 
+        // if still null, look up from default plugin
         if (lookup == null) {
             // get default plugin
             Optional defaultPlugin = getDefaultPlugin(paths.getType());
@@ -202,16 +209,18 @@ public class PluginManager {
     }
 
     public synchronized <T extends Plugin> void add(PluginPath<T> path, Class<T> cls) {
-        plugins.put(path.path(), cls);
+        plugins.put(path, cls);
     }
 
     public synchronized <T extends Plugin> void add(PluginPath<T> path, T singleton) {
-        plugins.put(path.path(), singleton);
+        plugins.put(path, singleton);
+        resourceManager.inject(singleton);
         singleton.initialize(path);
     }
 
     public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, U singleton) {
         defaultPlugins.put(cls, singleton);
+        resourceManager.inject(singleton);
         singleton.initialize(PluginPath.of(cls, DEFAULT_PLUGIN));
     }
 

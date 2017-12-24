@@ -59,8 +59,9 @@ public class Resources implements AutoCloseable, ResourcePool {
     protected Configurator configurator = new Configurator();
     protected Configurator initialConfigurator;
     private Consumer<? extends Resources> preOpen;
-    private List<Replay<? extends Resources, ?>> replays = new LinkedList<>();
+    private List<Replay<? extends Resources, ?, ? extends Exception>> replays = new LinkedList<>();
     Object lastResult;
+    private Throwable lastException;
     boolean submitting = false;
 
     protected Resources(ResourceManager resourceManager) {
@@ -213,8 +214,26 @@ public class Resources implements AutoCloseable, ResourcePool {
         state.addModule(module);
     }
 
-    public <T> Binding<T> getBinding(Class<T> cls) {
-        return  new Binding<>(this, cls);
+    <T> Binding<T> getBinding(Class<T> cls) {
+        return new Binding<>(this, cls);
+    }
+
+    public <E extends Exception> void briefly(Transactional.ConsumerWithException<Bindings, E> consumer) throws E {
+        Bindings bindings = new Bindings(this);
+        try {
+            consumer.accept(bindings);
+        } finally {
+            bindings.restore();
+        }
+    }
+
+    public <T, E extends Exception> T briefly(Transactional.FunctionWithException<Bindings, T, E> function) throws E {
+        Bindings bindings = new Bindings(this);
+        try {
+            return function.apply(bindings);
+        } finally {
+            bindings.restore();
+        }
     }
 
     public <T> T tryBind(Class<T> cls, Callable<T> callable) {
@@ -373,7 +392,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         }
     }
 
-    protected <T extends Resources, R> R replay(Exception th, Replay<T, R> replay) {
+    protected <T extends Resources, R, E extends Exception> R replay(Exception th, Replay<T, R, E> replay) {
         if (isAborted() || retry == null) {
             log(ABORT_DUE_TO_EXCEPTION, th);
             if (!isAborted())
@@ -397,9 +416,9 @@ public class Resources implements AutoCloseable, ResourcePool {
                 T retryResources = (T) resourceManager.open(initialConfigurator, preOpen);
                 // copy retryResources to this.  retryResources is not used.  We only need to create a new ResourcesState.
                 state = retryResources.state;
-                Iterator<Replay<? extends Resources, ?>> iterator = replays.iterator();
+                Iterator<Replay<? extends Resources, ?, ? extends Exception>> iterator = replays.iterator();
                 while (iterator.hasNext()) {
-                    Object ret = ((Replay<T, ?>) iterator.next()).replay((T) this);
+                    Object ret = ((Replay<T, R, E>) iterator.next()).replay((T) this);
                     if (!iterator.hasNext()) {
                         lastResult = ret;
                     }
@@ -407,10 +426,12 @@ public class Resources implements AutoCloseable, ResourcePool {
                 return replay.replay((T) this);
             });
         } catch (RuntimeException th2) {
+            lastException = th2;
             log(ABORT_DUE_TO_EXCEPTION, th2);
             abort();
             throw th2;
         } catch (Throwable th2) {
+            lastException = th2;
             log(ABORT_DUE_TO_EXCEPTION, th2);
             abort();
             throw new SystemException(th2);
@@ -419,15 +440,19 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     // return null because we want this type of work to be stateless outside of
     // Resources.
-    public synchronized <R extends Resources> void submit(Transactional.ConsumerWithException<R> work) {
-        play(new Replay<R, Object>(work));
+    public synchronized <R extends Resources, E extends Exception> void submit(Transactional.ConsumerWithException<R, E> work) {
+        play(new Replay<R, Object, E>(work));
     }
 
-    public synchronized <T extends Resources, R> R submit(Transactional.FunctionWithException<T, R> work) {
-        return play(new Replay<T, R>(work));
+    public synchronized <T extends Resources, R, E extends Exception> R submit(Transactional.FunctionWithException<T, R, E> work) {
+        return play(new Replay<T, R, E>(work));
     }
 
-    private <T extends Resources, R> R play(Replay<T, R> replay) {
+    public Throwable getLastException() {
+        return lastException;
+    }
+
+    private <T extends Resources, R, E extends Exception> R play(Replay<T, R, E> replay) {
         R ret = null;
         boolean topLevel = !submitting;
         submitting = true;
@@ -435,6 +460,7 @@ public class Resources implements AutoCloseable, ResourcePool {
             try {
                 ret = replay.replay((T) this);
             } catch (Exception th) {
+                lastException = th;
                 ret = replay(th, replay);
             }
             lastResult = ret;
@@ -459,7 +485,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         try {
             ret = _commit();
         } catch (Exception th) {
-            ret = replay(th, new Replay<Resources, R>(res -> {return _commit();}));
+            ret = replay(th, new Replay<Resources, R, Exception>(res -> {return _commit();}));
         } finally {
             if (isCommitted()) {
                 // commit successful
@@ -569,20 +595,20 @@ public class Resources implements AutoCloseable, ResourcePool {
         return (T) getInstance(Provision.class);
     }
 
-    private static class Replay<T, R> {
+    private static class Replay<T, R, E extends Exception> {
 
-        Transactional.ConsumerWithException<T> consumer;
-        Transactional.FunctionWithException<T, R> function;
+        Transactional.ConsumerWithException<T, E> consumer;
+        Transactional.FunctionWithException<T, R, E> function;
 
-        Replay(Transactional.ConsumerWithException<T> work) {
+        Replay(Transactional.ConsumerWithException<T, E> work) {
             consumer = work;
         }
 
-        Replay(Transactional.FunctionWithException<T, R> work) {
+        Replay(Transactional.FunctionWithException<T, R, E> work) {
             function = work;
         }
 
-        R replay(T res) throws Exception {
+        R replay(T res) throws E {
             if (consumer != null) {
                 consumer.accept(res);
                 return null;

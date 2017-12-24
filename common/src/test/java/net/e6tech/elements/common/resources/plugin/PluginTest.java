@@ -69,6 +69,15 @@ public class PluginTest {
         PluginPaths<PluginX> paths = PluginPaths.of(PluginPath.of(PluginTest.class, "2").and(PluginX.class));
         assertTrue(manager.get(paths).get().name().equals("default"));
 
+        // first time would make plugin manager cache the paths
+        paths = PluginPaths.of(PluginPath.of(PluginTest.class, "2").and(PluginX.class))
+            .add(PluginPath.of(PluginTest.class, "1").and(PluginX.class));
+        assertTrue(manager.get(paths).get().name().equals("1"));
+
+        // see if we can find it agina using a new copy of PluginPaths
+        paths = PluginPaths.of(PluginPath.of(PluginTest.class, "2").and(PluginX.class))
+                .add(PluginPath.of(PluginTest.class, "1").and(PluginX.class));
+        assertTrue(manager.get(paths).get().name().equals("1"));
     }
 
     public static interface PluginX extends Plugin {

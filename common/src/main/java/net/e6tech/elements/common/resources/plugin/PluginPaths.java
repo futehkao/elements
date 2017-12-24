@@ -18,6 +18,7 @@ package net.e6tech.elements.common.resources.plugin;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by futeh.
@@ -27,6 +28,7 @@ public class PluginPaths<T> {
     private List<PluginPath> paths = new ArrayList<>();
     private Class<T> type;
     private String toString;
+    private int hash = 0;
 
     public static <T> PluginPaths<T> of(PluginPath<T> path) {
         PluginPaths<T> paths = new PluginPaths<>();
@@ -61,6 +63,7 @@ public class PluginPaths<T> {
                 type = path.getType();
             }
             toString = null;
+            hash = 0;
         }
         return this;
     }
@@ -70,6 +73,7 @@ public class PluginPaths<T> {
         if (!paths.isEmpty()) {
             type = paths.get(paths.size() - 1).getType();
             toString = null;
+            hash = 0;
         }
         return this;
     }
@@ -99,5 +103,28 @@ public class PluginPaths<T> {
         }
         toString = paths.toString();
         return toString;
+    }
+
+    @Override
+    public int hashCode() {
+        if (hash == 0) {
+            hash = Objects.hash(paths.toArray());
+        }
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof  PluginPaths))
+            return false;
+        PluginPaths pp = (PluginPaths) object;
+        if (paths.size() == pp.getPaths().size()) {
+            for (int i = 0; i < paths.size(); i++) {
+                if (!Objects.equals(paths.get(i), pp.paths.get(i)))
+                    return false;
+            }
+            return true;
+        }
+        return false;
     }
 }

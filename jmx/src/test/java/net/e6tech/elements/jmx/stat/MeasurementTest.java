@@ -20,15 +20,35 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Random;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Created by futeh.
  */
-public class MeasurementTest extends Measurement {
+public class MeasurementTest {
 
     @Test
-    public void test() {
-        MeasurementTest m = new MeasurementTest();
+    @SuppressWarnings("squid:S2925")
+    public void rollingWindow() throws InterruptedException {
+        Measurement m = new Measurement("A", "ms", true);
+        m.setWindowWidth(50); // 20 millis
+        long start = System.currentTimeMillis();
+        for (int i = 0; i < 70; i++) {
+            m.append(i);
+            long wait = (start + (i + 1) * 2) - System.currentTimeMillis();
+            if (wait > 0)
+                Thread.sleep(wait);
+        }
+
+        System.out.println(m.dump());
+        System.out.println(m);
+    }
+
+    @Test
+    public void basic() {
+        Measurement m = new Measurement();
         m.append(3.0).append(3.0).append(4.0).append(4.0).append(5.0).append(5.5).append(6.0);
+        // check sortedByValue is indeed sorted
         m.sortedByValue.check();
         m.remove();
         m.remove();
@@ -36,6 +56,7 @@ public class MeasurementTest extends Measurement {
         m.remove();
         m.sortedByValue.check();
 
+        // check sortedByValue is indeed sorted after remove
         m.append(3.0).append(4.0).append(5.0).append(6.0).append(8.0).append(8.0).append(6.5)
                 .append(8.0).append(4.5).append(5.0).append(3.0).append(4.3);
         m.sortedByValue.check();
@@ -48,7 +69,7 @@ public class MeasurementTest extends Measurement {
         m.sortedByValue.check();
 
         for (int count = 1; count < 1000; count ++) {
-            m = new MeasurementTest();
+            m = new Measurement();
             Random random = new Random();
             for (int i = 0; i < count; i++) {
                 double data = random.nextInt(100);

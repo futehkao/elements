@@ -43,7 +43,7 @@ public interface Transactional {
         resources.commit();
     }
 
-    default <T, R> R commit(Class<T> cls, FunctionWithException<T, R> function) {
+    default <T, R, E extends Exception> R commit(Class<T> cls, FunctionWithException<T, R, E> function) {
         Resources resources = open();
         resources.submit(r -> {
             return function.apply(r.getInstance(cls));
@@ -51,7 +51,7 @@ public interface Transactional {
         return resources.commit();
     }
 
-    default <T> void commit(Class<T> cls, ConsumerWithException<T> consumer) {
+    default <T, E extends Exception> void commit(Class<T> cls, ConsumerWithException<T, E> consumer) {
         Resources resources = open();
         resources.submit(r -> {
             consumer.accept(r.getInstance(cls));
@@ -59,7 +59,7 @@ public interface Transactional {
         resources.commit();
     }
 
-    default <S, T, R> R commit(Class<S> cls, Class<T> cls2, BiFunctionWithException<S, T, R> function) {
+    default <S, T, R, E extends Exception> R commit(Class<S> cls, Class<T> cls2, BiFunctionWithException<S, T, R, E> function) {
         Resources resources = open();
         resources.submit(r -> {
             return function.apply(r.getInstance(cls), r.getInstance(cls2));
@@ -67,7 +67,7 @@ public interface Transactional {
         return resources.commit();
     }
 
-    default <S,T> void commit(Class<S> cls, Class<T> cls2, BiConsumerWithException<S,T> consumer) {
+    default <S, T, E extends Exception> void commit(Class<S> cls, Class<T> cls2, BiConsumerWithException<S, T, E> consumer) {
         Resources resources = open();
         resources.submit(r -> {
             consumer.accept(r.getInstance(cls), r.getInstance(cls2));
@@ -75,7 +75,7 @@ public interface Transactional {
         resources.commit();
     }
 
-    default <S, T, U, R> R commit(Class<S> cls, Class<T> cls2, Class<U> cls3, TriFunctionWithException<S, T, U, R> function) {
+    default <S, T, U, R, E extends Exception> R commit(Class<S> cls, Class<T> cls2, Class<U> cls3, TriFunctionWithException<S, T, U, R, E> function) {
         Resources resources = open();
         resources.submit(r -> {
             return function.apply(r.getInstance(cls), r.getInstance(cls2), r.getInstance(cls3));
@@ -83,7 +83,7 @@ public interface Transactional {
         return resources.commit();
     }
 
-    default <S,T,U> void commit(Class<S> cls, Class<T> cls2, Class<U> cls3, TriConsumerWithException<S,T,U> consumer) {
+    default <S, T, U, E extends Exception> void commit(Class<S> cls, Class<T> cls2, Class<U> cls3, TriConsumerWithException<S, T, U, E> consumer) {
         Resources resources = open();
         resources.submit(r -> {
             consumer.accept(r.getInstance(cls), r.getInstance(cls2), r.getInstance(cls3));
@@ -97,32 +97,32 @@ public interface Transactional {
     }
 
     @FunctionalInterface
-    interface ConsumerWithException<T> {
-        void accept(T t) throws Exception;
+    interface ConsumerWithException<T, E extends Exception> {
+        void accept(T t) throws E;
     }
 
     @FunctionalInterface
-    interface BiConsumerWithException<S,T> {
-        void accept(S s, T t) throws Exception;
+    interface BiConsumerWithException<S,T, E extends Exception> {
+        void accept(S s, T t) throws E;
     }
 
     @FunctionalInterface
-    interface TriConsumerWithException<S, T, U> {
-        void accept(S s, T t, U u) throws Exception ;
+    interface TriConsumerWithException<S, T, U, E extends Exception> {
+        void accept(S s, T t, U u) throws E ;
     }
 
     @FunctionalInterface
-    interface FunctionWithException<T, R> {
-        R apply(T t) throws Exception;
+    interface FunctionWithException<T, R, E extends Exception> {
+        R apply(T t) throws E;
     }
 
     @FunctionalInterface
-    interface BiFunctionWithException<S, T, R> {
-        R apply(S s, T t) throws Exception;
+    interface BiFunctionWithException<S, T, R, E extends Exception> {
+        R apply(S s, T t) throws E;
     }
 
     @FunctionalInterface
-    interface TriFunctionWithException<S, T, U, R> {
-        R apply(S s, T t, U u) throws Exception;
+    interface TriFunctionWithException<S, T, U, R, E extends Exception> {
+        R apply(S s, T t, U u) throws E;
     }
 }

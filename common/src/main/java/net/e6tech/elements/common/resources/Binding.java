@@ -63,9 +63,9 @@ public class Binding<T> {
         return currentValue;
     }
 
-    public T rebind(T newValue) {
+    public Binding rebind(T newValue) {
         currentValue = resources.rebind(boundClass, newValue);
-        return currentValue;
+        return this;
     }
 
     public T restore() {

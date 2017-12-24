@@ -94,10 +94,10 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
     public void submit(Transactional.RunnableWithException work) {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException(RESOURCES_NOT_OPEN);
-        resources.submit((Transactional.ConsumerWithException<Resources>)res -> work.run());
+        resources.submit((Transactional.ConsumerWithException<Resources, Exception>)res -> work.run());
     }
 
-    public <T extends Resources> void submit(Transactional.ConsumerWithException<T> work) {
+    public <T extends Resources> void submit(Transactional.ConsumerWithException<T, Exception> work) {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException(RESOURCES_NOT_OPEN);
         resources.submit(work);
@@ -106,10 +106,10 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
     public <T> T submit(Callable<T> work) {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException(RESOURCES_NOT_OPEN);
-        return resources.submit((Transactional.FunctionWithException<Resources, T>) res -> work.call());
+        return resources.submit((Transactional.FunctionWithException<Resources, T, Exception>) res -> work.call());
     }
 
-    public <T extends Resources, R> R submit(Transactional.FunctionWithException<T, R> work) {
+    public <T extends Resources, R> R submit(Transactional.FunctionWithException<T, R, Exception> work) {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException(RESOURCES_NOT_OPEN);
         return resources.submit(work);
