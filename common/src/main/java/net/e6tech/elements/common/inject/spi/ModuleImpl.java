@@ -19,8 +19,11 @@ package net.e6tech.elements.common.inject.spi;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,7 +36,7 @@ import java.util.Map;
 public class ModuleImpl implements Module {
 
     private ModuleFactory factory;
-    private Map<Type, BindingList> directory = new HashMap<>();
+    private final Map<Type, BindingList> directory = new HashMap<>();
 
     public ModuleImpl(ModuleFactory factory) {
         this.factory = factory;
@@ -104,8 +107,31 @@ public class ModuleImpl implements Module {
                 BindingList bindList = directory.computeIfAbsent(type, t -> new BindingList());
                 bindList.bindInstance(null, instance);
             }
+            bindProperties(cls, null, inst);
         }
         return instance;
+    }
+
+    private void bindProperties(Class cls, String name, Object inst) {
+        for (String propName : getBindProperties(cls)) {
+            PropertyDescriptor desc = Reflection.getPropertyDescriptor(cls, propName);
+            Object propertyValue = null;
+            if (desc != null && desc.getReadMethod() != null) {
+                try {
+                    propertyValue = desc.getReadMethod().invoke(inst);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    continue;
+                }
+            }
+            if (propertyValue != null) {
+                Class propType = desc.getPropertyType();
+                Type[] propTypes = getBindClass(propType);
+                for (Type type : propTypes) {
+                    BindingList bindList = directory.computeIfAbsent(type, t -> new BindingList());
+                    bindList.bindInstance(name, propertyValue);
+                }
+            }
+        }
     }
 
     @Override
@@ -117,6 +143,7 @@ public class ModuleImpl implements Module {
                 BindingList bindList = directory.computeIfAbsent(type, t -> new BindingList());
                 bindList.bindInstance(name, instance);
             }
+            bindProperties(cls, name, inst);
         }
         return instance;
     }

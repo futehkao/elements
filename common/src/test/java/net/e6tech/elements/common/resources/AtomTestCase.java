@@ -39,13 +39,21 @@ public class AtomTestCase {
         if (provision == null) {
             createLaunchController().launch();
         }
+
+        if (void.class == Void.class) {
+            System.out.println("Void is void");
+        }
     }
 
     @Test
     public void load() {
         AtomTestSample2 sample2 = provision.getResourceManager().getAtomResource("sample2", "_sample2");
-        assertTrue(sample2.sample.getName().equals("sample"));
-        assertTrue(sample2.sample.initialized == 1);
-        assertTrue(sample2.sample.started == 1);
+        assertTrue(sample2.getSampleName().equals("sample"));
+        assertTrue(sample2.getSample().initialized == 1);
+        assertTrue(sample2.getSample().started == 1);
+
+        assertTrue(sample2.getSampleName2().equals("sample"));
+        assertTrue(sample2.getSample2().initialized == 1);
+        assertTrue(sample2.getSample2().started == 1);
     }
 }

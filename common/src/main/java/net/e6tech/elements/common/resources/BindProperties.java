@@ -14,26 +14,37 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.inject;
+package net.e6tech.elements.common.resources;
 
-import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Created by futeh.
+ * Allow binding properties.  This does not recursively bind sub-properties.
+ * <pre> <code>
+ * Example
  *
- * NOTE to use it on a Java Bean method, you must have a SETTER!
+ * {@literal @}BindProperties("y")
+ * public class X {
+ *      public Y getY() { ... }
+ *      public void setY(Y y) { ... }
+ * }
+ *
+ * public class Y {
+ *     ...
+ * }
+ *
+ * X x = ...
+ * resources.bind(x) will also bind Y.  However, if Y is also annotated with BindProperties, it will not attempt to
+ * bind Y's properties.
+ * </code></pre>
  */
-@Target({ METHOD, FIELD })
+@Target({ TYPE })
 @Retention(RUNTIME)
-@Documented
-public @interface Inject {
-    boolean optional() default false;
-    Class type() default void.class;
-    String property() default "";
+public @interface BindProperties {
+    String[] value();
 }
+

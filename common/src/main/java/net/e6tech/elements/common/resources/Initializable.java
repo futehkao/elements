@@ -17,7 +17,7 @@ package net.e6tech.elements.common.resources;
 
 /**
  * Created by futeh.
- * Initializable gets called after the containing Component has run the closure to setup the Component.
+ * Initializable gets called after the containing Component has run the closure to setup the Atom.
  */
 @FunctionalInterface
 public interface Initializable {

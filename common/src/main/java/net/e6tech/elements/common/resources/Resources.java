@@ -17,6 +17,7 @@ package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Module;
+import net.e6tech.elements.common.inject.spi.InjectorImpl;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.plugin.Plugin;
@@ -26,7 +27,10 @@ import net.e6tech.elements.common.resources.plugin.PluginPaths;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.beans.BeanInfo;
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
@@ -316,6 +320,20 @@ public class Resources implements AutoCloseable, ResourcePool {
                     }
                     cls = cls.getSuperclass();
                 }
+
+                BeanInfo beanInfo = Reflection.getBeanInfo(object.getClass());
+                for (PropertyDescriptor prop : beanInfo.getPropertyDescriptors()) {
+                    if (prop.getReadMethod() != null) {
+                        boolean hasAnnotation = prop.getPropertyType().getAnnotation(Injectable.class) != null;
+                        if (!hasAnnotation)
+                            hasAnnotation = prop.getReadMethod() != null && prop.getReadMethod().getAnnotation(Injectable.class) != null;
+                        if (!hasAnnotation)
+                            hasAnnotation = prop.getWriteMethod() != null && prop.getWriteMethod().getAnnotation(Injectable.class) != null;
+
+                        if (hasAnnotation)
+                            info.addInjectableProperty(prop);
+                    }
+                }
             }
             resourceManager.getInjections().put(object.getClass(), info);
         }
@@ -327,6 +345,17 @@ public class Resources implements AutoCloseable, ResourcePool {
                     inject(injectField, seen);
                 }
             } catch (IllegalAccessException e) {
+                throw new SystemException(e);
+            }
+        }
+
+        for (PropertyDescriptor d : info.getInjectableProperties()) {
+            try {
+                Object injectProp = d.getReadMethod().invoke(object);
+                if (injectProp != null) {
+                    inject(injectProp, seen);
+                }
+            } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new SystemException(e);
             }
         }

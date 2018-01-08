@@ -17,12 +17,51 @@
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.util.datastructure.Pair;
 
 /**
  * Created by futeh.
  */
 public class AtomTestSample2 {
-    @Inject
-    AtomTestSample sample;
+    private String sampleName;
+    private AtomTestSample sample;
 
+    @Inject(type=AtomTestSample.class, property = "name")
+    private String sampleName2;
+    @Inject
+    private AtomTestSample sample2;
+
+    public String getSampleName() {
+        return sampleName;
+    }
+
+    @Inject(type=AtomTestSample.class, property = "name")
+    public void setSampleName(String sampleName) {
+        this.sampleName = sampleName;
+    }
+
+    public AtomTestSample getSample() {
+        return sample;
+    }
+
+    @Inject
+    public void setSample(AtomTestSample sample) {
+        this.sample = sample;
+    }
+
+    public String getSampleName2() {
+        return sampleName2;
+    }
+
+    public void setSampleName2(String sampleName2) {
+        this.sampleName2 = sampleName2;
+    }
+
+    public AtomTestSample getSample2() {
+        return sample2;
+    }
+
+    public void setSample2(AtomTestSample sample2) {
+        this.sample2 = sample2;
+    }
 }

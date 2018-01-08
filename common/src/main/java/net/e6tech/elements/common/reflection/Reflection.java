@@ -199,16 +199,19 @@ public class Reflection {
         }
     }
 
+    public static BeanInfo getBeanInfo(Class cls) {
+        try {
+            return Introspector.getBeanInfo(cls);
+        } catch (IntrospectionException e) {
+            throw new SystemException(e);
+        }
+    }
+
     public static void forEachAnnotatedAccessor(Class objectClass,
                                                 Class<? extends Annotation> annotationClass,
                                                 Consumer<AccessibleObject> consumer) {
         Class cls = objectClass;
-        BeanInfo beanInfo = null;
-        try {
-            beanInfo = Introspector.getBeanInfo(cls);
-        } catch (IntrospectionException e) {
-            throw logger.systemException(e);
-        }
+        BeanInfo beanInfo = getBeanInfo(cls);
         PropertyDescriptor[] props = beanInfo.getPropertyDescriptors();
         for (PropertyDescriptor prop : props) {
             if (prop.getReadMethod() == null) {
@@ -238,26 +241,30 @@ public class Reflection {
             } else {
                 cls = object.getClass();
             }
-
-            String key = cls.getName() + "." + property;
-            WeakReference<PropertyDescriptor> ref = propertyDescriptors.get(key);
-            PropertyDescriptor descriptor =  (ref == null) ? null : ref.get();
-            if (descriptor == null) {
-                try {
-                    descriptor = new PropertyDescriptor(property, object.getClass(),
-                            "is" + TextSubstitution.capitalize(property), null);
-                    propertyDescriptors.put(key, new WeakReference<PropertyDescriptor>(descriptor));
-                } catch (IntrospectionException e) {
-                    throw new SystemException(object.getClass().getName() + "." + property, e);
-                }
-            }
-
-            if (descriptor.getReadMethod() == null)
+            
+            PropertyDescriptor descriptor =  getPropertyDescriptor(cls, property);
+            if (descriptor == null || descriptor.getReadMethod() == null)
                 return null;
             return (V) descriptor.getReadMethod().invoke(object);
         } catch (Exception e) {
             throw new SystemException(object.getClass().getName() + "." + property, e);
         }
+    }
+
+    public static PropertyDescriptor getPropertyDescriptor(Class cls, String property) {
+        String key = cls.getName() + "." + property;
+        WeakReference<PropertyDescriptor> ref = propertyDescriptors.get(key);
+        PropertyDescriptor descriptor =  (ref == null) ? null : ref.get();
+        if (descriptor == null) {
+            try {
+                descriptor = new PropertyDescriptor(property, cls,
+                        "is" + TextSubstitution.capitalize(property), null);
+                propertyDescriptors.put(key, new WeakReference<>(descriptor));
+            } catch (IntrospectionException e) {
+                throw new SystemException(cls.getName() + "." + property, e);
+            }
+        }
+        return descriptor;
     }
 
     public static <V> V getField(Object object, String fieldName) {
@@ -385,14 +392,6 @@ public class Reflection {
 
         private synchronized PropertyDescriptor[] getPropertyDescriptors(Class cls) {
             return propertyDescriptors.computeIfAbsent(cls, key -> getBeanInfo(key).getPropertyDescriptors());
-        }
-
-        private BeanInfo getBeanInfo(Class cls) {
-            try {
-                return Introspector.getBeanInfo(cls);
-            } catch (IntrospectionException e) {
-                throw new SystemException(e);
-            }
         }
 
         public synchronized Map<Class, Map<String, PropertyDescriptor>> getTargetPropertiesDescriptor() {

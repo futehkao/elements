@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
+ * The Injectable annotation is used to inject properties during injection.
  * Created by futeh.
  */
 public class InjectableTest extends BaseCase {

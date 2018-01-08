@@ -17,15 +17,17 @@
 package net.e6tech.elements.common.inject.spi;
 
 import net.e6tech.elements.common.inject.Inject;
-import net.e6tech.elements.common.inject.Named;
 import net.e6tech.elements.common.inject.Injector;
+import net.e6tech.elements.common.inject.Named;
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.beans.BeanInfo;
+import java.beans.PropertyDescriptor;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * Created by futeh.
@@ -37,7 +39,6 @@ public class InjectorImpl implements Injector {
 
     private ModuleImpl module;
     private InjectorImpl parentInjector;
-    private Map<Type, BoundInstances> instances = new HashMap<>();
 
     public InjectorImpl(ModuleImpl module) {
         this.module = module;
@@ -55,61 +56,35 @@ public class InjectorImpl implements Injector {
 
     @Override
     public <T> T getNamedInstance(Class<T> boundClass, String name) {
-        return privateGetNamedInstance(boundClass, name).<T>map(entry -> (T) entry.value).orElse(null);
+        return privateGetNamedInstance(boundClass, name).map(entry -> (T) entry.value).orElse(null);
     }
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S3776"})
     private Optional<Entry> privateGetNamedInstance(Type boundClass, String name) {
-        BoundInstances boundInstances = instances.get(boundClass);
+        Type type = boundClass;
+        Binding binding = module.getBinding(type, name);
+        if (binding == null && type instanceof ParameterizedType) {
+            type = ((ParameterizedType) type).getRawType();
+            binding = module.getBinding(type, name);
+        }
+
         Entry entry = null;
-
-        if (boundInstances == null && boundClass instanceof ParameterizedType) {
-            boundInstances = instances.get(((ParameterizedType) boundClass).getRawType());
-        }
-
-        if (boundInstances != null) {
-            entry = boundInstances.getInstance(name);
-        }
-
-        // need to get from module
-        if (entry == null) {
-            Type type = boundClass;
-            Binding binding = module.getBinding(type, name);
-            if (binding == null && type instanceof ParameterizedType) {
-                type = ((ParameterizedType) type).getRawType();
-                binding = module.getBinding(type, name);
+        if (binding != null) {
+            if (binding.isSingleton()) {
+                entry = new Entry(binding.getValue());
+            } else {
+                try {
+                    entry = new Entry(binding.getImplementation().newInstance());
+                } catch (Exception e) {
+                    throw new SystemException(e);
+                }
             }
-
-            if (binding != null) {
-                if (boundInstances == null) {
-                    boundInstances = new BoundInstances();
-                    instances.put(type, boundInstances);
-                }
-
-                Object instance = null;
-                if (binding.isSingleton()) {
-                    instance = binding.getValue();
-                } else {
-                    try {
-                        instance = binding.getImplementation().newInstance();
-                        // to be injected later in code.
-                    } catch (Exception e) {
-                        throw new SystemException(e);
-                    }
-                }
-
-                entry = boundInstances.put(name, instance);
-
-                // only inject for non-singleton, this needs to be call after boundInstances has been
-                // updated to avoid infinite injection cycle.
-                if (!binding.isSingleton()) {
-                    inject(instance);
-                }
-            } else if (parentInjector != null) {
-                entry = parentInjector.privateGetNamedInstance(boundClass, name).orElse(null);
+            if (!binding.isSingleton()) {
+                inject(entry.value);
             }
+        } else if (parentInjector != null) {
+            entry = parentInjector.privateGetNamedInstance(boundClass, name).orElse(null);
         }
-
         return Optional.ofNullable(entry);
     }
 
@@ -121,78 +96,100 @@ public class InjectorImpl implements Injector {
 
         List<InjectionPoint> points = (ref == null) ? null : ref.get();
         if (points == null) {
-            points = parseInjectionPoints(instanceClass);
-            injectionPoints.put(instanceClass, new WeakReference<List<InjectionPoint>>(points));
+            points = injectionProperties(instanceClass);
+            points.addAll(injectionFields(instanceClass));
+            injectionPoints.put(instanceClass, new WeakReference<>(points));
         }
         points.forEach(pt ->{
             boolean injected = inject(pt, instance);
             if (!injected) {
-                throw new SystemException("Cannot inject " + pt.field + "; no instances bound to " + pt.field.getType());
+                throw new SystemException("Cannot inject " + pt + "; no instances bound to " + pt.getType());
             }
         });
     }
 
     protected boolean inject(InjectionPoint point, Object instance) {
-        boolean myAttempt = point.inject(this, instance);
-        if (myAttempt)
+        InjectionAttempt attempt = point.inject(this, instance);
+        if (attempt == InjectionAttempt.INJECTED)
             return true;
+
+        // if parent exist delegate to it
         if (parentInjector != null)
             return parentInjector.inject(point, instance);
-        return false;
+        else {
+            return attempt != InjectionAttempt.ERROR;
+        }
     }
 
-    @SuppressWarnings("squid:S3776")
-    List<InjectionPoint> parseInjectionPoints(Class instanceClass) {
+    private List<InjectionPoint> injectionFields(Class instanceClass) {
         Class cls = instanceClass;
         List<InjectionPoint> list = new ArrayList<>();
         while (cls != Object.class) {
             Field[] fields = cls.getDeclaredFields();
             for (Field field : fields) {
-                InjectionPoint injectionPoint = null;
-                String name = null;
-                boolean optional = false;
-                Inject inject = field.getDeclaredAnnotation(Inject.class);
-
-                if (inject != null) {
-                    injectionPoint = new InjectionPoint();
-                    optional = inject.optional();
-                } else {
-                    javax.inject.Inject jInject = field.getDeclaredAnnotation(javax.inject.Inject.class);
-                    if (jInject != null)
-                        injectionPoint = new InjectionPoint();
-                }
-
+                InjectionPoint injectionPoint = injectionPoint(field, () -> new InjectionField(field)).orElse(null);
                 if (injectionPoint != null) {
-                    Named named = field.getDeclaredAnnotation(Named.class);
-                    if (named != null){
-                        name = named.value();
-                    } else {
-                        javax.inject.Named jNamed = field.getDeclaredAnnotation(javax.inject.Named.class);
-                        if (jNamed != null) {
-                            name = jNamed.value();
-                        }
-                    }
-                }
-
-                if (injectionPoint != null) {
-                    injectionPoint.field = field;
-                    field.setAccessible(true);
-                    injectionPoint.optional = optional;
-                    injectionPoint.name = name;
                     list.add(injectionPoint);
                 }
-
             }
             cls = cls.getSuperclass();
         }
         return list;
     }
 
-    private static class BoundInstances {
+    private List<InjectionPoint> injectionProperties(Class instanceClass) {
+        List<InjectionPoint> list = new ArrayList<>();
+        BeanInfo beanInfo = Reflection.getBeanInfo(instanceClass);
+        for (PropertyDescriptor prop : beanInfo.getPropertyDescriptors()) {
+            InjectionPoint injectionPoint = injectionPoint(prop.getWriteMethod(), () -> new InjectionMethod(prop.getWriteMethod()))
+                    .orElseGet(() -> injectionPoint(prop.getReadMethod(), () -> new InjectionMethod(prop.getWriteMethod())).orElse(null));
+
+            if (injectionPoint != null) {
+                list.add(injectionPoint);
+            }
+        }
+        return list;
+    }
+
+    private Optional<InjectionPoint> injectionPoint(AccessibleObject accessibleObject, Supplier<InjectionPoint> supplier) {
+        if (accessibleObject == null)
+            return Optional.empty();
+        Inject inject = accessibleObject.getDeclaredAnnotation(Inject.class);
+        InjectionPoint injectionPoint = null;
+        if (inject != null) {
+            injectionPoint = supplier.get();
+            injectionPoint.optional = inject.optional();
+            injectionPoint.type = inject.type();
+            injectionPoint.property = inject.property();
+        } else {
+            javax.inject.Inject jInject = accessibleObject.getDeclaredAnnotation(javax.inject.Inject.class);
+            if (jInject != null) {
+                injectionPoint = supplier.get();
+                injectionPoint.optional = false;
+            }
+        }
+
+        if (injectionPoint != null) {
+            Named named = accessibleObject.getDeclaredAnnotation(Named.class);
+            if (named != null){
+                injectionPoint.name = named.value();
+            } else {
+                javax.inject.Named jNamed = accessibleObject.getDeclaredAnnotation(javax.inject.Named.class);
+                if (jNamed != null) {
+                    injectionPoint.name = jNamed.value();
+                }
+            }
+        }
+
+        return Optional.ofNullable(injectionPoint);
+    }
+
+    //
+    private static class BoundInstance {
         Map<String, Entry> namedInstances = new HashMap<>();
         Entry unnamedInstance;
 
-        Entry getInstance(String name) {
+        Entry get(String name) {
             if (name == null)
                 return unnamedInstance;
             return namedInstances.get(name);
@@ -213,32 +210,106 @@ public class InjectorImpl implements Injector {
         Entry(Object value) {
             this.value = value;
         }
-
-        Object value() {
-            return value;
-        }
     }
 
-    private static class InjectionPoint {
-        private Field field;
-        private String name;
-        private boolean optional;
+    private  enum InjectionAttempt {
+        ERROR,
+        INJECTED,
+        NOT_INJECTED;
+    }
 
-        public boolean inject(InjectorImpl injector, Object target) {
-            Optional<Entry> opt = injector.privateGetNamedInstance(field.getGenericType(), name);
+    private abstract static class InjectionPoint {
+        protected String name;
+        protected boolean optional;
+        protected Class type = void.class;
+        protected String property = "";
+
+        abstract InjectionAttempt inject(InjectorImpl injector, Object target);
+
+        abstract Type getType();
+    }
+
+    private static class InjectionField extends InjectionPoint {
+        private Field field;
+
+        InjectionField(Field field) {
+            this.field = field;
+            if (!Modifier.isPublic(field.getModifiers()))
+                field.setAccessible(true);
+        }
+
+        InjectionAttempt inject(InjectorImpl injector, Object target) {
+            Type t = (type != void.class) ? type : field.getGenericType();
+            Optional<Entry> opt = injector.privateGetNamedInstance(t, name);
 
             if (!opt.isPresent() && !optional) {
-                return false;
+                return InjectionAttempt.ERROR;
             }
 
-            opt.ifPresent(entry -> {
+            if (opt.isPresent()) {
                 try {
-                    field.set(target, entry.value());
+                    Object value = opt.get().value;
+                    if (property.length() > 0 && value != null) {
+                        value = Reflection.getProperty(value, property);
+                    }
+                    field.set(target, value);
                 } catch (IllegalAccessException e) {
                     throw new SystemException(e);
                 }
-            });
-            return true;
+                return InjectionAttempt.INJECTED;
+            } else {
+                return InjectionAttempt.NOT_INJECTED;
+            }
+        }
+
+        Type getType() {
+            return (type != void.class && type != Void.class) ? type : field.getGenericType();
+        }
+
+        public String toString() {
+            return field.toString();
+        }
+    }
+
+    private static class InjectionMethod extends InjectionPoint {
+        private Method setter;
+
+        InjectionMethod(Method setter) {
+            this.setter = setter;
+        }
+
+        InjectionAttempt inject(InjectorImpl injector, Object target) {
+            Type t = getType();
+            Optional<Entry> opt = injector.privateGetNamedInstance(t, name);
+
+            if (!opt.isPresent() && !optional) {
+                return InjectionAttempt.ERROR;
+            }
+
+            if (opt.isPresent()) {
+                try {
+                    Object value = opt.get().value;
+                    if (property.length() > 0 && value != null) {
+                        value = Reflection.getProperty(value, property);
+                    }
+                    setter.invoke(target, value);
+                } catch (IllegalAccessException e) {
+                    throw new SystemException(e);
+                }catch (InvocationTargetException e) {
+                    throw new SystemException(e.getTargetException());
+                }
+                return InjectionAttempt.INJECTED;
+            } else {
+                return InjectionAttempt.NOT_INJECTED;
+            }
+        }
+
+        Type getType() {
+            return (type != void.class && type != Void.class) ? type : setter.getGenericParameterTypes()[0];
+        }
+
+        public String toString() {
+            return setter.toString();
         }
     }
 }

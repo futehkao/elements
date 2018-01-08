@@ -17,18 +17,30 @@
 package net.e6tech.elements.common.inject;
 
 import net.e6tech.elements.common.resources.BindClass;
+import net.e6tech.elements.common.resources.BindProperties;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Created by futeh.
  */
 public interface Module {
+
+    default String[] getBindProperties(Class cls) {
+        Objects.requireNonNull(cls);
+        Class<?> c = cls;
+        Set<String> set = new LinkedHashSet<>();
+        while (c != null && !c.equals(Object.class)) {
+            BindProperties annotation = c.getAnnotation(BindProperties.class);
+            if (annotation != null) {
+                Collections.addAll(set, annotation.value());
+            }
+            c = c.getSuperclass();
+        }
+        return set.toArray(new String[set.size()]);
+    }
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:CommentedOutCodeLine", "squid:S3776"})
     default Type[] getBindClass(Class<?> cls) {

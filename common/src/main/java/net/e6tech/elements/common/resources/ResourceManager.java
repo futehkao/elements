@@ -30,6 +30,7 @@ import net.e6tech.elements.common.util.monitor.AllocationMonitor;
 import org.apache.logging.log4j.ThreadContext;
 
 import javax.script.ScriptException;
+import java.beans.PropertyDescriptor;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -654,17 +655,28 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     static class ClassInjectionInfo {
-        private static final List<Field> emptyFields = Collections.unmodifiableList(new ArrayList<>());
-        private List<Field> injectableFields = emptyFields;
+        private static final List emptyList = Collections.unmodifiableList(new ArrayList<>());
+        private List<Field> injectableFields = emptyList;
+        private List<PropertyDescriptor> injectableProperties = emptyList;
 
         void addInjectableField(Field field) {
-            if (injectableFields == emptyFields)
+            if (injectableFields == emptyList)
                 injectableFields = new ArrayList<>();
             injectableFields.add(field);
         }
 
         List<Field> getInjectableFields() {
             return injectableFields;
+        }
+
+        void addInjectableProperty(PropertyDescriptor desc) {
+            if (injectableProperties == emptyList)
+                injectableProperties = new ArrayList<>();
+            injectableProperties.add(desc);
+        }
+
+        List<PropertyDescriptor> getInjectableProperties() {
+            return injectableProperties;
         }
     }
 }

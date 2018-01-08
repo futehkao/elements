@@ -23,8 +23,11 @@ import java.lang.annotation.Target;
 
 /**
  * Created by futeh.
+ *
+ * This is used by resources to RECURSIVELY inject a target's properties.
+ * When injecting a target, its properties are also injected if they are annotated.
  */
-@Target({ElementType.TYPE, ElementType.FIELD})
+@Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Injectable {
 }

@@ -16,24 +16,26 @@
 
 package net.e6tech.elements.common.inject;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import net.e6tech.elements.common.resources.BindProperties;
 
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+@BindProperties("a")
+public class BindPropB {
+    private String description = getClass().getSimpleName();
+    private BindPropA a;
 
-/**
- * Created by futeh.
- *
- * NOTE to use it on a Java Bean method, you must have a SETTER!
- */
-@Target({ METHOD, FIELD })
-@Retention(RUNTIME)
-@Documented
-public @interface Inject {
-    boolean optional() default false;
-    Class type() default void.class;
-    String property() default "";
+    public BindPropA getA() {
+        return a;
+    }
+
+    public void setA(BindPropA a) {
+        this.a = a;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 }
