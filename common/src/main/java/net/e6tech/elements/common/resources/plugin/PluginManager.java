@@ -23,21 +23,16 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
-import org.apache.logging.log4j.core.config.plugins.processor.PluginCache;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.WeakHashMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by futeh.
@@ -126,15 +121,14 @@ public class PluginManager {
         PluginPath pluginPath = null;
 
         // look up from paths
-        if (lookup == null) {
-            for (PluginPath path : paths.getPaths()) {
-                lookup = plugins.get(path);
-                if (lookup != null) {
-                    pluginPath = path;
-                    break;
-                }
+        for (PluginPath path : paths.getPaths()) {
+            lookup = plugins.get(path);
+            if (lookup != null) {
+                pluginPath = path;
+                break;
             }
         }
+
 
         // if still null, look up from default plugin
         if (lookup == null) {

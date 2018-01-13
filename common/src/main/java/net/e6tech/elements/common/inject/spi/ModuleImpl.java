@@ -19,37 +19,34 @@ package net.e6tech.elements.common.inject.spi;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by futeh.
  */
 public class ModuleImpl implements Module {
-
     private ModuleFactory factory;
-    private final Map<Type, BindingList> directory = new HashMap<>();
+    private final Map<Type, BindingMap> directory = new ConcurrentHashMap<>();
+    private final Set<Binding> singletons = Collections.synchronizedSet(new HashSet<>());
 
     public ModuleImpl(ModuleFactory factory) {
         this.factory = factory;
     }
 
     public Binding getBinding(Type boundClass, String name) {
-        BindingList bindingList = directory.get(boundClass);
-        if (bindingList == null) {
+        BindingMap bindingMap = directory.get(boundClass);
+        if (bindingMap == null) {
             return null;
         }
-        Binding binding = bindingList.getBinding(name);
-        binding = (binding == null) ? null : new Binding(binding);
-        return binding;
+        return bindingMap.get(name);
     }
 
     @Override
@@ -60,14 +57,13 @@ public class ModuleImpl implements Module {
     @Override
     public synchronized void add(Module module) {
         ModuleImpl moduleImpl = (ModuleImpl) module;
-        Map<Type, BindingList> dir = new HashMap<>();
-        synchronized (moduleImpl.directory) {
-            dir.putAll(moduleImpl.directory);
-        }
+        ConcurrentHashMap<Type, BindingMap> dir;
+        dir = new ConcurrentHashMap<>(moduleImpl.directory);
 
         // dir contains directory from module argument
-        for (Map.Entry<Type, BindingList> entry: dir.entrySet()) {
-            BindingList existing = directory.get(entry.getKey());
+        // we don't deal with singletons because the external module should've handle it.
+        for (Map.Entry<Type, BindingMap> entry: dir.entrySet()) {
+            BindingMap existing = directory.get(entry.getKey());
             if (existing != null) {
                 existing.merge(entry.getValue());
             } else {
@@ -78,90 +74,132 @@ public class ModuleImpl implements Module {
 
     @Override
     public void bindClass(Class cls, Class implementation) {
-        Type[] types = getBindClass(cls);
-        synchronized (directory) {
-            for (Type type : types) {
-                BindingList bindList = directory.computeIfAbsent(type, t -> new BindingList());
-                bindList.bindClass(implementation);
-            }
+        Type[] types = getBindTypes(cls);
+        for (Type type : types) {
+            BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
+            bindList.bind(null, new Binding(implementation));
         }
     }
 
     @Override
     public Class getBoundClass(Class cls) {
-        BindingList bindList = null;
-        synchronized (directory) {
-            bindList = directory.get(cls);
-        }
-        if (bindList == null || bindList.unnamedBinding == null)
-            return null;
-        return bindList.unnamedBinding.getImplementation();
+        BindingMap bindList;
+        bindList = directory.get(cls);
+        return (bindList == null) ? null : bindList.get(null).getImplementation();
     }
 
     @Override
     public Object bindInstance(Class cls, Object inst) {
         Object instance = newInstance(inst);
-        Type[] types = getBindClass(cls);
-        synchronized (directory) {
-            for (Type type : types) {
-                BindingList bindList = directory.computeIfAbsent(type, t -> new BindingList());
-                bindList.bindInstance(null, instance);
-            }
-            bindProperties(cls, null, inst);
+        Type[] types = getBindTypes(cls);
+        Binding binding = new Binding(instance);
+        for (Type type : types) {
+            BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
+            bindList.bind(null, binding);
         }
+        singletons.add(binding);
+        bindProperties(cls, null, inst);
         return instance;
     }
 
     private void bindProperties(Class cls, String name, Object inst) {
         for (String propName : getBindProperties(cls)) {
             PropertyDescriptor desc = Reflection.getPropertyDescriptor(cls, propName);
-            Object propertyValue = null;
-            if (desc != null && desc.getReadMethod() != null) {
-                try {
-                    propertyValue = desc.getReadMethod().invoke(inst);
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    continue;
-                }
+            Object propertyValue = getProperty(cls, propName, inst);
+            if (propertyValue == null)
+                continue;
+
+            Class propType = desc.getPropertyType();
+            Type[] propTypes = getBindTypes(propType);
+            Binding binding = new Binding(propertyValue);
+            for (Type type : propTypes) {
+                BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
+                bindList.bind(name, binding);
             }
-            if (propertyValue != null) {
-                Class propType = desc.getPropertyType();
-                Type[] propTypes = getBindClass(propType);
-                for (Type type : propTypes) {
-                    BindingList bindList = directory.computeIfAbsent(type, t -> new BindingList());
-                    bindList.bindInstance(name, propertyValue);
-                }
+            singletons.add(binding);
+        }
+    }
+
+    private Object getProperty(Class cls, String propName, Object inst) {
+        PropertyDescriptor desc = Reflection.getPropertyDescriptor(cls, propName);
+        Object propertyValue = null;
+        if (desc != null && desc.getReadMethod() != null) {
+            try {
+                propertyValue = desc.getReadMethod().invoke(inst);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                Logger.suppress(e);
             }
         }
+        return propertyValue;
     }
 
     @Override
     public Object bindNamedInstance(Class cls, String name, Object inst) {
         Object instance = newInstance(inst);
-        Type[] types = getBindClass(cls);
+        Type[] types = getBindTypes(cls);
+        Binding binding = new Binding(instance);
         synchronized (directory) {
             for (Type type : types) {
-                BindingList bindList = directory.computeIfAbsent(type, t -> new BindingList());
-                bindList.bindInstance(name, instance);
+                BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
+                bindList.bind(name, binding);
             }
+            singletons.add(binding);
             bindProperties(cls, name, inst);
         }
         return instance;
     }
 
     public Object unbindInstance(Class cls) {
-        Type[] types = getBindClass(cls);
-        synchronized (directory) {
-            for (Type type : types) {
-                BindingList bindList = directory.get(type);
-                if (bindList != null) {
-                    Object value = bindList.unbind();
-                    if (bindList.namedBindings.size() == 0)
-                        directory.remove(type);
-                    return value;
-                }
+        return unbindNamedInstance(cls, null);
+    }
+
+    public Object unbindNamedInstance(Class cls, String name) {
+        Type[] types = getBindTypes(cls);
+        Object ret = null;
+        for (Type type : types) {
+            BindingMap bindList = directory.get(type);
+            if (bindList == null)
+                continue;
+
+            Object value = null;
+            Binding binding = bindList.unbind(name);
+            if (binding == null)
+                continue;
+
+            singletons.remove(binding);
+            value = binding.getValue();
+            if (bindList.size() == 0) {
+                directory.remove(type);
+            }
+            if (value != null) {
+                ret = value;
+                unbindProperties(cls, name, value);
             }
         }
-        return null;
+        return ret;
+    }
+
+    private void unbindProperties(Class cls, String name, Object inst) {
+        for (String propName : getBindProperties(cls)) {
+            PropertyDescriptor desc = Reflection.getPropertyDescriptor(cls, propName);
+            Object propertyValue = getProperty(cls, propName, inst);
+            if (propertyValue == null)
+                continue;
+
+            Type[] propTypes = getBindTypes(desc.getPropertyType());
+            for (Type type : propTypes) {
+                BindingMap bindingMap = directory.get(type);
+                if (bindingMap == null)
+                    continue;
+
+                Binding binding = bindingMap.unbind(name);
+                if (binding != null) {
+                    singletons.remove(binding);
+                }
+                if (bindingMap.size() == 0)
+                    directory.remove(type);
+            }
+        }
     }
 
     private Object newInstance(Object instance) {
@@ -177,13 +215,11 @@ public class ModuleImpl implements Module {
     }
 
     public <T> T getBoundNamedInstance(Class<T> cls, String name) {
-        BindingList bindList = null;
-        synchronized (directory) {
-            bindList = directory.get(cls);
-        }
+        BindingMap bindList = directory.get(cls);
+
         if (bindList == null)
             return null;
-        Binding binding = bindList.getBinding(name);
+        Binding binding = bindList.get(name);
         if (binding == null)
             return null;
         return (T) binding.getValue();
@@ -194,15 +230,11 @@ public class ModuleImpl implements Module {
     }
 
     public boolean hasInstance(Class cls) {
-        synchronized (directory) {
-            return directory.containsKey(cls);
-        }
+        return directory.containsKey(cls);
     }
 
     public boolean hasBinding(Class cls) {
-        synchronized (directory) {
-            return directory.containsKey(cls);
-        }
+        return directory.containsKey(cls);
     }
 
     @Override
@@ -215,75 +247,53 @@ public class ModuleImpl implements Module {
             parent = components[0].build(remaining);
         }
 
-        // go through every singleton and inject them
+        // Go through every singleton and inject it.  This is needed because
+        // we allow binding of a singleton that has unresolved injection points.
+        // The idea is that when creating an injector the singleton's dependencies should
+        // be resolved via injection.
         InjectorImpl injector = new InjectorImpl(this, (InjectorImpl) parent);
-        Map<Type, BindingList> dir = new HashMap<>();
-        synchronized (directory) {
-            dir.putAll(directory);
+
+        List<Binding> list = null;
+        synchronized (singletons) {
+            if (!singletons.isEmpty()) {
+                list = new ArrayList<>(singletons);
+                singletons.clear();
+            }
         }
-        for (Map.Entry<Type, BindingList> entry : dir.entrySet()) {
-            entry.getValue().list().forEach(binding -> {
-                if (binding.isSingleton()) {
-                    injector.inject(binding.getValue());
-                }
-            });
-        }
+
+        if (list != null)
+            for (Binding binding : list) {
+                injector.inject(binding.getValue());
+            }
+
         return injector;
     }
 
-    private static class BindingList {
-        private Map<String, Binding> namedBindings = new HashMap<>();
-        private Binding unnamedBinding;
+    private static class BindingMap {
+        private static final String NULL_KEY = "";
+        private Map<String, Binding> bindings = new ConcurrentHashMap<>();
 
-        Binding getBinding(String name) {
-            if (name == null)
-                return unnamedBinding;
-            return namedBindings.get(name);
+        Binding get(String name) {
+            return bindings.get((name == null) ? NULL_KEY : name);
         }
 
-        List<Binding> list() {
-            List<Binding> list = new ArrayList<>();
-            if (unnamedBinding != null)
-                list.add(unnamedBinding);
-            list.addAll(namedBindings.values());
-            return list;
+        void bind(String name, Binding binding) {
+            bindings.put((name == null) ? NULL_KEY : name, binding);
         }
 
-        void bindClass(Class implementation) {
-            Binding binding = new Binding(implementation);
-            unnamedBinding = binding;
+        Binding unbind(String name) {
+            return bindings.remove((name == null) ? NULL_KEY : name);
         }
 
-        void bindInstance(String name, Object instance) {
-            Binding binding = new Binding(instance);
-            if (name == null) {
-                unnamedBinding = binding;
-            }  else {
-                namedBindings.put(name, binding);
-            }
+        int size() {
+            return bindings.size();
         }
 
-        Object unbind() {
-            Object value = unnamedBinding.getValue();
-            unnamedBinding = null;
-            return value;
-        }
-
-        int namedBindingSize() {
-            return namedBindings.size();
-        }
-
-        void merge(BindingList bindingList) {
-            if (unnamedBinding == null)
-                unnamedBinding = bindingList.unnamedBinding;
-
-            Map<String, Binding> copy = new HashMap<>();
-            synchronized (bindingList.namedBindings) {
-                copy.putAll(bindingList.namedBindings);
-            }
-            for (String name : copy.keySet()) {
-                if (!namedBindings.containsKey(name)) {
-                    namedBindings.put(name, bindingList.namedBindings.get(name));
+        void merge(BindingMap bindingMap) {
+            Map<String, Binding> copy = new ConcurrentHashMap<>(bindingMap.bindings);
+            for (Map.Entry<String, Binding> entry: copy.entrySet()) {
+                if (!bindings.containsKey(entry.getKey())) {
+                    bindings.put(entry.getKey(), copy.get(entry.getKey()));
                 }
             }
         }

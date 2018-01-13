@@ -15,18 +15,23 @@
  */
 package net.e6tech.elements.common.reflection;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.TextSubstitution;
+import net.e6tech.elements.common.util.datastructure.Pair;
 import net.e6tech.elements.common.util.lambda.Each;
 
 import java.beans.*;
 import java.lang.annotation.Annotation;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -65,9 +70,87 @@ public class Reflection {
 
     private static final PrivateSecurityManager securityManager = new PrivateSecurityManager();
 
-    private static Map<Method, WeakReference<PropertyDescriptor>> methodPropertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
-    private static Map<String, WeakReference<PropertyDescriptor>> propertyDescriptors = Collections.synchronizedMap(new WeakHashMap<>());
-    private static Map<Class, WeakReference<Type[]>> parametrizedTypes = Collections.synchronizedMap(new WeakHashMap<>());
+    private static LoadingCache<Method, PropertyDescriptor> methodPropertyDescriptors = CacheBuilder.newBuilder()
+            .maximumSize(10000)
+            .initialCapacity(500)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build(new CacheLoader<Method, PropertyDescriptor>() {
+                public PropertyDescriptor load(Method method) throws IntrospectionException {
+                    String name = method.getName();
+                    Parameter[] parameters = method.getParameters();
+                    String property ;
+                    if (name.startsWith("set")) {
+                        if (parameters.length != 1)
+                            throw new IllegalArgumentException("" + method.getName() + " is not a setter");
+                        property = name.substring(3);
+                    } else if (name.startsWith("get")) {
+                        if (parameters.length != 0)
+                            throw new IllegalArgumentException("" + method.getName() + " is not a getter");
+                        property = name.substring(3);
+                    } else if (name.startsWith("is")) {
+                        if (parameters.length != 0)
+                            throw new IllegalArgumentException("" + method.getName() + " is not a getter");
+                        property = name.substring(2);
+                    } else {
+                        throw new IllegalArgumentException("" + method.getName() + " is not an property accessor");
+                    }
+
+                    boolean lowerCase = true;
+                    if (property.length() > 1 && Character.isUpperCase(property.charAt(1)))
+                        lowerCase = false;
+                    if (lowerCase)
+                        property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
+                    return new PropertyDescriptor(property, method.getDeclaringClass());
+                }
+            });
+
+    private static LoadingCache<Pair<Class, String>, PropertyDescriptor> propertyDescriptors = CacheBuilder.newBuilder()
+            .maximumSize(10000)
+            .initialCapacity(500)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build(new CacheLoader<Pair<Class, String>, PropertyDescriptor>() {
+                @Override
+                public PropertyDescriptor load(Pair<Class, String> key) throws Exception {
+                    Class cls = key.key();
+                    String property = key.value();
+                    PropertyDescriptor descriptor;
+                    try {
+                        descriptor = new PropertyDescriptor(property, cls,
+                                "is" + TextSubstitution.capitalize(property), null);
+                    } catch (IntrospectionException e) {
+                        throw new SystemException(cls.getName() + "." + property, e);
+                    }
+                    return descriptor;
+                }
+            });
+
+    private static LoadingCache<Class, Type[]> parametrizedTypes = CacheBuilder.newBuilder()
+            .maximumSize(10000)
+            .initialCapacity(100)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build(new CacheLoader<Class, Type[]>() {
+                @Override
+                public Type[] load(Class clazz) throws Exception {
+                    Class cls = clazz;
+                    Type[] types = null;
+                    while (!cls.equals(Object.class)) {
+                        try {
+                            Type genericSuper = cls.getGenericSuperclass();
+                            if (genericSuper instanceof ParameterizedType) {
+                                ParameterizedType parametrizedType = (ParameterizedType) genericSuper;
+                                types = parametrizedType.getActualTypeArguments();
+                                break;
+                            }
+                        } catch (Exception th) {
+                            logger.warn(th.getMessage(), th);
+                        }
+                        cls = cls.getSuperclass();
+                    }
+                    if (types == null)
+                        throw new IllegalArgumentException("No parametrized types found");
+                    return types;
+                }
+            });
 
     static Logger logger = Logger.getLogger();
 
@@ -76,41 +159,11 @@ public class Reflection {
 
     // should use weak hash map
     public static PropertyDescriptor propertyDescriptor(Method method) {
-        WeakReference<PropertyDescriptor> ref = methodPropertyDescriptors.get(method);
-        PropertyDescriptor descriptor =  (ref == null) ? null : ref.get();
-        if (descriptor == null) {
-            try {
-                String name = method.getName();
-                Parameter[] parameters = method.getParameters();
-                String property ;
-                if (name.startsWith("set")) {
-                    if (parameters.length != 1)
-                        throw new IllegalArgumentException("" + method.getName() + " is not a setter");
-                    property = name.substring(3);
-                } else if (name.startsWith("get")) {
-                    if (parameters.length != 0)
-                        throw new IllegalArgumentException("" + method.getName() + " is not a getter");
-                    property = name.substring(3);
-                } else if (name.startsWith("is")) {
-                    if (parameters.length != 0)
-                        throw new IllegalArgumentException("" + method.getName() + " is not a getter");
-                    property = name.substring(2);
-                } else {
-                    throw new IllegalArgumentException("" + method.getName() + " is not an property accessor");
-                }
-
-                boolean lowerCase = true;
-                if (property.length() > 1 && Character.isUpperCase(property.charAt(1)))
-                    lowerCase = false;
-                if (lowerCase)
-                    property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
-                descriptor = new PropertyDescriptor(property, method.getDeclaringClass());
-                methodPropertyDescriptors.put(method, new WeakReference<PropertyDescriptor>(descriptor));
-            } catch (IntrospectionException e) {
-                throw new SystemException(e);
-            }
+        try {
+            return methodPropertyDescriptors.get(method);
+        } catch (ExecutionException e) {
+            throw new SystemException(e.getCause());
         }
-        return descriptor;
     }
 
     @SuppressWarnings("squid:S1872")
@@ -241,7 +294,7 @@ public class Reflection {
             } else {
                 cls = object.getClass();
             }
-            
+
             PropertyDescriptor descriptor =  getPropertyDescriptor(cls, property);
             if (descriptor == null || descriptor.getReadMethod() == null)
                 return null;
@@ -252,19 +305,11 @@ public class Reflection {
     }
 
     public static PropertyDescriptor getPropertyDescriptor(Class cls, String property) {
-        String key = cls.getName() + "." + property;
-        WeakReference<PropertyDescriptor> ref = propertyDescriptors.get(key);
-        PropertyDescriptor descriptor =  (ref == null) ? null : ref.get();
-        if (descriptor == null) {
-            try {
-                descriptor = new PropertyDescriptor(property, cls,
-                        "is" + TextSubstitution.capitalize(property), null);
-                propertyDescriptors.put(key, new WeakReference<>(descriptor));
-            } catch (IntrospectionException e) {
-                throw new SystemException(cls.getName() + "." + property, e);
-            }
+        try {
+            return propertyDescriptors.get(new Pair<>(cls, property));
+        } catch (ExecutionException e) {
+            throw new SystemException(e.getCause());
         }
-        return descriptor;
     }
 
     public static <V> V getField(Object object, String fieldName) {
@@ -305,31 +350,13 @@ public class Reflection {
     }
 
     public static Class getParametrizedType(Class clazz, int index) {
-        WeakReference<Type[]> ref = parametrizedTypes.get(clazz);
-        Type[] types =  (ref == null) ? null : ref.get();
-
-        if (types == null) {
-            Class cls = clazz;
-            while (!cls.equals(Object.class)) {
-                try {
-                    Type genericSuper = cls.getGenericSuperclass();
-                    if (genericSuper instanceof ParameterizedType) {
-                        ParameterizedType parametrizedType = (ParameterizedType) genericSuper;
-                        types = parametrizedType.getActualTypeArguments();
-                        break;
-                    }
-                } catch (Exception th) {
-                    logger.warn(th.getMessage(), th);
-                }
-                cls = cls.getSuperclass();
-            }
-            if (types != null) {
-                parametrizedTypes.put(clazz, new WeakReference<Type[]>(types));
-            }
+        Type[] types;
+        try {
+            types = parametrizedTypes.get(clazz);
+        } catch (ExecutionException e) {
+            throw new SystemException(e.getCause());
         }
 
-        if (types == null)
-            throw new IllegalArgumentException("No parametrized types found");
         if (types.length <= index)
             throw new IllegalArgumentException("No parametrized type at index=" + index);
         if (types[index] instanceof Class) {

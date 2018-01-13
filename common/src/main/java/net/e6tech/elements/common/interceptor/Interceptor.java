@@ -16,29 +16,48 @@
 
 package net.e6tech.elements.common.interceptor;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.implementation.FieldAccessor;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.implementation.SuperMethodCall;
-import net.bytebuddy.implementation.bind.annotation.*;
+import net.bytebuddy.implementation.bind.annotation.AllArguments;
+import net.bytebuddy.implementation.bind.annotation.Origin;
+import net.bytebuddy.implementation.bind.annotation.RuntimeType;
+import net.bytebuddy.implementation.bind.annotation.This;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by futeh.
  */
 public class Interceptor {
-    private Map<Class, WeakReference<Class>> proxyClasses = Collections.synchronizedMap(new WeakHashMap<>(199));
+    private LoadingCache<Class, Class> proxyClasses = CacheBuilder.newBuilder()
+            .initialCapacity(100)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build(new CacheLoader<Class, Class>() {
+        public Class load(Class cls) {
+            return new ByteBuddy()
+                    .subclass(cls)
+                    .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
+                    .intercept(MethodDelegation.toField(HANDLER_FIELD))
+                    .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
+                    .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
+                    .make()
+                    .load(cls.getClassLoader())
+                    .getLoaded();
+        }
+    });
     private static final String HANDLER_FIELD = "handler";
 
     private static Interceptor instance = new Interceptor();
@@ -163,22 +182,11 @@ public class Interceptor {
     }
 
     protected Class createClass(Class cls) {
-        WeakReference<Class> ref = proxyClasses.get(cls);
-        Class proxyClass = (ref == null) ? null : ref.get();
-        if (proxyClass == null) {
-            proxyClass = new ByteBuddy()
-                    .subclass(cls)
-                    .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
-                    .intercept(MethodDelegation.toField(HANDLER_FIELD))
-                    .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
-                    .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
-                    .make()
-                    .load(cls.getClassLoader())
-                    .getLoaded();
-            proxyClasses.put(cls, new WeakReference<Class>(proxyClass));
+        try {
+            return proxyClasses.get(cls);
+        } catch (ExecutionException e) {
+            throw new SystemException(e.getCause());
         }
-
-        return proxyClass;
     }
 
     private <T> T newObject(Class proxyClass) {

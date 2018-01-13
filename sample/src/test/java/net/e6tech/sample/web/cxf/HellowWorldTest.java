@@ -28,6 +28,7 @@ import javax.ws.rs.NotSupportedException;
 import java.io.PrintWriter;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.
@@ -61,7 +62,9 @@ public class HellowWorldTest extends BaseCase {
     @Test
     public void post() {
         HelloData data = new HelloData();
+        data.setData("hello");
         data = helloWorld.post(data);
+        assertTrue(data.getData().equals("hello"));
 
         assertThrows(BadRequestException.class, () -> helloWorld.post(null));
 

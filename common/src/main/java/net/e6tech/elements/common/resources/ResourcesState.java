@@ -92,15 +92,6 @@ class ResourcesState {
         this.externalResourceProviders = externalResourceProviders;
     }
 
-    public List<Object> getInjectionList() {
-        return injectionList;
-    }
-
-    public void setInjectionList(List<Object> injectionList) {
-        this.injectionList = new LinkedList<>();
-        this.injectionList.addAll(injectionList);
-    }
-
     public void addModule(Module module) {
         this.module.add(module);
     }
@@ -231,17 +222,15 @@ class ResourcesState {
             return (T) resources.getResourceManager();
         }
 
-        // if injectionList is empty we can query the module directly
-        // else we have to create an injector because the bound instance may be
-        // part of the injectionList and has not been injected.
-        if (injectionList.isEmpty()) {
+        T instance = null;
+        if (state == State.INITIAL) {
             if (getModule().getBoundInstance(cls) != null)
-                return getModule().getBoundInstance(cls);
+                instance = getModule().getBoundInstance(cls);
             if (resources.getResourceManager().hasInstance(cls))
-                return resources.getResourceManager().getInstance(cls);
+                instance = resources.getResourceManager().getInstance(cls);
+        } else {
+             instance = createInjector(resources).getInstance(cls);
         }
-
-        T instance = createInjector(resources).getInstance(cls);
         if (instance == null) {
             throw new InstanceNotFoundException("No instance for class " + cls.getName() +
                     ". Use newInstance if you meant to create an instance.");

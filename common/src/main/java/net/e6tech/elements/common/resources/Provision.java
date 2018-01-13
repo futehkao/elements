@@ -34,6 +34,8 @@ import java.util.function.Consumer;
  */
 public class Provision {
 
+    public static Integer cacheBuilderConcurrencyLevel = 32;
+
     @Inject
     private ResourceManager resourceManager;
 
