@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.typesafe:config:1.3.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe/config/1.3.2/d6ac0ce079f114adce620f2360c92a70b2cb36dc/config-1.3.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe/config/1.3.2/a22dda7d62b800b297c1c59de90d48992d8119b1/config-1.3.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

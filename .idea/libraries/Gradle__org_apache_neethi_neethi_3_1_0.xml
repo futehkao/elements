@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.neethi:neethi:3.1.0">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.neethi/neethi/3.1.0/533ba4a08ccd1b8dc7e22eaaf2c1a8ada7275580/neethi-3.1.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.neethi/neethi/3.1.0/1cf4ae0bb8e686575f7541ccf1065787d640b914/neethi-3.1.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

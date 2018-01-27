@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.typesafe.akka:akka-cluster_2.12:2.5.9">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-cluster_2.12/2.5.9/4747262fec16523c16fa86048ef16253ea3b644b/akka-cluster_2.12-2.5.9.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-cluster_2.12/2.5.9/e473a6c1691981120885e159889584f674a17cca/akka-cluster_2.12-2.5.9-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -21,7 +21,7 @@ import net.e6tech.elements.persist.hibernate.HibernateEntityManagerProvider
 import net.e6tech.elements.persist.hibernate.TableIdGenerator
 
 atom("datasource") {
-    /*
+    /* below is for Hikari */
     configuration = """
         dataSource:
             driverClassName: org.mariadb.jdbc.Driver
@@ -30,8 +30,8 @@ atom("datasource") {
             jdbcUrl: "jdbc:mariadb://127.0.0.1:3306/sample"
             maximumPoolSize: $dataSourceMaxPoolSize
     """
-    */
 
+    /* below is for c3p0
     configuration = """
         dataSource:
             driverClassName: org.mariadb.jdbc.Driver
@@ -42,8 +42,11 @@ atom("datasource") {
             checkoutTimeout: 30000
             autoCommitOnClose: false
     """
-    // delegate["dataSource"] = HikariDataSource or dataSource = HikariDataSource
-    dataSource = ComboPooledDataSource
+    */
+
+    // delegate["dataSource"] = HikariDataSource or
+    dataSource = HikariDataSource
+    // dataSource = ComboPooledDataSource
 }
 
 atom("persist") {

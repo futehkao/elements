@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.typesafe.akka:akka-cluster-sharding_2.12:2.5.9">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-cluster-sharding_2.12/2.5.9/cc8b81ece2f9e0c0d354d0c1860897714f75d533/akka-cluster-sharding_2.12-2.5.9.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-cluster-sharding_2.12/2.5.9/2c741b06eb7b0823f8f1a7af5468e53a764ea023/akka-cluster-sharding_2.12-2.5.9-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

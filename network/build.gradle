@@ -21,11 +21,11 @@ dependencies {
     // compile 'com.jcraft:jsch:0.1.+'
 
     compile group: 'com.github.romix.akka', name: 'akka-kryo-serialization_2.12', version: '0.5.2'
-    compile group: 'com.typesafe.akka', name: 'akka-cluster_2.12', version: '2.5.3'
-    compile group: 'com.typesafe.akka', name: 'akka-cluster-sharding_2.12', version: '2.5.3'
+    compile group: 'com.typesafe.akka', name: 'akka-cluster_2.12', version: '2.5.9'
+    compile group: 'com.typesafe.akka', name: 'akka-cluster-sharding_2.12', version: '2.5.9'
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")
     testCompile("org.junit.platform:junit-platform-launcher:1.0.0-M4")
     testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.0-M4")
-    testCompile group: 'com.typesafe.akka', name: 'akka-testkit_2.12', version: '2.5.2'
+    testCompile group: 'com.typesafe.akka', name: 'akka-testkit_2.12', version: '2.5.9'
 }

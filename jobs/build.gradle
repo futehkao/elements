@@ -18,8 +18,8 @@ dependencies {
     compile project(':jmx')
     compile('org.quartz-scheduler:quartz:2.3.0') {
         exclude group: 'org.slf4j'
-        exclude group: 'c3p0'
-
+        exclude group: 'com.mchange'
+        exclude group: 'com.zaxxer'
     }
     compile('org.quartz-scheduler:quartz-jobs:2.3.0') {
         exclude group: 'org.slf4j'

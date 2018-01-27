@@ -26,13 +26,6 @@
             <!-- <property name="hibernate.connection.provider_class" value="provider class" /> -->
             <property name="hibernate.ejb.cfgfile" value="persistence/sample/sample.cfg.xml" />
             <property name="current_session_context" value="thread" />
-            <property name="dialect" value="org.hibernate.dialect.MySQL57InnoDBDialect" />
-            <property name="hibernate.connection.isolation" value="2" /> <!-- read uncommitted is 1, read committed is 2 etc. see java.sql.Connection -->
-            <property name="hibernate.cache.use_query_cache" value = "true" />
-            <property name="hibernate.cache.region.factory_class" value ="org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory" />
-            <property name="hibernate.ejb.interceptor.session_scoped" value = "net.e6tech.elements.persist.hibernate.Interceptor" />
-            <property name="hibernate.cache.use_second_level_cache" value = "${hibernate.cache.use_second_level_cache}" />
-            <property name="hibernate.generate_statistics" value ="${hibernate.generate_statistics}" />
         </properties>
 
     </persistence-unit>
