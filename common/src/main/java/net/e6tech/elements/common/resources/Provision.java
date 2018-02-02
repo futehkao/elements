@@ -17,6 +17,7 @@ limitations under the License.
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.logging.LogLevel;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
 import net.e6tech.elements.common.resources.plugin.PluginPath;
@@ -69,8 +70,8 @@ public class Provision {
         }
     }
 
-    public void log(Logger logger, String message, Throwable th) {
-        logger.warn(message, th);
+    public void log(Logger logger, LogLevel level, String message, Throwable th) {
+       logger.log(level, message, th);
     }
 
     public ResourceManager getResourceManager() {

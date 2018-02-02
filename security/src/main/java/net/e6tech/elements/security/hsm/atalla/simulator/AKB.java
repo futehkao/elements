@@ -193,7 +193,7 @@ public class AKB {
     }
 
     @SuppressWarnings("squid:S2278")
-    private String calculateCheckDigits(byte[] key) throws GeneralSecurityException {
+    public static String calculateCheckDigits(byte[] key) throws GeneralSecurityException {
         Cipher chkCipher = Cipher.getInstance("DESede/ECB/NoPadding");
         chkCipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(normalizeKey(key), ALGORITHM_DES_EDE));
         byte[] chk = chkCipher.doFinal(new byte[8]);

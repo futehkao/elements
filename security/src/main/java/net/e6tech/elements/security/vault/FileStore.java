@@ -79,11 +79,9 @@ public class FileStore implements VaultStore {
         Vault vault = vaults.get(vaultName);
         if (vault == null && managedVaults.contains(vaultName)) {
             manage(vaultName);
-            return (Vault) Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] {Vault.class}, new VaultInvocationHandler(vaultName));
+            vault = vaults.get(vaultName);
         }
-        if (vault == null)
-            return null;
-        return (Vault) Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] {Vault.class}, new VaultInvocationHandler(vaultName));
+        return vault;
     }
 
     public void backup(String version) throws IOException {
@@ -110,7 +108,7 @@ public class FileStore implements VaultStore {
             if (!file.exists()) {
                 throw new IOException("Vault file does not exist: " + fileName);
             }
-            if (!Files.exists(Paths.get(backupFile)))
+            if (!Paths.get(backupFile).toFile().exists())
                 Files.copy(Paths.get(fileName), Paths.get(backupFile));
         } else {
             File file = new File(backupFile);
@@ -150,7 +148,7 @@ public class FileStore implements VaultStore {
         if (fileName == null)
             throw new IOException("null fileName");
 
-        logger.info( "Opening file vault " + fileName);
+        logger.info( "Opening file vault {}", fileName);
 
         File file = new File(fileName);
         if (!file.exists()) {
@@ -180,26 +178,6 @@ public class FileStore implements VaultStore {
             return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(new VaultFormat(vaults));
         } catch (JsonProcessingException e) {
             throw new IOException(e);
-        }
-    }
-
-    private class VaultInvocationHandler implements InvocationHandler {
-        String vaultName;
-
-        public VaultInvocationHandler(String vaultName) {
-            this.vaultName = vaultName;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            VaultImpl impl = vaults.get(vaultName);
-            Object ret = null;
-            if ("getSecretData".equals(method.getName()) && ret == null) {
-                ret = null;
-            } else {
-                ret = method.invoke(impl, args);
-            }
-            return ret;
         }
     }
 }

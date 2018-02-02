@@ -15,7 +15,6 @@ limitations under the License.
 */
 package net.e6tech.elements.common.logging;
 
-import net.e6tech.elements.common.util.Rethrowable;
 import net.e6tech.elements.common.util.SystemException;
 import org.apache.logging.log4j.ThreadContext;
 import org.slf4j.LoggerFactory;
@@ -45,34 +44,46 @@ public class LogHandler implements InvocationHandler {
     private String loggingName;
     private LogLevel level = LogLevel.ERROR;
 
-    private ExceptionLogger exceptionLogger = new ExceptionLogger() {
+    private LoggerExtension loggerExtension = new LoggerExtension() {
         @Override
-        public Logger exceptionLogger(LogLevel level) {
+        public Logger logger(LogLevel level) {
             LogHandler handler = new LogHandler(slf4jLogger);
             handler.level = level;
+            if (loggingClass != null)
+                handler.loggingClass = loggingClass;
+            if (loggingName != null)
+                handler.loggingName = loggingName;
             return (Logger) Proxy.newProxyInstance(Logger.class.getClassLoader(), new Class[]{Logger.class},
                     handler);
         }
-    };
 
-    private Rethrowable rethrowable = new Rethrowable() {
+        public void log(String msg, Throwable e) {
+            logWithLevel(level, msg, e);
+        }
+
+        public Logger log(LogLevel l, String msg, Throwable e) {
+            Logger logger = logger(l);
+            logger.log(msg, e);
+            return logger;
+        }
+
         @Override
         public SystemException systemException(String msg, Throwable th) {
-            SystemException t = Rethrowable.super.systemException(msg, th);
-            log(msg, th);
+            SystemException t = LoggerExtension.super.systemException(msg, th);
+            logWithLevel(level, msg, th);
             return t;
         }
 
         @Override
         public <T extends Throwable> T exception(Class<T> exceptionClass, String msg, Throwable e) {
-            T t = Rethrowable.super.exception(exceptionClass, msg, e);
-            log(msg, e);
+            T t = LoggerExtension.super.exception(exceptionClass, msg, e);
+            logWithLevel(level, msg, e);
             return t;
         }
 
-        protected void log(String msg, Throwable e) {
+        private void logWithLevel(LogLevel l, String msg, Throwable e) {
             if (getLogger() != null) {
-                switch (level) {
+                switch (l) {
                     case FATAL:
                     case ERROR:
                         getLogger().error(msg, e);
@@ -100,27 +111,27 @@ public class LogHandler implements InvocationHandler {
         }
     };
 
-    public LogHandler(org.slf4j.Logger slf4jLogger) {
+    LogHandler(org.slf4j.Logger slf4jLogger) {
         this.slf4jLogger = slf4jLogger;
     }
 
-    public LogHandler(Class cls) {
+    LogHandler(Class cls) {
         loggingClass = cls;
     }
 
-    public LogHandler(String name) {
+    LogHandler(String name) {
         loggingName = name;
     }
 
     // This level of indirection is needed, otherwise, Log4j will look at the system property
     // prematurely.
     // this method should only be called when the caller starts to log output.
+    @SuppressWarnings("squid:S3776")
     protected org.slf4j.Logger getLogger() {
-
         if (slf4jLogger != null)
             return slf4jLogger;
 
-        if (loggingClass == null && slf4jLogger == null && loggingName == null)
+        if (loggingClass == null && loggingName == null)
             return null;
 
         if (System.getProperty("log4j.configurationFile") == null) {
@@ -143,7 +154,7 @@ public class LogHandler implements InvocationHandler {
         // calling LoggerFactory.getLogger will trigger log4j being initialized.
         if (loggingClass != null)
             slf4jLogger = LoggerFactory.getLogger(loggingClass);
-        else if (loggingName != null)
+        else
             slf4jLogger = LoggerFactory.getLogger(loggingName);
         loggingClass = null;
         loggingName = null;
@@ -152,10 +163,8 @@ public class LogHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        if (method.getDeclaringClass().equals(Rethrowable.class)) {
-            return method.invoke(rethrowable, args);
-        } else if (method.getDeclaringClass().equals(ExceptionLogger.class)) {
-            return method.invoke(exceptionLogger, args);
+        if (method.getDeclaringClass().equals(LoggerExtension.class)) {
+            return method.invoke(loggerExtension, args);
         } else {
             org.slf4j.Logger logger = getLogger();
             if (logger == null) {

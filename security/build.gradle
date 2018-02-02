@@ -20,7 +20,7 @@ dependencies {
     compile 'org.bouncycastle:bcpkix-jdk15on:1.59'
     compile 'org.bouncycastle:bcmail-jdk15on:1.59'
 
-    testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")
-    testCompile("org.junit.platform:junit-platform-launcher:1.0.0-M4")
-    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.0-M4")
+    testCompile("org.junit.jupiter:junit-jupiter-api:5.0.3")
+    testCompile("org.junit.platform:junit-platform-launcher:1.0.3")
+    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.3")
 }

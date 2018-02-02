@@ -19,6 +19,7 @@ package net.e6tech.elements.common.resources;
 import java.util.HashMap;
 import java.util.Map;
 
+@SuppressWarnings("squid:S1700")
 public class Bindings {
 
     private Resources resources;
@@ -40,7 +41,7 @@ public class Bindings {
     }
 
     public void restore() {
-        bindings.values().forEach(binding -> binding.restore());
+        bindings.values().forEach(Binding::restore);
     }
 
     public <E extends Exception> void rebind(Transactional.ConsumerWithException<Bindings, E> consumer) throws E {

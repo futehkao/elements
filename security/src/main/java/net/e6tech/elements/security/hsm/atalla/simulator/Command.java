@@ -41,6 +41,7 @@ public abstract class Command extends Message {
         commands.put("31", TranslatePIN.class);
         commands.put("11B", ImportWorkingKey.class);
         commands.put("335", TranslatePINBlock.class);
+        commands.put("350", VerifyARQC.class);
     }
 
     protected AtallaSimulator simulator;

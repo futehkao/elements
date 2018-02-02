@@ -41,7 +41,8 @@ public class AtallaSimulatorTest {
         assertTrue(Hex.toString(Hex.toBytes(plainKey)).equals(Hex.toString(recovered)));
     }
 
-    @Test void importWorking() throws Exception {
+    @Test
+    void importWorking() throws Exception {
         String clearKeK ="1CDNN0I0,0123456789ABCDEFFEDCBA9876543210";
         String plainWorkingKey = "0123456789ABCDEFFEDCBA9876543210";
         AKB kek = simulator.asAKB(clearKeK);
@@ -71,5 +72,4 @@ public class AtallaSimulatorTest {
         assertTrue(recovered.equals(decTab));
         assertTrue(akb.getKeyBlock().equals("1nCNE000,2162CD77E8293FE4DC328EAB53BC3A2B0A3AFE1B299F07D2,111746BEB588C65B"));
     }
-
 }

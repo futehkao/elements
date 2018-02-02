@@ -22,7 +22,7 @@ import java.util.concurrent.ExecutorService;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S134", "squid:S135"})
+@SuppressWarnings({"squid:S134", "squid:S135", "squid:S3776"})
 public class TimeoutMonitor {
 
     long timeout = -1; // means disable, 0 means use default

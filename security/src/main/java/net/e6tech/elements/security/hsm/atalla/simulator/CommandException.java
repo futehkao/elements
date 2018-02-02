@@ -20,10 +20,10 @@ package net.e6tech.elements.security.hsm.atalla.simulator;
  * Created by futeh.
  */
 public class CommandException extends Exception {
+    private static final long serialVersionUID = 1905636163513797994L;
     private final String errorType;
     private final int fieldNumber;
     private static final String REVISION = "00";
-
 
     public CommandException(int fieldNumber, Throwable th) {
         super(th);

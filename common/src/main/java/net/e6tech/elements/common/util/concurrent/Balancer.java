@@ -155,6 +155,9 @@ public abstract class Balancer<T> {
                 throw new IOException();
             }
 
+            if (service == null)
+                throw new IOException("No service available");
+
             try {
                 R ret = submit.apply(service);
                 liveList.offer(service);

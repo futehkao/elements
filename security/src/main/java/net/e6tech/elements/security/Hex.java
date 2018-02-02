@@ -38,6 +38,15 @@ public class Hex {
         return (char) ('A' + (number - 10));
     }
 
+    // turn 0 into 1 and 1 to 0.
+    public static byte[] invert(byte[] bytes) {
+        byte[] inverted = new byte[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            inverted[i] = (byte) ~bytes[i];
+        }
+        return inverted;
+    }
+
     public static String toString(byte[] bytes) {
         return DatatypeConverter.printHexBinary(bytes);
     }

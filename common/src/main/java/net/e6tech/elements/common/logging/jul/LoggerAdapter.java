@@ -55,9 +55,15 @@ public class LoggerAdapter extends java.util.logging.Logger {
 
     public void log(Level level, String message, Object[] parameters, Throwable th) {
         if (th != null) {
-            Object[] param = new Object[parameters.length + 1];
-            System.arraycopy(parameters, 0, param, 0, parameters.length);
-            param[parameters.length] = th;
+            Object[] param;
+            if (parameters != null) {
+                param = new Object[parameters.length + 1];
+                System.arraycopy(parameters, 0, param, 0, parameters.length);
+                param[parameters.length] = th;
+            } else {
+                param = new Object[1];
+                param[0] = th;
+            }
             log(level, message, param);
         } else {
             log(level, message, parameters);

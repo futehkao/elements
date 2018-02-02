@@ -15,7 +15,6 @@ limitations under the License.
 */
 package net.e6tech.elements.common.logging;
 
-import net.e6tech.elements.common.util.Rethrowable;
 import net.e6tech.elements.common.reflection.Reflection;
 import org.apache.logging.log4j.ThreadContext;
 
@@ -38,7 +37,7 @@ import java.lang.reflect.Proxy;
  *
  */
 @SuppressWarnings({"squid:S2176", "squid:S00115", "squid:S1214"})
-public interface Logger extends org.slf4j.Logger, ExceptionLogger, Rethrowable {
+public interface Logger extends org.slf4j.Logger, LoggerExtension {
 
     public static final String logDir = "elements.common.logging.logDir";
 

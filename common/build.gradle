@@ -21,7 +21,7 @@ dependencies {
     compile 'org.apache.logging.log4j:log4j-core:2.10.0'
     compile 'org.apache.logging.log4j:log4j-slf4j-impl:2.10.0'
     compile 'org.apache.logging.log4j:log4j-jul:2.10.0'
-    compile 'org.slf4j:slf4j-api:1.7.25'
+    // compile 'org.slf4j:slf4j-api:1.7.25'
     compile 'org.codehaus.groovy:groovy-all:2.4.12:indy'
     compile 'com.google.guava:guava:23.6-jre'
     compile 'javax.inject:javax.inject:1'
@@ -39,7 +39,7 @@ dependencies {
     // akka core
     compile group: 'com.typesafe.akka', name: 'akka-actor_2.12', version: '2.5.9'
 
-    testCompile("org.junit.jupiter:junit-jupiter-api:5.0.0-M4")
-    testCompile("org.junit.platform:junit-platform-launcher:1.0.0-M4")
-    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.0-M4")
+    testCompile("org.junit.jupiter:junit-jupiter-api:5.0.3")
+    testCompile("org.junit.platform:junit-platform-launcher:1.0.3")
+    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.3")
 }

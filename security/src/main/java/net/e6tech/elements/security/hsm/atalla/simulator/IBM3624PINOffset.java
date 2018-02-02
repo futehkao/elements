@@ -32,6 +32,7 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S2278")
 public class IBM3624PINOffset {
 
     Map<Character, Character> decimalizationTable = new HashMap<>();

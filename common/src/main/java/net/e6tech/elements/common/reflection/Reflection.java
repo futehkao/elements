@@ -40,7 +40,7 @@ import static java.util.Locale.ENGLISH;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S134", "squid:S1149", "squid:S1141", "squid:MethodCyclomaticComplexity"})
+@SuppressWarnings({"squid:S134", "squid:S1149", "squid:S1141", "squid:MethodCyclomaticComplexity", "squid:S3776"})
 public class Reflection {
     @SuppressWarnings("squid:S1185")
     static final class PrivateSecurityManager extends SecurityManager {

@@ -15,19 +15,15 @@
  */
 package net.e6tech.elements.common.cache;
 
-import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 
 import javax.cache.Cache;
 import javax.cache.CacheException;
 import javax.cache.CacheManager;
 import javax.cache.Caching;
-import javax.cache.configuration.MutableConfiguration;
-import javax.cache.expiry.TouchedExpiryPolicy;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by futeh.
@@ -47,6 +43,7 @@ public class CacheConfiguration {
     private boolean storeByValue = false;
 
     public CacheConfiguration() {
+        // default constructor
     }
 
     public CacheProvider getProvider() {

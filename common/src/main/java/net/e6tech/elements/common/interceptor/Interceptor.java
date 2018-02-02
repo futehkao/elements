@@ -295,7 +295,7 @@ public class Interceptor {
             this.proxyClass = copy.proxyClass;
             this.handler = copy.handler;
             this.listener = copy.listener;
-            this.target = target;
+            this.target = copy.target;
             this.targetClass = copy.targetClass;
         }
 

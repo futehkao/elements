@@ -26,6 +26,7 @@ public class ScriptPath {
     private boolean classPath;
     private String fileName;
 
+    @SuppressWarnings("squid:S1192")
     public ScriptPath(String path) {
         this.fileName = path;
         if (fileName.startsWith("classpath://")) {

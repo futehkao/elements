@@ -116,6 +116,7 @@ public class InjectorImpl implements Injector {
         }
     }
 
+    @SuppressWarnings("squid:S3398")
     private static List<InjectionPoint> injectionFields(Class instanceClass) {
         Class cls = instanceClass;
         List<InjectionPoint> list = new ArrayList<>();
@@ -132,6 +133,7 @@ public class InjectorImpl implements Injector {
         return list;
     }
 
+    @SuppressWarnings("squid:S3398")
     private static List<InjectionPoint> injectionProperties(Class instanceClass) {
         List<InjectionPoint> list = new ArrayList<>();
         BeanInfo beanInfo = Reflection.getBeanInfo(instanceClass);

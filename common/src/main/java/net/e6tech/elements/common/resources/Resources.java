@@ -17,7 +17,7 @@ package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Module;
-import net.e6tech.elements.common.inject.spi.InjectorImpl;
+import net.e6tech.elements.common.logging.LogLevel;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.plugin.Plugin;
@@ -287,6 +287,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         return inject(object, new HashSet<>());
     }
 
+    @SuppressWarnings("squid:S3776")
     private <T> T inject(T object, Set<Integer> seen) {
         if (object == null)
             return null;
@@ -423,7 +424,7 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     protected <T extends Resources, R, E extends Exception> R replay(Exception th, Replay<T, R, E> replay) {
         if (isAborted() || retry == null) {
-            log(ABORT_DUE_TO_EXCEPTION, th);
+            log(LogLevel.WARN, ABORT_DUE_TO_EXCEPTION, th);
             if (!isAborted())
                 abort();
             if (th instanceof RuntimeException)
@@ -438,7 +439,7 @@ public class Resources implements AutoCloseable, ResourcePool {
                         .append(", message: ")
                         .append(th.getMessage());
                 Reflection.printStackTrace(builder, "    ", 2, 8);
-                logger.warn(builder.toString());
+                log(LogLevel.WARN, builder.toString(), null);
 
                 try { abort(); } catch (Exception th2) { Logger.suppress(th2); }
 
@@ -456,12 +457,12 @@ public class Resources implements AutoCloseable, ResourcePool {
             });
         } catch (RuntimeException th2) {
             lastException = th2;
-            log(ABORT_DUE_TO_EXCEPTION, th2);
+            log(LogLevel.WARN, ABORT_DUE_TO_EXCEPTION, th2);
             abort();
             throw th2;
         } catch (Throwable th2) {
             lastException = th2;
-            log(ABORT_DUE_TO_EXCEPTION, th2);
+            log(LogLevel.WARN, ABORT_DUE_TO_EXCEPTION, th2);
             abort();
             throw new SystemException(th2);
         }
@@ -504,9 +505,9 @@ public class Resources implements AutoCloseable, ResourcePool {
         return ret;
     }
 
-    private void log(String msg, Throwable th) {
+    private void log(LogLevel level, String msg, Throwable th) {
         Provision provision = resourceManager.getInstance(Provision.class);
-        provision.log(logger, msg, th);
+        provision.log(logger, level, msg, th);
     }
 
     public synchronized <R> R commit() {
@@ -610,7 +611,7 @@ public class Resources implements AutoCloseable, ResourcePool {
                 p.onClosed(this);
             }
         } catch (Exception ex) {
-            logger.trace(ex.getMessage(), ex);
+            log(LogLevel.TRACE, ex.getMessage(), ex);
         }
         state.cleanup();
         configurator.clear();

@@ -44,6 +44,10 @@ public class Message {
         fields = tokens;
     }
 
+    public int length() {
+        return fields.length;
+    }
+
     public String getField(int index) {
         return fields[index];
     }

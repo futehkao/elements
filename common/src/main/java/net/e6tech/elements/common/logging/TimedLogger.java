@@ -244,8 +244,8 @@ public class TimedLogger {
 
         int i;
         for (i = 0; i < trace.length; i++) {
-            if (thisClassName.equals(trace[i].getClassName())) ;
-            break;
+            if (thisClassName.equals(trace[i].getClassName()))
+                break;
         }
         if (trace.length > i + 3) {
             builder.append(trace[i + 3].getClassName());

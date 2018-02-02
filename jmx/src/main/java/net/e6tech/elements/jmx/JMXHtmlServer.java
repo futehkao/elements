@@ -35,7 +35,7 @@ public class JMXHtmlServer extends HtmlAdaptorServer {
 
     private static final String INTERRUPT_SYS_CALL_MSG = "Interrupted system call";
 
-    protected Logger logger = Logger.getLogger();
+    private Logger myLogger = Logger.getLogger();
     private InetAddress bindAddress;
 
     public JMXHtmlServer () {
@@ -65,7 +65,7 @@ public class JMXHtmlServer extends HtmlAdaptorServer {
 
         int port = getPort();
         int maxActiveClientCount = getMaxActiveClientCount();
-        logger.info("doBind: Bind the socket listener to [Port="+port+", MaxActiveClientCount="+maxActiveClientCount+"]");
+        myLogger.info("doBind: Bind the socket listener to [Port={}, MaxActiveClientCount={}]", port, maxActiveClientCount);
 
         try {
             ServerSocket serverSocket = new ServerSocket(port, 2 * maxActiveClientCount, getBindAddress());
@@ -73,7 +73,7 @@ public class JMXHtmlServer extends HtmlAdaptorServer {
             Field field = HtmlAdaptorServer.class.getDeclaredField("sockListen");
             field.setAccessible(true);
             field.set(this, serverSocket);
-            logger.info("doBind: Bound to [Address="+serverSocket.getInetAddress()+", Port="+serverSocket.getLocalPort()+"]");
+            myLogger.info("doBind: Bound to [Address="+serverSocket.getInetAddress()+", Port="+serverSocket.getLocalPort()+"]");
         } catch (SocketException e) {
             if (e.getMessage().equals(INTERRUPT_SYS_CALL_MSG))
                 throw new InterruptedException(e.toString()) ;

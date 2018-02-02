@@ -13,17 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package net.e6tech.elements.common.util;
+package net.e6tech.elements.common.logging;
 
-
-import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.reflect.Constructor;
 
 /**
  * Created by futeh.
  */
-public interface Rethrowable {
+public interface LoggerExtension {
+
+    Logger logger(LogLevel level);
+
+    void log(String msg, Throwable e);
+
+    Logger log(LogLevel l, String msg, Throwable e);
 
     /**
      * Creates a SystemException to wrap a Throwable
@@ -44,7 +49,7 @@ public interface Rethrowable {
         return new SystemException(msg, th);
     }
 
-    default <T extends Throwable> T  exception(Class<T> exceptionClass, Throwable e) {
+    default <T extends Throwable> T exception(Class<T> exceptionClass, Throwable e) {
         return exception(exceptionClass, e.getMessage(), e);
     }
 
