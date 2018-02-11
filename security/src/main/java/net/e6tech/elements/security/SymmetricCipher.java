@@ -68,21 +68,49 @@ public class SymmetricCipher {
         return algorithm;
     }
 
-    @SuppressWarnings("squid:CommentedOutCodeLine")
     public static void initialize() {
         if (initialized)
             return;
         initialized = true;
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
+        String version = System.getProperty("java.version");
+        String[] components = version.split("\\.");
+
+        int major;
+        if (components[0].equals("1")) {
+            try {
+                major = Integer.valueOf(components[1]);
+            } catch (NumberFormatException ex) {
+                major = 8;
+            }
+        } else {
+            try {
+                major = Integer.valueOf(components[0]);
+            } catch (NumberFormatException ex) {
+                major = 9;
+            }
+        }
+        if (major >= 9)
+            unlimitedCrypto9();
+        else
+            unlimitedCrypto8();
+    }
+
+    private static void unlimitedCrypto9() {
+        Security.setProperty("crypto.policy", "unlimited");
+    }
+
+    @SuppressWarnings("squid:CommentedOutCodeLine")
+    private static void unlimitedCrypto8() {
         try {
-        /*
-         * Do the following, but with reflection to bypass access checks:
-         *
-         * JceSecurity.isRestricted = false;
-         * JceSecurity.defaultPolicy.perms.clear();
-         * JceSecurity.defaultPolicy.add(CryptoAllPermission.INSTANCE);
-         */
+            /*
+             * Do the following, but with reflection to bypass access checks:
+             *
+             * JceSecurity.isRestricted = false;
+             * JceSecurity.defaultPolicy.perms.clear();
+             * JceSecurity.defaultPolicy.add(CryptoAllPermission.INSTANCE);
+             */
             final Class<?> jceSecurity = Class.forName("javax.crypto.JceSecurity");
             final Class<?> cryptoPermissions = Class.forName("javax.crypto.CryptoPermissions");
             final Class<?> cryptoAllPermission = Class.forName("javax.crypto.CryptoAllPermission");

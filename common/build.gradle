@@ -19,10 +19,12 @@ dependencies {
     compile 'com.google.code.findbugs:jsr305:3.0.2'
     compile 'org.apache.logging.log4j:log4j-api:2.10.0'
     compile 'org.apache.logging.log4j:log4j-core:2.10.0'
-    compile 'org.apache.logging.log4j:log4j-slf4j-impl:2.10.0'
+    compile ('org.apache.logging.log4j:log4j-slf4j-impl:2.10.0') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
     compile 'org.apache.logging.log4j:log4j-jul:2.10.0'
-    // compile 'org.slf4j:slf4j-api:1.7.25'
-    compile 'org.codehaus.groovy:groovy-all:2.4.12:indy'
+    compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'org.codehaus.groovy:groovy-all:2.4.13:indy'
     compile 'com.google.guava:guava:23.6-jre'
     compile 'javax.inject:javax.inject:1'
     compile 'com.fasterxml.jackson.core:jackson-core:2.9.3'
