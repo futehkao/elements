@@ -70,9 +70,9 @@ public class VaultManager {
     private Random random = new Random();
 
     public VaultManager() {
-        symmetricCipher = SymmetricCipher.getInstance("AES");
+        symmetricCipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
         symmetricCipher.setBase64(false);
-        asymmetricCipher = AsymmetricCipher.getInstance("RSA");
+        asymmetricCipher = AsymmetricCipher.getInstance(AsymmetricCipher.ALGORITHM_RSA);
         keyDataStore = new FileStore();
         userLocalStore = keyDataStore;
 

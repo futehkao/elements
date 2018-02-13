@@ -26,9 +26,11 @@ import java.util.Base64;
  */
 public class AsymmetricCipher {
 
+    public static final String ALGORITHM_RSA = "RSA";
+
     private String algorithm;
     private String transformation;
-    private int keyLength = 2048;
+    private int keyLength;
     private boolean base64 = false;
     private KeyFactory keyFactory;
 
@@ -36,9 +38,10 @@ public class AsymmetricCipher {
         SymmetricCipher.initialize();
     }
 
-    protected AsymmetricCipher(String algorithm) {
+    protected AsymmetricCipher(String algorithm, int keyLength) {
         this.algorithm = algorithm;
         this.transformation = algorithm + "/None/OAEPWithSHA256AndMGF1Padding";
+        this.keyLength = keyLength;
         try {
             this.keyFactory = KeyFactory.getInstance(algorithm);
         } catch (NoSuchAlgorithmException e) {
@@ -47,8 +50,12 @@ public class AsymmetricCipher {
     }
 
     public static AsymmetricCipher getInstance(String algorithm) {
-        if ("RSA".equalsIgnoreCase(algorithm)) {
-            return new AsymmetricCipher("RSA");
+        return getInstance(algorithm, 2048);
+    }
+
+    public static AsymmetricCipher getInstance(String algorithm, int keyLength) {
+        if (ALGORITHM_RSA.equalsIgnoreCase(algorithm)) {
+            return new AsymmetricCipher("RSA", keyLength);
         } else {
             throw new IllegalArgumentException(algorithm + " is not supported");
         }

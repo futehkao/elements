@@ -15,21 +15,11 @@ limitations under the License.
 */
 package net.e6tech.elements.common.interceptor;
 
-import java.lang.reflect.Method;
-
 /**
  * Created by futeh on 1/20/16.
  */
 @FunctionalInterface
 @SuppressWarnings("squid:S00112")
 public interface InterceptorHandler {
-    /**
-     *
-     * @param thisMethod the intercepting method
-     * @param target can be null if the interceptor is created using newInstance.
-     * @param args arguments
-     * @return return value of the call.
-     * @throws Throwable general exception
-     */
-    Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable;
+    Object invoke(CallFrame ctx) throws Throwable;
 }

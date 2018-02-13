@@ -16,13 +16,13 @@
 
 package net.e6tech.elements.persist.criteria;
 
+import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 
 import javax.persistence.EntityManager;
 import javax.persistence.criteria.*;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -94,13 +94,13 @@ public class Where<T> extends Handler {
     }
 
     @Override
-    public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
-        PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
+    public Object invoke(CallFrame frame) throws Throwable {
+        PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
         String property = desc.getName();
         CriteriaBuilder builder = getBuilder();
-        if (thisMethod.equals(desc.getReadMethod())) {
+        if (frame.getMethod().equals(desc.getReadMethod())) {
             // getter
-            Class cls = thisMethod.getReturnType();
+            Class cls = frame.getMethod().getReturnType();
             if (!Modifier.isFinal(cls.getModifiers())) {
                 Where where = new Where(this, getPath().get(property));
                 return where.getTemplate();
@@ -112,7 +112,7 @@ public class Where<T> extends Handler {
         } else {
             // setter
             Path current = getPath().get(property);
-            predicates.add(comparison.compare(builder, current, args[0]));
+            predicates.add(comparison.compare(builder, current, frame.getArguments()[0]));
             return null;
         }
     }

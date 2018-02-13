@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Module;
+import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationListener;
@@ -341,10 +342,10 @@ public class JaxRSServer extends CXFServer {
     }
 
     @SuppressWarnings("squid:S00112")
-    private void handleException(Object instance, Method thisMethod, Object[] args, Throwable th) throws Throwable {
+    private void handleException(CallFrame frame, Throwable th) throws Throwable {
         Throwable throwable = ExceptionMapper.unwrap(th);
-        if (instance instanceof JaxExceptionHandler) {
-            Object response = ((JaxExceptionHandler) instance).handleException(thisMethod, args, throwable);
+        if (frame.getTarget() instanceof JaxExceptionHandler) {
+            Object response = ((JaxExceptionHandler) frame.getTarget()).handleException(frame, throwable);
             if (response != null) {
                 throw new InvocationException(response);
             } else {
@@ -410,37 +411,37 @@ public class JaxRSServer extends CXFServer {
         }
 
         @Override
-        public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
+        public Object invoke(CallFrame frame) throws Throwable {
             boolean abort = false;
             Object result = null;
             boolean ignored = false;
 
             // Note PostConstruct is handled by CXF during createInstance
             boolean uowOpen = false;
-            if (thisMethod.getAnnotation(PreDestroy.class) != null) {
+            if (frame.getAnnotation(PreDestroy.class) != null) {
                 ignored = true;
             } else {
                 try {
-                    open(target, thisMethod);
+                    open(frame.getTarget(), frame.getMethod());
                     uowOpen = true;
                 } catch (Exception th) {
                     logger.debug(th.getMessage(), th);
-                    handleException(target, thisMethod, args, th);
+                    handleException(frame, th);
                 }
             }
 
             try {
-                checkInvocation(thisMethod, args);
+                checkInvocation(frame.getMethod(), frame.getArguments());
                 if (!ignored) {
                     long start = System.currentTimeMillis();
                     result = uow.submit(() -> {
                         if (observer != null) {
                             HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
                             uow.getResources().inject(observer);
-                            observer.beforeInvocation(request, target, thisMethod, args);
+                            observer.beforeInvocation(request, frame.getTarget(), frame.getMethod(), frame.getArguments());
                         }
-                        uow.getResources().inject(target);
-                        Object ret = thisMethod.invoke(target, args);
+                        uow.getResources().inject(frame.getTarget());
+                        Object ret = frame.invoke();
                         if (observer != null)
                             observer.afterInvocation(ret);
 
@@ -448,10 +449,10 @@ public class JaxRSServer extends CXFServer {
                     });
 
                     long duration = System.currentTimeMillis() - start;
-                    computePerformance(thisMethod, methods, map, duration);
+                    computePerformance(frame.getMethod(), methods, map, duration);
                 } else {
                     // PreDestroy is called
-                    result = thisMethod.invoke(target, args);
+                    result = frame.invoke();
                 }
             } catch (Exception th) {
                 if (!ignored && observer != null) {
@@ -461,10 +462,10 @@ public class JaxRSServer extends CXFServer {
                         Logger.suppress(ex);
                     }
                 }
-                recordFailure(thisMethod, methods, map);
+                recordFailure(frame.getMethod(), methods, map);
                 abort = true;
                 logger.debug(th.getMessage(), th);
-                handleException(target, thisMethod, args, th);
+                handleException(frame, th);
             } finally {
                 if (uowOpen) {
                     if (abort)
@@ -495,20 +496,20 @@ public class JaxRSServer extends CXFServer {
         public Object getInstance(Message m) {
             Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
             if (proxy == null) {
-                proxy = interceptor.newInterceptor(super.getInstance(m), (target, thisMethod, args) -> {
+                proxy = interceptor.newInterceptor(super.getInstance(m), frame -> {
                     try {
-                        checkInvocation(thisMethod, args);
+                        checkInvocation(frame.getMethod(), frame.getArguments());
                         if (cloneObserver != null) {
                             HttpServletRequest request = (HttpServletRequest) m.get(AbstractHTTPDestination.HTTP_REQUEST);
                             provision.inject(cloneObserver);
-                            cloneObserver.beforeInvocation(request, target, thisMethod, args);
+                            cloneObserver.beforeInvocation(request, frame.getTarget(), frame.getMethod(), frame.getArguments());
                         }
                         long start = System.currentTimeMillis();
 
-                        Object result = thisMethod.invoke(target, args);
+                        Object result = frame.invoke();
 
                         long duration = System.currentTimeMillis() - start;
-                        computePerformance(thisMethod, methods, map, duration);
+                        computePerformance(frame.getMethod(), methods, map, duration);
                         if (cloneObserver != null)
                             cloneObserver.afterInvocation(result);
 
@@ -516,9 +517,9 @@ public class JaxRSServer extends CXFServer {
                     } catch (Exception th) {
                         if (cloneObserver != null)
                             cloneObserver.onException(th);
-                        recordFailure(thisMethod, methods, map);
+                        recordFailure(frame.getMethod(), methods, map);
                         logger.debug(th.getMessage(), th);
-                        handleException(target, thisMethod, args, th);
+                        handleException(frame, th);
                     }
                     return null;
                 });

@@ -28,6 +28,9 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.beans.BeanInfo;
 import java.beans.PropertyDescriptor;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -38,6 +41,8 @@ import java.util.function.Supplier;
  */
 @SuppressWarnings("squid:S134")
 public class InjectorImpl implements Injector {
+    private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
+
     private static LoadingCache<Class<?>, List<InjectionPoint>> injectionPoints = CacheBuilder.newBuilder()
             .maximumSize(10000)
             .initialCapacity(200)
@@ -123,7 +128,7 @@ public class InjectorImpl implements Injector {
         while (cls != Object.class) {
             Field[] fields = cls.getDeclaredFields();
             for (Field field : fields) {
-                InjectionPoint injectionPoint = injectionPoint(field, () -> new InjectionField(field)).orElse(null);
+                InjectionPoint injectionPoint = injectionPoint(field, () -> new InjectionPoint(field)).orElse(null);
                 if (injectionPoint != null) {
                     list.add(injectionPoint);
                 }
@@ -138,8 +143,8 @@ public class InjectorImpl implements Injector {
         List<InjectionPoint> list = new ArrayList<>();
         BeanInfo beanInfo = Reflection.getBeanInfo(instanceClass);
         for (PropertyDescriptor prop : beanInfo.getPropertyDescriptors()) {
-            InjectionPoint injectionPoint = injectionPoint(prop.getWriteMethod(), () -> new InjectionMethod(prop.getWriteMethod()))
-                    .orElseGet(() -> injectionPoint(prop.getReadMethod(), () -> new InjectionMethod(prop.getWriteMethod())).orElse(null));
+            InjectionPoint injectionPoint = injectionPoint(prop.getWriteMethod(), () -> new InjectionPoint(prop.getWriteMethod()))
+                    .orElseGet(() -> injectionPoint(prop.getReadMethod(), () -> new InjectionPoint(prop.getWriteMethod())).orElse(null));
 
             if (injectionPoint != null) {
                 list.add(injectionPoint);
@@ -184,67 +189,40 @@ public class InjectorImpl implements Injector {
     private  enum InjectionAttempt {
         ERROR,
         INJECTED,
-        NOT_INJECTED;
+        NOT_INJECTED
     }
 
-    private abstract static class InjectionPoint {
+    private static class InjectionPoint {
         protected String name;
         protected boolean optional;
         protected Class type = void.class;
         protected String property = "";
 
-        abstract InjectionAttempt inject(InjectorImpl injector, Object target);
+        private MethodHandle setter;
+        private Type setterType;
+        private AccessibleObject accessible;
 
-        abstract Type getType();
-    }
+        InjectionPoint(Method setter) {
+            try {
+                accessible = setter;
+                setterType = setter.getGenericParameterTypes()[0];
+                this.setter = lookup.unreflect(setter);
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
+        }
 
-    private static class InjectionField extends InjectionPoint {
-        private Field field;
-
-        InjectionField(Field field) {
-            this.field = field;
+        InjectionPoint(Field field) {
+            accessible = field;
+            this.setterType = field.getGenericType();
             if (!Modifier.isPublic(field.getModifiers()))
                 field.setAccessible(true);
-        }
 
-        InjectionAttempt inject(InjectorImpl injector, Object target) {
-            Type t = (type != void.class) ? type : field.getGenericType();
-            Optional<Binding> opt = injector.privateGetNamedInstance(t, name);
-
-            if (!opt.isPresent() && !optional) {
-                return InjectionAttempt.ERROR;
+            try {
+                this.setter = lookup.unreflectSetter(field);
+            } catch (Exception e) {
+                throw new SystemException(e);
             }
-
-            if (opt.isPresent()) {
-                try {
-                    Object value = opt.get().getValue();
-                    if (property.length() > 0 && value != null) {
-                        value = Reflection.getProperty(value, property);
-                    }
-                    field.set(target, value);
-                } catch (IllegalAccessException e) {
-                    throw new SystemException(e);
-                }
-                return InjectionAttempt.INJECTED;
-            } else {
-                return InjectionAttempt.NOT_INJECTED;
-            }
-        }
-
-        Type getType() {
-            return (type != void.class && type != Void.class) ? type : field.getGenericType();
-        }
-
-        public String toString() {
-            return field.toString();
-        }
-    }
-
-    private static class InjectionMethod extends InjectionPoint {
-        private Method setter;
-
-        InjectionMethod(Method setter) {
-            this.setter = setter;
         }
 
         InjectionAttempt inject(InjectorImpl injector, Object target) {
@@ -264,8 +242,10 @@ public class InjectorImpl implements Injector {
                     setter.invoke(target, value);
                 } catch (IllegalAccessException e) {
                     throw new SystemException(e);
-                }catch (InvocationTargetException e) {
+                } catch (InvocationTargetException e) {
                     throw new SystemException(e.getTargetException());
+                } catch (Throwable e) {
+                    throw new SystemException(e);
                 }
                 return InjectionAttempt.INJECTED;
             } else {
@@ -274,11 +254,11 @@ public class InjectorImpl implements Injector {
         }
 
         Type getType() {
-            return (type != void.class && type != Void.class) ? type : setter.getGenericParameterTypes()[0];
+            return (type != void.class && type != Void.class) ? type : setterType;
         }
 
         public String toString() {
-            return setter.toString();
+            return accessible.toString();
         }
     }
 }

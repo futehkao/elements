@@ -16,8 +16,6 @@
 
 package net.e6tech.elements.common.interceptor;
 
-import java.lang.reflect.Method;
-
 /**
  * Created by futeh.
  */
@@ -25,15 +23,15 @@ import java.lang.reflect.Method;
 @SuppressWarnings("squid:S00112")
 public interface InterceptorListener {
 
-    default void preInvocation(Object target, Method thisMethod, Object[] args) {
+    default void preInvocation(CallFrame frame) {
 
     }
 
-    default Object postInvocation(Object target, Method thisMethod, Object[] args, Object returnValue) {
+    default Object postInvocation(CallFrame frame, Object returnValue) {
         return returnValue;
     }
 
     // when exception occurs, the handle can process the exception by returning a return value
     // or rethrow an exception
-    Object onException(Object target, Method thisMethod, Object[] args, Throwable throwable) throws Throwable;
+    Object onException(CallFrame frame, Throwable throwable) throws Throwable;
 }

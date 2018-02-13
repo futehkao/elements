@@ -23,10 +23,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class InjectTest {
+class InjectTest {
 
     @Test
-    public void bindProperties() {
+    void bindProperties() {
         ResourceManager resourceManager = new ResourceManager();
         resourceManager.getInstance(Provision.class)
                 .preOpen(res -> {
@@ -62,7 +62,7 @@ public class InjectTest {
      * Note the properties would use the same name.
      */
     @Test
-    public void bindNamedProperties() {
+    void bindNamedProperties() {
         ResourceManager resourceManager = new ResourceManager();
         resourceManager.getInstance(Provision.class)
                 .preOpen(res -> {

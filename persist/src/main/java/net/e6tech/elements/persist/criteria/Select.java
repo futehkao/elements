@@ -146,10 +146,10 @@ public class Select<T> extends Statement<T> {
     @SuppressWarnings("squid:S1188")
     public <R> Select<T> crossJoinManyToOne(Class<R> entityClass, Consumer<T> joinCondition, Consumer<Select<R>> consumer) {
         From<R, R> jointRoot = getQuery().from(entityClass);
-        Interceptor.setInterceptorHandler(where.getTemplate(), (target, thisMethod, args) -> {
-            PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
+        Interceptor.setInterceptorHandler(where.getTemplate(), frame -> {
+            PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
             String property = desc.getName();
-            if (thisMethod.equals(desc.getReadMethod())) {
+            if (frame.getMethod().equals(desc.getReadMethod())) {
                 Predicate joinPredicate;
                 if (getFrom().get(property).getJavaType().equals(jointRoot.getJavaType())) {
                     joinPredicate = getBuilder().equal(getFrom().get(property), jointRoot);
@@ -188,10 +188,10 @@ public class Select<T> extends Statement<T> {
     @SuppressWarnings("squid:S1188")
     public <R> Select<T> crossJoinOneToMany(Class<R> entityClass, Consumer<R> joinCondition, Consumer<Select<R>> consumer) {
         From<R, R> joinRoot = getQuery().from(entityClass);
-        R joinTemplate = Handler.interceptor.newInstance(entityClass,  (target, thisMethod, args) -> {
-            PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
+        R joinTemplate = Handler.interceptor.newInstance(entityClass,  frame -> {
+            PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
             String property = desc.getName();
-            if (thisMethod.equals(desc.getReadMethod())) {
+            if (frame.getMethod().equals(desc.getReadMethod())) {
                 Predicate joinPredicate;
                 if (joinRoot.get(property).getJavaType().equals(getFrom().getJavaType())) {
                     joinPredicate = getBuilder().equal(getFrom(), joinRoot.get(property));
@@ -243,10 +243,10 @@ public class Select<T> extends Statement<T> {
     }
 
     protected <R> Select<T> join(JoinType type, Runnable joinCondition, BiConsumer<Select<R>, R> consumer) {
-        Interceptor.setInterceptorHandler(where.getTemplate(), (target, thisMethod, args) -> {
-            PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
+        Interceptor.setInterceptorHandler(where.getTemplate(), frame -> {
+            PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
             String property = desc.getName();
-            if (thisMethod.equals(desc.getReadMethod())) {
+            if (frame.getMethod().equals(desc.getReadMethod())) {
                 Join join = getFrom().join(property, type);
                 Where<R> where = new Where<>(this.where, join);
                 Select<R> joinSelect = new Select<>(this, where, join);
@@ -284,10 +284,10 @@ public class Select<T> extends Statement<T> {
     }
 
     protected Select<T> fetch(JoinType type, Runnable joinCondition) {
-        Interceptor.setInterceptorHandler(where.getTemplate(), (target, thisMethod, args) -> {
-            PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
+        Interceptor.setInterceptorHandler(where.getTemplate(), frame -> {
+            PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
             String property = desc.getName();
-            if (thisMethod.equals(desc.getReadMethod())) {
+            if (frame.getMethod().equals(desc.getReadMethod())) {
                 getFrom().fetch(property, type);
             } else {
                 throw new UnsupportedOperationException(GETTER_MSG);

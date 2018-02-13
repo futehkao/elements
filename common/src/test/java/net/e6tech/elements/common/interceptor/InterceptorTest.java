@@ -34,14 +34,14 @@ public class InterceptorTest {
     public void basic() throws Exception {
         Interceptor interceptor2 = new Interceptor();
         AtomicReference<Boolean> atomic = new AtomicReference<>();
-        TestClass testClass = interceptor2.newInstance(TestClass.class, (target,  thisMethod,  args)-> {
-            System.out.print("Intercepted " + thisMethod.getName() + " ... ");
-            Nonnull nonnull = thisMethod.getAnnotation(Nonnull.class);
-            if (thisMethod.getName().equals("methodA")) {
+        TestClass testClass = interceptor2.newInstance(TestClass.class, frame -> {
+            System.out.print("Intercepted " + frame.getMethod().getName() + " ... ");
+            Nonnull nonnull = frame.getMethod().getAnnotation(Nonnull.class);
+            if (frame.getMethod().getName().equals("methodA")) {
                 assertTrue(nonnull != null);
             }
             atomic.set(true);
-            return thisMethod.invoke(target, args);
+            return frame.invoke();
         });
 
         atomic.set(false);
@@ -63,14 +63,14 @@ public class InterceptorTest {
         // testing setting a different handler.
         AtomicReference<Boolean> atomic2 = new AtomicReference<>();
         Interceptor.getInterceptorHandler(testClass);
-        Interceptor.setInterceptorHandler(testClass, (target,  thisMethod,  args)-> {
-            System.out.print("New Handler - Intercepted " + thisMethod.getName() + " ... ");
-            Nonnull nonnull = thisMethod.getAnnotation(Nonnull.class);
-            if (thisMethod.getName().equals("methodA")) {
+        Interceptor.setInterceptorHandler(testClass, frame -> {
+            System.out.print("New Handler - Intercepted " + frame.getMethod().getName() + " ... ");
+            Nonnull nonnull = frame.getMethod().getAnnotation(Nonnull.class);
+            if (frame.getMethod().getName().equals("methodA")) {
                 assertTrue(nonnull != null);
             }
             atomic2.set(true);
-            return thisMethod.invoke(target, args);
+            return frame.invoke();
         });
         atomic2.set(false);
         testClass.methodA();
@@ -90,9 +90,7 @@ public class InterceptorTest {
 
         // testing proxy class caching
         Class proxyClass = testClass.getClass();
-        testClass = interceptor2.newInstance(TestClass.class, (target,  thisMethod,  args)-> {
-            return thisMethod.invoke(target, args);
-        });
+        testClass = interceptor2.newInstance(TestClass.class, CallFrame::invoke);
 
         assertTrue(proxyClass == testClass.getClass());
 
@@ -100,7 +98,7 @@ public class InterceptorTest {
         TestClass clone = Interceptor.cloneProxyObject(testClass);
         assertTrue(Interceptor.getTarget(clone) == Interceptor.getTarget(testClass));
         assertTrue(Interceptor.getInterceptorHandler(clone) == Interceptor.getInterceptorHandler(testClass));
-        Interceptor.setInterceptorListener(clone, (target, method, args, exception) -> { return null; });
+        Interceptor.setInterceptorListener(clone, (frame, th) -> { return null; });
         assertTrue(Interceptor.getInterceptorListener(clone) != null);
         assertTrue(Interceptor.getInterceptorListener(clone) != Interceptor.getInterceptorListener(testClass));
     }
@@ -136,35 +134,15 @@ public class InterceptorTest {
         assertTrue(test.getValue() == 12);
     }
 
-    public static class TestClass {
+    @Test
+    void testPrivateMethod() throws Exception {
+        Interceptor interceptor = new Interceptor();
+        TestClass proxy = interceptor.newInstance(TestClass.class, frame -> {
+            System.out.println("Intercepted method " + frame.getMethod().getName());
+            return frame.invoke();
+        });
 
-        private int value = 0;
-
-        public int getValue() {
-            return value;
-        }
-
-        public void setValue(int value) {
-            this.value = value;
-        }
-
-        public TestClass() {
-            System.out.println("TestClass constructor");
-        }
-
-        @Nonnull
-        public void methodA() {
-            System.out.println("methodA");
-        }
-
-        public String methodB(String arg) {
-            System.out.println("methodB: " + arg);
-            return arg;
-        }
-
-        public String methodC(String arg, int arg2) {
-            System.out.println("methodC: " + arg + ", "+ arg2);
-            return arg;
-        }
+        proxy.methodD("calling method D");
+        proxy.protectedMethod("calling protected method");
     }
 }

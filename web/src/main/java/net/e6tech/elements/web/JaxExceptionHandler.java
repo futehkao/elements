@@ -16,12 +16,12 @@
 
 package net.e6tech.elements.web;
 
-import java.lang.reflect.Method;
+import net.e6tech.elements.common.interceptor.CallFrame;
 
 /**
  * Created by futeh.
  */
 @FunctionalInterface
 public interface JaxExceptionHandler {
-    Object handleException(Method method, Object[] args, Throwable throwable);
+    Object handleException(CallFrame frame, Throwable throwable);
 }

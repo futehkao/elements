@@ -32,13 +32,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
-public class PersistenceTest extends BaseCase {
+class PersistenceTest extends BaseCase {
 
     private Employee employee;
     private Department department;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         employee = new Employee();
         employee.setFirstName("First" + System.currentTimeMillis());
         employee.setLastName("Last" + System.currentTimeMillis());
@@ -51,7 +51,7 @@ public class PersistenceTest extends BaseCase {
     }
 
     @Test
-    public void testInsert() {
+    void testInsert() {
         provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
             res.inject(new Object());
             em.persist(employee);
@@ -75,7 +75,7 @@ public class PersistenceTest extends BaseCase {
     }
 
     @Test
-    public void testInsertDepartment() {
+    void testInsertDepartment() {
 
         provision.open().commit(EntityManager.class, (em) -> {
             try {

@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.persist.criteria;
 
+import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 
@@ -25,7 +26,6 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Order;
 import javax.persistence.criteria.Path;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,13 +53,13 @@ public class OrderBy<T> extends Handler {
     }
 
     @Override
-    public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
-        PropertyDescriptor descriptor = Reflection.propertyDescriptor(thisMethod);
+    public Object invoke(CallFrame frame) throws Throwable {
+        PropertyDescriptor descriptor = Reflection.propertyDescriptor(frame.getMethod());
         String property = descriptor.getName();
         CriteriaBuilder builder = getBuilder();
-        if (thisMethod.equals(descriptor.getReadMethod())) {
+        if (frame.getMethod().equals(descriptor.getReadMethod())) {
             // getter
-            Class cls = thisMethod.getReturnType();
+            Class cls = frame.getMethod().getReturnType();
             Order order = (this.desc) ? builder.desc(getPath().get(property))
                     : builder.asc(getPath().get(property));
             orderByList.add(order);

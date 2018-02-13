@@ -123,10 +123,10 @@ public class Statement<T> {
     }
 
     protected InterceptorHandler getter(Consumer<Path> consumer) {
-        return (target, thisMethod, args) -> {
-            PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
+        return (frame) -> {
+            PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
             String property = desc.getName();
-            if (thisMethod.equals(desc.getReadMethod())) {
+            if (frame.getMethod().equals(desc.getReadMethod())) {
                 consumer.accept(where.getPath().get(property));
             } else {
                 throw new UnsupportedOperationException("Only accepts getter");
@@ -136,11 +136,11 @@ public class Statement<T> {
     }
 
     private InterceptorHandler setter(BiConsumer<Path, Object[]> consumer) {
-        return (target, thisMethod, args) -> {
-            PropertyDescriptor desc = Reflection.propertyDescriptor(thisMethod);
+        return (frame) -> {
+            PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
             String property = desc.getName();
-            if (!thisMethod.equals(desc.getReadMethod())) {
-                consumer.accept(where.getPath().get(property), args);
+            if (!frame.getMethod().equals(desc.getReadMethod())) {
+                consumer.accept(where.getPath().get(property), frame.getArguments());
             } else {
                 throw new UnsupportedOperationException("Only accepts setter");
             }

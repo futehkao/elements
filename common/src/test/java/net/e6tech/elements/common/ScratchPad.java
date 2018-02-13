@@ -15,25 +15,28 @@ limitations under the License.
 */
 package net.e6tech.elements.common;
 
-import net.e6tech.elements.common.interceptor.Interceptor;
-import net.e6tech.elements.common.resources.InjectionListener;
-import net.e6tech.elements.common.resources.ResourcePool;
+import net.e6tech.elements.common.inject.BindPropA;
+import net.e6tech.elements.common.inject.BindPropX;
+import net.e6tech.elements.common.util.lambda.Each;
 import org.junit.jupiter.api.Test;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 /**
  * Created by futeh.
  */
 public class ScratchPad {
     @Test
-    public void scratch() throws Exception {
+    void scratch() throws Exception {
         String settlementDate = "20150911";
         LocalDate localDate = LocalDate.parse(settlementDate, DateTimeFormatter.BASIC_ISO_DATE);
         ZoneId id = ZoneId.of("UTC").normalized();
@@ -41,35 +44,49 @@ public class ScratchPad {
         System.out.println(time);
         System.out.println(time.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
         System.out.println(time.toEpochSecond() * 1000);
-
-        Class l1 = lambda();
-
-        Class l2 = lambda2();
-
-        assertTrue(!l1.equals(l2));
-
-    }
-
-    Class lambda() {
-        InjectionListener l = (r) -> {};
-        return l.getClass();
-    }
-
-    Class lambda2() {
-        InjectionListener l = (r) -> {};
-        return l.getClass();
     }
 
     @Test
-    public void interceptor() {
-        X x = Interceptor.getInstance().newInstance(X.class, (target, method, args)-> {
-            return "hello";
-        });
-        String ret = x.doSomething();
-        System.out.println(ret);
+    void methodHandle() throws Throwable {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        Method method = BindPropX.class.getDeclaredMethod("setA", BindPropA.class);
+        MethodHandle mh = lookup.unreflect(method);
+
+        BindPropX x = new BindPropX();
+        BindPropA a = new BindPropA();
+
+        mh.invoke(x, a);
+
+        long start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            mh.invoke(x, a);
+        }
+        System.out.println("method handle invoke " + (System.currentTimeMillis() - start));
+
+        method.invoke(x, a);
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            method.invoke(x, a);
+        }
+        System.out.println("reflection " + (System.currentTimeMillis() - start));
+
+        Field field = BindPropX.class.getDeclaredField("a");
+        field.setAccessible(true);
+
+        mh = lookup.unreflectSetter(field);
+        mh.invoke(x, a);
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            mh.invoke(x, a);
+        }
+        System.out.println("method handle setter " + (System.currentTimeMillis() - start));
+
+        field.set(x, a);
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            field.set(x, a);
+        }
+        System.out.println("reflection " + (System.currentTimeMillis() - start));
     }
 
-    public interface X {
-        String doSomething();
-    }
 }

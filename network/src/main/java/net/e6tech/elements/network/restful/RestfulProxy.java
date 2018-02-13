@@ -18,6 +18,7 @@ package net.e6tech.elements.network.restful;
 
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.interceptor.InterceptorListener;
@@ -147,12 +148,12 @@ public class RestfulProxy {
         }
 
         @Override
-        public Object invoke(Object target, Method thisMethod, Object[] args) throws Throwable {
+        public Object invoke(CallFrame frame) throws Throwable {
             if (printer != null) {
-                String signature = methodSignatures.computeIfAbsent(thisMethod, this::methodSignature);
+                String signature = methodSignatures.computeIfAbsent(frame.getMethod(), this::methodSignature);
                 String caller = Reflection.<String, Boolean>mapCallingStackTrace(e -> {
                     if (e.state().isPresent()) return e.get().toString(); // previous element match.
-                    if (e.get().getMethodName().equals(thisMethod.getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
+                    if (e.get().getMethodName().equals(frame.getMethod().getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
                     return null;
                 }).orElse("Cannot detect caller");
                 printer.println("Called by: " + caller);
@@ -164,7 +165,7 @@ public class RestfulProxy {
             }
 
             String fullContext = context;
-            Path path = thisMethod.getAnnotation(Path.class);
+            Path path = frame.getAnnotation(Path.class);
             if (path != null) {
                 String subctx = path.value();
                 while (subctx.startsWith("/"))
@@ -173,8 +174,8 @@ public class RestfulProxy {
             }
 
             final String ctx = fullContext;
-            MethodForwarder forwarder = methodForwarders.computeIfAbsent(thisMethod, key ->  new MethodForwarder(ctx, key) );
-            Pair<Response, Object> pair = forwarder.forward(request, args);
+            MethodForwarder forwarder = methodForwarders.computeIfAbsent(frame.getMethod(), key ->  new MethodForwarder(ctx, key) );
+            Pair<Response, Object> pair = forwarder.forward(request, frame.getArguments());
             synchronized (proxy) {
                 proxy.lastResponse = pair.key();
             }

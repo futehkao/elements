@@ -108,7 +108,6 @@ public interface Module {
         }
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:CommentedOutCodeLine", "squid:S3776"})
     default Type[] getBindTypes(Class<?> cls) {
         try {
             return bindTypes.get(cls);
@@ -117,9 +116,9 @@ public interface Module {
         }
     }
 
-    public ModuleFactory getFactory();
+    ModuleFactory getFactory();
 
-    public void add(Module module);
+    void add(Module module);
 
     void bindClass(Class cls, Class service);
 

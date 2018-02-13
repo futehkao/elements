@@ -34,6 +34,7 @@ import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.concurrent.ExecutionException;
@@ -74,6 +75,7 @@ public class Interceptor {
      * @param <T> type of prototype
      * @return byte manipulated prototype class
      */
+    @SuppressWarnings("unchecked")
     public static <T> Class<T> newPrototypeClass(Class<T> cls, T prototype) {
         return (Class) new ByteBuddy()
                 .subclass(cls)
@@ -123,7 +125,7 @@ public class Interceptor {
             InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(getInstance(),
                         proxyClass,
                         singleton,
-                        (t,  thisMethod,  args) -> thisMethod.invoke(singleton, args),
+                        ctx -> ctx.invoke(singleton),
                         listener );
             field.set(null, wrapper);
         } catch (Exception e) {
@@ -171,7 +173,7 @@ public class Interceptor {
         try {
             Object target = null;
             if (!cls.isInterface())
-                target = cls.newInstance();
+                target = cls.getDeclaredConstructor().newInstance();
             wrapper = new InterceptorHandlerWrapper(this, proxyClass, target, handler, listener);
         } catch (Exception e) {
             throw new SystemException(e);
@@ -192,7 +194,7 @@ public class Interceptor {
     private <T> T newObject(Class proxyClass) {
         T proxyObject = null;
         try {
-            proxyObject = (T) proxyClass.newInstance();
+            proxyObject = (T) proxyClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new SystemException(e);
         }
@@ -257,7 +259,7 @@ public class Interceptor {
     @FunctionalInterface
     public interface Handler {
         @RuntimeType
-        Object handle(@Origin Method interceptorMethod, @AllArguments() Object[] arguments) throws Throwable;
+        Object handle(@Origin MethodHandle methodHandler, @Origin Method method, @AllArguments() Object[] arguments) throws Throwable;
     }
 
     /*
@@ -276,7 +278,7 @@ public class Interceptor {
         Class proxyClass;
         Interceptor interceptor;
 
-        public InterceptorHandlerWrapper(Interceptor interceptor,
+        InterceptorHandlerWrapper(Interceptor interceptor,
                                          Class proxyClass,
                                          Object target,
                                          InterceptorHandler handler,
@@ -290,7 +292,7 @@ public class Interceptor {
                 targetClass = target.getClass();
         }
 
-        public InterceptorHandlerWrapper(InterceptorHandlerWrapper copy) {
+        InterceptorHandlerWrapper(InterceptorHandlerWrapper copy) {
             this.interceptor = copy.interceptor;
             this.proxyClass = copy.proxyClass;
             this.handler = copy.handler;
@@ -299,19 +301,20 @@ public class Interceptor {
             this.targetClass = copy.targetClass;
         }
 
-        public Object handle(Method interceptorMethod, @RuntimeType  Object[] arguments) throws Throwable {
+        public Object handle(MethodHandle methodHandle, Method method, @RuntimeType  Object[] arguments) throws Throwable {
+            CallFrame frame = new CallFrame(target, methodHandle, method, arguments);
             if (listener != null)
-                listener.preInvocation(target, interceptorMethod, arguments);
+                listener.preInvocation(frame);
             Object ret = null;
             try {
-                ret = handler.invoke(target, interceptorMethod, arguments);
+                ret = handler.invoke(frame);
             } catch (Throwable throwable) {
                 if (listener != null)
-                    return listener.onException(target, interceptorMethod, arguments, throwable);
+                    return listener.onException(frame, throwable);
                 else throw throwable;
             }
             if (listener != null)
-                ret = listener.postInvocation(target, interceptorMethod, arguments, ret);
+                ret = listener.postInvocation(frame, ret);
             return ret;
         }
     }

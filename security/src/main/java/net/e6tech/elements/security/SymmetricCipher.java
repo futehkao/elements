@@ -41,24 +41,29 @@ public class SymmetricCipher {
 
     static final Logger logger = Logger.getLogger();
 
-    private String algorithm = "AES";
-    private String transformation = algorithm + "/CBC/PKCS7PADDING";
-    private int keyLength = 256;
+    private String algorithm;
+    private String transformation;
+    private int keyLength;
     private boolean base64 = false;
 
     static {
         initialize();
     }
 
-    protected SymmetricCipher(String algorithm) {
+    protected SymmetricCipher(String algorithm, int keyLength) {
         this.algorithm = algorithm;
         this.transformation = algorithm + "/CBC/PKCS7PADDING";
+        this.keyLength = keyLength;
         generateKeySpec(); // prime the pump
     }
 
     public static SymmetricCipher getInstance(String algorithm) {
+        return getInstance(algorithm, 256);
+    }
+
+    public static SymmetricCipher getInstance(String algorithm, int keyLength) {
         if (ALGORITHM_AES.equalsIgnoreCase(algorithm)) {
-            return new SymmetricCipher(ALGORITHM_AES);
+            return new SymmetricCipher(ALGORITHM_AES, keyLength);
         } else {
             throw new IllegalArgumentException(algorithm + " is not supported");
         }
@@ -97,8 +102,10 @@ public class SymmetricCipher {
             unlimitedCrypto8();
     }
 
+    @SuppressWarnings("squid:CommentedOutCodeLine")
     private static void unlimitedCrypto9() {
-        Security.setProperty("crypto.policy", "unlimited");
+        // In Java 9, default is unlimited.
+        // Security.setProperty("crypto.policy", "unlimited");
     }
 
     @SuppressWarnings("squid:CommentedOutCodeLine")
