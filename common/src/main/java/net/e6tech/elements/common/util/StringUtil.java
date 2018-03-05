@@ -51,4 +51,10 @@ public class StringUtil {
             return str + new String(chars);
         else return new String(chars) + str;
     }
+
+    public static String trim(String s) {
+        if ((s == null) || s.trim().isEmpty())
+            return null;
+        return s.trim();
+    }
 }
