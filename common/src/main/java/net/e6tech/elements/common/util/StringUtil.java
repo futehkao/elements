@@ -53,7 +53,7 @@ public class StringUtil {
     }
 
     public static String trim(String s) {
-        if ((s == null) || s.trim().isEmpty())
+        if (s == null)
             return null;
         return s.trim();
     }
