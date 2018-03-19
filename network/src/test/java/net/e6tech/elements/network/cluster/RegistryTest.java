@@ -25,7 +25,9 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 /**
  * Created by futeh.
@@ -55,7 +57,7 @@ public class RegistryTest {
 
         registry.register("blah", (sv) -> {
             return ((String)sv[0]).toUpperCase();
-        });
+        }, 0L);
         Thread.sleep(100L);
 
         // routing ServiceMessage
@@ -82,6 +84,11 @@ public class RegistryTest {
                 });
 
         Thread.sleep(2000L);
+
+        Async<Function> async = registry.async("blah",  Function.class, 100l);
+        async.apply(svc -> svc.apply("One more time"))
+                .thenAccept(result -> System.out.println(result));
+        Thread.sleep(2000L);
     }
 
     static class ServiceMessage implements Serializable {
@@ -91,6 +98,7 @@ public class RegistryTest {
             return message.toUpperCase();
         }
     }
+
 
     @Test
     public void async() throws Exception {
@@ -113,7 +121,7 @@ public class RegistryTest {
                 response.map = request.map;
                 return response;
             }
-        });
+        }, 500L);
         Thread.sleep(100L);
 
         Async<X> async = registry.async("blah", X.class, 5000L);
@@ -151,7 +159,7 @@ public class RegistryTest {
                 response.map = request.map;
                 return response;
             }
-        });
+        }, 500L);
         synchronized (this) {
             wait();
         }
@@ -178,7 +186,7 @@ public class RegistryTest {
                 response.map = request.map;
                 return response;
             }
-        });
+        }, 500L);
         synchronized (this) {
             wait();
         }

@@ -120,6 +120,11 @@ public class Atom implements Map<String, Object> {
     }
 
     public <T> T resourceManagerBind(Class<T> cls, T resource) {
+        if (cls == null) {
+            String classDesc = (resource == null) ? "" : " Expecting " + resource.getClass().getName() + " or its super class";
+            logger.error("Please import the appropriate class in the script.{}", classDesc);
+            throw new IllegalArgumentException();
+        }
         resources.unbind(cls);
         return resourceManager.bind(cls, resource);
     }

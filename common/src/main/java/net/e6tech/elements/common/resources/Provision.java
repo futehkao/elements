@@ -37,7 +37,6 @@ public class Provision {
 
     public static Integer cacheBuilderConcurrencyLevel = 32;
 
-    @Inject
     private ResourceManager resourceManager;
 
     public Provision load(Map<String, Object> map) {
@@ -76,6 +75,11 @@ public class Provision {
 
     public ResourceManager getResourceManager() {
         return resourceManager;
+    }
+
+    @Inject
+    public void setResourceManager(ResourceManager resourceManager) {
+        this.resourceManager = resourceManager;
     }
 
     public <T> T getComponentResource(String componentName, String resourceName) {

@@ -44,6 +44,7 @@ class MasterCardARQC {
     private String failureCode;
     private String dataBlock;
     private int derivationType = 0;  // 0 - legacy master, 2 - emv 4.1
+    private String computedARQC;
 
     MasterCardARQC(AtallaSimulator simulator) {
         this.simulator = simulator;
@@ -96,6 +97,10 @@ class MasterCardARQC {
         return this;
     }
 
+    public String getComputedARQC() {
+        return computedARQC;
+    }
+
     protected String process() throws CommandException {
         if (arc == null || arc.length() == 0)
             throw new CommandException(8, new IllegalArgumentException("ARC is null"));
@@ -129,12 +134,12 @@ class MasterCardARQC {
         deriveSessionKey();
 
         // verify ARQC by creating it
-        String computedARQC = computeARQC();
+        computedARQC = computeARQC();
         String arpc;
-        boolean verified = false;
+        boolean verified;
         if (!computedARQC.equals(arqc)) {
             if (failureCode == null || failureCode.length() == 0)
-                return "450##" + sessionKeyCheckDigit + "#"+ imk.getCheckDigit();
+                return "450##" + sessionKeyCheckDigit + "#"+ imk.getCheckDigits() ; // indicator is not needed for no failure code.
             // need to return false and compute arpc with failure code
             arpc = computeARPC(failureCode);
             verified = false;
@@ -143,7 +148,7 @@ class MasterCardARQC {
             verified = true;
         }
 
-        String result = "450#" + arpc + "#" + sessionKeyCheckDigit + "#"+ imk.getCheckDigit();
+        String result = "450#" + arpc + "#" + sessionKeyCheckDigit + "#"+ imk.getCheckDigits();
         if (failureCode != null && failureCode.length() > 0)
             result += (verified) ? "#Y" : "#N";
         return result;

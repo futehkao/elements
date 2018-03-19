@@ -32,9 +32,7 @@ import java.util.function.Consumer;
  * Created by futeh.
  */
 public abstract class CacheFacade<K, V> {
-
-    @Inject(optional = true)
-    protected CacheConfiguration pool;
+    protected CacheConfiguration configuration;
     protected String name;
     protected Class keyClass;
     protected Class valueClass;
@@ -80,9 +78,9 @@ public abstract class CacheFacade<K, V> {
     }
 
     public CacheFacade<K,V> initPool(Consumer<CacheConfiguration> configurator) {
-        if (pool == null) {
-            pool = new CacheConfiguration();
-            configurator.accept(pool);
+        if (configuration == null) {
+            configuration = new CacheConfiguration();
+            configurator.accept(configuration);
         }
         return this;
     }
@@ -99,12 +97,13 @@ public abstract class CacheFacade<K, V> {
         this.name = name;
     }
 
-    public CacheConfiguration getPool() {
-        return pool;
+    public CacheConfiguration getCacheConfiguration() {
+        return configuration;
     }
 
-    public void setPool(CacheConfiguration pool) {
-        this.pool = pool;
+    @Inject(optional = true)
+    public void setCacheConfiguration(CacheConfiguration configuration) {
+        this.configuration = configuration;
     }
 
     public V get(K key) {
@@ -137,10 +136,10 @@ public abstract class CacheFacade<K, V> {
     protected synchronized Cache<K,V> getCache() {
         if (cache != null)
             return cache;
-        if (pool == null) {
+        if (configuration == null) {
             initPool();
         }
-        cache = pool.getCache(name, keyClass, valueClass);
+        cache = configuration.getCache(name, keyClass, valueClass);
         return cache;
     }
 }

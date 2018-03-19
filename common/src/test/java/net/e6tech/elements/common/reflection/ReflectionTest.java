@@ -19,7 +19,6 @@ package net.e6tech.elements.common.reflection;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 /**
  * Created by futeh.
  */

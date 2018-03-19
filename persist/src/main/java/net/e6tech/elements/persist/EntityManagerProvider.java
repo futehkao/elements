@@ -37,17 +37,12 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
     private static final Logger logger = Logger.getLogger();
 
-    @Inject(optional = true)
     private ExecutorService threadPool;
-
-    @Inject(optional = true)
-    private NotificationCenter center;
-
+    private NotificationCenter notificationCenter;
     protected EntityManagerFactory emf;
     private String persistenceUnitName;
     private Map persistenceProperties;
     private Broadcast broadcast;
-
     private long transactionTimeout = 0;
     private boolean monitorTransaction = true;
     private long longTransaction = 200L;  // queries that exceeds this value is considered a long transaction.
@@ -59,6 +54,24 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private boolean monitoring = false;
 
     public EntityManagerProvider() {
+    }
+
+    public ExecutorService getThreadPool() {
+        return threadPool;
+    }
+
+    @Inject(optional = true)
+    public void setThreadPool(ExecutorService threadPool) {
+        this.threadPool = threadPool;
+    }
+
+    public NotificationCenter getNotificationCenter() {
+        return notificationCenter;
+    }
+
+    @Inject(optional = true)
+    public void setNotificationCenter(NotificationCenter center) {
+        this.notificationCenter = center;
     }
 
     public long getMonitorIdle() {

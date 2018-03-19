@@ -117,14 +117,20 @@ public class Events {
     public static class Registration {
         private RegisterReference reference;
         private Function<Object[], Object> function;
+        private long timeout;
 
-        public Registration(String path, Function<Object[], Object> function) {
+        public Registration(String path, Function<Object[], Object> function, long timeout) {
             this.reference = new RegisterReference(path);
             this.function = function;
+            this.timeout = timeout;
         }
 
         public Function<Object[], Object> function() {
             return function;
+        }
+
+        public long timeout() {
+            return timeout;
         }
     }
 

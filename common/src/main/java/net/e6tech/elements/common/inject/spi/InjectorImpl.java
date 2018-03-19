@@ -22,6 +22,7 @@ import com.google.common.cache.LoadingCache;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Named;
+import net.e6tech.elements.common.reflection.Lambda;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
@@ -34,6 +35,7 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 /**
@@ -198,6 +200,7 @@ public class InjectorImpl implements Injector {
         protected Class type = void.class;
         protected String property = "";
 
+        private BiConsumer lambdaSetter;
         private MethodHandle setter;
         private Type setterType;
         private AccessibleObject accessible;
@@ -207,6 +210,7 @@ public class InjectorImpl implements Injector {
                 accessible = setter;
                 setterType = setter.getGenericParameterTypes()[0];
                 this.setter = lookup.unreflect(setter);
+                lambdaSetter = Lambda.reflectSetter(lookup, setter);
             } catch (Exception e) {
                 throw new SystemException(e);
             }
@@ -239,7 +243,10 @@ public class InjectorImpl implements Injector {
                     if (property.length() > 0 && value != null) {
                         value = Reflection.getProperty(value, property);
                     }
-                    setter.invoke(target, value);
+                    if (lambdaSetter != null)
+                        lambdaSetter.accept(target, value);
+                    else
+                        setter.invoke(target, value);
                 } catch (IllegalAccessException e) {
                     throw new SystemException(e);
                 } catch (InvocationTargetException e) {

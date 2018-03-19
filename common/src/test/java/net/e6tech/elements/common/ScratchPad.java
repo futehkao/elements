@@ -17,12 +17,10 @@ package net.e6tech.elements.common;
 
 import net.e6tech.elements.common.inject.BindPropA;
 import net.e6tech.elements.common.inject.BindPropX;
-import net.e6tech.elements.common.util.lambda.Each;
 import org.junit.jupiter.api.Test;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
@@ -30,11 +28,14 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by futeh.
  */
 public class ScratchPad {
+
     @Test
     void scratch() throws Exception {
         String settlementDate = "20150911";
@@ -87,6 +88,21 @@ public class ScratchPad {
             field.set(x, a);
         }
         System.out.println("reflection " + (System.currentTimeMillis() - start));
+    }
+
+    @Test
+    void sublist() {
+        List<Long> list = new ArrayList<>();
+        list.add(0L);
+        list.add(1L);
+        list.add(2L);
+        list.add(3L);
+        list.add(4L);
+        list.add(5L);
+
+        list.subList(0, 3);
+        List<Long> subList = list.subList(6, 6);
+        System.out.println(subList);
     }
 
 }

@@ -39,6 +39,7 @@ public abstract class Command extends Message {
         commands.put("37", ChangePIN.class);
         commands.put("32", VerifyPIN.class);
         commands.put("31", TranslatePIN.class);
+        commands.put("7E", CheckDigits.class);
         commands.put("11B", ImportWorkingKey.class);
         commands.put("335", TranslatePINBlock.class);
         commands.put("350", VerifyARQC.class);

@@ -30,6 +30,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -62,7 +63,7 @@ public class AtallaSimulator {
     private int port = 7000;
     private byte[] masterKey = Hex.toBytes(MASTER_KEY); // triple des is 24 bytes,
     private boolean stopped = true;
-    protected Map<String, String> keys = new HashMap<>();
+    protected Map<String, String> keys = new LinkedHashMap<>();
 
     public AtallaSimulator() throws GeneralSecurityException {
         Field[] fields = AtallaSimulator.class.getDeclaredFields();
@@ -71,7 +72,10 @@ public class AtallaSimulator {
                     && f.getType().isAssignableFrom(String.class)) {
                 f.setAccessible(true);
                 try {
-                    keys.put(f.getName(), (String) f.get(null));
+                    String value = (String) f.get(null);
+                    String[] keyComponents = value.split(",");
+                    if (keyComponents.length == 2)
+                        keys.put(f.getName(), value);
                 } catch (IllegalAccessException e) {
                     Logger.suppress(e);
                 }
@@ -206,10 +210,20 @@ public class AtallaSimulator {
     }
 
     public static void main(String ... args) throws Exception  {
-        byte[] kekKey = Hex.toBytes("0123456789ABCDEFFEDCBA9876543210");
-        String header = "1KDEE000";
-        AtallaSimulator atalla = (new AtallaSimulator());
-        AKB akb = new AKB(header, atalla.masterKey, kekKey);
-        akb.decryptKey(atalla.masterKey);
+        AtallaSimulator simulator = new AtallaSimulator();
+        for (String keyType : simulator.keys.keySet()) {
+            AKB akb = simulator.getKey(keyType);
+            String headerAndKey = simulator.keys.get(keyType);
+            String[] fields = headerAndKey.split(",");
+            System.out.println("Key: " + keyType);
+            System.out.println("Key 1: " + fields[1]);
+            System.out.println("Check Digits: " + akb.getCheckDigits());
+            System.out.println();
+        }
+
+        AKB akb = simulator.asAKB("1mENE000,9E15204313F7318A CB79B90BD986AD29");
+        System.out.println("Key: " + "9E15204313F7318A CB79B90BD986AD29");
+        System.out.println("Check Digits: " + akb.getCheckDigits());
+        System.out.println();
     }
 }

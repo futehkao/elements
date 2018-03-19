@@ -16,26 +16,22 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
-import net.e6tech.elements.security.Hex;
+import net.e6tech.elements.common.logging.Logger;
 
-/**
- * field 0 - 11B
- * field 1 - variant, only 0 is supported
- * field 2 - working encrypted with kek
- * field 3 - AKB kek encrypted with master key
- *
- * return 21B, AKB of the working key encrypted with master key, check digits
- *
- * Created by futeh.
- */
-public class ImportWorkingKey extends Command {
-    @Override
-    protected String doProcess() throws CommandException {
+import java.security.GeneralSecurityException;
+
+public class CheckDigits extends Command {
+
+    public String doProcess() {
+        if (!"S".equals(getField(1)))
+            return "00#000100";
+
         try {
-            AKB akb = simulator.importKey(new AKB(getField(3)), Hex.toBytes(getField(2)));
-            return "21B#" + akb.getKeyBlock() + "#" + akb.getCheckDigits();
-        } catch (Exception e) {
-            AtallaSimulator.logger.error("ImportWorkingKey", e);
+            AKB akb = new AKB(getField(3));
+            simulator.decryptKey(akb);
+            return "8E#" + getField(1) + "#" + akb.getCheckDigits() + "#";
+        } catch (GeneralSecurityException e) {
+            Logger.suppress(e);
         }
         return "00#000000";
     }

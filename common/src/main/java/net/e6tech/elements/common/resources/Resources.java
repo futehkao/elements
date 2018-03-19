@@ -53,12 +53,8 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     private static Logger logger = Logger.getLogger(Resources.class);
     private static final String ABORT_DUE_TO_EXCEPTION = "Aborting due to exception";
-
     private ResourceManager resourceManager;
-
-    @Inject(optional = true)
     private Retry retry;
-
     protected ResourcesState state;
     protected Configurator configurator = new Configurator();
     protected Configurator initialConfigurator;
@@ -72,6 +68,15 @@ public class Resources implements AutoCloseable, ResourcePool {
         this.resourceManager = resourceManager;
         state = new ResourcesState(this);
         getModule().bindInstance(getClass(), this);
+    }
+
+    public Retry getRetry() {
+        return retry;
+    }
+
+    @Inject(optional = true)
+    public void setRetry(Retry retry) {
+        this.retry = retry;
     }
 
     void setPreOpen(Consumer<? extends Resources> preOpen) {

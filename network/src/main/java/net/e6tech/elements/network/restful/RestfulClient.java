@@ -65,8 +65,6 @@ public class RestfulClient {
     private SSLSocketFactory sslSocketFactory;
     private int connectionTimeout = -1;
     private int readTimeout = -1;
-
-    @Inject(optional = true)
     private PrintWriter printer;
 
     public RestfulClient() {}
@@ -131,6 +129,7 @@ public class RestfulClient {
         return printer;
     }
 
+    @Inject(optional = true)
     public void setPrinter(PrintWriter printer) {
         this.printer = printer;
     }

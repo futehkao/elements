@@ -25,9 +25,7 @@ import java.util.function.Consumer;
  * Created by futeh on 12/19/15.
  */
 public class ResourcesFactory implements Configurable<ResourcesFactory> {
-
-    @Inject
-    protected Provision provision;
+    private Provision provision;
 
     private Configurator configurator = new Configurator();
 
@@ -57,5 +55,10 @@ public class ResourcesFactory implements Configurable<ResourcesFactory> {
 
     public Provision getProvision() {
         return provision;
+    }
+
+    @Inject
+    public void setProvision(Provision provision) {
+        this.provision = provision;
     }
 }

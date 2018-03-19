@@ -34,7 +34,7 @@ public class AKB {
     public static final String DES_EDE_CBC_NO_PADDING = "DESede/CBC/NoPadding";
     public static final String ALGORITHM_DES_EDE = "DESede";
     private String keyBlock;
-    String checkDigit;
+    String checkDigits;
 
     public AKB(String keyBlock) {
         this.keyBlock = keyBlock;
@@ -42,7 +42,7 @@ public class AKB {
 
     public AKB(String header, byte[] keyEncryptionkey, byte[] key) throws GeneralSecurityException {
         keyBlock = generateAKB(header, keyEncryptionkey, key);
-        checkDigit = calculateCheckDigits(key);
+        checkDigits = calculateCheckDigits(key);
     }
 
     public static byte[] normalizeKey(byte[] key) throws GeneralSecurityException {
@@ -66,8 +66,8 @@ public class AKB {
         return keyBlock;
     }
 
-    public String getCheckDigit() {
-        return checkDigit;
+    public String getCheckDigits() {
+        return checkDigits;
     }
 
     public String getHeader() {
@@ -118,8 +118,8 @@ public class AKB {
         String mac = generateAKB(getHeader(), keyEncryptionKey, key).split(",")[2];
         if (!mac.equals(getMac())) 
             throw new GeneralSecurityException("Mac not verified");
-        if (checkDigit == null)
-            checkDigit = calculateCheckDigits(key);
+        if (checkDigits == null)
+            checkDigits = calculateCheckDigits(key);
         return key;
     }
 

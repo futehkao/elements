@@ -22,6 +22,8 @@ import akka.actor.Props;
 import akka.pattern.Patterns;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.resources.Resources;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -36,21 +38,21 @@ public class WorkerPoolTest {
     public void workers() throws Exception {
 
         // Create an Akka system
-        ActorSystem system = ActorSystem.create("ClusterSystem");
-        ActorRef pool = system.actorOf(Props.create(WorkerPool.class));
+        Genesis genesis = new Genesis();
+        genesis.setName("Genesis");
+        genesis.initialize((Resources) null);
+
+        ActorRef pool = genesis.getWorkerPool();
 
         for (int i = 0; i < 5; i++) {
             final int id = i;
-            Patterns.ask(pool, new Runnable() {
-                @Override
-                public void run() {
+            Patterns.ask(pool, (Runnable) () -> {
                     System.out.println("message " + id);
                     try {
                         Thread.sleep(200L);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                }
             }, 500L);
         }
 

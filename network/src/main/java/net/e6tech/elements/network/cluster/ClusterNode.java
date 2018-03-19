@@ -39,7 +39,6 @@ public class ClusterNode implements Initializable {
 
     private String name;
     private String configuration;
-    @Inject(optional = true)
     private Genesis genesis;
     private ActorRef membership;
     private Map<Address, Member> members = new HashMap<>();
@@ -75,6 +74,15 @@ public class ClusterNode implements Initializable {
 
     public void setConfiguration(String configuration) {
         this.configuration = configuration;
+    }
+
+    public Genesis getGenesis() {
+        return genesis;
+    }
+
+    @Inject(optional = true)
+    public void setGenesis(Genesis genesis) {
+        this.genesis = genesis;
     }
 
     public Broadcast getBroadcast() {

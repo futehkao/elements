@@ -15,7 +15,11 @@ limitations under the License.
 */
 package net.e6tech.elements.web.security.vault;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.inject.spi.InjectorImpl;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.cache.CacheFacade;
@@ -33,6 +37,8 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.security.spec.RSAPublicKeySpec;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static net.e6tech.elements.security.vault.Constants.mapper;
 
@@ -43,15 +49,45 @@ import static net.e6tech.elements.security.vault.Constants.mapper;
 public class KeyServer {
 
     private static Logger logger = Logger.getLogger();
+    private VaultManager vaultManager;
+    private Provision provision;
+    private LoadingCache<String, SecretKey> clientKeys = CacheBuilder.newBuilder()
+            .maximumSize(1000)
+            .initialCapacity(20)
+            .expireAfterWrite(60 * 60 * 1000L, TimeUnit.MILLISECONDS)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build(new CacheLoader<String, SecretKey>() {
+                public SecretKey load(String clientKey) throws Exception {
+                    byte[] decrypted = vaultManager.decryptPrivate(clientKey);
+                    return new SecretKeySpec(decrypted, vaultManager.getSymmetricCipher().getAlgorithm());
+                }
+            });
+
+    public VaultManager getVaultManager() {
+        return vaultManager;
+    }
 
     @Inject
-    VaultManager vaultManager;
+    public void setVaultManager(VaultManager vaultManager) {
+        this.vaultManager = vaultManager;
+    }
+
+    public Provision getProvision() {
+        return provision;
+    }
 
     @Inject
-    Provision provision;
+    public void setProvision(Provision provision) {
+        this.provision = provision;
+    }
 
-    @Inject
-    CacheFacade<String, SecretKey> clientKeys;
+    public LoadingCache<String, SecretKey> getClientKeys() {
+        return clientKeys;
+    }
+
+    public void setClientKeys(LoadingCache<String, SecretKey> clientKeys) {
+        this.clientKeys = clientKeys;
+    }
 
     @GET
     @Produces({MediaType.APPLICATION_JSON})
@@ -82,11 +118,7 @@ public class KeyServer {
         Action action = null;
         SecretKey clientKey = null;
         try {
-            clientKey  = clientKeys.get(request.getClientKey(), () -> {
-                byte[] decrypted = vaultManager.decryptPrivate(request.getClientKey());
-                return new SecretKeySpec(decrypted, vaultManager.getSymmetricCipher().getAlgorithm());
-            });
-
+            clientKey = clientKeys.get(request.getClientKey());
             byte[] decrypted = vaultManager.getSymmetricCipher().decrypt(clientKey, request.getEncryptedData(), null);
             String encoded = new String(decrypted, "UTF-8");
             Class requestClass = getClass().getClassLoader().loadClass(clsName);

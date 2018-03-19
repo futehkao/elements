@@ -84,8 +84,7 @@ public interface Module {
             }
             if (!found) {
                 if (bindClass.getGenericSuperclass() instanceof ParameterizedType
-                        && bindClass.getTypeParameters().length == 0
-                        && bindClass.isAnonymousClass()) {
+                        && bindClass.getTypeParameters().length == 0) {
                     // this is for anonymous class
                     // for example, new CacheFacade<String, SecretKey>(KeyServer, "clientKeys") {}
                     list.add(bindClass.getGenericSuperclass());

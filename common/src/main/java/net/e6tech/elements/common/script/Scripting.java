@@ -319,6 +319,8 @@ public class Scripting {
         try {
             String path = normalizePath(originalPath);
             paths = FileUtil.listFiles(path, getExtension());
+            if (paths == null || path.length() == 0)
+                throw new IOException("Script not found " + originalPath);
         } catch (IOException e) {
             throw new ScriptException(e);
         }

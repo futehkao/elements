@@ -22,6 +22,7 @@ import groovy.lang.Script;
 import net.e6tech.elements.common.logging.Logger;
 
 import javax.script.ScriptException;
+import java.io.IOException;
 import java.util.Properties;
 
 
@@ -29,6 +30,8 @@ import java.util.Properties;
  * Created by futeh.
  */
 public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends Script {
+
+    private static final Logger logger = Logger.getLogger();
 
     T scriptShell;
 
@@ -58,8 +61,12 @@ public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends 
     public Object tryExec(String path) {
         try {
             return getShell().getScripting().exec(path);
-        } catch (Exception e) {
-            Logger.suppress(e);
+        } catch (ScriptException e) {
+            if (e.getCause() instanceof IOException) {
+                logger.info("Script " + path + " not processed: " + e.getCause().getMessage());
+            } else {
+                logger.warn("Script not processed due to error.", e);
+            }
             return null;
         }
     }

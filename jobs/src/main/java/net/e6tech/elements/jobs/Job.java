@@ -36,6 +36,7 @@ import java.lang.reflect.Method;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by futeh.
@@ -57,6 +58,7 @@ public class Job implements Initializable, Startable, LaunchListener {
     private Method invocation;
     private Object target;
     private String targetMethod;
+    private AtomicInteger running = new AtomicInteger(0);
 
     public JobServer getJobServer() {
         return jobServer;
@@ -118,9 +120,11 @@ public class Job implements Initializable, Startable, LaunchListener {
     @JmxAttributeMethod
     public boolean isRunning() {
         try {
-            return scheduler.getJobDetail(new JobKey(name, group)) != null;
-        } catch (SchedulerException e) {
-            Logger.suppress(e);
+            JobDetail detail = scheduler.getJobDetail(new JobKey(name, group));
+            if (detail == null)
+                return false;
+            else
+                return running.get() > 0;
         } catch (Exception th) {
             Logger.suppress(th);
         }
@@ -200,6 +204,7 @@ public class Job implements Initializable, Startable, LaunchListener {
     @SuppressWarnings("squid:S00112")
     public Object execute() throws Throwable {
         try {
+            running.incrementAndGet();
             // this call is executed using a different thread so that we need to set up
             // logging context.
             if (jobServer != null &&
@@ -210,6 +215,8 @@ public class Job implements Initializable, Startable, LaunchListener {
         } catch (InvocationTargetException ex) {
             Logger.suppress(ex);
             throw ex.getTargetException();
+        } finally {
+            running.decrementAndGet();
         }
     }
 

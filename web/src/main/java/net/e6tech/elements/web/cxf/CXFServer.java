@@ -49,28 +49,17 @@ import java.util.concurrent.ExecutorService;
  */
 @SuppressWarnings("squid:S134")
 public class CXFServer implements Initializable, Startable {
-
-    @Inject
-    protected Provision provision;
-
-    @Inject
-    protected Interceptor interceptor;
-
-    protected List<Server> servers = new ArrayList<>();
-    protected List<URL> urls = new ArrayList<>();
-    protected String keyStoreFile;
-    protected char[] keyStorePassword;
-    protected char[] keyManagerPassword;
-    protected SelfSignedCert selfSignedCert;
-
-    @Inject(optional = true)
-    protected ExecutorService executor;
-
-    @Inject(optional = true)
-    protected QueuedThreadPool queuedThreadPool;
-
-    protected boolean initialized = false;
-
+    private Provision provision;
+    private Interceptor interceptor;
+    private List<Server> servers = new ArrayList<>();
+    private List<URL> urls = new ArrayList<>();
+    private String keyStoreFile;
+    private char[] keyStorePassword;
+    private char[] keyManagerPassword;
+    private SelfSignedCert selfSignedCert;
+    private ExecutorService executor;
+    private QueuedThreadPool queuedThreadPool;
+    private boolean initialized = false;
     private boolean started = false;
 
     public void setAddresses(List<String> addresses) throws MalformedURLException {
@@ -78,6 +67,24 @@ public class CXFServer implements Initializable, Startable {
             URL url = new URL(address);
             urls.add(url);
         }
+    }
+
+    public Provision getProvision() {
+        return provision;
+    }
+
+    @Inject
+    public void setProvision(Provision provision) {
+        this.provision = provision;
+    }
+
+    public Interceptor getInterceptor() {
+        return interceptor;
+    }
+
+    @Inject
+    public void setInterceptor(Interceptor interceptor) {
+        this.interceptor = interceptor;
     }
 
     protected List<URL> getURLs() {
@@ -112,8 +119,18 @@ public class CXFServer implements Initializable, Startable {
         return executor;
     }
 
+    @Inject(optional = true)
     public void setThreadPool(ExecutorService executor) {
         this.executor = executor;
+    }
+
+    public QueuedThreadPool getQueuedThreadPool() {
+        return queuedThreadPool;
+    }
+
+    @Inject(optional = true)
+    public void setQueuedThreadPool(QueuedThreadPool queuedThreadPool) {
+        this.queuedThreadPool = queuedThreadPool;
     }
 
     protected void registerServer(Server server) {

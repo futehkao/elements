@@ -22,6 +22,7 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.serialization.ObjectReference;
 import net.e6tech.elements.common.util.InitialContextFactory;
 import net.e6tech.elements.persist.*;
+import org.hibernate.SessionFactory;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.internal.SessionImpl;
@@ -114,6 +115,7 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         SessionFactoryImplementor  factory = session.getSessionFactory();
         resources.bind(SessionImpl.class, session);
         resources.bind(SessionFactoryImplementor.class, factory);
+        resources.bind(SessionFactory.class, factory);
 
         // cannot call resources.inject(interceptor), resources is not fully open yet
         if (session.getInterceptor() instanceof PersistenceInterceptor) {

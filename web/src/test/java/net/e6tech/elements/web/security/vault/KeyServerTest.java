@@ -56,7 +56,7 @@ public class KeyServerTest {
         ((FileStore) manager.getUserLocalStore()).setFileName(tmpVaultFilename);
         manager.open(dualEntry);
 
-        keyServer.vaultManager = manager;
+        keyServer.setVaultManager(manager);
         String pubKey = keyServer.getPublicKey();
         SharedKey sharedKey = mapper.readValue(pubKey, SharedKey.class);
         RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(sharedKey.getModulus(), sharedKey.getPublicExponent());

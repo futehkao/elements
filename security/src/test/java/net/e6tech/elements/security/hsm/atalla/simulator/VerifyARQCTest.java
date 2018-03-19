@@ -16,8 +16,14 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
+import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.security.Hex;
 import net.e6tech.elements.security.hsm.atalla.Message;
 import org.junit.jupiter.api.Test;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -56,5 +62,69 @@ class VerifyARQCTest extends CommandTest<VerifyARQC> {
         fields[9] = "";
         message = getCommand().process();
         assertTrue(message.getField(1).length() == 0);
+
+    }
+
+    @Test
+    void arqc() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(80);
+        String arqc = "CAFD4EAC190E5BFD";
+
+        String amount = "000000001000";
+        String otherAmount = "000000000000";
+        String terminalCountry = "0840";
+        String terminalResult = "0000000000";
+        String txCurrency = "0840";
+        String txDate = "180222";
+        String txType = "00";
+        String unpredictable = "2AC2443E";
+        String aip = "5800";
+        String atc = "0012";
+        String cvr = "250000044000";
+        String dataBlock = amount + otherAmount + terminalCountry + terminalResult + txCurrency + txDate + txType + unpredictable + aip + atc + cvr + "80";
+        String diversification = "001200002AC2443E";
+        String arc = "0010";
+        String failureCode = "0000";
+        String pan = "5555550000000002";
+
+        MasterCardARQC mc = new MasterCardARQC(simulator);
+        mc.imk(simulator.asAKB(simulator.IMK_ARQC))
+                .pan(pan)
+                .cardSequence("")
+                .diversification(diversification)
+                .arqc(arqc)
+                .dataBlock(dataBlock)
+                .arc(arc)
+                .failureCode(failureCode)
+                .process();
+
+        assertTrue(mc.getComputedARQC().equals(arqc));
+
+    }
+
+    @Test
+    void arqcWithSequnce() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(80);
+        String arqc = "E6CB2473173FDEE7";
+        String dataBlock = "00000000100000000000000008400000000000084018022200333196465800001325000004400080";
+        String diversification = "0013000033319646";
+        String arc = "0010";
+        String failureCode = "0000";
+        String pan = "5555550000000002";
+
+        MasterCardARQC mc = new MasterCardARQC(simulator);
+        mc.imk(simulator.asAKB(simulator.IMK_ARQC))
+                .pan(pan)
+                .cardSequence("01")
+                .diversification(diversification)
+                .arqc(arqc)
+                .dataBlock(dataBlock)
+                .arc(arc)
+                .failureCode(failureCode)
+                .process();
+
+        assertTrue(mc.getComputedARQC().equals(arqc));
+
+
     }
 }

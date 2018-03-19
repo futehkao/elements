@@ -51,6 +51,6 @@ public class TranslatePINBlock extends Command {
         run(5, () -> simulator.decryptKey(kpeIn));
         run(6, () -> simulator.decryptKey(kpeOut));
         byte[] encrypted = run(6, () -> simulator.encrypt(new AKB(getField(6)), outgoing.getEncoding()));
-        return "435#" + Hex.toString(encrypted) + "#Y#" + kpeIn.getCheckDigit() + "#" + kpeOut.getCheckDigit() + "##";
+        return "435#" + Hex.toString(encrypted) + "#Y#" + kpeIn.getCheckDigits() + "#" + kpeOut.getCheckDigits() + "##";
     }
 }

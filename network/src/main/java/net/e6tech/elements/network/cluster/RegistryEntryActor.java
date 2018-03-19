@@ -25,6 +25,9 @@ import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import akka.pattern.Patterns;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by futeh.
@@ -42,11 +45,11 @@ class RegistryEntryActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     Cluster cluster = Cluster.get(getContext().system());
     Events.Registration registration;
-    ActorRef workers;
+    ActorRef workPool;
 
-    public RegistryEntryActor(Events.Registration registration, ActorRef workers) {
+    public RegistryEntryActor(Events.Registration registration, ActorRef workPool) {
         this.registration = registration;
-        this.workers = workers;
+        this.workPool = workPool;
     }
 
     //subscribe to cluster changes
@@ -76,16 +79,25 @@ class RegistryEntryActor extends AbstractActor {
         }).match(ClusterEvent.UnreachableMember.class, member -> log.info("Member detected as unreachable: {}", member.member()))
                 .match(ClusterEvent.MemberRemoved.class, member -> log.info("Member is Removed: {}", member.member()))
                 .match(Events.Invocation.class, message -> {
-            final ActorRef sender = getSender();
-            final ActorRef self = getSelf();
-            try {
-                Object ret = registration.function().apply(message.arguments());
-                sender.tell(new Events.Response(ret), self);
-            } catch (RuntimeException ex) {
-                Throwable throwable = ex.getCause();
-                if (throwable == null) throwable = ex;
-                sender.tell(new Status.Failure(throwable), self);
-            }
+                    final ActorRef sender = getSender();
+                    final ActorRef self = getSelf();
+                    try {
+                        if (workPool != null && registration.timeout() > 0) {
+                            Patterns.ask(workPool, (Runnable) () -> {
+                                Object ret = registration.function().apply(message.arguments());
+                                sender.tell(new Events.Response(ret), self);
+                            }, registration.timeout());
+                        } else {
+                            CompletableFuture.runAsync(() -> {
+                                Object ret = registration.function().apply(message.arguments());
+                                sender.tell(new Events.Response(ret), self);
+                            });
+                        }
+                    } catch (RuntimeException ex) {
+                        Throwable throwable = ex.getCause();
+                        if (throwable == null) throwable = ex;
+                        sender.tell(new Status.Failure(throwable), self);
+                    }
         }).build();
     }
 

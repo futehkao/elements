@@ -39,7 +39,7 @@ public class GenerateCVV extends Command {
             AKB akb = new AKB(getField(2));
             byte[] kcvv = akb.decryptKey(simulator.masterKeyBytes());
             String cvv = generateVisaCVV(getField(4), kcvv, 8);
-            return "6D#" + cvv + "#" + akb.checkDigit + "##";
+            return "6D#" + cvv + "#" + akb.checkDigits + "##";
         } catch (GeneralSecurityException e) {
             Logger.suppress(e);
         }

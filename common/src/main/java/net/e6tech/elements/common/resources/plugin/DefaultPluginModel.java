@@ -22,7 +22,7 @@ import net.e6tech.elements.common.resources.Resources;
 import java.util.Optional;
 
 public class DefaultPluginModel implements PluginModel {
-    @Inject
+
     private Resources resources;
 
     public static DefaultPluginModel from(Resources resources) {
@@ -37,6 +37,11 @@ public class DefaultPluginModel implements PluginModel {
     @Override
     public Resources getResources() {
         return resources;
+    }
+
+    @Inject
+    public void setResources(Resources resources) {
+        this.resources = resources;
     }
 
     @Override

@@ -75,29 +75,15 @@ public class JaxRSServer extends CXFServer {
     private static final String REGISTER_BEAN = "registerBean";
     private static final String NAME = "name";
     private static Logger messageLogger = Logger.getLogger(JaxRSServer.class.getName() + ".message");
-
     private static Map<Integer, ServerFactorBeanEntry> entries = new Hashtable();
-
     private static Logger logger = Logger.getLogger();
 
-    @Inject(optional = true)
     private Observer headerObserver;
-
     private List<Map<String, Object>> resources = new ArrayList<>();
-
-    @Inject(optional = true)
     private ExceptionMapper exceptionMapper;
-
-    @Inject(optional = true)
-    private ExecutorService threadPool;
-
     private Map<String, Object> instances = new Hashtable<>();
-
     private boolean corsFilter = false;
-
     private boolean measurement = false;
-
-    @Inject(optional = true)
     private SecurityAnnotationEngine securityAnnotationEngine;
 
     public static Logger getLogger() {
@@ -108,6 +94,7 @@ public class JaxRSServer extends CXFServer {
         JaxRSServer.logger = logger;
     }
 
+    @Inject(optional = true)
     public Observer getHeaderObserver() {
         return headerObserver;
     }
@@ -128,6 +115,7 @@ public class JaxRSServer extends CXFServer {
         return exceptionMapper;
     }
 
+    @Inject(optional = true)
     public void setExceptionMapper(ExceptionMapper exceptionMapper) {
         this.exceptionMapper = exceptionMapper;
     }
@@ -152,6 +140,7 @@ public class JaxRSServer extends CXFServer {
         return securityAnnotationEngine;
     }
 
+    @Inject(optional = true)
     public void setSecurityAnnotationEngine(SecurityAnnotationEngine securityAnnotationEngine) {
         this.securityAnnotationEngine = securityAnnotationEngine;
     }
@@ -198,7 +187,7 @@ public class JaxRSServer extends CXFServer {
             if (resourceClassName == null)
                 throw new SystemException("Missing resource class in resources map");
             try {
-                resourceClass = provision.getClass().getClassLoader().loadClass(resourceClassName);
+                resourceClass = getProvision().getClass().getClassLoader().loadClass(resourceClassName);
             } catch (ClassNotFoundException e) {
                 throw new SystemException(e);
             }
@@ -223,9 +212,9 @@ public class JaxRSServer extends CXFServer {
                 if (hObserver != null)
                     res.inject(hObserver);
             } else {
-                provision.inject(instance);
+                getProvision().inject(instance);
                 if (hObserver != null)
-                    provision.inject(hObserver);
+                    getProvision().inject(hObserver);
             }
 
             if (securityAnnotationEngine != null)
@@ -236,9 +225,9 @@ public class JaxRSServer extends CXFServer {
                 resourceProvider = new SharedResourceProvider(map, instance, hObserver);
                 String beanName = (String) map.get(REGISTER_BEAN);
                 if (beanName != null)
-                    provision.getResourceManager().registerBean(beanName, instance);
+                    getProvision().getResourceManager().registerBean(beanName, instance);
             } else {
-                resourceProvider = new InstanceResourceProvider(map, resourceClass, res.getModule(), provision, hObserver);
+                resourceProvider = new InstanceResourceProvider(map, resourceClass, res.getModule(), getProvision(), hObserver);
             }
 
             for (ServerFactorBeanEntry entry : entryList)
@@ -333,8 +322,8 @@ public class JaxRSServer extends CXFServer {
         Runnable runnable = () -> messageLogger.trace(message);
 
         if (messageLogger.isTraceEnabled()) {
-            if (threadPool != null) {
-                threadPool.execute(runnable);
+            if (getThreadPool() != null) {
+                getThreadPool().execute(runnable);
             } else {
                 runnable.run();
             }
@@ -382,7 +371,7 @@ public class JaxRSServer extends CXFServer {
                     res.rebind((Class<ExceptionMapper>) exceptionMapper.getClass(), exceptionMapper);
                 }
                 });
-            return interceptor.newInterceptor(instance, new Handler(uow, map, methods, cloneObserver, message));
+            return getInterceptor().newInterceptor(instance, new Handler(uow, map, methods, cloneObserver, message));
         }
     }
 
@@ -496,12 +485,12 @@ public class JaxRSServer extends CXFServer {
         public Object getInstance(Message m) {
             Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
             if (proxy == null) {
-                proxy = interceptor.newInterceptor(super.getInstance(m), frame -> {
+                proxy = getInterceptor().newInterceptor(super.getInstance(m), frame -> {
                     try {
                         checkInvocation(frame.getMethod(), frame.getArguments());
                         if (cloneObserver != null) {
                             HttpServletRequest request = (HttpServletRequest) m.get(AbstractHTTPDestination.HTTP_REQUEST);
-                            provision.inject(cloneObserver);
+                            getProvision().inject(cloneObserver);
                             cloneObserver.beforeInvocation(request, frame.getTarget(), frame.getMethod(), frame.getArguments());
                         }
                         long start = System.currentTimeMillis();

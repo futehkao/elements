@@ -112,7 +112,11 @@ public class Registry {
     }
 
     public <R> void register(String path, Function<Object[], R> function) {
-        Patterns.ask(registrar, new Events.Registration(path, (Function<Object[], Object>) function), timeout);
+        Patterns.ask(registrar, new Events.Registration(path, (Function<Object[], Object>) function, 0L), this.timeout);
+    }
+
+    public <R> void register(String path, Function<Object[], R> function, long timeout) {
+        Patterns.ask(registrar, new Events.Registration(path, (Function<Object[], Object>) function, timeout), this.timeout);
     }
 
     /**
@@ -124,7 +128,7 @@ public class Registry {
      * @param <T> type of implementation
      */
     @SuppressWarnings({"squid:S1067", "squid:S3776"})
-    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation) {
+    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, long timeout) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
 
@@ -145,7 +149,7 @@ public class Registry {
                                 Logger.suppress(e);
                                 throw new SystemException(e.getCause());
                             }
-                        });
+                        }, timeout);
             }
         }
     }

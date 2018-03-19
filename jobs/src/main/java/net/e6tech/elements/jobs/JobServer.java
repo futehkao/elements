@@ -35,8 +35,16 @@ public class JobServer {
     private Map<String, Job> jobs = new LinkedHashMap<>();
     Scheduler scheduler;
 
-    @Inject
     ResourceManager resourceManager;
+
+    public ResourceManager getResourceManager() {
+        return resourceManager;
+    }
+
+    @Inject
+    public void setResourceManager(ResourceManager resourceManager) {
+        this.resourceManager = resourceManager;
+    }
 
     public List<String> listJobs() {
         List<String> list = new ArrayList<>(jobs.keySet().size());
