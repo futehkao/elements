@@ -77,6 +77,8 @@ public abstract class Command extends Message {
         } catch (CommandException e) {
             Logger.suppress(e);
             return new Message("<00#" + e.error() + ">");
+        } catch (Exception e) {
+            return new Message("<00#0800" + CommandException.REVISION + "#>");
         }
     }
 

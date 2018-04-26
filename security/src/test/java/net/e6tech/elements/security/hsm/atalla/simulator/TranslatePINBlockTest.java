@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
-public class TransactionPINBlockTest extends CommandTest<TranslatePINBlock> {
+public class TranslatePINBlockTest extends CommandTest<TranslatePINBlock> {
 
     private Message message;
 

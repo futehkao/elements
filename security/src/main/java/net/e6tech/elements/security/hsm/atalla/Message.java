@@ -29,7 +29,9 @@ public class Message {
         parse(message);
     }
 
-    protected void parse(String msg) {
+    private void parse(String msg) {
+        if (msg == null)
+            throw new BadMessageException("Null message");
         String message = msg;
         int beginIndex = message.indexOf('<');
         int endIndex = message.lastIndexOf('>');

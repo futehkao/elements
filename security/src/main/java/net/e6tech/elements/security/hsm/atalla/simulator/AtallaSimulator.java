@@ -187,7 +187,7 @@ public class AtallaSimulator {
                             }
                             logger.info("Atalla client exited");
                         }
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         logger.trace(e.getMessage(), e);
                     }
                 });
