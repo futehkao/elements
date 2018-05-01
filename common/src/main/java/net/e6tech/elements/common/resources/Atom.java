@@ -53,11 +53,11 @@ public class Atom implements Map<String, Object> {
     private Resources resources;
     private Map<String, Object> boundInstances = new LinkedHashMap<>();
     private Configuration configuration;
-    private List<Configurable> configurables = new ArrayList<>();
     private String name;
     private Map<String, BiConsumer<String, Object>> directives = new HashMap<>();
     private BeanLifecycle beanLifecycle;
     private boolean prototype = false;
+    private Configuration.Resolver resolver = this::resolve;
 
     Atom(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
@@ -67,6 +67,7 @@ public class Atom implements Map<String, Object> {
         // transaction may be started.  Don't want that. Just want resources for setting up instances.
         // Since ResourceProviders are not open, no need to commit or abort resources.
         resources = resourceManager.newResources();
+        resources.bind(Configuration.Resolver.class, resolver);
         BiConsumer<String, Object> put = (key, value) -> boundInstances.put(key, value);
         directives.put(CONFIGURATION, (key, value) -> {
             if (value != null) {
@@ -103,7 +104,7 @@ public class Atom implements Map<String, Object> {
             throw new IllegalArgumentException("Atom named " + prototype.getName() + " is not a prototype.");
         resources = prototype.resources;
         boundInstances = prototype.boundInstances;
-
+        resources.rebind(Configuration.Resolver.class, resolver);
         // do not copy configuration
     }
 
@@ -159,6 +160,23 @@ public class Atom implements Map<String, Object> {
         return Collections.unmodifiableMap(configuration);
     }
 
+    private Object resolve(String expression) {
+        try {
+            String exp = expression;
+            while (exp.startsWith("^"))
+                exp = exp.substring(1);
+            Closure closure = (Closure) resourceManager.getScripting().eval("{->" + exp + " }");
+            closure.setDelegate(this);
+            closure.setResolveStrategy(Closure.DELEGATE_FIRST);
+            return closure.call();
+        } catch (MissingPropertyException e) {
+            logger.trace(e.getMessage(), e);
+            return null;
+        } catch (ScriptException e) {
+            throw new SystemException(e);
+        }
+    }
+
     public void configure(Object obj) {
         configure(obj, null);
     }
@@ -174,7 +192,6 @@ public class Atom implements Map<String, Object> {
         }
 
         if (configuration == null) {
-            configurables.add(new Configurable(obj, prefix));
             return;
         }
 
@@ -183,19 +200,7 @@ public class Atom implements Map<String, Object> {
         // when a config string begin with ^, it is turned into a closure.  The expression is
         // then executed in configuration.annotate.
         configuration.configure(obj, prefix,
-                str -> {
-                    try {
-                        Closure closure = (Closure) resourceManager.getScripting().eval("{ it ->" + str + " }");
-                        closure.setDelegate(this);
-                        closure.setResolveStrategy(Closure.DELEGATE_FIRST);
-                        return closure.call(obj);
-                    } catch (MissingPropertyException e) {
-                        logger.trace(e.getMessage(), e);
-                        return null;
-                    } catch (ScriptException e) {
-                        throw new SystemException(e);
-                    }
-                },
+                this::resolve,
                 (value, toType, instance) -> {
                     if (instance != null) {
                         Package p = instance.getClass().getPackage();
@@ -210,23 +215,6 @@ public class Atom implements Map<String, Object> {
     @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity"})
     public Atom build() {
         long start = System.currentTimeMillis();
-        if (configuration != null) {
-            for (Configurable configurable : configurables) {
-                configuration.configure(configurable.instance, configurable.prefix,
-                        this::get,
-                        (value, toType, instance) -> {
-                            if (instance != null) {
-                                Package p = instance.getClass().getPackage();
-                                if (p == null
-                                        || (!p.getName().startsWith("java.")
-                                        && !p.getName().startsWith("javax.")))
-                                    resources.inject(instance);
-                            }
-                        });
-            }
-        }
-        configurables.clear();
-
         resources.onOpen();
 
         boundInstances.values().forEach(resources::inject);
@@ -354,7 +342,6 @@ public class Atom implements Map<String, Object> {
     protected void cleanup() {
         resources.cleanup();
         configuration = null;
-        configurables = null;
         boundInstances = null;
         resources = null;
         resourceManager = null;

@@ -39,6 +39,16 @@ public class HelloWorld{
     @Inject
     Resources resources;
 
+    private String extraMessage;
+
+    public String getExtraMessage() {
+        return extraMessage;
+    }
+
+    public void setExtraMessage(String extraMessage) {
+        this.extraMessage = extraMessage;
+    }
+
     @PostConstruct
     public void postConstruct() {
         System.out.println("postConstruct");
@@ -66,7 +76,10 @@ public class HelloWorld{
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/{greeting}")
     public String sayHello(@PathParam("greeting") String greeting) {
-        return "hello " + greeting;
+        String str = "hello " + greeting;
+        if (extraMessage != null)
+            str += " " + extraMessage;
+        return str;
     }
 
     @GET

@@ -25,6 +25,7 @@ import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.notification.ShutdownNotification;
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
@@ -74,6 +75,7 @@ public class JaxRSServer extends CXFServer {
     private static final String BIND_HEADER_OBSERVER = "bindHeaderObserver";
     private static final String REGISTER_BEAN = "registerBean";
     private static final String NAME = "name";
+    private static final String PROTOTYPE = "prototype";
     private static Logger messageLogger = Logger.getLogger(JaxRSServer.class.getName() + ".message");
     private static Map<Integer, ServerFactorBeanEntry> entries = new Hashtable();
     private static Logger logger = Logger.getLogger();
@@ -85,6 +87,7 @@ public class JaxRSServer extends CXFServer {
     private boolean corsFilter = false;
     private boolean measurement = false;
     private SecurityAnnotationEngine securityAnnotationEngine;
+    private Configuration.Resolver resolver;
 
     public static Logger getLogger() {
         return logger;
@@ -153,6 +156,15 @@ public class JaxRSServer extends CXFServer {
         this.measurement = measurement;
     }
 
+    @Inject(optional = true)
+    public Configuration.Resolver getResolver() {
+        return resolver;
+    }
+
+    public void setResolver(Configuration.Resolver resolver) {
+        this.resolver = resolver;
+    }
+
     @Override
     @SuppressWarnings("squid:S2112")
     public void initialize(Resources res) {
@@ -183,6 +195,7 @@ public class JaxRSServer extends CXFServer {
         for (Map<String, Object> map : resources) {
             boolean singleton = false;
             Class resourceClass = null;
+            String prototypeExpression = null;
             String resourceClassName = (String) map.get(CLASS);
             if (resourceClassName == null)
                 throw new SystemException("Missing resource class in resources map");
@@ -197,44 +210,50 @@ public class JaxRSServer extends CXFServer {
             boolean bindHeaderObserver = (map.get(BIND_HEADER_OBSERVER) == null) ? true : (Boolean) map.get(BIND_HEADER_OBSERVER);
             if (!bindHeaderObserver)
                 hObserver = null;
+            injectInitialize(res, hObserver);
 
             singleton = (map.get(SINGLETON) == null) ? false : (Boolean) map.get(SINGLETON);
             String resourceName = (String) map.get(NAME);
 
+            // prototype
+            Object prototype = null;
+            prototypeExpression = (String) map.get(PROTOTYPE);
+            if (prototypeExpression != null && resolver != null) {
+                prototype = resolver.resolve(prototypeExpression);
+            }
+
+            // instance for singleton and for analysis
             Object instance = null;
             try {
-                instance = resourceClass.newInstance();
+                instance = resourceClass.getDeclaredConstructor().newInstance();
+                injectInitialize(res, instance);
             } catch (Exception e) {
                 throw new SystemException(e);
             }
-            if (res != null) {
-                res.inject(instance);
-                if (hObserver != null)
-                    res.inject(hObserver);
-            } else {
-                getProvision().inject(instance);
-                if (hObserver != null)
-                    getProvision().inject(hObserver);
-            }
 
-            if (securityAnnotationEngine != null)
+            if (securityAnnotationEngine != null) {
                 securityAnnotationEngine.register(instance);
+            }
 
             ResourceProvider resourceProvider ;
             if (singleton) {
-                resourceProvider = new SharedResourceProvider(map, instance, hObserver);
+                if (prototype == null) {
+                    prototype = instance;
+                }
+                resourceProvider = new SharedResourceProvider(map, prototype, hObserver);
                 String beanName = (String) map.get(REGISTER_BEAN);
                 if (beanName != null)
-                    getProvision().getResourceManager().registerBean(beanName, instance);
+                    getProvision().getResourceManager().registerBean(beanName, prototype);
             } else {
-                resourceProvider = new InstanceResourceProvider(map, resourceClass, res.getModule(), getProvision(), hObserver);
+                resourceProvider = new InstanceResourceProvider(map, resourceClass, prototype, res.getModule(), getProvision(), hObserver);
             }
 
             for (ServerFactorBeanEntry entry : entryList)
                 entry.getFactoryBean().setResourceProvider(resourceClass, resourceProvider);
 
-            if (resourceName != null)
-                instances.put(resourceName, instance);
+            if (resourceName != null && prototype != null)
+                instances.put(resourceName, prototype);
+
             resourceClasses.add(resourceClass);
         }
 
@@ -245,6 +264,16 @@ public class JaxRSServer extends CXFServer {
             entry.addResourceClasses(resourceClasses);
 
         super.initialize(res);
+    }
+
+    private void injectInitialize(Resources res, Object object) {
+        if (res != null) {
+            if (object != null)
+                res.inject(object);
+        } else {
+            if (object != null)
+                getProvision().inject(object);
+        }
     }
 
     @Override
@@ -351,18 +380,22 @@ public class JaxRSServer extends CXFServer {
         private Module module;
         private Map<String, Object> map;  // map is the Map<String, Object> in JaxRSServer's resources. It's used to record measurement
         private Map<Method, String> methods = new Hashtable<>();
+        private Object prototype;
 
-        public InstanceResourceProvider(Map<String, Object> map, Class resourceClass, Module module, Provision provision, Observer observer) {
+        public InstanceResourceProvider(Map<String, Object> map, Class resourceClass, Object prototype, Module module, Provision provision, Observer observer) {
             super(resourceClass);
             this.provision = provision;
             this.observer = observer;
             this.module = module;
             this.map = map;
+            this.prototype = prototype;
         }
 
         @Override
         protected Object createInstance(Message message) {
             Object instance = super.createInstance(message);
+            if (prototype != null)
+                Reflection.copyInstance(instance, prototype);
             Observer cloneObserver = (observer == null) ? null : observer.clone();
             UnitOfWork uow = provision.preOpen(res -> {
                     res.addModule(module);

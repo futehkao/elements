@@ -15,14 +15,18 @@
  */
 
 import net.e6tech.elements.web.cxf.JaxRSServer
+import net.e6tech.sample.web.cxf.HelloWorld
 
 atom("helloWorld") {
     configuration =  """
+    _prototype.extraMessage: '...What a sunny day!'
     _helloWorld.addresses:
         - "http://0.0.0.0:19001/restful/"
     _helloWorld.resources:
         - class: "net.e6tech.sample.web.cxf.HelloWorld"
           singleton: false
+          prototype: ^_prototype
  """
+    _prototype = HelloWorld
     _helloWorld = JaxRSServer
 }
