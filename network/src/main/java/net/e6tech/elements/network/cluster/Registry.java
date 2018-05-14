@@ -126,6 +126,7 @@ public class Registry {
      *                       for the qualifier to be unique.
      * @param implementation implementation of the interface
      * @param <T> type of implementation
+     * @param timeout timout period
      */
     @SuppressWarnings({"squid:S1067", "squid:S3776"})
     public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, long timeout) {

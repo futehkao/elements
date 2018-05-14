@@ -113,7 +113,7 @@ public class NotificationProcessor implements NotificationListener {
     public void onEvent(Notification notification) {
         Class cls = notification.getClass();
         while (!cls.equals(Object.class)) {
-            Method method = methods.get(notification.getClass());
+            Method method = methods.get(cls);
             if (method != null) {
                 try {
                     method.invoke(this, notification);

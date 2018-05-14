@@ -62,9 +62,13 @@ public class NotificationCenter implements Broadcast {
                 listeners.forEach(listener -> listener.onEvent(notification));
         }
 
-        List<NotificationListener> listeners = notificationListeners.get(notification.getClass());
-        if (listeners != null)
-            listeners.forEach(listener -> listener.onEvent(notification));
+        Class cls = notification.getClass();
+        while (!cls.equals(Object.class)) {
+            List<NotificationListener> listeners = notificationListeners.get(cls);
+            if (listeners != null)
+                listeners.forEach(listener -> listener.onEvent(notification));
+            cls = cls.getSuperclass();
+        }
     }
 
     public List<NotificationListener> getNotificationListeners(Notification notification) {
