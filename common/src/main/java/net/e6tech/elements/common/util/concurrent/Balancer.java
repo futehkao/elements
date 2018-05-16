@@ -19,10 +19,12 @@ package net.e6tech.elements.common.util.concurrent;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.function.FunctionWithException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -46,18 +48,7 @@ public abstract class Balancer<T> {
     public T getService() {
         Class cls = Reflection.getParametrizedType(getClass(), 0);
         return (T) Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] { cls },
-                (proxy,  method, args)->
-                     execute(service -> {
-                        try {
-                            return method.invoke(service, args);
-                        } catch (IllegalAccessException e) {
-                            throw new SystemException(e);
-                        } catch (InvocationTargetException e) {
-                            Logger.suppress(e);
-                            throw new SystemException(e.getCause());
-                        }
-                    })
-                );
+                (proxy,  method, args)-> execute(service -> method.invoke(service, args)));
     }
 
     public long getTimeout() {
@@ -145,7 +136,7 @@ public abstract class Balancer<T> {
         }
     }
 
-    public <R> R execute(Submit<T, R> submit) throws IOException {
+    public <R> R execute(FunctionWithException<T, R, Exception> submit) throws IOException {
         while (true) {
             T service;
             try {
@@ -158,6 +149,7 @@ public abstract class Balancer<T> {
             if (service == null)
                 throw new IOException("No service available");
 
+            SystemException error = null;
             try {
                 R ret = submit.apply(service);
                 liveList.offer(service);
@@ -165,13 +157,19 @@ public abstract class Balancer<T> {
             } catch (IOException ex) {
                 Logger.suppress(ex);
                 recover(service);
+            } catch (InvocationTargetException e) {
+                error = new SystemException(e.getCause());
+            } catch (SystemException e) {
+                error = e;
+            } catch (RuntimeException e) {
+                error = new SystemException(e.getCause());
+            } catch (Exception e) {
+                error = new SystemException(e);
             }
+
+            liveList.offer(service);
+            if (error != null)
+                throw error;
         }
     }
-
-    @FunctionalInterface
-    public interface Submit<T, R> {
-        R apply(T t) throws IOException;
-    }
-
 }

@@ -16,6 +16,9 @@
 
 package net.e6tech.elements.common.resources;
 
+import net.e6tech.elements.common.util.function.ConsumerWithException;
+import net.e6tech.elements.common.util.function.FunctionWithException;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,7 +47,7 @@ public class Bindings {
         bindings.values().forEach(Binding::restore);
     }
 
-    public <E extends Exception> void rebind(Transactional.ConsumerWithException<Bindings, E> consumer) throws E {
+    public <E extends Exception> void rebind(ConsumerWithException<Bindings, E> consumer) throws E {
         try {
             consumer.accept(this);
         } finally {
@@ -52,7 +55,7 @@ public class Bindings {
         }
     }
 
-    public <T, E extends Exception> T rebind(Transactional.FunctionWithException<Bindings, T, E> function) throws E {
+    public <T, E extends Exception> T rebind(FunctionWithException<Bindings, T, E> function) throws E {
         try {
             return function.apply(this);
         } finally {

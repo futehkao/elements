@@ -16,6 +16,10 @@ limitations under the License.
 
 package net.e6tech.elements.common.resources;
 
+import net.e6tech.elements.common.util.function.ConsumerWithException;
+import net.e6tech.elements.common.util.function.FunctionWithException;
+import net.e6tech.elements.common.util.function.RunnableWithException;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -91,13 +95,13 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
         preOpen = null;
     }
 
-    public void submit(Transactional.RunnableWithException work) {
+    public void submit(RunnableWithException work) {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException(RESOURCES_NOT_OPEN);
-        resources.submit((Transactional.ConsumerWithException<Resources, Exception>)res -> work.run());
+        resources.submit((ConsumerWithException<Resources, Exception>) res -> work.run());
     }
 
-    public <T extends Resources> void submit(Transactional.ConsumerWithException<T, Exception> work) {
+    public <T extends Resources> void submit(ConsumerWithException<T, Exception> work) {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException(RESOURCES_NOT_OPEN);
         resources.submit(work);
@@ -106,10 +110,10 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
     public <T> T submit(Callable<T> work) {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException(RESOURCES_NOT_OPEN);
-        return resources.submit((Transactional.FunctionWithException<Resources, T, Exception>) res -> work.call());
+        return resources.submit((FunctionWithException<Resources, T, Exception>) res -> work.call());
     }
 
-    public <T extends Resources, R> R submit(Transactional.FunctionWithException<T, R, Exception> work) {
+    public <T extends Resources, R> R submit(FunctionWithException<T, R, Exception> work) {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException(RESOURCES_NOT_OPEN);
         return resources.submit(work);

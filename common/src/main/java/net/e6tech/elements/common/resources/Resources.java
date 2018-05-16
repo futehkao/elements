@@ -24,8 +24,10 @@ import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.resources.plugin.PluginPaths;
+import net.e6tech.elements.common.util.function.ConsumerWithException;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.function.FunctionWithException;
 
 import java.beans.BeanInfo;
 import java.beans.PropertyDescriptor;
@@ -227,7 +229,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         return new Binding<>(this, cls);
     }
 
-    public <E extends Exception> void briefly(Transactional.ConsumerWithException<Bindings, E> consumer) throws E {
+    public <E extends Exception> void briefly(ConsumerWithException<Bindings, E> consumer) throws E {
         Bindings bindings = new Bindings(this);
         try {
             consumer.accept(bindings);
@@ -236,7 +238,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         }
     }
 
-    public <T, E extends Exception> T briefly(Transactional.FunctionWithException<Bindings, T, E> function) throws E {
+    public <T, E extends Exception> T briefly(FunctionWithException<Bindings, T, E> function) throws E {
         Bindings bindings = new Bindings(this);
         try {
             return function.apply(bindings);
@@ -475,11 +477,11 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     // return null because we want this type of work to be stateless outside of
     // Resources.
-    public synchronized <R extends Resources, E extends Exception> void submit(Transactional.ConsumerWithException<R, E> work) {
+    public synchronized <R extends Resources, E extends Exception> void submit(ConsumerWithException<R, E> work) {
         play(new Replay<R, Object, E>(work));
     }
 
-    public synchronized <T extends Resources, R, E extends Exception> R submit(Transactional.FunctionWithException<T, R, E> work) {
+    public synchronized <T extends Resources, R, E extends Exception> R submit(FunctionWithException<T, R, E> work) {
         return play(new Replay<T, R, E>(work));
     }
 
@@ -632,14 +634,14 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     private static class Replay<T, R, E extends Exception> {
 
-        Transactional.ConsumerWithException<T, E> consumer;
-        Transactional.FunctionWithException<T, R, E> function;
+        ConsumerWithException<T, E> consumer;
+        FunctionWithException<T, R, E> function;
 
-        Replay(Transactional.ConsumerWithException<T, E> work) {
+        Replay(ConsumerWithException<T, E> work) {
             consumer = work;
         }
 
-        Replay(Transactional.FunctionWithException<T, R, E> work) {
+        Replay(FunctionWithException<T, R, E> work) {
             function = work;
         }
 
