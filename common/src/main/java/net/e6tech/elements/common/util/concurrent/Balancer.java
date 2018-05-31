@@ -137,7 +137,7 @@ public abstract class Balancer<T> {
     }
 
     public <R> R execute(FunctionWithException<T, R, Exception> submit) throws IOException {
-        while (true) {
+        while (true) {  // the while loop is for in case of IOException
             T service;
             try {
                 service = liveList.poll(timeout, TimeUnit.MILLISECONDS);

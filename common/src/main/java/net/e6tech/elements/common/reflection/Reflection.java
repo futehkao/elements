@@ -361,6 +361,8 @@ public class Reflection {
             throw new IllegalArgumentException("No parametrized type at index=" + index);
         if (types[index] instanceof Class) {
             return (Class) types[index];
+        } if (types[index] instanceof ParameterizedType &&  ((ParameterizedType) types[index]).getRawType() instanceof Class) {
+            return (Class)((ParameterizedType) types[index]).getRawType();
         }
         return null;
     }

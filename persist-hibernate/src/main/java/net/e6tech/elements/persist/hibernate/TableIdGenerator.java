@@ -33,10 +33,10 @@ import java.util.Properties;
  * This class uses a table to generate primary key.
  * Created by futeh.
  */
-public class TableIdGenerator extends TableGenerator implements Cloneable {
+public class TableIdGenerator extends ModifiedTableGenerator implements Cloneable {
 
     private String defaultTableName = "sequence";
-    private int defaultInitialValue = 1;
+    private long defaultInitialValue = 1;
     private int defaultIncrementSize = 100;
     private String defaultOptimizer = StandardOptimizerDescriptor.POOLED_LO.getExternalName();
 
@@ -57,11 +57,11 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
         this.defaultTableName = defaultTableName;
     }
 
-    public int getDefaultInitialValue() {
+    public long getDefaultInitialValue() {
         return defaultInitialValue;
     }
 
-    public void setDefaultInitialValue(int defaultInitialValue) {
+    public void setDefaultInitialValue(long defaultInitialValue) {
         this.defaultInitialValue = defaultInitialValue;
     }
 
@@ -103,8 +103,12 @@ public class TableIdGenerator extends TableGenerator implements Cloneable {
     }
 
     @Override
-    protected int determineInitialValue(Properties params) {
-        return ConfigurationHelper.getInt( INITIAL_PARAM, params, defaultInitialValue );
+    protected long determineInitialValue(Properties params) {
+        long value =  ConfigurationHelper.getLong( INITIAL_PARAM, params, -1 );
+        if (value == -1) {
+            return defaultInitialValue;
+        }
+        return value;
     }
 
     @Override
