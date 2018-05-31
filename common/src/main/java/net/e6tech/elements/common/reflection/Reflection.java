@@ -357,14 +357,15 @@ public class Reflection {
             throw new SystemException(e.getCause());
         }
 
-        if (types.length <= index)
+        if (types.length <= index) {
             throw new IllegalArgumentException("No parametrized type at index=" + index);
-        if (types[index] instanceof Class) {
+        } else if (types[index] instanceof Class) {
             return (Class) types[index];
-        } if (types[index] instanceof ParameterizedType &&  ((ParameterizedType) types[index]).getRawType() instanceof Class) {
+        } else if (types[index] instanceof ParameterizedType &&  ((ParameterizedType) types[index]).getRawType() instanceof Class) {
             return (Class)((ParameterizedType) types[index]).getRawType();
+        } else {
+            return null;
         }
-        return null;
     }
 
     public static <T> List<T> newInstance(Class<T> cls, List objectList) {
