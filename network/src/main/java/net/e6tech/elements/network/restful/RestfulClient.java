@@ -34,6 +34,7 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.Proxy;
 import java.net.URL;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
@@ -66,6 +67,8 @@ public class RestfulClient {
     private int connectionTimeout = -1;
     private int readTimeout = -1;
     private PrintWriter printer;
+    private String proxyHost;
+    private int proxyPort = -1;
 
     public RestfulClient() {}
 
@@ -148,6 +151,22 @@ public class RestfulClient {
 
     public void setReadTimeout(int readTimeout) {
         this.readTimeout = readTimeout;
+    }
+
+    public String getProxyHost() {
+        return proxyHost;
+    }
+
+    public void setProxyHost(String proxyHost) {
+        this.proxyHost = proxyHost;
+    }
+
+    public int getProxyPort() {
+        return proxyPort;
+    }
+
+    public void setProxyPort(int proxyPort) {
+        this.proxyPort = proxyPort;
     }
 
     @SuppressWarnings("squid:S134")
@@ -259,7 +278,15 @@ public class RestfulClient {
         try {
             logger.debug(fullPath);
             url = new URL(fullPath);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+            HttpURLConnection conn = null;
+            if (proxyHost != null && proxyPort > 0) {
+                Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
+                conn = (HttpURLConnection) url.openConnection(proxy);
+            } else {
+                conn = (HttpURLConnection) url.openConnection();
+            }
+
             if (connectionTimeout >= 0)
                 conn.setConnectTimeout(connectionTimeout);
             if (readTimeout >= 0)
@@ -503,6 +530,7 @@ public class RestfulClient {
             try {
                 if (trustStore != null) {
                     JCEKS jceks = new JCEKS(trustStore, null);
+                    jceks.init(null);
                     trustManagers = jceks.getTrustManagers();
                 } else {
                     TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
