@@ -29,7 +29,15 @@ import java.util.function.Consumer;
 public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceManager> {
     private static final String RESOURCE_MANAGER_VAR = "resourceManager";
 
-    Logger logger = Logger.getLogger();
+    private static Logger logger = Logger.getLogger();
+    private Bootstrap bootstrap;
+
+    public Bootstrap getBootstrap() {
+        if (bootstrap == null) {
+            bootstrap = new Bootstrap(getShell());
+        }
+        return bootstrap;
+    }
 
     /**
      * This method is for catching key { closure } pattern.  The key could resolve to an instance
@@ -42,7 +50,8 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
     @SuppressWarnings({"squid:S134", "squid:CommentedOutCodeLine"})
     public Object invokeMethod(String name, Object args) {
         try {
-            return getMetaClass().invokeMethod(this, name, args);
+            Object ret = getMetaClass().invokeMethod(this, name, args);
+            return ret;
         } catch (MissingMethodException ex) {
             if (ex.getArguments().length > 0 && ex.getArguments()[0] instanceof Closure) {
 
@@ -81,18 +90,15 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
     }
 
     public void bindClass(Class a, Class b) {
-        ResourceManager resourceManager =  getVariable(RESOURCE_MANAGER_VAR);
-        resourceManager.bindClass(a, b);
+        getShell().bindClass(a, b);
     }
 
     public <T> T bindNamedInstance(String name, Class<T> a, T b) {
-        ResourceManager resourceManager =  getVariable(RESOURCE_MANAGER_VAR);
-        return resourceManager.bindNamedInstance(a, name, b);
+        return getShell().bindNamedInstance(a, name, b);
     }
 
     public <T> T bindNamedInstance(String name, T b) {
-        ResourceManager resourceManager =  getVariable(RESOURCE_MANAGER_VAR);
-        return resourceManager.bindNamedInstance((Class<T>) b.getClass(), name, b);
+        return getShell().bindNamedInstance((Class<T>) b.getClass(), name, b);
     }
 
     public <T> T registerBean(String name, Object instance) {
@@ -131,6 +137,11 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
         Atom prototype = (Atom) getShell().exec(prototypePath);
         Consumer<Atom> consumer = atomConsumer(closure);
         return getShell().createAtom(name, consumer, prototype, false);
+    }
+
+    public Bootstrap boot(String ... components) {
+        getBootstrap().boot(components);
+        return bootstrap;
     }
 
     private Consumer<Atom> atomConsumer(Closure closure) {

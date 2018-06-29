@@ -48,7 +48,7 @@ import java.util.function.Consumer;
 public class ResourceManager extends AbstractScriptShell implements ResourcePool {
 
     private static Logger logger = Logger.getLogger();
-    private static final String LOG_DIR_ABBREV = "logDir";
+    static final String LOG_DIR_ABBREV = "logDir";
     private static final String ALREADY_BOUND_MSG = "Class %s is already bound to %s";
 
     private String name;

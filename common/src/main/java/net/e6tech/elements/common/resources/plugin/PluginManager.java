@@ -143,7 +143,7 @@ public class PluginManager {
         T plugin;
         if (lookup instanceof Class) {
             try {
-                plugin = (T) ((Class) lookup).newInstance();
+                plugin = (T) ((Class) lookup).getDeclaredConstructor().newInstance();
                 inject(plugin, args);
                 plugin.initialize(pluginPath);
             } catch (Exception e) {

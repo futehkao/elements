@@ -327,6 +327,7 @@ public class Scripting {
 
         Object ret = null;
         for (String p : paths) {
+            logger.info("Executing script: {}", p);
             Object val = eval(p, topLevel);
             if (val != null)
                 ret = val;

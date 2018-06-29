@@ -91,18 +91,8 @@ public class ScratchPad {
     }
 
     @Test
-    void sublist() {
-        List<Long> list = new ArrayList<>();
-        list.add(0L);
-        list.add(1L);
-        list.add(2L);
-        list.add(3L);
-        list.add(4L);
-        list.add(5L);
-
-        list.subList(0, 3);
-        List<Long> subList = list.subList(6, 6);
-        System.out.println(subList);
+    void test() {
+        System.out.println(new String[0] instanceof Object[]);
     }
 
 }
