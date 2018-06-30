@@ -20,21 +20,23 @@ import net.e6tech.elements.jobs.JobServer
 registerBean('jobServer', JobServer)
 
 bootstrap.with {
-    components = [
+    dir = "$__dir"
+    initBoot = ["$__dir/boot_init.groovy"]
+    main = [
             { variables && cluster }: {
                 println "booting variables and cluster"
             },
             variables: "$__dir/../variables.groovy",
             cluster: "$__dir/../cluster.groovy"
     ]
-    dir = "$__dir"
-    // defaultEnvironmentScript = ...
+    after = ['true': "$__dir/boot_final.groovy"]
+    // defaultEnvironmentFile = ...
     // defaultSystemProperties = ...
 }
 
 preBoot = [{ println 'hello world'}, 'variables']
 postBoot = [{ println 'boot completed!'}]
-boot('cluster')
+boot('cluster', 'trivial')
 exec "$__dir/../persist.groovy",
         "$__dir/../notification.groovy",
         "$__dir/../prototype/concrete.groovy",

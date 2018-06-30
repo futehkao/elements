@@ -33,8 +33,14 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
     private Bootstrap bootstrap;
 
     public Bootstrap getBootstrap() {
-        if (bootstrap == null) {
+        if (bootstrap != null)
+            return bootstrap;
+
+        if (hasVariable("bootstrap")) {
+            bootstrap = getVariable("bootstrap");
+        } else {
             bootstrap = new Bootstrap(getShell());
+            getShell().getScripting().put("bootstrap", bootstrap);
         }
         return bootstrap;
     }

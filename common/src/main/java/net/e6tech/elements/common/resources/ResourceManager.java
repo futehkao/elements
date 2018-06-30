@@ -413,6 +413,8 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public <T> T registerBean(String name, Object instance) {
+        if (instance == null)
+            throw new NullPointerException("instance is null");
         Object obj = instance;
         if (instance instanceof Class) {
             obj = newInstance((Class) instance);

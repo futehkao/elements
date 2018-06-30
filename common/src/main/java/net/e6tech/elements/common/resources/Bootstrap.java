@@ -30,12 +30,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-/**
- * It is for boostrap groovy system.  The configuration in a groovy file should look like
- * def map = [ a: ["$__dir/script", ...],   // list of script
- *             b: "$__dir/script",          // a single script
- *             { !x && !y }: list of scripts]  // closure can be the key
- */
 public class Bootstrap extends GroovyObjectSupport {
     private static final String PRE_BOOT = "preBoot";
     private static final String POST_BOOT = "postBoot";
@@ -49,35 +43,28 @@ public class Bootstrap extends GroovyObjectSupport {
     private static Logger logger = Logger.getLogger();
     private static final Object[] EMPTY_OBJECT_ARRAY = {};
     private String  bootstrapDir = ".";
-    private String defaultEnvironmentScript;
+    private String defaultEnvironmentFile;
     private String defaultSystemProperties;
-    private List<String> bootInitScripts = new ArrayList<>();
-    private Map components = new LinkedHashMap();
-    private List preBoot = new ArrayList<>();
-    private List postBoot = new ArrayList<>();
+    private List initBoot = new ArrayList();
+    private List preBoot = new ArrayList();
+    private Map main = new LinkedHashMap();
+    private List postBoot = new ArrayList();
+    private Map after = new LinkedHashMap();
     private ResourceManager resourceManager;
     private Expando expando = new Expando();
+    private boolean envInitialized = false;
 
     public Bootstrap(ResourceManager rm) {
         this.resourceManager = rm;
     }
 
-    public Map getComponents() {
-        return components;
+    public Map getMain() {
+        return main;
     }
 
-    public void setComponents(Map components) {
-        this.components = components;
-        components.forEach((key, value) -> {
-            if (key instanceof Closure) {
-                Closure closure = (Closure) key;
-                closure.setDelegate(expando);
-                closure.setResolveStrategy(Closure.DELEGATE_FIRST);
-            } else {
-                String propertyName = key.toString();
-                expando.setProperty(propertyName, false);
-            }
-        });
+    public void setMain(Map main) {
+        this.main = main;
+        main.forEach(this::setComponent);
     }
 
     public String getDir() {
@@ -88,12 +75,12 @@ public class Bootstrap extends GroovyObjectSupport {
         bootstrapDir = dir;
     }
 
-    public String getDefaultEnvironmentScript() {
-        return defaultEnvironmentScript;
+    public String getDefaultEnvironmentFile() {
+        return defaultEnvironmentFile;
     }
 
-    public void setDefaultEnvironmentScript(String defaultEnvironmentScript) {
-        this.defaultEnvironmentScript = defaultEnvironmentScript;
+    public void setDefaultEnvironmentFile(String defaultEnvironmentFile) {
+        this.defaultEnvironmentFile = defaultEnvironmentFile;
     }
 
     public String getDefaultSystemProperties() {
@@ -104,9 +91,39 @@ public class Bootstrap extends GroovyObjectSupport {
         this.defaultSystemProperties = defaultSystemProperties;
     }
 
+    public List<String> getInitBoot() {
+        return initBoot;
+    }
+
+    public void setInitBoot(List initBoot) {
+        this.initBoot = initBoot;
+    }
+
+    public Map getAfter() {
+        return after;
+    }
+
+    public void setAfter(Map after) {
+        this.after = after;
+        after.forEach(this::setComponent);
+    }
+
+    private void setComponent(Object key, Object value) {
+        if (key instanceof Closure) {
+            Closure closure = (Closure) key;
+            closure.setDelegate(expando);
+            closure.setResolveStrategy(Closure.DELEGATE_FIRST);
+        } else {
+            String propertyName = key.toString();
+            expando.setProperty(propertyName, false);
+        }
+    }
+
     public void boot(String ... components) {
         // boot env
-        logger.info("Loading environment ***************************************");
+        logger.info("***********************************************************");
+        logger.info("Loading environment");
+        logger.info("***********************************************************");
         bootEnv();
         logger.info("Done loading environment **********************************\n");
 
@@ -116,41 +133,63 @@ public class Bootstrap extends GroovyObjectSupport {
 
         if (components != null) {
             for (String component : components) {
-                getComponents().computeIfAbsent(component, key -> bootstrapDir + File.separator + component);
+                if (after.get(component) == null && main.get(component) == null)
+                    main.put(component, bootstrapDir + File.separator + component);
                 expando.setProperty(component, true);
             }
         }
 
         // boot initialization
-        bootInitScripts();
+        logger.info("***********************************************************");
+        logger.info("Boot initialization");
+        logger.info("***********************************************************");
+        initBoot();
+        logger.info("Done pre-booting ******************************************\n");
 
         // preBoot
-        logger.info("Prebooting ***********************************************");
+        logger.info("***********************************************************");
+        logger.info("Pre-booting");
+        logger.info("***********************************************************");
         preBoot();
-        logger.info("Done prebooting ******************************************\n");
+        logger.info("Done pre-booting ******************************************\n");
 
         // boot Components
-        logger.info("Booting components ***************************************");
-        bootComponents();
+        logger.info("***********************************************************");
+        logger.info("Booting main");
+        logger.info("***********************************************************");
+        bootMain();
         logger.info("Done booting components **********************************\n");
 
         // postBoot
-        logger.info("Postbooting **********************************************");
+        logger.info("***********************************************************");
+        logger.info("Post-booting");
+        logger.info("***********************************************************");
         postBoot();
+        logger.info("Done post-booting ******************************************\n");
+
+        // boot initialization
+        logger.info("***********************************************************");
+        logger.info("Boot after");
+        logger.info("***********************************************************");
+        bootAfter();
         logger.info("Booting completed ****************************************");
     }
 
     private void bootEnv() {
+
+        if (envInitialized)
+            return;
+
         // default environment
-        if (defaultEnvironmentScript != null) {
-            exec(defaultEnvironmentScript);
+        if (defaultEnvironmentFile != null) {
+            exec(defaultEnvironmentFile);
         } else {
             String script = getVar(Scripting.__DIR) + "/environment.groovy";
             File file = new File(script);
             if (file.exists()) {
                 exec(script);
             } else {
-                logger.warn("No default environment script.");
+                logger.warn("!! No default environment script.");
             }
         }
 
@@ -199,7 +238,7 @@ public class Bootstrap extends GroovyObjectSupport {
 
         // log4j
         ThreadContext.put(ResourceManager.LOG_DIR_ABBREV, System.getProperty(Logger.logDir));
-        logger.info("Log4J log4j.configurationFile=" + System.getProperty("log4j.configurationFile"));
+        logger.info("-> Log4J log4j.configurationFile=" + System.getProperty("log4j.configurationFile"));
 
         if (getVar(PRE_BOOT) != null) {
             Object p = getVar(PRE_BOOT);
@@ -210,20 +249,22 @@ public class Bootstrap extends GroovyObjectSupport {
             Object p = getVar(POST_BOOT);
             setupBootList(p, postBoot);
         }
+
+        envInitialized = true;
     }
 
     private void setupBootList(Object p, List bootList) {
         if (p instanceof List) {
             List list = (List) p;
             list.forEach(l ->  {
-                if (components.get(l) != null) {
+                if (main.get(l) != null || after.get(l) != null) {  // see if item is a name to main or after
                     expando.setProperty(l.toString(), true);
                 } else {
                     bootList.add(l);
                 }
             });
         } else if (p != null) {
-            if (components.get(p) != null) {
+            if (main.get(p) != null || after.get(p) != null){
                 expando.setProperty(p.toString(), true);
             } else {
                 bootList.add(p);
@@ -270,34 +311,19 @@ public class Bootstrap extends GroovyObjectSupport {
             resourceManager.getScripting().exec(path);
         } catch (ScriptException e) {
             if (e.getCause() instanceof IOException) {
-                logger.info("Script " + path + " not processed: " + e.getCause().getMessage());
+                logger.info("-> Script " + path + " not processed: " + e.getCause().getMessage());
             } else {
-                logger.warn("Script not processed due to error.", e);
+                logger.warn("!! Script not processed due to error.", e);
             }
         }
     }
 
-    private void bootInitScripts() {
-        bootInitScripts.forEach(script -> exec(script));
+    private void initBoot() {
+        initBoot.forEach(script -> exec(script));
     }
 
-    private void bootComponents() {
-        components.forEach((key, value) -> {
-            if (key instanceof Closure) {
-                logger.info("--> running closure ...");
-                Closure closure = (Closure) key;
-                if (closure.isCase(EMPTY_OBJECT_ARRAY)) {
-                    exec(value);
-                }
-            } else {
-                Object on = expando.getProperty(key.toString());
-                if (Boolean.TRUE.equals(on)) {
-                    logger.info("--> booting " + key + " ...");
-                    exec(value);
-                }
-            }
-            logger.info("-----------------------\n");
-        });
+    private void bootMain() {
+        main.forEach(this::runComponent);
     }
 
     private void preBoot() {
@@ -310,6 +336,33 @@ public class Bootstrap extends GroovyObjectSupport {
         for (Object s : postBoot) {
             exec(s);
         }
+    }
+
+    private void bootAfter() {
+        after.forEach(this::runComponent);
+    }
+
+    private void runComponent(Object key, Object value) {
+        if (key instanceof Closure) {
+            Closure closure = (Closure) key;
+            logger.info("-----------------------------------------------------------");
+            logger.info("Running closure " + closure.toString() );
+            logger.info("-----------------------------------------------------------");
+            if (closure.isCase(EMPTY_OBJECT_ARRAY)) {
+                exec(value);
+            } else {
+                logger.info("-> Closure returns false, skipped running " + value.toString());
+            }
+        } else {
+            Object on = expando.getProperty(key.toString());
+            if (Boolean.TRUE.equals(on)) {
+                logger.info("-----------------------------------------------------------");
+                logger.info("Booting " + key);
+                logger.info("-----------------------------------------------------------");
+                exec(value);
+            }
+        }
+        logger.info("-----------------------------------------------------------\n");
     }
 
     private void exec(Object obj) {

@@ -42,8 +42,16 @@ public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends 
         return scriptShell;
     }
 
+    protected boolean hasVariable(String var) {
+        return getBinding().hasVariable(var);
+    }
+
     protected <V> V getVariable(String var) {
         return (V) getBinding().getVariable(var);
+    }
+
+    protected void setVariable(String var, Object val) {
+        getBinding().setVariable(var, val);
     }
 
     public Object exec(String path) throws ScriptException {
