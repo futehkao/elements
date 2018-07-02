@@ -21,7 +21,7 @@ registerBean('jobServer', JobServer)
 
 bootstrap.with {
     dir = "$__dir"
-    initBoot = ["$__dir/boot_init.groovy"]
+    init = ["$__dir/boot_init.groovy"]
     main = [
             { variables && cluster }: {
                 println "booting variables and cluster"
