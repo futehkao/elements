@@ -37,7 +37,7 @@ public class Bootstrap extends GroovyObjectSupport {
     private static final String PLUGIN_DIRECTORIES = "pluginDirectories";
     private static final String PROVISION_CLASS = "provisionClass";
     private static final String HOST_ENVIRONMENT_FILE = "hostEnvironmentFile";
-    private static final String HOST_SYSTME_PROPERTIES_FILE = "hostSystemPropertiesFile";
+    private static final String HOST_SYSTEM_PROPERTIES_FILE = "hostSystemPropertiesFile";
     private static final String ENVIRONMENT = "environment";
     private static final String SYSTEM_PROPERTIES = "systemProperties";
     private static Logger logger = Logger.getLogger();
@@ -64,7 +64,7 @@ public class Bootstrap extends GroovyObjectSupport {
 
     public void setMain(Map main) {
         this.main = main;
-        main.forEach(this::setComponent);
+        main.keySet().forEach(this::setComponent);
     }
 
     public String getDir() {
@@ -99,16 +99,24 @@ public class Bootstrap extends GroovyObjectSupport {
         this.initBoot = initBoot;
     }
 
+    public List<String> getInit() {
+        return initBoot;
+    }
+
+    public void setInit(List initBoot) {
+        this.initBoot = initBoot;
+    }
+
     public Map getAfter() {
         return after;
     }
 
     public void setAfter(Map after) {
         this.after = after;
-        after.forEach(this::setComponent);
+        after.keySet().forEach(this::setComponent);
     }
 
-    private void setComponent(Object key, Object value) {
+    private void setComponent(Object key) {
         if (key instanceof Closure) {
             Closure closure = (Closure) key;
             closure.setDelegate(expando);
@@ -119,11 +127,21 @@ public class Bootstrap extends GroovyObjectSupport {
         }
     }
 
+    private void bootMessage(String message) {
+        String line = "***********************************************************";
+        if (logger.isInfoEnabled()) {
+            logger.info(line);
+            logger.info(message);
+            logger.info(line);
+        }
+    }
     public void boot(String ... components) {
         // boot env
-        logger.info("***********************************************************");
-        logger.info("Loading environment");
-        logger.info("***********************************************************");
+        if (main.isEmpty() && after.isEmpty()) {
+            logger.warn("Components not configured.  Use main or after to configure components.");
+        }
+
+        bootMessage("Loading environment");
         bootEnv();
         logger.info("Done loading environment **********************************\n");
 
@@ -140,39 +158,33 @@ public class Bootstrap extends GroovyObjectSupport {
         }
 
         // boot initialization
-        logger.info("***********************************************************");
-        logger.info("Boot initialization");
-        logger.info("***********************************************************");
-        initBoot();
+        bootMessage("Boot initialization");
+        initBoot();  // set by bootstrap script
         logger.info("Done pre-booting ******************************************\n");
 
         // preBoot
-        logger.info("***********************************************************");
-        logger.info("Pre-booting");
-        logger.info("***********************************************************");
-        preBoot();
+        bootMessage("Pre-booting");
+        preBoot();  // set by launch script
         logger.info("Done pre-booting ******************************************\n");
 
         // boot Components
-        logger.info("***********************************************************");
-        logger.info("Booting main");
-        logger.info("***********************************************************");
-        bootMain();
+        bootMessage("Booting main");
+        bootMain();  // set by bootstrap script
         logger.info("Done booting components **********************************\n");
 
         // postBoot
-        logger.info("***********************************************************");
-        logger.info("Post-booting");
-        logger.info("***********************************************************");
-        postBoot();
+        bootMessage("Post-booting");
+        postBoot();  // set by launch script
         logger.info("Done post-booting ******************************************\n");
 
         // boot initialization
-        logger.info("***********************************************************");
-        logger.info("Boot after");
-        logger.info("***********************************************************");
-        bootAfter();
-        logger.info("Booting completed ****************************************");
+        bootMessage("Boot after");
+        bootAfter(); // set by bootstrap script
+        logger.info("Done boot after ********************************************\n");
+
+        bootMessage("Booting completed");
+
+        // After this point, additional scripts are run by the launch script via exec ResourceManagerScript
     }
 
     private void bootEnv() {
@@ -204,9 +216,7 @@ public class Bootstrap extends GroovyObjectSupport {
         Object bootEnv = getVar(BOOT_ENV);
         if (bootEnv instanceof Map) {
             Map<String, Object> map = (Map) bootEnv;
-            map.forEach((key, val) -> {
-                resourceManager.getScripting().put(key, val);
-            });
+            map.forEach((key, val) -> resourceManager.getScripting().put(key, val));
         }
 
         // host environment file
@@ -231,8 +241,8 @@ public class Bootstrap extends GroovyObjectSupport {
         tryExec(sysFile);
 
         // host system properties
-        if (getVar(HOST_SYSTME_PROPERTIES_FILE) != null) {
-            sysFile = getVar(HOST_SYSTME_PROPERTIES_FILE).toString();
+        if (getVar(HOST_SYSTEM_PROPERTIES_FILE) != null) {
+            sysFile = getVar(HOST_SYSTEM_PROPERTIES_FILE).toString();
             tryExec(sysFile);
         }
 
@@ -319,7 +329,7 @@ public class Bootstrap extends GroovyObjectSupport {
     }
 
     private void initBoot() {
-        initBoot.forEach(script -> exec(script));
+        initBoot.forEach(this::exec);
     }
 
     private void bootMain() {
@@ -327,42 +337,50 @@ public class Bootstrap extends GroovyObjectSupport {
     }
 
     private void preBoot() {
-        for (Object s : preBoot) {
-            exec(s);
-        }
+        preBoot.forEach(this::exec);
     }
 
     private void postBoot() {
-        for (Object s : postBoot) {
-            exec(s);
-        }
+        postBoot.forEach(this::exec);
     }
 
     private void bootAfter() {
         after.forEach(this::runComponent);
     }
 
+    private void runComponentMessage(String message) {
+        final String line = "    =======================================================";
+        if (logger.isInfoEnabled()) {
+            logger.info(line);
+            logger.info(message);
+        }
+    }
+
     private void runComponent(Object key, Object value) {
         if (key instanceof Closure) {
             Closure closure = (Closure) key;
-            logger.info("-----------------------------------------------------------");
-            logger.info("Running closure " + closure.toString() );
-            logger.info("-----------------------------------------------------------");
+            runComponentMessage("    Running closure " + closure.toString());
             if (closure.isCase(EMPTY_OBJECT_ARRAY)) {
                 exec(value);
             } else {
-                logger.info("-> Closure returns false, skipped running " + value.toString());
+                if (logger.isInfoEnabled())
+                    logger.info("    !! Closure returns false, skipped running {}", value.toString());
+            }
+            if (logger.isInfoEnabled()) {
+                logger.info("    Done running {}", closure.toString());
             }
         } else {
             Object on = expando.getProperty(key.toString());
             if (Boolean.TRUE.equals(on)) {
-                logger.info("-----------------------------------------------------------");
-                logger.info("Booting " + key);
-                logger.info("-----------------------------------------------------------");
+                runComponentMessage("    Booting *" + key + "*");
                 exec(value);
             }
+            if (logger.isInfoEnabled()) {
+                logger.info("    Done booting *{}*", key);
+            }
         }
-        logger.info("-----------------------------------------------------------\n");
+        logger.info("    -------------------------------------------------------\n");
+
     }
 
     private void exec(Object obj) {

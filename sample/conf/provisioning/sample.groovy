@@ -29,7 +29,7 @@ bootstrap.with {
             variables: "$__dir/../variables.groovy",
             cluster: "$__dir/../cluster.groovy"
     ]
-    after = ['true': "$__dir/boot_final.groovy"]
+    after = [{true}: "$__dir/boot_final.groovy"]
     // defaultEnvironmentFile = ...
     // defaultSystemProperties = ...
 }
