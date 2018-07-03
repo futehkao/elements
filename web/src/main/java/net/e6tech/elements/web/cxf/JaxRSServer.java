@@ -47,6 +47,7 @@ import javax.annotation.PreDestroy;
 import javax.management.JMException;
 import javax.management.ObjectInstance;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -88,6 +89,7 @@ public class JaxRSServer extends CXFServer {
     private boolean measurement = false;
     private SecurityAnnotationEngine securityAnnotationEngine;
     private Configuration.Resolver resolver;
+    private Map<String, String> responseHeaders = new LinkedHashMap<>();
 
     public static Logger getLogger() {
         return logger;
@@ -163,6 +165,14 @@ public class JaxRSServer extends CXFServer {
 
     public void setResolver(Configuration.Resolver resolver) {
         this.resolver = resolver;
+    }
+
+    public Map<String, String> getResponseHeaders() {
+        return responseHeaders;
+    }
+
+    public void setResponseHeaders(Map<String, String> responseHeaders) {
+        this.responseHeaders = responseHeaders;
     }
 
     @Override
@@ -454,13 +464,16 @@ public class JaxRSServer extends CXFServer {
 
             try {
                 checkInvocation(frame.getMethod(), frame.getArguments());
+                HttpServletResponse response = (HttpServletResponse) message.get(AbstractHTTPDestination.HTTP_RESPONSE);
+                if (response != null)
+                    responseHeaders.forEach(response::setHeader);
                 if (!ignored) {
                     long start = System.currentTimeMillis();
                     result = uow.submit(() -> {
                         if (observer != null) {
                             HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
                             uow.getResources().inject(observer);
-                            observer.beforeInvocation(request, frame.getTarget(), frame.getMethod(), frame.getArguments());
+                            observer.beforeInvocation(request, response, frame.getTarget(), frame.getMethod(), frame.getArguments());
                         }
                         uow.getResources().inject(frame.getTarget());
                         Object ret = frame.invoke();
@@ -520,11 +533,14 @@ public class JaxRSServer extends CXFServer {
             if (proxy == null) {
                 proxy = getInterceptor().newInterceptor(super.getInstance(m), frame -> {
                     try {
+                        HttpServletResponse response = (HttpServletResponse) m.get(AbstractHTTPDestination.HTTP_RESPONSE);
+                        if (response != null)
+                            responseHeaders.forEach(response::setHeader);
                         checkInvocation(frame.getMethod(), frame.getArguments());
                         if (cloneObserver != null) {
                             HttpServletRequest request = (HttpServletRequest) m.get(AbstractHTTPDestination.HTTP_REQUEST);
                             getProvision().inject(cloneObserver);
-                            cloneObserver.beforeInvocation(request, frame.getTarget(), frame.getMethod(), frame.getArguments());
+                            cloneObserver.beforeInvocation(request, response, frame.getTarget(), frame.getMethod(), frame.getArguments());
                         }
                         long start = System.currentTimeMillis();
 

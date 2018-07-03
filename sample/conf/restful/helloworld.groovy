@@ -26,6 +26,9 @@ atom("helloWorld") {
         - class: "net.e6tech.sample.web.cxf.HelloWorld"
           singleton: false
           prototype: ^_prototype
+    _helloWorld.responseHeaders:
+        'X' : 'X val'
+        'Y' : 'Y val'
  """
     _prototype = HelloWorld
     _helloWorld = JaxRSServer

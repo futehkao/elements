@@ -4,6 +4,7 @@ import net.e6tech.elements.common.resources.BindClass;
 import net.e6tech.elements.common.util.SystemException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Method;
 
 /**
@@ -12,7 +13,7 @@ import java.lang.reflect.Method;
 @BindClass(Observer.class)
 public abstract class Observer implements Cloneable {
 
-    public void beforeInvocation(HttpServletRequest request, Object instance, Method method, Object[] args) {
+    public void beforeInvocation(HttpServletRequest request, HttpServletResponse response, Object instance, Method method, Object[] args) {
     }
 
     public void afterInvocation(Object result) {
