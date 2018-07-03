@@ -21,7 +21,9 @@ registerBean('jobServer', JobServer)
 
 bootstrap.with {
     dir = "$__dir"
-    init = ["$__dir/boot_init.groovy"]
+    init = ["$__dir/boot_init.groovy",
+            { disable('variables') },
+            { println resourceManager }]
     main = [
             { variables && cluster }: {
                 println "booting variables and cluster"
@@ -30,7 +32,7 @@ bootstrap.with {
             cluster: "$__dir/../cluster.groovy"
     ]
     after = [{true}: "$__dir/boot_final.groovy"]
-    // defaultEnvironmentFile = ...
+    defaultEnvironmentFile = "$__dir/../variables.groovy"
     // defaultSystemProperties = ...
 }
 

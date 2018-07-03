@@ -18,6 +18,7 @@ package net.e6tech.elements.common.resources;
 
 import groovy.lang.Closure;
 import groovy.lang.GroovyObjectSupport;
+import groovy.lang.MissingPropertyException;
 import groovy.util.Expando;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.script.Scripting;
@@ -51,7 +52,7 @@ public class Bootstrap extends GroovyObjectSupport {
     private List postBoot = new ArrayList();
     private Map after = new LinkedHashMap();
     private ResourceManager resourceManager;
-    private Expando expando = new Expando();
+    private MyExpando expando = new MyExpando();
     private boolean envInitialized = false;
 
     public Bootstrap(ResourceManager rm) {
@@ -135,6 +136,15 @@ public class Bootstrap extends GroovyObjectSupport {
             logger.info(line);
         }
     }
+
+    public void enable(String ... components) {
+        expando.enable(components);
+    }
+
+    public void disable(String ... components) {
+        expando.disable(components);
+    }
+
     public void boot(String ... components) {
         // boot env
         if (main.isEmpty() && after.isEmpty()) {
@@ -415,5 +425,27 @@ public class Bootstrap extends GroovyObjectSupport {
 
     private Object getVar(String var) {
         return resourceManager.getScripting().get(var);
+    }
+
+    private class MyExpando extends Expando {
+
+        public Object getProperty(String property) {
+            // always use the expando properties first
+            Object result = getProperties().get(property);
+            if (result != null) return result;
+            return getMetaClass().getProperty(this, property);
+        }
+
+        public void enable(String ... components) {
+            if (components != null)
+                for (String component : components)
+                    setProperty(component, true);
+        }
+
+        public void disable(String ... components) {
+            if (components != null)
+                for (String component : components)
+                    setProperty(component, false);
+        }
     }
 }

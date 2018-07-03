@@ -29,6 +29,7 @@ import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.datastructure.Pair;
 import net.e6tech.elements.jmx.JMXService;
 import net.e6tech.elements.jmx.stat.Measurement;
 import net.e6tech.elements.web.JaxExceptionHandler;
@@ -464,16 +465,13 @@ public class JaxRSServer extends CXFServer {
 
             try {
                 checkInvocation(frame.getMethod(), frame.getArguments());
-                HttpServletResponse response = (HttpServletResponse) message.get(AbstractHTTPDestination.HTTP_RESPONSE);
-                if (response != null)
-                    responseHeaders.forEach(response::setHeader);
+                Pair<HttpServletRequest, HttpServletResponse> pair = getSevletRequestResponse(message);
                 if (!ignored) {
                     long start = System.currentTimeMillis();
                     result = uow.submit(() -> {
                         if (observer != null) {
-                            HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
                             uow.getResources().inject(observer);
-                            observer.beforeInvocation(request, response, frame.getTarget(), frame.getMethod(), frame.getArguments());
+                            observer.beforeInvocation(pair.key(), pair.value(), frame.getTarget(), frame.getMethod(), frame.getArguments());
                         }
                         uow.getResources().inject(frame.getTarget());
                         Object ret = frame.invoke();
@@ -513,6 +511,18 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
+    private Pair<HttpServletRequest, HttpServletResponse> getSevletRequestResponse(Message message) {
+        Pair<HttpServletRequest, HttpServletResponse> pair = new Pair<>(null, null);
+        if (message != null) {
+            HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
+            HttpServletResponse response = (HttpServletResponse) message.get(AbstractHTTPDestination.HTTP_RESPONSE);
+            pair = new Pair<>(request, response);
+            if (response != null)
+                responseHeaders.forEach(response::setHeader);
+        }
+        return pair;
+    }
+
     private class SharedResourceProvider extends SingletonResourceProvider {
 
         Observer observer;
@@ -533,14 +543,11 @@ public class JaxRSServer extends CXFServer {
             if (proxy == null) {
                 proxy = getInterceptor().newInterceptor(super.getInstance(m), frame -> {
                     try {
-                        HttpServletResponse response = (HttpServletResponse) m.get(AbstractHTTPDestination.HTTP_RESPONSE);
-                        if (response != null)
-                            responseHeaders.forEach(response::setHeader);
                         checkInvocation(frame.getMethod(), frame.getArguments());
+                        Pair<HttpServletRequest, HttpServletResponse> pair = getSevletRequestResponse(m);
                         if (cloneObserver != null) {
-                            HttpServletRequest request = (HttpServletRequest) m.get(AbstractHTTPDestination.HTTP_REQUEST);
                             getProvision().inject(cloneObserver);
-                            cloneObserver.beforeInvocation(request, response, frame.getTarget(), frame.getMethod(), frame.getArguments());
+                            cloneObserver.beforeInvocation(pair.key(), pair.value(), frame.getTarget(), frame.getMethod(), frame.getArguments());
                         }
                         long start = System.currentTimeMillis();
 
