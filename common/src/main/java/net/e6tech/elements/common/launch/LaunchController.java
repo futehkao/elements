@@ -102,6 +102,10 @@ public class LaunchController implements LaunchListener {
         return this;
     }
 
+    public LaunchController evalAfterCreated(String script) {
+        return addCreatedListener(rm -> rm.eval(script));
+    }
+
     public LaunchController removeCreatedListener(CreatedListener listener) {
         listeners.remove(listener);
         return this;

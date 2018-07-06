@@ -145,8 +145,8 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
         return getShell().createAtom(name, consumer, prototype, false);
     }
 
-    public Bootstrap boot(String ... components) {
-        getBootstrap().boot(components);
+    public Bootstrap boot(Object bootScript, Object ... components) {
+        getBootstrap().boot(bootScript, components);
         return bootstrap;
     }
 

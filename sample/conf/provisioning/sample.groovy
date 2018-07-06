@@ -22,7 +22,6 @@ registerBean('jobServer', JobServer)
 bootstrap.with {
     dir = "$__dir"
     init = ["$__dir/boot_init.groovy",
-            { disable('variables') },
             { println resourceManager }]
     main = [
             { variables && cluster }: {
@@ -36,9 +35,10 @@ bootstrap.with {
     // defaultSystemProperties = ...
 }
 
-preBoot = [{ println 'hello world'}, 'variables']
+bootDisableList = ['cluster']
+preBoot = [ hello: { println 'hello world'}, variables: true ]
 postBoot = [{ println 'boot completed!'}]
-boot('cluster', 'trivial')
+boot(null, 'cluster', 'trivial')
 exec "$__dir/../persist.groovy",
         "$__dir/../notification.groovy",
         "$__dir/../prototype/concrete.groovy",
