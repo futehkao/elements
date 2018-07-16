@@ -22,7 +22,7 @@ import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.security.JCEKS;
+import net.e6tech.elements.security.JavaKeyStore;
 
 import javax.net.ssl.*;
 import javax.ws.rs.*;
@@ -56,20 +56,21 @@ public class RestfulClient {
     private static Logger logger = Logger.getLogger();
     private static final X509Certificate[] EMPTY_CERTIFICATES = new X509Certificate[0];
 
-    public static final ObjectMapper mapper = ObjectMapperFactory.newInstance();
-
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
     private String encoding = "UTF-8";
     private String trustStore;
+    private String trustStoreFormat = JavaKeyStore.DEFAULT_FORMAT;
     private boolean skipHostnameCheck = false;
     private boolean skipCertCheck = false;
     private SSLSocketFactory sslSocketFactory;
     private int connectionTimeout = -1;
     private int readTimeout = -1;
     private PrintWriter printer;
+    private boolean printRawResponse = false;
     private String proxyHost;
     private int proxyPort = -1;
+    private Marshaller marshaller = new JsonMarshaller();
 
     public RestfulClient() {}
 
@@ -110,6 +111,14 @@ public class RestfulClient {
         this.trustStore = trustStore;
     }
 
+    public String getTrustStoreFormat() {
+        return trustStoreFormat;
+    }
+
+    public void setTrustStoreFormat(String trustStoreFormat) {
+        this.trustStoreFormat = trustStoreFormat;
+    }
+
     public boolean isSkipHostnameCheck() {
         return skipHostnameCheck;
     }
@@ -128,7 +137,6 @@ public class RestfulClient {
         this.skipCertCheck = skipCertCheck;
     }
 
-
     public PrintWriter getPrinter() {
         return printer;
     }
@@ -136,6 +144,14 @@ public class RestfulClient {
     @Inject(optional = true)
     public void setPrinter(PrintWriter printer) {
         this.printer = printer;
+    }
+
+    public boolean isPrintRawResponse() {
+        return printRawResponse;
+    }
+
+    public void setPrintRawResponse(boolean printRawResponse) {
+        this.printRawResponse = printRawResponse;
     }
 
     public int getConnectionTimeout() {
@@ -316,7 +332,7 @@ public class RestfulClient {
             conn = open(dest, context, params);
             if (method.equals(Request.POST) || method.equals(Request.PUT)) {
                 conn.setDoOutput(true);
-                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Content-Type", marshaller.getContentType());
             }
             conn.setRequestMethod(method);
             setConnectionProperties(conn);
@@ -328,7 +344,7 @@ public class RestfulClient {
                 printHeaders((Map) requestProperties);
                 printHeaders(conn.getRequestProperties());
                 if (data != null) {
-                    printer.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(data));
+                    printer.println(marshaller.prettyPrintRequest(data));
                 }
                 printer.println();
             }
@@ -337,7 +353,7 @@ public class RestfulClient {
                 OutputStream out = conn.getOutputStream();
                 if (data != null) {
                     Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), "UTF-8");
-                    String posted = mapper.writeValueAsString(data);
+                    String posted = marshaller.encodeRequest(data);
                     writer.write(posted);
                     logger.debug(posted);
                     writer.flush();
@@ -356,25 +372,12 @@ public class RestfulClient {
                 printHeaders(response.getHeaderFields());
                 String result = response.getResult();
                 if (result != null && result.length() > 0) {
-                    Object ret;
-                    if (result.startsWith("[")) {
-                        ret = mapper.readValue(response.getResult(), List.class);
-                    } else if (result.startsWith("{")) {
-                        ret = mapper.readValue(response.getResult(), Map.class);
-                    } else if (result.startsWith("\"")){
-                        ret = mapper.readValue(response.getResult(), String.class);
-                    } else if (Character.isDigit(result.charAt(0))) {
-                        if (result.contains(".")) {
-                            ret = mapper.readValue(response.getResult(), BigDecimal.class);
-                        } else {
-                            ret = mapper.readValue(response.getResult(), Long.class);
-                        }
-                    } else if ("true".equalsIgnoreCase(result) || "false".equalsIgnoreCase(result)) {
-                        ret = Boolean.getBoolean(result);
-                    } else {
-                        ret = result;
+                    if (isPrintRawResponse()) {
+                        printer.println("===== RAW RESPONSE: START =====");
+                        printer.println(result);
+                        printer.println("===== RAW RESPONSE: END =======");
                     }
-                   printer.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(ret));
+                   printer.println(marshaller.prettyPrintResponse(result));
                 }
                 printer.println();
             }
@@ -385,7 +388,7 @@ public class RestfulClient {
                 String result = ex.getMessage();
                 if (result != null && exceptionMapper != null) {
                     try {
-                        ErrorResponse error = mapper.readValue(result, ErrorResponse.class);
+                        ErrorResponse error = marshaller.readErrorResponse(result);
                         if (error != null) {
                             mappedThrowable = exceptionMapper.fromResponse(error);
                         }
@@ -512,7 +515,7 @@ public class RestfulClient {
         conn.setDoInput(true);
         conn.setUseCaches(false);
         conn.setAllowUserInteraction(false);
-        conn.setRequestProperty("Accept", "application/json");
+        conn.setRequestProperty("Accept", marshaller.getAccept());
     }
 
     private void loadRequestProperties(HttpURLConnection conn, Properties properties) {
@@ -530,9 +533,9 @@ public class RestfulClient {
         } else {
             try {
                 if (trustStore != null) {
-                    JCEKS jceks = new JCEKS(trustStore, null);
-                    jceks.init(null);
-                    trustManagers = jceks.getTrustManagers();
+                    JavaKeyStore javaKeyStore = new JavaKeyStore(trustStore, null, trustStoreFormat);
+                    javaKeyStore.init(null);
+                    trustManagers = javaKeyStore.getTrustManagers();
                 } else {
                     TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
                     factory.init((KeyStore)null);

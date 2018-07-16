@@ -21,7 +21,7 @@ import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.Startable;
-import net.e6tech.elements.security.JCEKS;
+import net.e6tech.elements.security.JavaKeyStore;
 import net.e6tech.elements.security.SelfSignedCert;
 import org.apache.cxf.configuration.jsse.TLSServerParameters;
 import org.apache.cxf.configuration.security.ClientAuthentication;
@@ -54,6 +54,7 @@ public class CXFServer implements Initializable, Startable {
     private List<Server> servers = new ArrayList<>();
     private List<URL> urls = new ArrayList<>();
     private String keyStoreFile;
+    private String keyStoreFormat = JavaKeyStore.DEFAULT_FORMAT;
     private char[] keyStorePassword;
     private char[] keyManagerPassword;
     private SelfSignedCert selfSignedCert;
@@ -97,6 +98,14 @@ public class CXFServer implements Initializable, Startable {
 
     public void setKeyStoreFile(String keyStoreFile) {
         this.keyStoreFile = keyStoreFile;
+    }
+
+    public String getKeyStoreFormat() {
+        return keyStoreFormat;
+    }
+
+    public void setKeyStoreFormat(String keyStoreFormat) {
+        this.keyStoreFormat = keyStoreFormat;
     }
 
     public char[] getKeyStorePassword() {
@@ -161,7 +170,7 @@ public class CXFServer implements Initializable, Startable {
             keyManagers = selfSignedCert.getKeyManagers();
             trustManagers = selfSignedCert.getTrustManagers();
         } else {
-            JCEKS jceKeyStore = new JCEKS(keyStoreFile, keyStorePassword);
+            JavaKeyStore jceKeyStore = new JavaKeyStore(keyStoreFile, keyStorePassword, keyStoreFormat);
             if (keyManagerPassword == null)
                 keyManagerPassword = keyStorePassword;
             jceKeyStore.init(keyManagerPassword);

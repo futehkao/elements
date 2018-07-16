@@ -28,17 +28,18 @@ public class SelfSignedCert {
     private String alias = "cert";
     private String dn = "CN=localhost.net,OU=IT,O=Unemployed,L=Austin,ST=Texas,C=US";
     private int expiration = 3; // 3 years
-    private JCEKS jceks;
+    private JavaKeyStore javaKeyStore;
+    private String format = JavaKeyStore.DEFAULT_FORMAT;
 
     public void init() throws GeneralSecurityException {
         char[] password = Password.generateRandomPassword(9, 15);
-        jceks = new JCEKS();
-        jceks.createSelfSignedCertificate(alias, dn, password, expiration);
-        jceks.init(password);
+        javaKeyStore = new JavaKeyStore();
+        javaKeyStore.createSelfSignedCertificate(alias, dn, password, expiration);
+        javaKeyStore.init(password);
     }
 
-    public void init(JCEKS jceks) {
-        this.jceks = jceks;
+    public void init(JavaKeyStore javaKeyStore) {
+        this.javaKeyStore = javaKeyStore;
     }
 
     public String getAlias() {
@@ -65,12 +66,20 @@ public class SelfSignedCert {
         this.expiration = expiration;
     }
 
+    public String getFormat() {
+        return format;
+    }
+
+    public void setFormat(String format) {
+        this.format = format;
+    }
+
     public KeyManager[] getKeyManagers() {
-        return jceks.getKeyManagers();
+        return javaKeyStore.getKeyManagers();
     }
 
     public TrustManager[] getTrustManagers() {
-        return jceks.getTrustManagers();
+        return javaKeyStore.getTrustManagers();
     }
 
 }

@@ -41,36 +41,50 @@ import java.util.Properties;
 /**
  * Created by futeh.
  */
-public class JCEKS {
+public class JavaKeyStore {
     static {
         SymmetricCipher.initialize();
     }
 
-    private static final String JCEKS_CONST = "JCEKS";
+    public static final String JCEKS_FORMAT = "JCEKS";
+    public static final String JKS_FORMAT = "JKS";
+    public static final String PKCS12_FORMAT = "PKCS12";
+    public static final String DEFAULT_FORMAT = PKCS12_FORMAT;
+
     KeyStore keyStore;
     KeyManager[] keyManagers = null;
     TrustManager[] trustManagersWithSystem;
     TrustManager[] trustManagers;
     boolean includeSystem = true;
 
-    public JCEKS() throws GeneralSecurityException {
-        keyStore = createKeyStore();
+    public JavaKeyStore() throws GeneralSecurityException {
+        keyStore = createKeyStore(DEFAULT_FORMAT);
     }
 
-    public JCEKS(KeyStore keyStore) {
+    public JavaKeyStore(String format) throws GeneralSecurityException {
+        if (format == null)
+            format = DEFAULT_FORMAT;
+        keyStore = createKeyStore(format);
+    }
+
+    public JavaKeyStore(KeyStore keyStore) {
         this.keyStore = keyStore;
     }
 
-    public JCEKS(String file, char[] password) throws GeneralSecurityException, IOException {
+    public JavaKeyStore(String file, char[] password, String format) throws GeneralSecurityException, IOException {
         if (file != null) {
-            keyStore = KeyStore.getInstance(JCEKS_CONST);
+            if (format == null)
+                format = DEFAULT_FORMAT;
+            keyStore = KeyStore.getInstance(format);
             keyStore.load(new FileInputStream(file), password);
         }
     }
 
-    public JCEKS(InputStream inputStream, char[] password) throws GeneralSecurityException, IOException {
+    public JavaKeyStore(InputStream inputStream, char[] password, String format) throws GeneralSecurityException, IOException {
         if (inputStream != null) {
-            keyStore = KeyStore.getInstance(JCEKS_CONST);
+            if (format == null)
+                format = DEFAULT_FORMAT;
+            keyStore = KeyStore.getInstance(format);
             keyStore.load(inputStream, password);
         }
     }
@@ -187,8 +201,8 @@ public class JCEKS {
         return keyStore.isCertificateEntry(name) || keyStore.isKeyEntry(name);
     }
 
-    public static KeyStore createKeyStore() throws GeneralSecurityException {
-        KeyStore keyStore = KeyStore.getInstance(JCEKS_CONST);
+    public static KeyStore createKeyStore(String format) throws GeneralSecurityException {
+        KeyStore keyStore = KeyStore.getInstance(format);
         try {
             keyStore.load(null, null);
         } catch (IOException e) {
@@ -229,7 +243,7 @@ public class JCEKS {
 
         KeyPair pair = generateKeyPair("RSA", 2048);
         X509Certificate cert = generateSelfSignedCertificate("CN=www.nowhere.com,OU=IT,O=No Where,L=Austin,ST=Texas,C=US", pair, 10);
-        KeyStore keyStore = createKeyStore();
+        KeyStore keyStore = createKeyStore(PKCS12_FORMAT);
         keyStore.setKeyEntry("alias", pair.getPrivate(), password, new java.security.cert.Certificate[]{cert});
         Key privKey = keyStore.getKey("alias", password);
 
@@ -247,26 +261,27 @@ public class JCEKS {
         hashed = props.getProperty("UID");
         boolean check = Password.check("password".toCharArray(), hashed);
 
-        JCEKS jceks = new JCEKS(keyStore);
-        jceks.init(password);
-        KeyManager[] keyManagers = jceks.getKeyManagers();
-        TrustManager[] trustManagers = jceks.getTrustManagers();
+        JavaKeyStore javaKeyStore = new JavaKeyStore(keyStore);
+        javaKeyStore.init(password);
+        KeyManager[] keyManagers = javaKeyStore.getKeyManagers();
+        TrustManager[] trustManagers = javaKeyStore.getTrustManagers();
 
         SecretKey secretKey = generateSecretKey("AES", 256);
         SecretKey key2 = generateSecretKey("AES", 256);
         SymmetricCipher encryption = SymmetricCipher.getInstance("AES");
         byte[] bytes = encryption.encryptBytes(secretKey, key2.getEncoded(), null);
         SecretKey encryptedKey = new SecretKeySpec(bytes, "AES");
-        jceks.setKey("encryptedKey", encryptedKey, password);
-        SecretKey encryptedKey2 = (SecretKey) jceks.getKey("encryptedKey", password);
+        javaKeyStore.setKey("encryptedKey", encryptedKey, password);
+        SecretKey encryptedKey2 = (SecretKey) javaKeyStore.getKey("encryptedKey", password);
 
         bytes = encryption.decryptBytes(secretKey, encryptedKey2.getEncoded(), null);
         SecretKey decryptedKey = new SecretKeySpec(bytes, "AES");
         System.out.println(decryptedKey.equals(key2));
 
+        // below won't work JUNK is not a valid algo
         SecretKeySpec junk = new SecretKeySpec(new byte[2567], "JUNK");
-        jceks.setKey("junk", junk, password);
-        junk = (SecretKeySpec) jceks.getKey("junk", password);
+        javaKeyStore.setKey("junk", junk, password);
+        junk = (SecretKeySpec) javaKeyStore.getKey("junk", password);
     }
 
 

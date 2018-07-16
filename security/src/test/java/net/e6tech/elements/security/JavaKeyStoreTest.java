@@ -26,21 +26,20 @@ import java.io.ByteArrayOutputStream;
 /**
  * Created by futeh.
  */
-public class JCEKSTest {
+public class JavaKeyStoreTest {
 
     @Test
     public void basic() throws Exception {
         char[] password = "password".toCharArray();
         char[] password2 = "password2".toCharArray();
-        JCEKS jceks = new JCEKS();
-        jceks.createSelfSignedCertificate("alias", "CN=www.nowhere.com,OU=IT,O=No Where,L=Austin,ST=Texas,C=US",
+        JavaKeyStore javaKeyStore = new JavaKeyStore();
+        javaKeyStore.createSelfSignedCertificate("alias", "CN=www.nowhere.com,OU=IT,O=No Where,L=Austin,ST=Texas,C=US",
                 password, 3);
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         char[] filePassword = "password".toCharArray();
-        jceks.save(output, filePassword);
+        javaKeyStore.save(output, filePassword);
         byte[]  bytes = output.toByteArray();
         System.out.println(bytes.length);
-        jceks.init(password);
-
+        javaKeyStore.init(password);
     }
 }
