@@ -24,6 +24,7 @@ import akka.pattern.Patterns;
 import net.e6tech.elements.common.actor.pool.WorkerPool;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 
@@ -32,6 +33,8 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 /**
@@ -44,11 +47,17 @@ public class Registry {
     private static String path = "registry";
     public static final String REGISTRY_DISPATCHER = "registry-dispatcher";
 
+    private static ThreadPool threadPool = ThreadPool.cachedThreadPool("Cluster-Registry");
+
     ActorSystem system;
     ActorRef registrar;
     ActorRef workerPool;
     long timeout = 5000L;
     List<RouteListener> listeners = new ArrayList<>();
+
+    public static ThreadPool getThreadPool() {
+        return threadPool;
+    }
 
     public static String getPath() {
         return path;

@@ -27,8 +27,6 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.pattern.Patterns;
 
-import java.util.concurrent.CompletableFuture;
-
 /**
  * Created by futeh.
  *
@@ -88,7 +86,7 @@ class RegistryEntryActor extends AbstractActor {
                                 sender.tell(new Events.Response(ret), self);
                             }, registration.timeout());
                         } else {
-                            CompletableFuture.runAsync(() -> {
+                            Registry.getThreadPool().execute(() -> {
                                 Object ret = registration.function().apply(message.arguments());
                                 sender.tell(new Events.Response(ret), self);
                             });

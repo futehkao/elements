@@ -34,8 +34,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 
 /**
@@ -167,13 +165,11 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             }
         }
         if (listeners != null) {
-            // this can be parallelized.
             try {
                 long start = System.currentTimeMillis();
-                listeners.stream()
-                        .map(listener -> CompletableFuture.runAsync(listener::preFlush))
-                        .collect(Collectors.toList())
-                        .forEach(CompletableFuture::join);
+                for (PersistenceListener p : listeners) {
+                    p.preFlush();
+                }
                 Watcher.addGracePeriod(System.currentTimeMillis() - start);
             } catch (Exception e) {
                 throw new SystemException(e);
