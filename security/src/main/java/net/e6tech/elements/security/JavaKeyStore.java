@@ -123,13 +123,17 @@ public class JavaKeyStore {
         }
     }
 
+    public KeyStore getKeyStore() {
+        return keyStore;
+    }
+
+    // if there is the key managers are not password protected, the argument password needs to be an empty char array.
     public void init(char[] password) throws GeneralSecurityException {
         if (password != null) {
             KeyManagerFactory factory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             factory.init(keyStore, password);
             keyManagers = factory.getKeyManagers();
         }
-
         initTrustManagers();
     }
 

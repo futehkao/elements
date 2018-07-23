@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,6 +56,7 @@ public class CXFServer implements Initializable, Startable {
     private List<URL> urls = new ArrayList<>();
     private String keyStoreFile;
     private String keyStoreFormat = JavaKeyStore.DEFAULT_FORMAT;
+    private KeyStore keyStore;
     private char[] keyStorePassword;
     private char[] keyManagerPassword;
     private SelfSignedCert selfSignedCert;
@@ -98,6 +100,14 @@ public class CXFServer implements Initializable, Startable {
 
     public void setKeyStoreFile(String keyStoreFile) {
         this.keyStoreFile = keyStoreFile;
+    }
+
+    public KeyStore getKeyStore() {
+        return keyStore;
+    }
+
+    public void setKeyStore(KeyStore keyStore) {
+        this.keyStore = keyStore;
     }
 
     public String getKeyStoreFormat() {
@@ -162,20 +172,25 @@ public class CXFServer implements Initializable, Startable {
      */
     @SuppressWarnings({"squid:S3776", "squid:MethodCyclomaticComplexity"})
     protected void initKeyStore() throws GeneralSecurityException, IOException {
-        if (keyStoreFile == null && selfSignedCert == null)
+        if (keyStoreFile == null && selfSignedCert == null && keyStore == null)
             return;
         KeyManager[] keyManagers ;
         TrustManager[] trustManagers;
-        if (selfSignedCert != null) {
-            keyManagers = selfSignedCert.getKeyManagers();
-            trustManagers = selfSignedCert.getTrustManagers();
-        } else {
-            JavaKeyStore jceKeyStore = new JavaKeyStore(keyStoreFile, keyStorePassword, keyStoreFormat);
+        if (keyStore != null || keyStoreFile != null) {
+            JavaKeyStore jceKeyStore;
+            if (keyStore != null) {
+                jceKeyStore = new JavaKeyStore(keyStore);
+            } else {
+                jceKeyStore = new JavaKeyStore(keyStoreFile, keyStorePassword, keyStoreFormat);
+            }
             if (keyManagerPassword == null)
                 keyManagerPassword = keyStorePassword;
             jceKeyStore.init(keyManagerPassword);
             keyManagers = jceKeyStore.getKeyManagers();
             trustManagers = jceKeyStore.getTrustManagers();
+        } else { // selfSignedCert
+            keyManagers = selfSignedCert.getKeyManagers();
+            trustManagers = selfSignedCert.getTrustManagers();
         }
         TLSServerParameters tlsParams = new TLSServerParameters();
         tlsParams.setKeyManagers(keyManagers);
