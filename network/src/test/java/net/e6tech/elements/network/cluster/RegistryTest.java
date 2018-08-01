@@ -19,13 +19,13 @@ package net.e6tech.elements.network.cluster;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.util.concurrent.Async;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 

@@ -18,6 +18,7 @@ limitations under the License.
 package net.e6tech.elements.persist.hibernate;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.InstanceNotFoundException;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.serialization.ObjectReference;
 import net.e6tech.elements.common.util.InitialContextFactory;
@@ -78,14 +79,14 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     protected void evictCollectionRegion(EvictCollectionRegion notification) {
         Cache cache = emf.getCache();
         org.hibernate.Cache hibernateCache = cache.unwrap(org.hibernate.Cache.class);
-        hibernateCache.evictCollectionRegion(notification.getRole());
+        hibernateCache.evictCollectionData(notification.getRole());
     }
 
     @Override
     protected void evictEntityRegion(EvictEntityRegion notification) {
         Cache cache = emf.getCache();
         org.hibernate.Cache hibernateCache = cache.unwrap(org.hibernate.Cache.class);
-        hibernateCache.evictEntityRegion(notification.getEntityName());
+        hibernateCache.evictEntityData(notification.getEntityName());
     }
 
     @Override
@@ -94,7 +95,7 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         org.hibernate.Cache hibernateCache = cache.unwrap(org.hibernate.Cache.class);
         try {
             ObjectReference ref = notification.getObjectReference();
-            hibernateCache.evictEntity(getClass().getClassLoader().loadClass(ref.getType()), (Serializable) ref.getId());
+            hibernateCache.evictEntityData(getClass().getClassLoader().loadClass(ref.getType()), (Serializable) ref.getId());
         } catch (ClassNotFoundException e) {
             logger.warn(e.getMessage(), e);
         }
@@ -119,22 +120,28 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
 
     @Override
     public void afterOpen(Resources resources) {
-        EntityManager em = resources.getInstance(EntityManager.class);
-        SessionImpl session = (SessionImpl) em.getDelegate();
-        if (session.getInterceptor() instanceof PersistenceInterceptor) {
-            PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
-            resources.inject(interceptor);
+        try {
+            SessionImpl session = resources.getInstance(SessionImpl.class);
+            if (session.getInterceptor() instanceof PersistenceInterceptor) {
+                PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
+                resources.inject(interceptor);
+            }
+        } catch (InstanceNotFoundException ex) {
+            // don't care
         }
     }
 
     @Override
     public void cleanup(Resources resources) {
         super.cleanup(resources);
-        EntityManager em = resources.getInstance(EntityManager.class);
-        SessionImpl session = (SessionImpl) em.getDelegate();
-        if (session.getInterceptor() instanceof PersistenceInterceptor) {
-            PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
-            interceptor.cleanup(resources);
+        try {
+            SessionImpl session = resources.getInstance(SessionImpl.class);
+            if (session.getInterceptor() instanceof PersistenceInterceptor) {
+                PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
+                interceptor.cleanup(resources);
+            }
+        } catch (InstanceNotFoundException ex) {
+            // don't care
         }
     }
 

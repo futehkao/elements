@@ -167,10 +167,10 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
         NotificationCenter notificationCenter = resources.getNotificationCenter();
         notificationCenter.subscribe(EvictCollectionRegion.class,
-                notice -> evictCollectionRegion((EvictCollectionRegion) notice.getUserObject()));
+                notice -> evictCollectionRegion(notice.getUserObject()));
 
         notificationCenter.subscribe(EvictEntityRegion.class,
-                notice -> evictEntityRegion((EvictEntityRegion) notice.getUserObject()));
+                notice -> evictEntityRegion(notice.getUserObject()));
 
         notificationCenter.subscribe(EvictEntity.class,
                 notice -> evictEntity(notice.getUserObject()));

@@ -41,6 +41,7 @@ import java.util.List;
  */
 public class Interceptor extends EmptyInterceptor implements PersistenceInterceptor {
 
+    private static final long serialVersionUID = 2386314971138960957L;
     // below @Inject happens during HibernateEntityManagerProvider.afterOpen(Resources resources)
     private transient Resources resources;
     private transient SessionFactoryImplementor sessionFactory;

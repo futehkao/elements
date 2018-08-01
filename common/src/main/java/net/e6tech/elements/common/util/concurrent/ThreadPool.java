@@ -105,6 +105,10 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
         return this;
     }
 
+    public <U> Async<U> async(U service) {
+        return new AsyncImpl<>(this, service);
+    }
+
     public <T extends ExecutorService> T unwrap() {
         return (T) executorService;
     }

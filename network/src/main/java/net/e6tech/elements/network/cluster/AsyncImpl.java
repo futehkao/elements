@@ -17,6 +17,7 @@
 package net.e6tech.elements.network.cluster;
 
 import net.e6tech.elements.common.reflection.Primitives;
+import net.e6tech.elements.common.util.concurrent.Async;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -28,7 +29,7 @@ import java.util.function.Function;
 /**
  * Created by futeh.
  */
-public class Async<U> {
+public class AsyncImpl<U> implements Async<U> {
 
     Class<U> interfaceClass;
     Registry registry;
@@ -37,7 +38,7 @@ public class Async<U> {
     CompletionStage completionStage;
     U proxy;
 
-    public Async(Registry registry, String qualifier, Class<U> interfaceClass, long timeout) {
+    public AsyncImpl(Registry registry, String qualifier, Class<U> interfaceClass, long timeout) {
         this.registry = registry;
         this.qualifier = qualifier;
         this.timeout = timeout;
@@ -77,11 +78,11 @@ public class Async<U> {
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             String methodName = method.getName();
             if ("hashCode".equals(methodName) && method.getParameterCount() == 0) {
-                return Async.this.hashCode();
+                return AsyncImpl.this.hashCode();
             } else if ("equals".equals(methodName) && method.getParameterCount() == 1) {
-                return Async.this.equals(args[0]);
+                return AsyncImpl.this.equals(args[0]);
             } else if ("toString".equals(methodName) && method.getParameterCount() == 0) {
-                return Async.this.toString();
+                return AsyncImpl.this.toString();
             }
 
             Function<Object[], CompletionStage> function = registry.route(qualifier, interfaceClass, method, timeout);

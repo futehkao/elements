@@ -126,6 +126,14 @@ public class CXFServer implements Initializable, Startable {
         this.keyStorePassword = keyStorePassword;
     }
 
+    public char[] getKeyManagerPassword() {
+        return keyManagerPassword;
+    }
+
+    public void setKeyManagerPassword(char[] keyManagerPassword) {
+        this.keyManagerPassword = keyManagerPassword;
+    }
+
     public SelfSignedCert getSelfSignedCert() {
         return selfSignedCert;
     }
@@ -208,14 +216,18 @@ public class CXFServer implements Initializable, Startable {
                 TLSServerParameters existingParams = (engine == null) ? null : engine.getTlsServerParameters();
                 if (existingParams != null) {
                     Set<KeyManager> keyManagerSet = new LinkedHashSet<>();
-                    for (KeyManager km : existingParams.getKeyManagers())
-                        keyManagerSet.add(km);
+                    if (existingParams.getKeyManagers() != null) {
+                        for (KeyManager km : existingParams.getKeyManagers())
+                            keyManagerSet.add(km);
+                    }
                     for (KeyManager km : keyManagers)
                         if (!keyManagerSet.contains(km))
                             keyManagerSet.add(km);
                     Set<TrustManager> trustManagerSet = new LinkedHashSet<>();
-                    for (TrustManager tm : existingParams.getTrustManagers())
-                        trustManagerSet.add(tm);
+                    if (existingParams.getTrustManagers() != null) {
+                        for (TrustManager tm : existingParams.getTrustManagers())
+                            trustManagerSet.add(tm);
+                    }
                     for (TrustManager tm : trustManagers)
                         if (!trustManagerSet.contains(tm))
                             trustManagerSet.add(tm);
