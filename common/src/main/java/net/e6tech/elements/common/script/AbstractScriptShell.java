@@ -130,8 +130,13 @@ public abstract class AbstractScriptShell {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T getVariable(String key) {
+    public <T> T nullableVar(String key) {
         return (T) getScripting().get(key);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> Optional<T> getVariable(String key) {
+        return Optional.ofNullable(nullableVar(key));
     }
 
     public  Map<String, List<String>> defineKnownEnvironments(String str) {

@@ -47,6 +47,7 @@ class ResourcesState {
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private LinkedList<Object> injectionList = new LinkedList<>();
     private List<ResourceProvider> externalResourceProviders;
+    private Map<String, Object> variables;
 
     ResourcesState(Resources resources) {
         factory = resources.getResourceManager().getModule().getFactory();
@@ -236,5 +237,19 @@ class ResourcesState {
                     ". Use newInstance if you meant to create an instance.");
         }
         return instance;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> Optional<T> getVariable(String key) {
+        if (variables == null)
+            return Optional.empty();
+        T t = (T) variables.get(key);
+        return Optional.ofNullable(t);
+    }
+
+    public void setVariable(String key, Object val) {
+        if (variables == null)
+            variables = new HashMap<>();
+        variables.put(key, val);
     }
 }

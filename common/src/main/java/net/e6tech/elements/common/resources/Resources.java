@@ -24,9 +24,9 @@ import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.resources.plugin.PluginPaths;
-import net.e6tech.elements.common.util.function.ConsumerWithException;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.function.ConsumerWithException;
 import net.e6tech.elements.common.util.function.FunctionWithException;
 
 import java.beans.BeanInfo;
@@ -59,17 +59,33 @@ public class Resources implements AutoCloseable, ResourcePool {
     private Retry retry;
     protected ResourcesState state;
     protected Configurator configurator = new Configurator();
-    protected Configurator initialConfigurator;
+    private Configurator initialConfigurator;
     private Consumer<? extends Resources> preOpen;
     private List<Replay<? extends Resources, ?, ? extends Exception>> replays = new LinkedList<>();
-    Object lastResult;
+    private Object lastResult;
     private Throwable lastException;
-    boolean submitting = false;
+    private boolean submitting = false;
 
     protected Resources(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
         state = new ResourcesState(this);
         getModule().bindInstance(getClass(), this);
+    }
+
+    public <T> T nullableVar(String key) {
+        Optional<T> optional = state.getVariable(key);
+        return optional.orElseGet(resourceManager.nullableVar(key));
+    }
+
+    public <T> Optional<T> getVariable(String key) {
+        Optional<T> optional = state.getVariable(key);
+        if (optional.isPresent())
+            return optional;
+        return resourceManager.getVariable(key);
+    }
+
+    public void setVariable(String key, Object val) {
+        state.setVariable(key, val);
     }
 
     public Retry getRetry() {
@@ -211,10 +227,6 @@ public class Resources implements AutoCloseable, ResourcePool {
     public <T extends Plugin> Optional<T> getPlugin(PluginPaths<T> paths, Object ... args) {
         PluginManager plugin = getInstance(PluginManager.class);
         return plugin.from(this).get(paths, args);
-    }
-
-    public <T> T getVariable(String variable) {
-        return resourceManager.getVariable(variable);
     }
 
     public Module getModule() {

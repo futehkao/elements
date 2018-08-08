@@ -6,7 +6,7 @@ import java.lang.reflect.InvocationTargetException;
  * Created by futeh.
  */
 @FunctionalInterface
-public interface ExceptionMapper {
+public interface ExceptionMapper<R> {
 
     @SuppressWarnings("squid:S135")
     static Throwable unwrap(Throwable throwable) {
@@ -36,9 +36,9 @@ public interface ExceptionMapper {
         return exception;
     }
 
-    ErrorResponse toResponse(Throwable exception);
+    R toResponse(Throwable exception);
 
-    default Throwable fromResponse(ErrorResponse response) {
+    default Throwable fromResponse(R response) {
         return null;
     }
 

@@ -20,14 +20,17 @@ import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.LogLevel;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
-import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
+import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
 import java.util.function.Consumer;
 
 /**
@@ -90,7 +93,11 @@ public class Provision {
         return resourceManager.getName();
     }
 
-    public <T> T  getVariable(String key) {
+    public <T> T nullableVar(String key) {
+        return resourceManager.nullableVar(key);
+    }
+
+    public <T> Optional<T> getVariable(String key) {
         return resourceManager.getVariable(key);
     }
 
