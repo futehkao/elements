@@ -74,7 +74,7 @@ public class Resources implements AutoCloseable, ResourcePool {
 
     public <T> T nullableVar(String key) {
         Optional<T> optional = state.getVariable(key);
-        return optional.orElseGet(resourceManager.nullableVar(key));
+        return optional.orElseGet(() -> resourceManager.nullableVar(key));
     }
 
     public <T> Optional<T> getVariable(String key) {
@@ -494,7 +494,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized <T extends Resources, R, E extends Exception> R submit(FunctionWithException<T, R, E> work) {
-        return play(new Replay<T, R, E>(work));
+        return play(new Replay<>(work));
     }
 
     public Throwable getLastException() {
