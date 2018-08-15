@@ -26,7 +26,10 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.reflection.Reflection;
-import net.e6tech.elements.common.resources.*;
+import net.e6tech.elements.common.resources.Configuration;
+import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
@@ -58,14 +61,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 
 /**
  * Created by futeh.
  *
  * code is based on http://cxf.apache.org/docs/jaxrs-services-configuration.html#JAXRSServicesConfiguration-JAX-RSRuntimeDelegateandApplications
  */
-@SuppressWarnings({"squid:S1149", "squid:MethodCyclomaticComplexity"})
+@SuppressWarnings({"squid:S1149", "squid:MethodCyclomaticComplexity", "squid:S3776"})
 public class JaxRSServer extends CXFServer {
 
     static {

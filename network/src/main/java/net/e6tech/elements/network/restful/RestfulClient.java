@@ -15,10 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.network.restful;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
@@ -31,12 +29,7 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.*;
-import java.math.BigDecimal;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
-import java.net.Proxy;
-import java.net.URL;
+import java.net.*;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -212,9 +205,10 @@ public class RestfulClient {
         return params.toArray(new Param[params.size()]);
     }
 
+    @SuppressWarnings("squid:S3878")
     public Response get(String context, Object object) throws Throwable {
         if (object instanceof Param) {
-            return get(context, new Param[] { (Param) object});
+            return get(context, new Param[] { (Param) object}); // this is to prevent calling the wrong get
         }
         return get(context, toParams(object));
     }
@@ -231,9 +225,10 @@ public class RestfulClient {
         return new Request(this).delete(context, params);
     }
 
+    @SuppressWarnings("squid:S3878")
     public Response put(String context, Object data, Object object) throws Throwable {
         if (object instanceof Param) {
-            return put(context, data, new Param[]{(Param) object});
+            return put(context, data, new Param[]{(Param) object}); // prevent calling the wrong put
         }
         return put(context, data, toParams(object));
     }
@@ -242,6 +237,7 @@ public class RestfulClient {
         return new Request(this).put(context, data, params);
     }
 
+    @SuppressWarnings("squid:S3878")
     public Response post(String context, Object data, Object object) throws Throwable {
         if (object instanceof Param) {
             return post(context, data, new Param[] { (Param)object} );

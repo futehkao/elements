@@ -163,7 +163,7 @@ public class Rule {
         }
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S3776"})
     private ControlFlow _run(RuleContext context, boolean root) {
         long start = System.currentTimeMillis();
         boolean cond = true;

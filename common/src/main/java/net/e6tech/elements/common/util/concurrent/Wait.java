@@ -30,6 +30,7 @@ public class Wait<K, V> {
     Hashtable<K, Entry<V>> table = new Hashtable<>();
     Thread thread;
 
+    @SuppressWarnings("squid:S899")
     public void offer(K key, V value) {
         Entry<V> entry = table.get(key);
         if (entry != null) {

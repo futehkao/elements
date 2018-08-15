@@ -37,7 +37,6 @@ public class CacheConfiguration {
 
     private CacheProvider provider;
     private CacheManager cacheManager;
-    private String name;
     private long expiry = DEFAULT_EXPIRY;
     private long maxEntries = 1024L;
     private boolean storeByValue = false;
@@ -96,15 +95,15 @@ public class CacheConfiguration {
     }
 
     public <K, V> Cache<K, V> getCache(String name, Class<K> keyClass, Class<V> valueClass) {
-        CacheManager cacheManager = getCacheManager();
-        Cache<K, V> cache = cacheManager.getCache(name, keyClass, valueClass);
+        CacheManager manager = getCacheManager();
+        Cache<K, V> cache = manager.getCache(name, keyClass, valueClass);
         if (cache != null)
             return cache;
 
         try {
             return provider.createCache(this, name, keyClass, valueClass);
         } catch (CacheException ex) {
-            cache = cacheManager.getCache(name, keyClass, valueClass);
+            cache = manager.getCache(name, keyClass, valueClass);
             if (cache != null)
                 return cache;
             else

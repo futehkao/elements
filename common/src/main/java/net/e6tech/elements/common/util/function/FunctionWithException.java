@@ -18,8 +18,10 @@ package net.e6tech.elements.common.util.function;
 
 import java.util.Objects;
 
+@SuppressWarnings("squid:RedundantThrowsDeclarationCheck")
 @FunctionalInterface
 public interface FunctionWithException<T, R, E extends Exception> {
+
     R apply(T t) throws E;
 
     default <V> FunctionWithException<V, R, E> compose(FunctionWithException<? super V, ? extends T, E> before) throws E{

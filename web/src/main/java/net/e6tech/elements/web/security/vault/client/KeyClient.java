@@ -316,7 +316,7 @@ public class KeyClient implements Startable {
     private <T> T decryptResult(String ret, Class<T> cls) throws GeneralSecurityException {
         byte[] result = sym.decrypt(secretKey, ret, null);
         try {
-            String value = new String(result, "UTF-8");
+            String value = new String(result, UTF8_ENCODING);
             return mapper.readValue(value, cls);
         } catch (UnsupportedEncodingException e) {
             // impossible

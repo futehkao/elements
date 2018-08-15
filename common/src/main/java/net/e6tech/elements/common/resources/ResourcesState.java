@@ -164,8 +164,7 @@ class ResourcesState {
         if (o != null)
             throw new AlreadyBoundException(CLASS_MSG + cls + BOUND_TO_MSG + o);
 
-        T instance = (T) getModule().bindInstance(cls, resource);
-        return instance;
+        return (T) getModule().bindInstance(cls, resource);
     }
 
     public <T> T rebind(Class<T> cls, T resource) {
@@ -206,8 +205,7 @@ class ResourcesState {
     }
 
     public <T> T rebindNamedInstance(Class<T> cls, String name, T resource) {
-        T instance = (T) getModule().bindNamedInstance(cls, name, resource);
-        return instance;
+        return (T) getModule().bindNamedInstance(cls, name, resource);
     }
 
     public boolean hasInstance(Resources resources, Class cls) {

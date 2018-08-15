@@ -123,7 +123,7 @@ public class Statement<T> {
     }
 
     protected InterceptorHandler getter(Consumer<Path> consumer) {
-        return (frame) -> {
+        return frame -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
             String property = desc.getName();
             if (frame.getMethod().equals(desc.getReadMethod())) {
@@ -136,7 +136,7 @@ public class Statement<T> {
     }
 
     private InterceptorHandler setter(BiConsumer<Path, Object[]> consumer) {
-        return (frame) -> {
+        return frame -> {
             PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
             String property = desc.getName();
             if (!frame.getMethod().equals(desc.getReadMethod())) {

@@ -24,7 +24,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 
-@SuppressWarnings("squid:S2278")
+@SuppressWarnings({"squid:S2278", "squid:S1192"})
 class MasterCardARQC {
 
     private static final String ALGORITHM = "DESede";
@@ -101,6 +101,7 @@ class MasterCardARQC {
         return computedARQC;
     }
 
+    @SuppressWarnings("squid:S3776")
     protected String process() throws CommandException {
         if (arc == null || arc.length() == 0)
             throw new CommandException(8, new IllegalArgumentException("ARC is null"));
@@ -236,6 +237,7 @@ class MasterCardARQC {
         }
     }
 
+    @SuppressWarnings("all")
     public static void main(String ... args) throws Exception {
         AtallaSimulator simulator = new AtallaSimulator();
         MasterCardARQC mc = new MasterCardARQC(simulator);

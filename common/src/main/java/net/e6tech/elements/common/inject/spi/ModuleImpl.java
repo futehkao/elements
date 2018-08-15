@@ -153,6 +153,7 @@ public class ModuleImpl implements Module {
         return unbindNamedInstance(cls, null);
     }
 
+    @SuppressWarnings({"squid:S135", "squid:S135"})
     public Object unbindNamedInstance(Class cls, String name) {
         Type[] types = getBindTypes(cls);
         Object ret = null;

@@ -31,9 +31,10 @@ import java.beans.BeanInfo;
 import java.beans.PropertyDescriptor;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -229,6 +230,7 @@ public class InjectorImpl implements Injector {
             }
         }
 
+        @SuppressWarnings("squid:S3776")
         InjectionAttempt inject(InjectorImpl injector, Object target) {
             Type t = getType();
             Optional<Binding> opt = injector.privateGetNamedInstance(t, name);
@@ -247,8 +249,6 @@ public class InjectorImpl implements Injector {
                         lambdaSetter.accept(target, value);
                     else
                         setter.invoke(target, value);
-                } catch (IllegalAccessException e) {
-                    throw new SystemException(e);
                 } catch (InvocationTargetException e) {
                     throw new SystemException(e.getTargetException());
                 } catch (Throwable e) {

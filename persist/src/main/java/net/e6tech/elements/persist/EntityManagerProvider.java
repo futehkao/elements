@@ -165,14 +165,14 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                 em.close();
         }
 
-        NotificationCenter notificationCenter = resources.getNotificationCenter();
-        notificationCenter.subscribe(EvictCollectionRegion.class,
+        NotificationCenter center = resources.getNotificationCenter();
+        center.subscribe(EvictCollectionRegion.class,
                 notice -> evictCollectionRegion(notice.getUserObject()));
 
-        notificationCenter.subscribe(EvictEntityRegion.class,
+        center.subscribe(EvictEntityRegion.class,
                 notice -> evictEntityRegion(notice.getUserObject()));
 
-        notificationCenter.subscribe(EvictEntity.class,
+        center.subscribe(EvictEntity.class,
                 notice -> evictEntity(notice.getUserObject()));
     }
 
@@ -216,7 +216,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     // Submits a thread task to monitor expired EntityManagers.
     // the thread would break out after monitorIdle time.
     // when another monitor shows up, the thread task would resume.
-    @SuppressWarnings({"squid:S1188", "squid:S134"})
+    @SuppressWarnings({"squid:S1188", "squid:S134", "squid:S3776", "squid:S899"})
     private void monitor(EntityManagerMonitor monitor) {
 
         // entityManagerMonitors contains open, committed and aborted entityManagers.

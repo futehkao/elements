@@ -84,7 +84,7 @@ public class ElementsHikariDataSource extends HikariDataSource  {
     }
 
     protected void initConnection(final Connection connection) throws SQLException {
-        if (connectionInitStatements.size() == 0)
+        if (connectionInitStatements.isEmpty())
             return;
 
         try (Statement statement = connection.createStatement()) {

@@ -67,6 +67,7 @@ public class TimedLogger {
     /**
      * Constructs a TimedLogger using the default logger named TimedLogger
      */
+    @SuppressWarnings("squid:S4165")
     public TimedLogger() {
         logger = Logger.getLogger("TimedLogger");
 

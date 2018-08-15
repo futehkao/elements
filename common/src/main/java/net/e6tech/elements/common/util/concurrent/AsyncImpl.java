@@ -38,7 +38,7 @@ public class AsyncImpl<U> implements Async<U> {
 
     @Override
     public void setTimeout(long timeout) {
-
+        //
     }
 
     @Override

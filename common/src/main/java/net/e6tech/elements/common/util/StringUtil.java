@@ -27,7 +27,7 @@ public class StringUtil {
     }
 
     public static boolean isNullOrEmpty(String p) {
-        return ((p == null) || p.trim().isEmpty()) ? true : false;
+        return (p == null) || p.trim().isEmpty();
     }
 
     public static String padLeft(String content, int width, char padding) {
@@ -55,6 +55,16 @@ public class StringUtil {
     public static String trim(String s) {
         if (s == null)
             return null;
-        return s.trim();
+
+        int start = 0;
+        int end = s.length() - 1;
+
+        while (start <= end && Character.isWhitespace(s.charAt(start)))
+            start++;
+
+        while (end > start && Character.isWhitespace(s.charAt(end)))
+            end--;
+
+        return s.substring(start, end + 1);
     }
 }

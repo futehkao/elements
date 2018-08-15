@@ -178,7 +178,7 @@ public class CXFServer implements Initializable, Startable {
         tlsParams.setCipherSuitesFilter(filter);
         </code>
      */
-    @SuppressWarnings({"squid:S3776", "squid:MethodCyclomaticComplexity"})
+    @SuppressWarnings({"squid:S3776", "squid:MethodCyclomaticComplexity", "squid:CommentedOutCodeLine"})
     protected void initKeyStore() throws GeneralSecurityException, IOException {
         if (keyStoreFile == null && selfSignedCert == null && keyStore == null)
             return;
@@ -256,6 +256,7 @@ public class CXFServer implements Initializable, Startable {
     params.setMaxThreads(255);
     params.setMinThreads(20);
     engine.setThreadingParameters(params);*/
+    @SuppressWarnings("squid:CommentedOutCodeLine")
     public void start() {
         if (!initialized) {
             initialize(null);

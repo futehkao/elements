@@ -29,7 +29,6 @@ import java.lang.reflect.Modifier;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -166,12 +165,12 @@ public class AtallaSimulator {
         thread.start();
     }
 
-    @SuppressWarnings({"squid:S134", "squid:S1141"})
+    @SuppressWarnings({"squid:S134", "squid:S1141", "squid:S2589"})
     protected void startServer() {
         try {
             serverSocket = new ServerSocket(port);
             stopped = false;
-            while (! stopped) {
+            while (!stopped) {
                 final Socket socket = serverSocket.accept();
                 threadPool.execute(()-> {
                     try {
@@ -209,6 +208,7 @@ public class AtallaSimulator {
         }
     }
 
+    @SuppressWarnings("squid:S106")
     public static void main(String ... args) throws Exception  {
         AtallaSimulator simulator = new AtallaSimulator();
         for (String keyType : simulator.keys.keySet()) {

@@ -27,7 +27,6 @@ import javax.script.ScriptContext;
 import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -36,7 +35,7 @@ import java.util.concurrent.Callable;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S00115", "squid:S134", "squid:S1192"})
+@SuppressWarnings({"squid:S00115", "squid:S134", "squid:S1192", "squid:S3400", "squid:S1075"})
 public class Scripting {
 
     public static final String SCRIPT_BASE_CLASS = "scriptBaseClass";
@@ -129,7 +128,7 @@ public class Scripting {
         return path;
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2093"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2093", "squid:S3776"})
     // script is the full path name
     private Object eval(String script, boolean topLevel) throws ScriptException {
         String prevRootDir = null;

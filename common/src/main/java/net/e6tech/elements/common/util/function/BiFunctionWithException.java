@@ -18,8 +18,10 @@ package net.e6tech.elements.common.util.function;
 
 import java.util.Objects;
 
+@SuppressWarnings("squid:RedundantThrowsDeclarationCheck")
 @FunctionalInterface
 public interface BiFunctionWithException<S, T, R, E extends Exception> {
+
     R apply(S s, T t) throws E;
 
     default <V> BiFunctionWithException<S, T, V, E> andThen(FunctionWithException<? super R, ? extends V, E> after) throws E {

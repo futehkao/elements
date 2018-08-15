@@ -31,7 +31,7 @@ public class Constants {
     public static final String SECRET_TYPE = "secret";
     public static final String SIGNATURE_TYPE = "signature";
     public static final String PASSPHRASE = "passphrase";
-    public static final String PASSPHRASE_TYPE = "passphrase";
+    public static final String PASSPHRASE_TYPE = PASSPHRASE;
 
     public static final String ALIAS = "alias";
     public static final String ALGORITHM = "algorithm";
@@ -46,7 +46,7 @@ public class Constants {
     public static final String CREATION_TIME = "creation-time";
     public static final String CREATION_DATE_TIME = "creation-date-time";
     public static final String VERSION = "version";
-    public static final String SIGNATURE = "signature";
+    public static final String SIGNATURE = SIGNATURE_TYPE;
     public static final String SIGNATURE_FORMAT = "signature-format";
     public static final String SIGNATURE_FORMAT_VERSION = "1.0";
 

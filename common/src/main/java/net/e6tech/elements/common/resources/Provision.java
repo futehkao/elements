@@ -36,6 +36,7 @@ import java.util.function.Consumer;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S1444")
 public class Provision {
 
     public static Integer cacheBuilderConcurrencyLevel = 32;

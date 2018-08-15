@@ -57,7 +57,7 @@ public class PasswordValidator {
         this.minNumberOfGroups = minNumberOfGroups;
     }
 
-    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S3776"})
     public boolean check(String pwd) {
         String password = pwd;
         if ((password == null) || (password.length() == 0)) {

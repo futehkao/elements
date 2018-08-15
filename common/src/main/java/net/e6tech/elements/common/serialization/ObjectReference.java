@@ -60,6 +60,7 @@ public class ObjectReference implements Serializable {
         this.id = id;
     }
 
+    @Override
     public boolean equals(Object ref) {
         if (!(ref instanceof ObjectReference))
             return false;
@@ -68,6 +69,8 @@ public class ObjectReference implements Serializable {
         return oref.type.equals(type) && oref.id.equals(id);
     }
 
+    @SuppressWarnings("squid:S2589")
+    @Override
     public int hashCode() {
         if (type == null && id == null)
             return 0;

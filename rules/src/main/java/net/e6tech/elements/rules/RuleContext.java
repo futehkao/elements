@@ -175,6 +175,7 @@ public class RuleContext implements GroovyObject {
         return flow;
     }
 
+    @SuppressWarnings("squid:S4165")
     private ControlFlow interpret(Object obj) {
         ControlFlow flow = Continue;
         if (obj == null)

@@ -24,7 +24,6 @@ import net.e6tech.elements.common.util.function.FunctionWithException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -123,6 +122,7 @@ public abstract class Balancer<T> {
         }
     }
 
+    @SuppressWarnings("squid:S899")
     protected synchronized void recover(T service) {
         try {
             stop(service);
@@ -136,6 +136,7 @@ public abstract class Balancer<T> {
         }
     }
 
+    @SuppressWarnings({"squid:S3776", "squid:S899"})
     public <R> R execute(FunctionWithException<T, R, Exception> submit) throws IOException {
         while (true) {  // the while loop is for in case of IOException
             T service;
@@ -157,19 +158,16 @@ public abstract class Balancer<T> {
             } catch (IOException ex) {
                 Logger.suppress(ex);
                 recover(service);
-            } catch (InvocationTargetException e) {
-                error = new SystemException(e.getCause());
             } catch (SystemException e) {
                 error = e;
-            } catch (RuntimeException e) {
+            } catch (InvocationTargetException | RuntimeException e) {
                 error = new SystemException(e.getCause());
             } catch (Exception e) {
                 error = new SystemException(e);
             }
 
             liveList.offer(service);
-            if (error != null)
-                throw error;
+            throw error;
         }
     }
 }

@@ -76,7 +76,9 @@ public class SecurityAnnotationEngine {
     public boolean hasAccess(Object instance, Method method, Object[] args, List<String> userRoles) {
         String value = lookupRole(instance,method,args);
         if (value == null) {
-            logger.warn("no security map entry found: class:" + instance.getClass().getName() + " method:" + createMethodSig(method));
+            if (logger.isWarnEnabled())
+                logger.warn("no security map entry found: class: {} method:{}",
+                        instance.getClass().getName(), createMethodSig(method));
             return true;
         }
         else if (value.equals(ROLE_KEY_DENY_ALL))
@@ -95,14 +97,14 @@ public class SecurityAnnotationEngine {
     public String lookupRole(Object instance, Method method, Object[] args) {
         Class<?> cls = ClassHelper.getRealClass(instance);
         String methodSig = createMethodSig(method);
-        logger.debug("lookupRole: class:" + cls.getName() +" method:" + methodSig);
+        logger.debug("lookupRole: class: {} method:{}", cls.getName(), methodSig);
 
         Map<String,String> methodMap = scannedClassMap.get(cls.getName());
         if (methodMap == null)
             return null;
 
         String roles = methodMap.get(methodSig);
-        logger.debug("==> cls:" + cls + " m:" + methodSig + " roles:" + roles);
+        logger.debug("==> cls:{} m:{} roles:{}", cls, methodSig, roles);
         return roles;
     }
 
@@ -110,12 +112,12 @@ public class SecurityAnnotationEngine {
         List<String> clsNameList = new ArrayList<>(scannedClassMap.keySet());
         Collections.sort(clsNameList);
         for (String clsName : clsNameList) {
-            logger.debug("registered class: " + clsName);
+            logger.debug("registered class: {}", clsName);
             Map<String,String> methodMap = scannedClassMap.get(clsName);
             List<String> methodNameList = new ArrayList<>(methodMap.keySet());
             for (String methodName : methodNameList) {
                 String roles = methodMap.get(methodName);
-                logger.debug("  method: " + methodName + " roles: " + roles);
+                logger.debug("  method:{} roles:{}", methodName, roles);
             }
         }
     }

@@ -39,6 +39,7 @@ public class Hex {
     }
 
     // turn 0 into 1 and 1 to 0.
+    @SuppressWarnings("squid:S1905")
     public static byte[] invert(byte[] bytes) {
         byte[] inverted = new byte[bytes.length];
         for (int i = 0; i < bytes.length; i++) {

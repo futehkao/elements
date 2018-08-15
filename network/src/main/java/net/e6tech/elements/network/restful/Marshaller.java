@@ -18,6 +18,7 @@ package net.e6tech.elements.network.restful;
 
 import net.e6tech.elements.common.util.ErrorResponse;
 
+@SuppressWarnings("squid:S00112")
 public interface Marshaller {
 
     String getContentType();

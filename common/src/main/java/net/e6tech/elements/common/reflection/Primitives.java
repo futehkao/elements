@@ -54,6 +54,7 @@ public class Primitives {
         return primitives.get(name);
     }
 
+    @SuppressWarnings("squid:S3776")
     public static Object defaultValue(Class cls) {
         if (isPrimitive(cls)) {
             if (cls == Boolean.TYPE) return false;

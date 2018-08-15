@@ -64,6 +64,7 @@ public class Launch {
      *
      * @param args arguments
      */
+    @SuppressWarnings("squid:S3776")
     public static void main(String ... args) {
         List<LaunchController> controllers = new ArrayList<>();
 

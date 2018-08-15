@@ -32,6 +32,7 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
     private static Logger logger = Logger.getLogger();
     private Bootstrap bootstrap;
 
+    @SuppressWarnings("squid:S1192")
     public Bootstrap getBootstrap() {
         if (bootstrap != null)
             return bootstrap;
@@ -53,11 +54,11 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
      * @return result
      */
     @Override
-    @SuppressWarnings({"squid:S134", "squid:CommentedOutCodeLine"})
+    @SuppressWarnings({"squid:S134", "squid:CommentedOutCodeLine", "\n" +
+            "squid:S3776"})
     public Object invokeMethod(String name, Object args) {
         try {
-            Object ret = getMetaClass().invokeMethod(this, name, args);
-            return ret;
+            return getMetaClass().invokeMethod(this, name, args);
         } catch (MissingMethodException ex) {
             if (ex.getArguments().length > 0 && ex.getArguments()[0] instanceof Closure) {
 

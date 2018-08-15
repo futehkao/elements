@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+@SuppressWarnings("squid:S3776")
 public class Bootstrap extends GroovyObjectSupport {
     private static final String PRE_BOOT = "preBoot";
     private static final String POST_BOOT = "postBoot";
@@ -103,11 +104,11 @@ public class Bootstrap extends GroovyObjectSupport {
     }
 
     public List<String> getInit() {
-        return initBoot;
+        return getInitBoot();
     }
 
     public void setInit(List initBoot) {
-        this.initBoot = initBoot;
+        setInitBoot(initBoot);
     }
 
     public Map getAfter() {
@@ -206,35 +207,35 @@ public class Bootstrap extends GroovyObjectSupport {
         }
 
         // boot initialization
-        if (initBoot != null && initBoot.size() > 0) {
+        if (initBoot != null && !initBoot.isEmpty()) {
             bootMessage("Boot initialization");
             initBoot();  // set by bootstrap script
             logger.info("Done pre-booting ******************************************\n");
         }
 
         // preBoot
-        if (preBoot != null && preBoot.size() > 0) {
+        if (preBoot != null && !preBoot.isEmpty()) {
             bootMessage("Pre-booting");
             preBoot();  // set by launch script
             logger.info("Done pre-booting ******************************************\n");
         }
 
         // boot Components
-        if (main != null && main.size() > 0) {
+        if (main != null && !main.isEmpty()) {
             bootMessage("Booting main");
             bootMain();  // set by bootstrap script
             logger.info("Done booting components **********************************\n");
         }
 
         // postBoot
-        if (postBoot != null && postBoot.size() > 0) {
+        if (postBoot != null && !postBoot.isEmpty()) {
             bootMessage("Post-booting");
             postBoot();  // set by launch script
             logger.info("Done post-booting ******************************************\n");
         }
 
         // boot after
-        if (after != null && after.size() > 0) {
+        if (after != null && !after.isEmpty()) {
             bootMessage("Boot after");
             bootAfter(); // set by bootstrap script
             logger.info("Done boot after ********************************************\n");
@@ -525,6 +526,7 @@ public class Bootstrap extends GroovyObjectSupport {
 
     private class MyExpando extends Expando {
 
+        @Override
         public Object invokeMethod(String name, Object args) {
             try {
                 return getMetaClass().invokeMethod(this, name, args);
@@ -543,6 +545,7 @@ public class Bootstrap extends GroovyObjectSupport {
 
         }
 
+        @Override
         public Object getProperty(String property) {
             // always use the expando properties first
             Object result = getProperties().get(property);

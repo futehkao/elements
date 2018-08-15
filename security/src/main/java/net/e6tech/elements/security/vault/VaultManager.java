@@ -782,7 +782,8 @@ public class VaultManager {
 
             if (restore) {
                 try {
-                    logger.warn("Restoring key data store to version " + state.getSignature().version());
+                    if (logger.isWarnEnabled())
+                        logger.warn("Restoring key data store to version {}", state.getSignature().version());
                     keyDataStore.restore(state.getSignature().version());
                     keyStoreSigSecret = getData(SIGNATURE, null);
                 } catch (IOException e) {
@@ -797,7 +798,8 @@ public class VaultManager {
             ClearText keyStoreSig = keyEncryption.unseal(keyStoreSigSecret, getKey(keyAlias, keyVersion));
             if (!Arrays.equals(state.getSignature().getBytes(), keyStoreSig.getBytes())) {
                 try {
-                    logger.warn("Restoring key data store to version " + state.getSignature().version());
+                    if (logger.isWarnEnabled())
+                        logger.warn("Restoring key data store to version {}", state.getSignature().version());
                     keyDataStore.restore(state.getSignature().version());
                 } catch (IOException e) {
                     throw new GeneralSecurityException("Local store vault signature does not match key store signature", e);
