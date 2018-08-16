@@ -1,5 +1,11 @@
 configuration:
   status: info
+  # filters:
+  #  MarkerFilter:
+  #    marker: REST
+  #    onMatch: ACCEPT
+  #    onMismatch: NEUTRAL
+
   appenders:
     Console:
       name: Console
@@ -52,16 +58,10 @@ configuration:
       - ref: Console
 
     - name: net.e6tech.elements.web.cxf.JaxRSServer.message
-      level: info   # to turn on message logging the level needs to be trace
+      level: trace   # to turn on message logging the level needs to be trace
       additivity: false
       AppenderRef:
       - ref: Console
-
-    - name: org.apache.cxf.services
-      level: trace
-      additivity: false
-      AppenderRef:
-        -ref: Console
 
     root:
       level: warn

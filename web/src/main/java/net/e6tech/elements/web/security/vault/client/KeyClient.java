@@ -28,7 +28,6 @@ import net.e6tech.elements.security.vault.Credential;
 import javax.crypto.SecretKey;
 import javax.ws.rs.NotAuthorizedException;
 import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.spec.RSAPublicKeySpec;
@@ -46,7 +45,6 @@ public class KeyClient implements Startable {
     private SymmetricCipher sym = SymmetricCipher.getInstance("AES");
     private String clientKey;
     private SecretKey secretKey;
-    private PublicKey publicKey;
     private RestfulClient client;
     private String address = "http://localhost:10000/restful/keyserver/v1";
     private Credential credential;
@@ -116,7 +114,7 @@ public class KeyClient implements Startable {
             SharedKey sharedKey = response.read(SharedKey.class);
             RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(sharedKey.getModulus(), sharedKey.getPublicExponent());
             secretKey = sym.generateKeySpec();
-            publicKey = asym.getKeyFactory().generatePublic(publicKeySpec);
+            PublicKey publicKey = asym.getKeyFactory().generatePublic(publicKeySpec);
             clientKey = asym.encrypt(publicKey, secretKey.getEncoded());
         } catch (Throwable e) {
             Logger.suppress(e);
@@ -302,6 +300,8 @@ public class KeyClient implements Startable {
         } catch (NotAuthorizedException e) {
             if (!(action instanceof Authenticate)) {
                 retry = true;
+            } else {
+                throw e;
             }
         } catch (Throwable e) {
             throw new GeneralSecurityException(e);

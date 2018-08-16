@@ -38,9 +38,10 @@ import net.e6tech.elements.common.util.datastructure.Pair;
 import net.e6tech.elements.jmx.JMXService;
 import net.e6tech.elements.jmx.stat.Measurement;
 import net.e6tech.elements.web.JaxExceptionHandler;
-import org.apache.cxf.feature.LoggingFeature;
-import org.apache.cxf.interceptor.LoggingInInterceptor;
-import org.apache.cxf.interceptor.LoggingOutInterceptor;
+import org.apache.cxf.ext.logging.LoggingFeature;
+import org.apache.cxf.ext.logging.event.LogEvent;
+import org.apache.cxf.ext.logging.event.LogEventSender;
+import org.apache.cxf.ext.logging.event.LogMessageFormatter;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxrs.lifecycle.PerRequestResourceProvider;
 import org.apache.cxf.jaxrs.lifecycle.ResourceProvider;
@@ -335,22 +336,13 @@ public class JaxRSServer extends CXFServer {
                 bean.setProvider(cf);
         }
 
-        for (JAXRSServerFactoryBean bean: beans)
-            bean.getInInterceptors().add(new LoggingInInterceptor() {
-                @Override
-                protected void log(java.util.logging.Logger otherLogger, final String message) {
-                    JaxRSServer.this.log(message);
-                }
-            });
-
-        for (JAXRSServerFactoryBean bean: beans)
-            bean.getOutInterceptors().add(new LoggingOutInterceptor() {
-                @Override
-                protected void log(java.util.logging.Logger otherLogger, String message) {
-                    JaxRSServer.this.log(message);
-                }
-            });
-
+        LoggingFeature feature = new LoggingFeature();
+        EventSender sender = new EventSender();
+        feature.setInSender(sender);
+        feature.setOutSender(sender);
+        for (JAXRSServerFactoryBean bean: beans) {
+            bean.getFeatures().add(feature);
+        }
 
         for (JAXRSServerFactoryBean bean: beans)
             bean.setProvider(new InternalExceptionMapper(exceptionMapper));
@@ -367,18 +359,6 @@ public class JaxRSServer extends CXFServer {
         super.start();
     }
 
-    protected void log(String message) {
-        Runnable runnable = () -> messageLogger.trace(message);
-
-        if (messageLogger.isTraceEnabled()) {
-            if (getThreadPool() != null) {
-                getThreadPool().execute(runnable);
-            } else {
-                runnable.run();
-            }
-        }
-    }
-
     @SuppressWarnings("squid:S00112")
     private void handleException(CallFrame frame, Throwable th) throws Throwable {
         Throwable throwable = ExceptionMapper.unwrap(th);
@@ -391,6 +371,19 @@ public class JaxRSServer extends CXFServer {
             }
         } else {
             throw throwable;
+        }
+    }
+
+    private class EventSender implements LogEventSender {
+
+        @Override
+        public void send(LogEvent event) {
+            if (messageLogger.isTraceEnabled())
+                messageLogger.trace(getLogMessage(event));
+        }
+
+        private String getLogMessage(LogEvent event) {
+            return LogMessageFormatter.format(event);
         }
     }
 
