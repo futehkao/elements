@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import  net.e6tech.elements.common.logging.Logger
 
 dataSourceMaxPoolSize = 20
 entityManagerTxTimeout = 1200000L
@@ -25,6 +26,7 @@ clusterName = 'h3_cluster'
 clusterHost = '127.0.0.1'
 clusterPort = 2552
 clusterSeeds = "[\"akka.tcp://${clusterName}@${clusterHost}:${clusterPort}\"]"
+logConfigFile = "$__dir/log4j2.yaml"
 
 // setting System properties
 systemProperties {
@@ -32,4 +34,9 @@ systemProperties {
     'hibernate.show_sql'            "${hibernateShowSQL}"
     'hibernate.generate_statistics' "${hibernateGenerateStatistics}"
     'hibernate.cache.use_second_level_cache' "${hibernateCacheUseSecondLevelCache}"
+    'log4j.configurationFile'       "${logConfigFile}"
+    "${Logger.logDir}"              "$__dir/../logs"                        // log4j output directory
+    'isThreadContextMapInheritable' 'true'                                  // for log4j ThreadContext
+    'java.util.logging.manager'     "net.e6tech.elements.common.logging.jul.LogManager"
+    'org.apache.cxf.Logger'         'org.apache.cxf.common.logging.Slf4jLogger'
 }

@@ -63,6 +63,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private PluginManager pluginManager = new PluginManager(this);
     private List<ResourceManagerListener> listeners = new LinkedList<>();
     private Map<Class, ClassInjectionInfo> injections = Collections.synchronizedMap(new HashMap<>()); // a cache to be used by Resources.
+    private boolean silent = false;
 
     public ResourceManager() {
         this(new Properties());
@@ -79,6 +80,20 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     public ResourceManager(Properties properties) {
         initialize(pluginManager.getPluginClassLoader(), updateProperties(properties));
         selfInit(properties);
+    }
+
+    public boolean isSilent() {
+        return silent;
+    }
+
+    public void setSilent(boolean silent) {
+        this.silent = silent;
+        getScripting().setSilent(silent);
+    }
+
+    public ResourceManager silent(boolean silent) {
+        setSilent(silent);
+        return this;
     }
 
     private void selfInit(Properties properties) {
@@ -495,16 +510,12 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     @Override
-    public synchronized void load(String str) throws ScriptException {
-        load(str, true);
-    }
-
     @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity", "squid:S3776"})
-    public synchronized void load(String str, boolean logInfo) throws ScriptException {
+    public synchronized void load(String str) throws ScriptException {
         long start = System.currentTimeMillis();
         super.load(str);
 
-        if (logInfo) {
+        if (!silent) {
             int len = 0;
             List<String> atomString = new LinkedList<>();
             StringBuilder builder = new StringBuilder();
@@ -635,9 +646,11 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         ShutdownNotification notification = new ShutdownNotification(this);
         getNotificationCenter().getNotificationListeners(notification)
                 .forEach(listener -> {
-                    logger.info("Shutting down " + listener.getDescription() + " ...");
+                    if (!silent)
+                        logger.info("Shutting down " + listener.getDescription() + " ...");
                     listener.onEvent(notification);
-                    logger.info(listener.getDescription() + " is down.");
+                    if (!silent)
+                        logger.info(listener.getDescription() + " is down.");
                 });
 
         List<ResourceProvider> reversed = new ArrayList<>();
@@ -646,9 +659,11 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         }
         Collections.reverse(reversed);
         reversed.forEach(rp -> {
-            logger.info("Shutting down " + rp.getDescription() + " ...");
+            if (!silent)
+                logger.info("Shutting down " + rp.getDescription() + " ...");
             rp.onShutdown();
-            logger.info(rp.getDescription() + " is down.");
+            if (!silent)
+                logger.info(rp.getDescription() + " is down.");
         });
     }
 

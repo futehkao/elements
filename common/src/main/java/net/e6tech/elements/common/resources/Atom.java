@@ -273,7 +273,8 @@ public class Atom implements Map<String, Object> {
         // this only applies when the Atom is created outside of loading a script.
         resourceManager.runAfterIfNotLoading();
 
-        logger.info("Atom {} loaded in {}ms", getName(), (System.currentTimeMillis() - start));
+        if (!resourceManager.isSilent())
+            logger.info("Atom {} loaded in {}ms", getName(), (System.currentTimeMillis() - start));
 
         return this;
     }
@@ -299,7 +300,8 @@ public class Atom implements Map<String, Object> {
                     if (!resourceManager.getBeanLifecycle().isBeanStarted(startable)) {
                         long s = System.currentTimeMillis();
                         startable.start();
-                        logger.info("Class {} started in {}ms", startable.getClass().getName(), (System.currentTimeMillis() - s));
+                        if (!resourceManager.isSilent())
+                            logger.info("Class {} started in {}ms", startable.getClass().getName(), (System.currentTimeMillis() - s));
                         resourceManager.getBeanLifecycle().fireBeanStarted(entry.getKey(), startable);
                     }
                 }

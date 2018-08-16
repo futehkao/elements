@@ -27,8 +27,6 @@ import java.util.function.Consumer;
  * Created by futeh.
  */
 public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceManager> {
-    private static final String RESOURCE_MANAGER_VAR = "resourceManager";
-
     private static Logger logger = Logger.getLogger();
     private Bootstrap bootstrap;
 
@@ -54,8 +52,7 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
      * @return result
      */
     @Override
-    @SuppressWarnings({"squid:S134", "squid:CommentedOutCodeLine", "\n" +
-            "squid:S3776"})
+    @SuppressWarnings({"squid:S134", "squid:CommentedOutCodeLine", "squid:S3776"})
     public Object invokeMethod(String name, Object args) {
         try {
             return getMetaClass().invokeMethod(this, name, args);

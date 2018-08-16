@@ -52,12 +52,21 @@ public class Scripting {
         reservedKeyWords.add(__FILE);
     }
 
-    GroovyEngine engine;
-    List runAfterList = new LinkedList<>();
-    List launchedList = new LinkedList<>();
-    ScriptPath scriptPath;
+    private GroovyEngine engine;
+    private List runAfterList = new LinkedList<>();
+    private List launchedList = new LinkedList<>();
+    private ScriptPath scriptPath;
+    private boolean silent = false;
 
     protected Scripting() {
+    }
+
+    public boolean isSilent() {
+        return silent;
+    }
+
+    public void setSilent(boolean silent) {
+        this.silent = silent;
     }
 
     public static Scripting newInstance(ClassLoader classLoader, Properties properties) {
@@ -326,7 +335,8 @@ public class Scripting {
 
         Object ret = null;
         for (String p : paths) {
-            logger.info("Executing script: {}", p);
+            if (!silent)
+                logger.info("Executing script: {}", p);
             Object val = eval(p, topLevel);
             if (val != null)
                 ret = val;

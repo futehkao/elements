@@ -41,7 +41,7 @@ public class HellowWorldTest extends BaseCase {
     public void setup() {
         proxy = new RestfulProxy("http://localhost:19001/restful");
         proxy.setSkipCertCheck(true);
-        proxy.setPrinter(new PrintWriter(System.out, true));
+        // proxy.setPrinter(new PrintWriter(System.out, true));
         helloWorld = proxy.newProxy(HelloWorld.class);
     }
 
@@ -49,14 +49,11 @@ public class HellowWorldTest extends BaseCase {
     public void sayHello() {
         helloWorld.ping();
         String response = helloWorld.sayHello("hello");
-        System.out.println(response);
+        // System.out.println(response);
 
         response = helloWorld.sayHello2("hello2", "blah");
-        System.out.println(response);
+        // System.out.println(response);
 
-        Response resp = proxy.getLastResponse();
-
-        assertThrows(BadRequestException.class, () -> helloWorld.sayHello2("elements", "  "));
     }
 
     @Test

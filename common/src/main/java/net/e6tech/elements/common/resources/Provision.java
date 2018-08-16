@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 /**
  * Created by futeh.
  */
-@SuppressWarnings("squid:S1444")
+@SuppressWarnings({"squid:S1444", "squid:ClassVariableVisibilityCheck"})
 public class Provision {
 
     public static Integer cacheBuilderConcurrencyLevel = 32;
@@ -136,6 +136,11 @@ public class Provision {
 
     public <T> T newInstance(Class<T> cls) {
         return resourceManager.newInstance(cls);
+    }
+
+    public <T> Optional<T> findInstance(Class<T> cls) {
+        T t = resourceManager.getInstance(cls);
+        return Optional.ofNullable(t);
     }
 
     public <T> T inject(T obj) {

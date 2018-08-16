@@ -292,20 +292,34 @@ public class KeyClient implements Startable {
         request.setClientKey(clientKey);
 
         net.e6tech.elements.network.restful.Response response = null;
+        boolean retry = false;
         try {
             response = client.post("request", request);
             int code = response.getResponseCode();
-            if (code == HttpURLConnection.HTTP_UNAUTHORIZED && !(action instanceof Authenticate)) {
-                reAuthorize();
-                action.setToken(token);
-                response = client.post("request", request);
-            } else if (code < 200 || code > 202) {
+            if (code < 200 || code > 202) {
                 throw new GeneralSecurityException();
+            }
+        } catch (NotAuthorizedException e) {
+            if (!(action instanceof Authenticate)) {
+                retry = true;
             }
         } catch (Throwable e) {
             throw new GeneralSecurityException(e);
         }
 
+        if (retry) {
+            try {
+                reAuthorize();
+                action.setToken(token);
+                response = client.post("request", request);
+                int code = response.getResponseCode();
+                if (code < 200 || code > 202) {
+                    throw new GeneralSecurityException();
+                }
+            } catch (Throwable e) {
+                throw new GeneralSecurityException(e);
+            }
+        }
         return response.getResult();
     }
 

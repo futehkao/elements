@@ -15,7 +15,9 @@ limitations under the License.
 */
 package net.e6tech.elements.web.cxf;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import net.e6tech.elements.common.inject.Inject;
@@ -36,6 +38,7 @@ import net.e6tech.elements.common.util.datastructure.Pair;
 import net.e6tech.elements.jmx.JMXService;
 import net.e6tech.elements.jmx.stat.Measurement;
 import net.e6tech.elements.web.JaxExceptionHandler;
+import org.apache.cxf.feature.LoggingFeature;
 import org.apache.cxf.interceptor.LoggingInInterceptor;
 import org.apache.cxf.interceptor.LoggingOutInterceptor;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
@@ -314,12 +317,14 @@ public class JaxRSServer extends CXFServer {
 
         for (JAXRSServerFactoryBean bean: beans)
             bean.getBus().setProperty("skip.default.json.provider.registration", true);
-        JacksonJaxbJsonProvider jackson = new JacksonJaxbJsonProvider();
-        jackson.disable(SerializationFeature.WRAP_ROOT_VALUE)
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.disable(SerializationFeature.WRAP_ROOT_VALUE)
                 .enable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .disable(SerializationFeature.WRITE_NULL_MAP_VALUES);
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        JacksonJaxbJsonProvider jackson = new JacksonJaxbJsonProvider(mapper, JacksonJaxbJsonProvider.DEFAULT_ANNOTATIONS);
         for (JAXRSServerFactoryBean bean: beans)
             bean.setProvider(jackson);
 
@@ -337,6 +342,7 @@ public class JaxRSServer extends CXFServer {
                     JaxRSServer.this.log(message);
                 }
             });
+
         for (JAXRSServerFactoryBean bean: beans)
             bean.getOutInterceptors().add(new LoggingOutInterceptor() {
                 @Override
@@ -344,6 +350,7 @@ public class JaxRSServer extends CXFServer {
                     JaxRSServer.this.log(message);
                 }
             });
+
 
         for (JAXRSServerFactoryBean bean: beans)
             bean.setProvider(new InternalExceptionMapper(exceptionMapper));

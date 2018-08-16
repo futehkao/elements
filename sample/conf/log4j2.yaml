@@ -1,0 +1,69 @@
+configuration:
+  status: info
+  appenders:
+    Console:
+      name: Console
+      target: SYSTEM_OUT
+      PatternLayout:
+        pattern: "%d{yyyyMMdd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"
+
+  loggers:
+    logger:
+    - name: com.zaxxer.hikari
+      level: debug
+      additivity: false
+      AppenderRef:
+      - ref: Console
+
+    - name: net.e6tech.elements
+      level: info
+      additivity: false
+      AppenderRef:
+      - ref: Console
+
+    - name: org.hibernate
+      level: info
+      additivity: false
+      AppenderRef:
+      - ref: Console
+
+    - name: org.hibernate.SQL
+      level: info
+      additivity: false
+      AppenderRef:
+      - ref: Console
+
+    - name: org.hibernate.stat
+      level: 'off'
+      additivity: false
+      AppenderRef:
+      - ref: Console
+
+    - name: net.e6tech.h3.common.exception.ExceptionMapper
+      level: 'off'
+      additivity: false
+      AppenderRef:
+      - ref: Console
+
+    - name: net.e6tech.elements.web.cxf.JaxRSServer
+      level: debug
+      additivity: false
+      AppenderRef:
+      - ref: Console
+
+    - name: net.e6tech.elements.web.cxf.JaxRSServer.message
+      level: info   # to turn on message logging the level needs to be trace
+      additivity: false
+      AppenderRef:
+      - ref: Console
+
+    - name: org.apache.cxf.services
+      level: trace
+      additivity: false
+      AppenderRef:
+        -ref: Console
+
+    root:
+      level: warn
+      AppenderRef:
+      - ref: Console
