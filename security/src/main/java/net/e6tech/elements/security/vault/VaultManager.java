@@ -343,6 +343,20 @@ public class VaultManager {
         return _encrypt(MASTER_KEY_ALIAS, plain);
     }
 
+    public String importKey(DualEntry dualEntry, String plainKey, String iv) throws GeneralSecurityException {
+        byte[] plain = symmetricCipher.toBytes(plainKey);
+        byte[] plain2 = symmetricCipher.generateKeySpec().getEncoded();
+        String iv2 = symmetricCipher.generateIV();
+        if (plain2.length != plain.length)
+            throw new GeneralSecurityException("Invalid key length: expecting the key to be " + plain2.length + " bytes.");
+        if (iv2.length() != plain.length) {
+            int ivLength = symmetricCipher.toBytes(iv2).length;
+            throw new GeneralSecurityException("Invalid IV length: expecting the IV to be " + ivLength + " bytes.");
+        }
+        checkAccess(dualEntry);
+        return _encrypt(MASTER_KEY_ALIAS, plain, iv);
+    }
+
     // encrypt data with key. key is encrypted with master key.
     public String encrypt(String token, String key, byte[] data, String iv) throws GeneralSecurityException {
         checkToken(token);
@@ -657,13 +671,18 @@ public class VaultManager {
         keyDataStore.restore(version);
     }
 
-    @SuppressWarnings("squid:S00100")
     private String _encrypt(String keyAlias, byte[] plain) throws GeneralSecurityException {
+        return _encrypt(keyAlias, plain, null);
+    }
+
+    @SuppressWarnings("squid:S00100")
+    private String _encrypt(String keyAlias, byte[] plain, String iv) throws GeneralSecurityException {
         ClearText ct = getKey(keyAlias, null);
         if (ct == null)
             throw new GeneralSecurityException("No key for keyAlias=" + keyAlias);
 
-        String iv = symmetricCipher.generateIV();
+        if (iv == null)
+            iv = symmetricCipher.generateIV();
         String encrypted = symmetricCipher.encrypt(ct.asSecretKey(), plain, iv);
         return iv + "$" + encrypted + "$" + keyAlias + "$" + ct.version(); // iv and enc
     }

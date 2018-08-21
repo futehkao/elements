@@ -97,6 +97,7 @@ public class JaxRSServer extends CXFServer {
     private SecurityAnnotationEngine securityAnnotationEngine;
     private Configuration.Resolver resolver;
     private Map<String, String> responseHeaders = new LinkedHashMap<>();
+    private LogEventSender logEventSender;
 
     public static Logger getLogger() {
         return logger;
@@ -182,6 +183,14 @@ public class JaxRSServer extends CXFServer {
         this.responseHeaders = responseHeaders;
     }
 
+    public LogEventSender getLogEventSender() {
+        return logEventSender;
+    }
+
+    public void setLogEventSender(LogEventSender logEventSender) {
+        this.logEventSender = logEventSender;
+    }
+
     @Override
     @SuppressWarnings("squid:S2112")
     public void initialize(Resources res) {
@@ -249,7 +258,7 @@ public class JaxRSServer extends CXFServer {
             }
 
             if (securityAnnotationEngine != null) {
-                securityAnnotationEngine.register(instance);
+                securityAnnotationEngine.register(resourceClass);
             }
 
             ResourceProvider resourceProvider ;
@@ -337,7 +346,7 @@ public class JaxRSServer extends CXFServer {
         }
 
         LoggingFeature feature = new LoggingFeature();
-        EventSender sender = new EventSender();
+        DefaultLogEventSender sender = new DefaultLogEventSender();
         feature.setInSender(sender);
         feature.setOutSender(sender);
         for (JAXRSServerFactoryBean bean: beans) {
@@ -374,12 +383,14 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
-    private class EventSender implements LogEventSender {
+    private class DefaultLogEventSender implements LogEventSender {
 
         @Override
         public void send(LogEvent event) {
             if (messageLogger.isTraceEnabled())
                 messageLogger.trace(getLogMessage(event));
+            if (logEventSender != null)
+                logEventSender.send(event);
         }
 
         private String getLogMessage(LogEvent event) {

@@ -26,8 +26,10 @@ import javax.persistence.metamodel.EntityType;
 import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Created by futeh.
@@ -59,13 +61,26 @@ public class Select<T> extends Statement<T> {
         return new Select<>(where, root);
     }
 
+    public <X, R> void addConverter(Class<X> from, Class<R> to, Function<X, R> function) {
+        where.addConverter(from, to, function);
+    }
+
+    public <X, R> void removeConverter(Class<X> from, Class<R> to) {
+        where.removeConverter(from, to);
+    }
+
+    public <X, R> T withConverter(Class<X> from, Class<R> to, Function<X, R> function) {
+        addConverter(from, to, function);
+        return where.getTemplate();
+    }
+
     public Select<T> where(Consumer<T> consumer) {
         consumer.accept(where.getTemplate());
         where.onQuery();
         return this;
     }
 
-    public Select<T>  where(BiConsumer<Select<T>, T> consumer) {
+    public Select<T> where(BiConsumer<Select<T>, T> consumer) {
         consumer.accept(this, where.getTemplate());
         where.onQuery();
         return this;
@@ -111,8 +126,22 @@ public class Select<T> extends Statement<T> {
         return query.getResultList();
     }
 
+    public Path path(Consumer<T> consumer) {
+        Class<T> entityClass = Interceptor.getTargetClass(where.getTemplate());
+        AtomicReference<Path> ref = new AtomicReference<>();
+        T t = applyGetter(entityClass, ref::set);
+        consumer.accept(t);
+        return ref.get();
+    }
+
     public Select<T> selectEntity() {
         selections.add(getFrom());
+        return this;
+    }
+
+    public Select<T> select(Function<CriteriaBuilder, Function<Expression, Expression>> builder, Consumer<T> consumer) {
+        Path path = path(consumer);
+        select(builder.apply(getBuilder()).apply(path));
         return this;
     }
 

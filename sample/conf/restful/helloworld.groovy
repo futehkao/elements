@@ -15,7 +15,11 @@
  */
 
 import net.e6tech.elements.web.cxf.JaxRSServer
+import net.e6tech.elements.web.cxf.SecurityAnnotationEngine
 import net.e6tech.sample.web.cxf.HelloWorld
+import net.e6tech.sample.web.cxf.HelloWorldRoles
+
+roleMap = [(HelloWorld.getName()): HelloWorldRoles]
 
 atom("helloWorld") {
     configuration =  """
@@ -29,7 +33,9 @@ atom("helloWorld") {
     _helloWorld.responseHeaders:
         'X' : 'X val'
         'Y' : 'Y val'
+    _securityAnnotation.securityProviders: ^roleMap
  """
     _prototype = HelloWorld
+    _securityAnnotation = SecurityAnnotationEngine
     _helloWorld = JaxRSServer
 }

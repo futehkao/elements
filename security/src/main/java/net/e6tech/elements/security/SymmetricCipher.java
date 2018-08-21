@@ -23,7 +23,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.security.*;
@@ -161,28 +160,29 @@ public class SymmetricCipher {
         this.base64 = base64;
     }
 
-    public static byte[] toBytes(String hexString) {
-        return DatatypeConverter.parseHexBinary(hexString);
+    public byte[] toBytes(String string) {
+        if (base64)
+            return Base64.getDecoder().decode(string);
+        else
+            return Hex.toBytes(string);
     }
 
-    public static String toString(byte[] bytes) {
-        return DatatypeConverter.printHexBinary(bytes);
+    public String toString(byte[] bytes) {
+        if (base64) {
+            return Base64.getEncoder().encodeToString(bytes);
+        } else {
+            return Hex.toString(bytes);
+        }
     }
 
     public String encrypt(SecretKey key, byte[] plain, String iv) throws GeneralSecurityException {
         byte[] ivBytes = null;
         if (iv != null) {
-            if (base64)
-                ivBytes = Base64.getDecoder().decode(iv);
-            else ivBytes = Hex.toBytes(iv);
+            ivBytes = toBytes(iv);
         }
         byte[] encrypted = encryptBytes(key, plain, ivBytes);
 
-        if (base64) {
-            return Base64.getEncoder().encodeToString(encrypted);
-        } else {
-            return Hex.toString(encrypted);
-        }
+        return toString(encrypted);
     }
 
     public byte[] encryptBytes(SecretKey key, byte[] plain, byte[] initVector) throws GeneralSecurityException {
@@ -201,18 +201,10 @@ public class SymmetricCipher {
 
     public byte[] decrypt(SecretKey key, String encrypted, String initVector) throws GeneralSecurityException {
         byte[] ivBytes = null;
-        String iv = initVector;
-        if (iv != null) {
-            if (base64)
-                ivBytes = Base64.getDecoder().decode(iv);
-            else ivBytes = Hex.toBytes(iv);
+        if (initVector != null) {
+            ivBytes = toBytes(initVector);
         }
-        byte[] decodedBytes = null;
-        if (base64) {
-            decodedBytes = Base64.getDecoder().decode(encrypted);
-        } else {
-            decodedBytes = Hex.toBytes(encrypted);
-        }
+        byte[] decodedBytes = toBytes(encrypted);
         return decryptBytes(key, decodedBytes, ivBytes);
     }
 

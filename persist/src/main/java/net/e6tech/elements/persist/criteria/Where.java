@@ -19,13 +19,17 @@ package net.e6tech.elements.persist.criteria;
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.datastructure.Pair;
 
 import javax.persistence.EntityManager;
 import javax.persistence.criteria.*;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 
 /**
@@ -38,6 +42,7 @@ public class Where<T> extends Handler {
     Comparison comparison = Comparison.equal;
     List<Predicate> predicates = new ArrayList<>();
     List<Order> orderByList = new ArrayList<>();
+    Map<Pair, Function> converters = new HashMap<>();
 
     public Where(Where parent, Path path) {
         this(parent.getEntityManager(), parent.getBuilder(), parent.getQuery(), path);
@@ -45,11 +50,53 @@ public class Where<T> extends Handler {
         this.predicates = parent.predicates;
         this.comparison = parent.getComparison();
         this.orderByList = parent.getOrderByList();
+        this.converters = parent.getConverters();
     }
 
     public Where(EntityManager entityManager, CriteriaBuilder builder, CriteriaQuery query, Path path) {
         super(entityManager, builder, query, path);
         template = Handler.interceptor.newInstance(path.getJavaType(), this);
+    }
+
+    public Map<Pair, Function> getConverters() {
+        return converters;
+    }
+
+    public void setConverters(Map<Pair, Function> converters) {
+        this.converters = converters;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <X,R> void addConverter(Class<X> fromType, Class<R> toType, Function<X, R> converter) {
+        converters.put(new Pair(fromType, toType), converter);
+        Class fromPrimitive = Primitives.getPrimitiveType(fromType);
+        if (fromPrimitive != null) {
+            converters.put(new Pair(fromPrimitive, toType), converter);
+        }
+        Class toPrimitive = Primitives.getPrimitiveType(toType);
+        if (toPrimitive != null) {
+            converters.put(new Pair(fromType, toPrimitive), converter);
+        }
+
+        if (fromPrimitive != null && toPrimitive != null) {
+            converters.put(new Pair(fromPrimitive, toPrimitive), converter);
+        }
+    }
+
+    public <X,R> void removeConverter(Class<X> fromType, Class<R> toType) {
+        converters.remove(new Pair(fromType, toType));
+        Class fromPrimitive = Primitives.getPrimitiveType(fromType);
+        if (fromPrimitive != null) {
+            converters.remove(new Pair(fromPrimitive, toType));
+        }
+        Class toPrimitive = Primitives.getPrimitiveType(toType);
+        if (toPrimitive != null) {
+            converters.remove(new Pair(fromType, toPrimitive));
+        }
+
+        if (fromPrimitive != null && toPrimitive != null) {
+            converters.remove(new Pair(fromPrimitive, toPrimitive));
+        }
     }
 
     public T getTemplate() {
@@ -94,7 +141,7 @@ public class Where<T> extends Handler {
     }
 
     @Override
-    public Object invoke(CallFrame frame) throws Throwable {
+    public Object invoke(CallFrame frame) {
         PropertyDescriptor desc = Reflection.propertyDescriptor(frame.getMethod());
         String property = desc.getName();
         CriteriaBuilder builder = getBuilder();
@@ -112,7 +159,15 @@ public class Where<T> extends Handler {
         } else {
             // setter
             Path current = getPath().get(property);
-            predicates.add(comparison.compare(builder, current, frame.getArguments()[0]));
+            Class javaType = current.getJavaType();
+            Object value = frame.getArguments()[0];
+            if (value != null) {
+                Function function = converters.get(new Pair(value.getClass(), javaType));
+                if (function != null)
+                    value = function.apply(value);
+            }
+
+            predicates.add(comparison.compare(builder, current, value));
             return null;
         }
     }

@@ -56,6 +56,7 @@ import java.util.Properties;
 /**
  * This is almost an identical copy  of Hibernate's TableGenerator.  We modified it so that initialValue can be a long
  */
+@SuppressWarnings("squid:HiddenFieldCheck")
 public class ModifiedTableGenerator implements PersistentIdentifierGenerator, Configurable {
 
     private static final CoreMessageLogger LOG = Logger.getMessageLogger(
@@ -449,6 +450,7 @@ public class ModifiedTableGenerator implements PersistentIdentifierGenerator, Co
         return IdentifierGeneratorHelper.getIntegralDataTypeHolder( identifierType.getReturnedClass() );
     }
 
+    @SuppressWarnings("squid:S3776")
     @Override
     public Serializable generate(final SharedSessionContractImplementor session, final Object obj) {
         final SqlStatementLogger statementLogger = session.getFactory().getServiceRegistry()

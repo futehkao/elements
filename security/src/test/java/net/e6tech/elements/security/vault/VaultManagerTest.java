@@ -1,5 +1,6 @@
 package net.e6tech.elements.security.vault;
 
+import net.e6tech.elements.security.SymmetricCipher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -60,6 +61,33 @@ public class VaultManagerTest {
 
         String token = manager.authorize(dualEntry.getUser1());
         manager.renew(token);
+    }
+
+    @Test
+    public void genKey() throws Exception {
+        SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
+        String key = manager.generateKey(dualEntry);
+        testEncrypt(key);
+    }
+
+    @Test
+    public void importKey() throws Exception {
+        SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
+        byte[] plain = cipher.generateKeySpec().getEncoded();
+        String iv = cipher.generateIV();
+        String key = manager.importKey(dualEntry, cipher.toString(plain), iv);
+        testEncrypt(key);
+    }
+
+    private void testEncrypt(String key) throws Exception {
+        SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
+        String token = manager.authorize(dualEntry.getUser1());
+        String iv = cipher.generateIV();
+        String text = "Hello World!";
+        byte[] data = text.getBytes("UTF-8");
+        String encrypted = manager.encrypt(token, key, data, iv);
+        byte[] decrypted = manager.decrypt(token, key, encrypted, iv);
+        assertTrue(new String(decrypted, "UTF-8").equals(text));
     }
 
     @Test

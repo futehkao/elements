@@ -19,7 +19,11 @@ package net.e6tech.elements.web.cxf;
 import net.e6tech.elements.common.logging.Logger;
 import org.apache.cxf.common.util.ClassHelper;
 
+import javax.annotation.security.DenyAll;
+import javax.annotation.security.PermitAll;
+import javax.annotation.security.RolesAllowed;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -29,44 +33,51 @@ import java.util.*;
 public class SecurityAnnotationEngine {
     private static Logger logger = Logger.getLogger();
 
-    private static final String ROLES_ALLOWED_CLASS_NAME = "javax.annotation.security.RolesAllowed";
-    private static final String PERMIT_ALL_CLASS_NAME = "javax.annotation.security.PermitAll";
-    private static final String DENY_ALL_CLASS_NAME = "javax.annotation.security.DenyAll";
-
-    private static final String ROLE_KEY_PERMIT_ALL = "PERMITALL";
-    private static final String ROLE_KEY_DENY_ALL = "DENYALL";
-
-    private static final Set<String> SKIP_METHODS;
+    private static final Set<MethodSignature> SKIP_METHODS;
 
     static {
         SKIP_METHODS = new HashSet<>();
-        SKIP_METHODS.addAll(Arrays.asList("wait", "notify", "notifyAll", "equals", "toString", "hashCode"));
+        for (Method method : Object.class.getDeclaredMethods()) {
+            SKIP_METHODS.add(new MethodSignature(method));
+        }
     }
 
+    private Map<Object, Class> securityProviders = new HashMap<>();
     private Map<String, Map<MethodSignature, Set<String>>> scannedClassMap = new HashMap<>();
 
-    public void register(Object object) {
-        Class<?> cls = ClassHelper.getRealClass(object);
-        if (scannedClassMap.containsKey(cls.getName()))
-            return;
+    public Map<Object, Class> getSecurityProviders() {
+        return securityProviders;
+    }
 
-        //
-        // We scan in the following order of precedence:
-        //
-        //   @PermitAll    - will set value of PERMITALL
-        //   @RolesAllowed - will set value with list of roles
-        //   @DenyAll      - will set value of DENYALL
-        //
-        Map<MethodSignature, Set<String>> methodMap = new HashMap<>();
-        scanForPermitAll(cls, methodMap);
-        scanForDenyAll(cls, methodMap);
-        scanForRolesAllowed(cls, methodMap);
+    public void setSecurityProviders(Map<Object, Class> securityProviders) {
+        this.securityProviders = securityProviders;
+    }
+
+    public <T> Class<? extends T> getSecurityProvider(Class<T> cls) {
+        Class roleProvider = securityProviders.get(cls);
+        if (roleProvider == null)
+            roleProvider = securityProviders.get(cls.getName());
+        if (roleProvider == null)
+            roleProvider = cls;
+        return roleProvider;
+    }
+
+    public <T> SecurityAnnotationEngine register(Class<T> cls) {
+        Class<? extends T> roleProvider = getSecurityProvider(cls);
+        // populate from most specific to least specific.  Once a method signature
+        // acquires a role set, it won't be re-populated.
+        Map<MethodSignature, Set<String>> methodMap = scannedClassMap.computeIfAbsent(cls.getName(), key -> new HashMap<>());
+        scanRoles(roleProvider, methodMap, RolesAllowed.class);
+        scanRoles(roleProvider, methodMap, DenyAll.class);
+        scanRoles(roleProvider, methodMap, PermitAll.class);
         if (methodMap.isEmpty()) {
             logger.warn("The roles map is empty, the service object is not protected: " + cls.getName());
         }
 
         scannedClassMap.put(cls.getName(), methodMap);
+        return this;
     }
+
 
     public boolean hasAccess(Object instance, Method method, Object[] args, String userRole) {
         if (userRole == null) {
@@ -82,9 +93,9 @@ public class SecurityAnnotationEngine {
                 logger.warn("no security map entry found: class: {} method:{}",
                         instance.getClass().getName(), createMethodSig(method));
             return true;
-        } else if (value.contains(ROLE_KEY_DENY_ALL))
+        } else if (value.contains(DenyAll.class.getSimpleName()))
             return false;
-        else if (value.contains(ROLE_KEY_PERMIT_ALL))
+        else if (value.contains(PermitAll.class.getSimpleName()))
             return true;
         else {
             for (String userRole : userRoles) {
@@ -98,6 +109,10 @@ public class SecurityAnnotationEngine {
     @SuppressWarnings("squid:S1172")
     public Set<String> lookupRole(Object instance, Method method, Object[] args) {
         Class<?> cls = ClassHelper.getRealClass(instance);
+        return lookupRole(cls, method);
+    }
+
+    public Set<String> lookupRole(Class cls, Method method) {
         MethodSignature methodSig = createMethodSig(method);
         logger.trace("lookupRole: class: {} method:{}", cls.getName(), methodSig);
 
@@ -126,116 +141,49 @@ public class SecurityAnnotationEngine {
         }
     }
 
-    private void scanForPermitAll(Class<?> cls, Map<MethodSignature, Set<String>> rolesMap) {
+    private void scanRoles(Class<?> cls, Map<MethodSignature, Set<String>> rolesMap, Class<? extends Annotation> annotationClass) {
         if (cls == null || cls == Object.class)
             return;
 
-        boolean clsLevelPermitAll = isAnnotationPresent(cls.getAnnotations(), PERMIT_ALL_CLASS_NAME);
-        for (Method m : cls.getMethods()) {
-            if (SKIP_METHODS.contains(m.getName())) {
+        Set<String> classRoles = getRoles(cls, annotationClass);
+        for (Method m : cls.getDeclaredMethods()) {
+            MethodSignature signature = createMethodSig(m);
+            if (SKIP_METHODS.contains(signature)
+                    || rolesMap.get(signature) != null) { // already populated
                 continue;
             }
 
-            boolean methodLevelPermitAll = isAnnotationPresent(m.getAnnotations(), PERMIT_ALL_CLASS_NAME);
-            if (clsLevelPermitAll || methodLevelPermitAll) {
-                Set<String> set = new HashSet<>();
-                set.add(ROLE_KEY_PERMIT_ALL);
-                rolesMap.put(createMethodSig(m), set);
+            Set<String> methodRoles = getRoles(m, annotationClass);
+            Set<String> resultRoles = !methodRoles.isEmpty() ? methodRoles : classRoles;
+            if (!resultRoles.isEmpty()) {
+                rolesMap.put(signature, resultRoles);
             }
         }
 
-        if (clsLevelPermitAll)
-            return;
-
-        scanForPermitAll(cls.getSuperclass(), rolesMap);
-        // NOTE: Per Futeh: annotations should not be placed at the interface level
-    }
-
-    private void scanForDenyAll(Class<?> cls, Map<MethodSignature, Set<String>> rolesMap) {
-        if (cls == null || cls == Object.class)
-            return;
-
-        boolean clsLevelDenyAll = isAnnotationPresent(cls.getAnnotations(), DENY_ALL_CLASS_NAME);
-        for (Method m : cls.getMethods()) {
-            if (SKIP_METHODS.contains(m.getName())) {
-                continue;
-            }
-
-            boolean methodLevelDenyAll = isAnnotationPresent(m.getAnnotations(), DENY_ALL_CLASS_NAME);
-            if (clsLevelDenyAll || methodLevelDenyAll) {
-                Set<String> set = new HashSet<>();
-                set.add(ROLE_KEY_DENY_ALL);
-                rolesMap.put(createMethodSig(m), set);
-            }
-        }
-
-        if (clsLevelDenyAll)
-            return;
-
-        scanForDenyAll(cls.getSuperclass(), rolesMap);
-        // NOTE: Per Futeh: annotations should not be placed at the interface level
-    }
-
-    @SuppressWarnings("squid:S1872")
-    private boolean isAnnotationPresent(Annotation[] anns, String annName) {
-        for (Annotation ann : anns) {
-            if (ann.annotationType().getName().equals(annName)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void scanForRolesAllowed(Class<?> cls, Map<MethodSignature, Set<String>> rolesMap) {
-        if (cls == null || cls == Object.class) {
-            return;
-        }
-
-        Set<String> classRolesAllowed = getRoles(cls.getAnnotations(), ROLES_ALLOWED_CLASS_NAME);
-        for (Method m : cls.getMethods()) {
-            if (SKIP_METHODS.contains(m.getName())) {
-                continue;
-            }
-
-            Set<String> methodRolesAllowed = getRoles(m.getAnnotations(), ROLES_ALLOWED_CLASS_NAME);
-            Set<String> theRoles = !methodRolesAllowed.isEmpty() ? methodRolesAllowed : classRolesAllowed;
-            if (!theRoles.isEmpty()) {
-                rolesMap.put(createMethodSig(m), theRoles);
-            }
-        }
-        if (!rolesMap.isEmpty()) {
-            return;
-        }
-
-        scanForRolesAllowed(cls.getSuperclass(), rolesMap);
-        // NOTE: Per Futeh: annotations should not be placed at the interface level
+        scanRoles(cls.getSuperclass(), rolesMap, annotationClass);
     }
 
     @SuppressWarnings({"squid:S134", "squid:S3776", "squid:S3878"})
-    private Set<String> getRoles(Annotation[] anns, String annName) {
-        for (Annotation ann : anns) {
-            if (ann.annotationType().getName().equals(annName)) {
-                try {
-                    Method valueMethod = ann.annotationType().getMethod("value", new Class[]{});
-                    String[] roles = (String[]) valueMethod.invoke(ann, new Object[]{});
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < roles.length; i++) {
-                        sb.append(roles[i]);
-                        if (i + 1 < roles.length) {
-                            sb.append(" ");
-                        }
-                    }
-                    Set<String> set = new HashSet<>();
-                    for (String role : roles)
-                        set.add(role);
-                    return set;
-                } catch (Exception ex) {
-                    Logger.suppress(ex);
-                }
-                break;
+    private Set<String> getRoles(AnnotatedElement element, Class<? extends Annotation> annotationClass) {
+        if (annotationClass.equals(RolesAllowed.class)) {
+            RolesAllowed rolesAllowed = element.getAnnotation(RolesAllowed.class);
+            if (rolesAllowed != null) {
+                Set<String> set = new HashSet<>();
+                Collections.addAll(set, rolesAllowed.value());
+                return set;
+            } else {
+                return Collections.emptySet();
+            }
+        } else {
+            Set<String> set = new HashSet<>();
+            Annotation annotation = element.getAnnotation(annotationClass);
+            if (annotation != null) {
+                set.add(annotationClass.getSimpleName());
+                return set;
+            } else {
+                return Collections.emptySet();
             }
         }
-        return Collections.emptySet();
     }
 
     private MethodSignature createMethodSig(Method method) {
@@ -243,7 +191,6 @@ public class SecurityAnnotationEngine {
     }
 
     static class MethodSignature {
-
         private String name;
         private Class returnType;
         private Class<?>[] parameterTypes;

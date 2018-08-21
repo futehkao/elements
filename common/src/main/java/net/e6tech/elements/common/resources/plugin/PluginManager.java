@@ -92,6 +92,7 @@ public class PluginManager {
         return classLoader;
     }
 
+    @SuppressWarnings("squid:S3824")
     protected Optional getDefaultPlugin(Class type) {
         Object lookup = defaultPlugins.get(type);
         if (lookup == NULL_OBJECT)

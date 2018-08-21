@@ -25,13 +25,15 @@ import net.e6tech.elements.persist.EntityManagerConfig;
 import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.annotation.security.DenyAll;
+import javax.annotation.security.PermitAll;
 import javax.persistence.EntityManager;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
 @Path("/helloworld")
 @SuppressWarnings("all") // it is a test case
-public class HelloWorld{
+public class HelloWorld {
 
     @Inject
     ResourceManager resourceManager;
@@ -72,10 +74,22 @@ public class HelloWorld{
         return "ping ...";
     }
 
+    @PermitAll
     @GET
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/{greeting}")
     public String sayHello(@PathParam("greeting") String greeting) {
+        String str = "hello " + greeting;
+        if (extraMessage != null)
+            str += " " + extraMessage;
+        return str;
+    }
+
+    @DenyAll
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/security/{greeting}")
+    public String withSecurity(@PathParam("greeting") String greeting) {
         String str = "hello " + greeting;
         if (extraMessage != null)
             str += " " + extraMessage;

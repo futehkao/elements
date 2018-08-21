@@ -28,7 +28,7 @@ import java.util.concurrent.ExecutorService;
 /**
  * Created by futeh on 1/21/16.
  */
-@SuppressWarnings("squid:S1141")
+@SuppressWarnings({"squid:S1141", "squid:S2589"})
 public class Transfer implements Runnable {
     private static Logger logger = Logger.getLogger();
 

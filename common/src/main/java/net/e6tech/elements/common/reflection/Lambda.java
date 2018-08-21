@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+@SuppressWarnings("squid:S00112")
 public class Lambda {
     private static final Cache<Method, Function> GETTERS = CacheBuilder.newBuilder().weakValues().build();
     private static final Cache<Method, BiConsumer> SETTERS = CacheBuilder.newBuilder().weakValues().build();
@@ -74,5 +75,8 @@ public class Lambda {
         } catch (final ExecutionException e) {
             throw new ReflectiveOperationException(e.getCause());
         }
+    }
+
+    private Lambda() {
     }
 }

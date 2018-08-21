@@ -74,7 +74,7 @@ public class DualEntry {
         while(!_user2(terminal, serverSocket));
     }
 
-    @SuppressWarnings("squid:S3776")
+    @SuppressWarnings({"squid:S3776", "squid:S2589"})
     private boolean nestedRun(String text, int port) {
         ServerSocket serverSocket = null;
         try {

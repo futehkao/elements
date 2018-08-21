@@ -17,8 +17,10 @@
 package net.e6tech.sample.web.cxf;
 
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.resources.Atom;
 import net.e6tech.elements.network.restful.Response;
 import net.e6tech.elements.network.restful.RestfulProxy;
+import net.e6tech.elements.web.cxf.SecurityAnnotationEngine;
 import net.e6tech.sample.BaseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,8 @@ import org.junit.jupiter.api.Test;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotSupportedException;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -54,6 +58,18 @@ public class HellowWorldTest extends BaseCase {
         response = helloWorld.sayHello2("hello2", "blah");
         // System.out.println(response);
 
+    }
+
+    @Test
+    public void withSecurity() throws Exception {
+        Atom atom = provision.getResourceManager().getAtom("helloWorld");
+        SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
+        assertTrue(engine.getSecurityProvider(HelloWorld.class).equals(HelloWorldRoles.class));
+        Method method = HelloWorld.class.getDeclaredMethod("withSecurity", String.class);
+        Set<String> roles = engine.lookupRole(HelloWorld.class, method);
+        assertTrue(roles.contains("role1"));
+        assertTrue(roles.contains("role2"));
+        helloWorld.withSecurity("hello");
     }
 
     @Test

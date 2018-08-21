@@ -112,7 +112,7 @@ public class JMXService {
         }
     }
 
-    @SuppressWarnings("squid:S135")
+    @SuppressWarnings({"squid:S135", "squid:S2095"})
     private static void register(Object mbean, ObjectName objectName) throws JMException {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         JmxServer jmxServer = new JmxServer(server);
@@ -139,6 +139,7 @@ public class JMXService {
         }
     }
 
+    @SuppressWarnings("squid:S2095")
     public static void unregisterMBean(String name) {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         try {
@@ -184,7 +185,7 @@ public class JMXService {
     }
 
     /* invokes an operation on the mbean */
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S00112", "squid:S135", "squid:S134"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S00112", "squid:S135", "squid:S134", "squid:S3776"})
     public static Object invoke(ObjectName objectName,
                        String methodName,
                        Object ... arguments) throws Exception {
