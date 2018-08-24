@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -77,6 +78,22 @@ public class VaultManagerTest {
         String iv = cipher.generateIV();
         String key = manager.importKey(dualEntry, cipher.toString(plain), iv);
         testEncrypt(key);
+    }
+
+    @Test
+    public void importKeyBadPassword() throws Exception {
+        SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
+        byte[] plain = cipher.generateKeySpec().getEncoded();
+        String iv = cipher.generateIV();
+        DualEntry de = new DualEntry("user1", "password".toCharArray(), "user2", "password2".toCharArray());
+        assertThrows(Exception.class, () -> {
+            try {
+                manager.importKey(de, cipher.toString(plain), iv);
+            } catch (Exception ex) {
+                System.out.println(ex.getMessage());
+                throw ex;
+            }
+        });
     }
 
     private void testEncrypt(String key) throws Exception {

@@ -95,7 +95,12 @@ public class PasswordProtected {
             throw new GeneralSecurityException(e);
         }
 
-        byte[] plain = pwdEnc.decrypt(encrypted);
+        byte[] plain = null;
+        try {
+            plain = pwdEnc.decrypt(encrypted);
+        } catch (GeneralSecurityException ex) {
+            throw new GeneralSecurityException("Invalid user name or password", ex);
+        }
         ClearText ct = new ClearText();
         ct.setBytes(plain);
         ct.setProperties((Properties) secret.getProperties().clone());

@@ -135,7 +135,7 @@ public class Terminal implements Closeable {
         @Override
         @SuppressWarnings("squid:S1168")
         public char[] readPassword(String text) {
-            output.println(text);
+            output.print(text);
             output.flush();
             String str = null;
             try {

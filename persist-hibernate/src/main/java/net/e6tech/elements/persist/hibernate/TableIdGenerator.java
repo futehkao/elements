@@ -81,7 +81,7 @@ public class TableIdGenerator extends ModifiedTableGenerator implements Cloneabl
     }
 
     @Override
-    protected QualifiedName determineGeneratorTableName(Properties params, JdbcEnvironment jdbcEnvironment) {
+    protected QualifiedName determineGeneratorTableName(Properties params, JdbcEnvironment jdbcEnvironment, ServiceRegistry serviceRegistry) {
         final String tableName = ConfigurationHelper.getString( TABLE_PARAM, params, defaultTableName );
 
         if ( tableName.contains( "." ) ) {

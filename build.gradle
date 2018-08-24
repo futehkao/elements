@@ -7,6 +7,10 @@ allprojects {
 
     sourceCompatibility = 1.8
 
+    tasks.withType(Javadoc) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+
     repositories {
         mavenCentral()
     }
@@ -21,7 +25,7 @@ dependencies {
 subprojects {
 
     group 'net.e6tech'
-    version '2.4.3'
+    version '2.4.4'
 
     apply plugin: 'groovy'
     apply plugin: 'java'
