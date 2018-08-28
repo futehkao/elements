@@ -21,7 +21,7 @@ import net.e6tech.elements.security.PasswordEncrypted;
 import net.e6tech.elements.security.PasswordEncryption;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Properties;
 
@@ -33,17 +33,11 @@ import static net.e6tech.elements.security.vault.Constants.mapper;
  */
 public class PasswordProtected {
 
-    private static final String UTF8 = "UTF-8";
-
     public Secret sealUser(ClearText clear, char[] password) throws GeneralSecurityException {
         ClearText passphrase = new ClearText();
         passphrase.version("0");
         passphrase.alias(PASSPHRASE);
-        try {
-            passphrase.setBytes((new String(password)).getBytes(UTF8));
-        } catch (UnsupportedEncodingException e) {
-            throw new SystemException(e);
-        }
+        passphrase.setBytes((new String(password)).getBytes(StandardCharsets.UTF_8));
         return seal(clear, passphrase);
     }
 
@@ -51,12 +45,8 @@ public class PasswordProtected {
         if (clear.alias() == null)
             throw new SystemException("null alias");
         clear.setProtectedProperty("alias", clear.alias());
-        PasswordEncryption pwdEnc = null;
-        try {
-            pwdEnc = new PasswordEncryption((new String(passphrase.getBytes(), UTF8)).toCharArray());
-        } catch (UnsupportedEncodingException e) {
-            throw new GeneralSecurityException(e);
-        }
+        PasswordEncryption pwdEnc = new PasswordEncryption((new String(passphrase.getBytes(), StandardCharsets.UTF_8)).toCharArray());
+
         PasswordEncrypted encrypted = pwdEnc.encrypt(clear.getBytes(), passphrase.alias(), passphrase.version());
         Secret secret = new Secret();
         secret.setProperties((Properties) clear.getProperties().clone());
@@ -64,7 +54,7 @@ public class PasswordProtected {
         if (clear.getProtectedProperties() != null) {
             try {
                 String str = mapper.writeValueAsString(clear.getProtectedProperties());
-                encrypted = pwdEnc.encrypt(str.getBytes(UTF8), passphrase.alias(), passphrase.version());
+                encrypted = pwdEnc.encrypt(str.getBytes(StandardCharsets.UTF_8), passphrase.alias(), passphrase.version());
                 secret.setProtectedProperties(encrypted.toHex());
             } catch (Exception e) {
                 throw new SystemException(e);
@@ -78,22 +68,13 @@ public class PasswordProtected {
         ClearText passphrase = new ClearText();
         passphrase.version("0");
         passphrase.alias(PASSPHRASE);
-        try {
-            passphrase.setBytes((new String(password)).getBytes(UTF8));
-        } catch (UnsupportedEncodingException e) {
-            throw new SystemException(e);
-        }
+        passphrase.setBytes((new String(password)).getBytes(StandardCharsets.UTF_8));
         return unseal(secret, passphrase);
     }
 
     public ClearText unseal(Secret secret, ClearText passphrase) throws GeneralSecurityException {
         PasswordEncrypted encrypted = new PasswordEncrypted(secret.getSecret());
-        PasswordEncryption pwdEnc = null;
-        try {
-            pwdEnc = new PasswordEncryption((new String(passphrase.getBytes(), UTF8)).toCharArray());
-        } catch (UnsupportedEncodingException e) {
-            throw new GeneralSecurityException(e);
-        }
+        PasswordEncryption pwdEnc = new PasswordEncryption((new String(passphrase.getBytes(), StandardCharsets.UTF_8)).toCharArray());
 
         byte[] plain = null;
         try {
@@ -108,7 +89,7 @@ public class PasswordProtected {
             byte[] props = pwdEnc.decrypt(new PasswordEncrypted(secret.getProtectedProperties()));
             Properties properties = null;
             try {
-                properties = mapper.readValue(new String(props, UTF8), Properties.class);
+                properties = mapper.readValue(new String(props, StandardCharsets.UTF_8), Properties.class);
             } catch (IOException e) {
                 throw new SystemException(e);
             }

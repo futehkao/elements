@@ -36,7 +36,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -171,7 +171,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
         }
         Yaml yaml = new Yaml();
         Path path = Paths.get(file);
-        yaml.dump(map, Files.newBufferedWriter(path, Charset.forName("UTF-8")));
+        yaml.dump(map, Files.newBufferedWriter(path, StandardCharsets.UTF_8));
         return path;
     }
 

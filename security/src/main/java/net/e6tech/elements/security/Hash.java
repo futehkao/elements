@@ -16,12 +16,10 @@ limitations under the License.
 
 package net.e6tech.elements.security;
 
-import net.e6tech.elements.common.util.SystemException;
-
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -57,14 +55,8 @@ public class Hash {
     }
 
     public static String digest(MessageDigest md, String text) {
-        try {
-            md.update(text.getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            // should not happen
-            throw new SystemException(e);
-        }
+        md.update(text.getBytes(StandardCharsets.UTF_8));
         byte[] byteData = md.digest();
-
         return Hex.toString(byteData);
     }
 

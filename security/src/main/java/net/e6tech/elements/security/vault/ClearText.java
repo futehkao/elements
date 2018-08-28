@@ -15,15 +15,13 @@ limitations under the License.
 */
 package net.e6tech.elements.security.vault;
 
-import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.Hex;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
@@ -37,7 +35,6 @@ import static net.e6tech.elements.security.vault.Constants.*;
  */
 public class ClearText implements Serializable {
     private static final long serialVersionUID = -6495396359046821847L;
-    private static final String UTF8 = "UTF-8";
 
     public static final String PUBLIC_KEY_MOD = "public-key-mod";
     public static final String PUBLIC_KEY_EXP= "public-key-exp";
@@ -66,20 +63,13 @@ public class ClearText implements Serializable {
     public String toText() {
         if (bytes == null)
             return null;
-        try {
-            return new String(bytes, UTF8);
-        } catch (UnsupportedEncodingException e) {
-            throw new SystemException(e);
-        }
+
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     // not a setter so that ObjectMapper won't pick it up
     public void resetText(String text) {
-        try {
-            setBytes(text.getBytes(UTF8));
-        } catch (UnsupportedEncodingException e) {
-            throw new SystemException(e);
-        }
+        setBytes(text.getBytes(StandardCharsets.UTF_8));
     }
 
     public byte[] getBytes() {
@@ -153,26 +143,21 @@ public class ClearText implements Serializable {
     }
 
     public KeyPair asKeyPair() throws GeneralSecurityException {
-        try {
-            String text = new String(getBytes(), UTF8);
-            String[] components = text.split("\\$");
-            if (components.length != 2) {
-                throw new IllegalStateException("Invalid encryption format");
-            }
-            BigInteger mod = new BigInteger(components[0], 16);
-            BigInteger exp = new BigInteger(components[1], 16);
-            RSAPrivateKeySpec priv = new RSAPrivateKeySpec(mod, exp);
-            mod = new BigInteger(getProtectedProperty(PUBLIC_KEY_MOD), 16);
-            exp = new BigInteger(getProtectedProperty(PUBLIC_KEY_EXP), 16);
-            RSAPublicKeySpec pub = new RSAPublicKeySpec(mod, exp);
-            KeyFactory fact = KeyFactory.getInstance("RSA");
-            PublicKey pubKey = fact.generatePublic(pub);
-            PrivateKey privateKey = fact.generatePrivate(priv);
-            return new KeyPair(pubKey, privateKey);
-        } catch (UnsupportedEncodingException e) {
-            Logger.suppress(e);
-            return null;
+        String text = new String(getBytes(), StandardCharsets.UTF_8);
+        String[] components = text.split("\\$");
+        if (components.length != 2) {
+            throw new IllegalStateException("Invalid encryption format");
         }
+        BigInteger mod = new BigInteger(components[0], 16);
+        BigInteger exp = new BigInteger(components[1], 16);
+        RSAPrivateKeySpec priv = new RSAPrivateKeySpec(mod, exp);
+        mod = new BigInteger(getProtectedProperty(PUBLIC_KEY_MOD), 16);
+        exp = new BigInteger(getProtectedProperty(PUBLIC_KEY_EXP), 16);
+        RSAPublicKeySpec pub = new RSAPublicKeySpec(mod, exp);
+        KeyFactory fact = KeyFactory.getInstance("RSA");
+        PublicKey pubKey = fact.generatePublic(pub);
+        PrivateKey privateKey = fact.generatePrivate(priv);
+        return new KeyPair(pubKey, privateKey);
     }
 
 }

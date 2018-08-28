@@ -116,7 +116,8 @@ public abstract class CacheFacade<K, V> {
         if (value == null) {
             try {
                 value = callable.call();
-                c.put(key, value);
+                if (value != null)
+                    c.put(key, value);
             } catch (Exception e) {
                 throw new SystemException(e);
             }

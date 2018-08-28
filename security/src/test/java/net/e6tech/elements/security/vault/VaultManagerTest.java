@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -57,8 +58,8 @@ public class VaultManagerTest {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < 100; i ++) builder.append((char)('a' + (i % 26)));
         String data = builder.toString();
-        String pubEncrypted = manager.encryptPublic(data.getBytes("UTF-8"));
-        String privDecrypted = new String(manager.decryptPrivate(pubEncrypted), "UTF-8");
+        String pubEncrypted = manager.encryptPublic(data.getBytes(StandardCharsets.UTF_8));
+        String privDecrypted = new String(manager.decryptPrivate(pubEncrypted), StandardCharsets.UTF_8);
 
         String token = manager.authorize(dualEntry.getUser1());
         manager.renew(token);
@@ -86,14 +87,16 @@ public class VaultManagerTest {
         byte[] plain = cipher.generateKeySpec().getEncoded();
         String iv = cipher.generateIV();
         DualEntry de = new DualEntry("user1", "password".toCharArray(), "user2", "password2".toCharArray());
-        assertThrows(Exception.class, () -> {
-            try {
-                manager.importKey(de, cipher.toString(plain), iv);
-            } catch (Exception ex) {
-                System.out.println(ex.getMessage());
-                throw ex;
-            }
-        });
+        assertThrows(Exception.class, () -> manager.importKey(de, cipher.toString(plain), iv));
+    }
+
+    @Test
+    public void importKeyBadUser() throws Exception {
+        SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
+        byte[] plain = cipher.generateKeySpec().getEncoded();
+        String iv = cipher.generateIV();
+        DualEntry de = new DualEntry("user3", "password".toCharArray(), "user2", "password2".toCharArray());
+        assertThrows(Exception.class, () -> manager.importKey(de, cipher.toString(plain), iv));
     }
 
     private void testEncrypt(String key) throws Exception {
@@ -101,10 +104,10 @@ public class VaultManagerTest {
         String token = manager.authorize(dualEntry.getUser1());
         String iv = cipher.generateIV();
         String text = "Hello World!";
-        byte[] data = text.getBytes("UTF-8");
+        byte[] data = text.getBytes(StandardCharsets.UTF_8);
         String encrypted = manager.encrypt(token, key, data, iv);
         byte[] decrypted = manager.decrypt(token, key, encrypted, iv);
-        assertTrue(new String(decrypted, "UTF-8").equals(text));
+        assertTrue(new String(decrypted, StandardCharsets.UTF_8).equals(text));
     }
 
     @Test

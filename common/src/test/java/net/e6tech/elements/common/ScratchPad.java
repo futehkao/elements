@@ -23,6 +23,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -38,6 +39,7 @@ public class ScratchPad {
 
     @Test
     void scratch() throws Exception {
+        System.out.println(StandardCharsets.UTF_8.name());
         String settlementDate = "20150911";
         LocalDate localDate = LocalDate.parse(settlementDate, DateTimeFormatter.BASIC_ISO_DATE);
         ZoneId id = ZoneId.of("UTC").normalized();

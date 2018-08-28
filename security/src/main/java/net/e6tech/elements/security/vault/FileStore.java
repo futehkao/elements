@@ -145,7 +145,7 @@ public class FileStore implements VaultStore {
         if (fileName == null)
             throw new IOException("null fileName");
 
-        logger.info( "Opening file vault {}", fileName);
+        logger.info("Opening file vault {}", fileName);
 
         File file = new File(fileName);
         if (!file.exists()) {

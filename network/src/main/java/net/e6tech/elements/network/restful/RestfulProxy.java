@@ -33,6 +33,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -275,7 +276,7 @@ public class RestfulProxy {
                     if (args[i] == null)
                         throw new IllegalArgumentException("PathParam {" + pathParams[i].value() + "} cannot be null");
                     String value = args[i].toString();
-                    String valueEscaped = URLEncoder.encode(value,"UTF-8").replaceAll("\\+", "%20");
+                    String valueEscaped = URLEncoder.encode(value, StandardCharsets.UTF_8.name()).replaceAll("\\+", "%20");
                     fullContext = fullContext.replace("{" + pathParams[i].value() + "}", valueEscaped);
                 }
 

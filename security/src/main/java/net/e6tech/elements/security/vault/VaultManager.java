@@ -25,8 +25,8 @@ import net.e6tech.elements.security.SymmetricCipher;
 import javax.crypto.SecretKey;
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -123,11 +123,8 @@ public class VaultManager {
         BigInteger mod = priv.getModulus();
         BigInteger exp = priv.getPrivateExponent();
         String encoded = mod.toString(16) + "$" + exp.toString(16);
-        try {
-            ct.setBytes(encoded.getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            Logger.suppress(e);
-        }
+
+        ct.setBytes(encoded.getBytes(StandardCharsets.UTF_8));
         ct.setProperty(TYPE, KEY_PAIR_TYPE);
         ct.setProperty(ALGORITHM, asymmetricCipher.getAlgorithm());
         ct.setProperty(ClearText.PUBLIC_KEY_MOD, pub.getModulus().toString(16));
@@ -167,11 +164,7 @@ public class VaultManager {
 
     private ClearText generatePassphrase(char[] password) throws GeneralSecurityException {
         ClearText ct = new ClearText();
-        try {
-            ct.setBytes(new String(password).getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            Logger.suppress(e);
-        }
+        ct.setBytes(new String(password).getBytes(StandardCharsets.UTF_8));
         ct.alias(PASSPHRASE);
         ct.setProperty(TYPE, PASSPHRASE_TYPE);
         ct.protect();
@@ -227,44 +220,30 @@ public class VaultManager {
         checkAccess(credential);
         long now = System.currentTimeMillis();
         String token = "" + Long.toString(now) + "-" + random.nextInt(1000000);
-        try {
-            return _encrypt(AUTHORIZATION_KEY_ALIAS, token.getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            Logger.suppress(e);
-            return null;
-        }
+        return _encrypt(AUTHORIZATION_KEY_ALIAS, token.getBytes(StandardCharsets.UTF_8));
     }
 
     public String renew(String token) throws GeneralSecurityException {
         checkToken(token);
         long now = System.currentTimeMillis();
         String nextToken = "" + Long.toString(now) + "-" + random.nextInt(1000000);
-        try {
-            return _encrypt(AUTHORIZATION_KEY_ALIAS, nextToken.getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            Logger.suppress(e);
-            return null;
-        }
+        return _encrypt(AUTHORIZATION_KEY_ALIAS, nextToken.getBytes(StandardCharsets.UTF_8));
     }
 
     private void checkToken(String token) throws GeneralSecurityException {
         if (token == null)
             throw new LoginException();
         byte[] decrypted = _decrypt(token);
-        try {
-            String plain = new String(decrypted, "UTF-8");
-            int index = plain.indexOf('-');
-            if (index < 0)
-                throw new LoginException("Invalid toke format");
-            long time = Long.parseLong(plain.substring(0, index));
-            if (System.currentTimeMillis() - time > authorizationDuration) {
-                Date date = new Date(time);
-                SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd HHmmss");
-                throw new LoginException("Token issued on " + format.format(date) + " expired.  Current time is " + format.format(new Date()));
-            }
-        } catch (UnsupportedEncodingException e) {
-            Logger.suppress(e);
-            throw new LoginException();
+
+        String plain = new String(decrypted, StandardCharsets.UTF_8);
+        int index = plain.indexOf('-');
+        if (index < 0)
+            throw new LoginException("Invalid toke format");
+        long time = Long.parseLong(plain.substring(0, index));
+        if (System.currentTimeMillis() - time > authorizationDuration) {
+            Date date = new Date(time);
+            SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd HHmmss");
+            throw new LoginException("Token issued on " + format.format(date) + " expired.  Current time is " + format.format(new Date()));
         }
     }
 
@@ -620,7 +599,7 @@ public class VaultManager {
 
             // need to start using the new password since we just finished re-encrypting
             state.getCachedKeys().clear();
-            state.setPassword((new String(passphrase.getBytes(), "UTF-8")).toCharArray());
+            state.setPassword((new String(passphrase.getBytes(), StandardCharsets.UTF_8)).toCharArray());
             addData(newSignature);
             state.setSignature(newSignature);
 

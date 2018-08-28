@@ -30,6 +30,7 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -51,7 +52,7 @@ public class RestfulClient {
 
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
-    private String encoding = "UTF-8";
+    private String encoding = StandardCharsets.UTF_8.name();
     private String trustStore;
     private String trustStoreFormat = JavaKeyStore.DEFAULT_FORMAT;
     private boolean skipHostnameCheck = false;
@@ -348,7 +349,7 @@ public class RestfulClient {
             if (method.equals(Request.POST) || method.equals(Request.PUT)) {
                 OutputStream out = conn.getOutputStream();
                 if (data != null) {
-                    Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), "UTF-8");
+                    Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), StandardCharsets.UTF_8);
                     String posted = marshaller.encodeRequest(data);
                     writer.write(posted);
                     logger.debug(posted);

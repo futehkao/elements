@@ -16,14 +16,13 @@
 
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
-import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.security.Hex;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.Key;
 
@@ -84,12 +83,7 @@ public class AKB {
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S1067"})
     public byte[] decryptKey(byte[] keyEncryptionKey) throws GeneralSecurityException {
-        byte[] headerBytes = new byte[0];
-        try {
-            headerBytes = getHeader().getBytes("UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            Logger.suppress(e);
-        }
+        byte[] headerBytes = getHeader().getBytes(StandardCharsets.UTF_8);
         IvParameterSpec ivSpec = new IvParameterSpec(headerBytes);
         Cipher cipher = Cipher.getInstance(DES_EDE_CBC_NO_PADDING);
         byte[] xorMKey = maskAKBEncryptionKey(keyEncryptionKey, Hex.toBytes("45")[0]);
@@ -143,12 +137,8 @@ public class AKB {
             throw new GeneralSecurityException("Invalid key size=" + key.length);
         }
 
-        byte[] headerBytes = new byte[0];
-        try {
-            headerBytes = header.getBytes("UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            Logger.suppress(e);
-        }
+        byte[] headerBytes = header.getBytes(StandardCharsets.UTF_8);
+
         IvParameterSpec ivSpec = new IvParameterSpec(headerBytes);
         Cipher cipher = Cipher.getInstance(DES_EDE_CBC_NO_PADDING);
         byte[] xorMKey = maskAKBEncryptionKey(keyEncryptionKey, Hex.toBytes("45")[0]);

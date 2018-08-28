@@ -19,17 +19,7 @@ package net.e6tech.elements.web.security.vault.client;
  * Created by futeh.
  */
 public class Action {
-    String token;
-
     public String getType() {
         return getClass().getSimpleName();
-    }
-
-    public String getToken() {
-        return token;
-    }
-
-    public void setToken(String token) {
-        this.token = token;
     }
 }

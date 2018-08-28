@@ -27,6 +27,7 @@ import javax.script.ScriptContext;
 import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -158,7 +159,7 @@ public class Scripting {
                 InputStream stream = getClass().getClassLoader().getResourceAsStream(scriptPath.getFileName());
                 if (stream == null)
                     throw new IOException("File not found: " + scriptPath.getClassPath());
-                reader = new InputStreamReader(stream, "UTF-8");
+                reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
                 file = scriptPath.getFileName();
             } else {
                 File f = new File(scriptPath.getFileName());

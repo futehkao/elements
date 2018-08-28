@@ -213,7 +213,7 @@ public class JMXService {
                 MBeanParameterInfo[] params = op.getSignature();
                 if (arglen != params.length)
                     continue;
-                if (params != null && arguments != null) {
+                if (arguments != null) {
                     signature = new String[params.length];
                     args = new Object[params.length];
                     for (int i = 0 ; i < params.length; i++) {

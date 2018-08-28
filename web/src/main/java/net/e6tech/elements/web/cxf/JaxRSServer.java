@@ -198,9 +198,11 @@ public class JaxRSServer extends CXFServer {
             throw new IllegalStateException("address not set");
         }
 
-        res.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
-                NotificationListener.wrap("JaxRSServer" + getURLs(), notification -> stop())
-        );
+        if (res != null) {
+            res.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
+                    NotificationListener.wrap("JaxRSServer" + getURLs(), notification -> stop())
+            );
+        }
 
         List<ServerFactorBeanEntry> entryList = new ArrayList<>();
         synchronized (entries) {
@@ -238,7 +240,11 @@ public class JaxRSServer extends CXFServer {
                 hObserver = null;
             injectInitialize(res, hObserver);
 
-            singleton = (map.get(SINGLETON) == null) ? false : (Boolean) map.get(SINGLETON);
+            Object s = map.get(SINGLETON);
+            if (s instanceof String && "true".equalsIgnoreCase(s.toString().trim()))
+                singleton = true;
+            else
+                singleton = (s == null) ? false : (Boolean) map.get(SINGLETON);
             String resourceName = (String) map.get(NAME);
 
             // prototype

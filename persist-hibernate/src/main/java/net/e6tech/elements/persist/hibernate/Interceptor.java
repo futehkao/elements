@@ -216,7 +216,7 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
         boolean cached = false;
         if (notificationCenter != null) {
             if (sessionFactory != null) {
-                cached = sessionFactory.getMetamodel().locateEntityPersister(entity.getClass()).hasCache();
+                cached = sessionFactory.getMetamodel().locateEntityPersister(entity.getClass()).canWriteToCache();
             }
             if (cached) {
                 // center.fireNotification(new EvictEntity(this, new ObjectReference(entity.getClass(), key)));

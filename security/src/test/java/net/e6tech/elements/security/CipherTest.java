@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 
 /**
@@ -28,21 +29,21 @@ import java.security.KeyPair;
  */
 public class CipherTest {
     @Test
-    public void testSymmetric() throws Exception {
+    void testSymmetric() throws Exception {
         SymmetricCipher encryption = SymmetricCipher.getInstance("AES");
         SecretKey key = encryption.generateKeySpec();
         String iv = encryption.generateIV();
-        String encrypted = encryption.encrypt(key, "hello world".getBytes("UTF-8"), iv);
+        String encrypted = encryption.encrypt(key, "hello world".getBytes(StandardCharsets.UTF_8), iv);
         byte[] decrypted = encryption.decrypt(key, encrypted, iv);
-        System.out.println(new String(decrypted, "UTF-8"));
+        System.out.println(new String(decrypted, StandardCharsets.UTF_8));
     }
 
     @Test
-    public void testAsymmetric() throws Exception {
+    void testAsymmetric() throws Exception {
         AsymmetricCipher encryption = AsymmetricCipher.getInstance("RSA");
         KeyPair key = encryption.generateKeySpec();
-        String encrypted = encryption.encrypt(key.getPublic(), "hello world, 1234567890".getBytes("UTF-8"));
+        String encrypted = encryption.encrypt(key.getPublic(), "hello world, 1234567890".getBytes(StandardCharsets.UTF_8));
         byte[] decrypted = encryption.decrypt(key.getPrivate(), encrypted);
-        System.out.println(new String(decrypted, "UTF-8"));
+        System.out.println(new String(decrypted, StandardCharsets.UTF_8));
     }
 }

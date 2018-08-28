@@ -34,6 +34,7 @@ import javax.security.auth.login.LoginException;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.nio.charset.StandardCharsets;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.concurrent.TimeUnit;
 
@@ -114,49 +115,55 @@ public class KeyServer {
         String clsName = Action.class.getPackage().getName() + "." + request.getAction();
         Action action = null;
         SecretKey clientKey = null;
+        Credential credential = null;
         try {
+            // decrypt client key
             clientKey = clientKeys.get(request.getClientKey());
             byte[] decrypted = vaultManager.getSymmetricCipher().decrypt(clientKey, request.getEncryptedData(), null);
-            String encoded = new String(decrypted, "UTF-8");
+            String encoded = new String(decrypted, StandardCharsets.UTF_8);
             Class requestClass = getClass().getClassLoader().loadClass(clsName);
             action = (Action) mapper.readValue(encoded, requestClass);
+
+            // decrypt credential
+            decrypted = vaultManager.getSymmetricCipher().decrypt(clientKey, request.getAuthorization(), null);
+            decrypted = vaultManager.decryptPrivate(vaultManager.getSymmetricCipher().toString(decrypted));
+            credential = mapper.readValue(new String(decrypted, StandardCharsets.UTF_8), Credential.class);
         } catch (Exception e) {
             logger.debug(e.getMessage(), e);
         }
 
+        if (credential == null)
+            throw new NotAuthorizedException(Response.status(Response.Status.UNAUTHORIZED).build());
+
         String value = null;
         try {
-            if (action instanceof Authenticate) {
-                Authenticate auth = (Authenticate) action;
-                value = vaultManager.authorize(new Credential(auth.getUserName(), auth.getPassword()));
-            } else if (action instanceof Renew) {
-                Renew renew = (Renew) action;
-                value = vaultManager.renew(renew.getToken());
-            } else if (action instanceof GetSecret) {
+            String token = vaultManager.authorize(credential);
+            if (action instanceof GetSecret) {
                 GetSecret getSecret = (GetSecret) action;
-                ClearText ct = vaultManager.getSecretData(getSecret.getToken(), getSecret.getAlias());
+                ClearText ct = vaultManager.getSecretData(token, getSecret.getAlias());
                 value = mapper.writeValueAsString(ct);
             } else if (action instanceof PasswordUnlock) {
                 PasswordUnlock unlock = (PasswordUnlock) action;
-                ClearText ct = vaultManager.passphraseUnlock(unlock.getToken(), unlock.getAlias());
+                ClearText ct = vaultManager.passphraseUnlock(token, unlock.getAlias());
                 value = mapper.writeValueAsString(ct);
             } else if (action instanceof Encrypt) {
                 Encrypt encrypt = (Encrypt) action;
-                value = vaultManager.encrypt(encrypt.getToken(), encrypt.getKeyBlock(), encrypt.getData(), encrypt.getIv());
+                value = vaultManager.encrypt(token, encrypt.getKeyBlock(), encrypt.getData(), encrypt.getIv());
             } else if (action instanceof Decrypt) {
                 Decrypt decrypt = (Decrypt) action;
                 byte[] result;
                 if (decrypt.getKeyBlock() == null) {
-                    result = vaultManager.decrypt(decrypt.getToken(), decrypt.getSecret());
+                    result = vaultManager.decrypt(token, decrypt.getSecret());
                 } else {
-                    result = vaultManager.decrypt(decrypt.getToken(), decrypt.getKeyBlock(), decrypt.getSecret(), decrypt.getIv());
+                    result = vaultManager.decrypt(token, decrypt.getKeyBlock(), decrypt.getSecret(), decrypt.getIv());
                 }
                 return vaultManager.getSymmetricCipher().encrypt(clientKey, result, null);
             } else {
                 throw new SystemException("Unsupported action " + action);
             }
+            credential.clear();
 
-            return vaultManager.getSymmetricCipher().encrypt(clientKey, value.getBytes("UTF-8"), null);
+            return vaultManager.getSymmetricCipher().encrypt(clientKey, value.getBytes(StandardCharsets.UTF_8), null);
         } catch (LoginException ex) {
             logger.warn("" + action, ex);
             throw new NotAuthorizedException(Response.status(Response.Status.UNAUTHORIZED).build());
