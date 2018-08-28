@@ -137,25 +137,24 @@ public class KeyServer {
 
         String value = null;
         try {
-            String token = vaultManager.authorize(credential);
             if (action instanceof GetSecret) {
                 GetSecret getSecret = (GetSecret) action;
-                ClearText ct = vaultManager.getSecretData(token, getSecret.getAlias());
+                ClearText ct = vaultManager.getSecretData(credential, getSecret.getAlias());
                 value = mapper.writeValueAsString(ct);
             } else if (action instanceof PasswordUnlock) {
                 PasswordUnlock unlock = (PasswordUnlock) action;
-                ClearText ct = vaultManager.passphraseUnlock(token, unlock.getAlias());
+                ClearText ct = vaultManager.passphraseUnlock(credential, unlock.getAlias());
                 value = mapper.writeValueAsString(ct);
             } else if (action instanceof Encrypt) {
                 Encrypt encrypt = (Encrypt) action;
-                value = vaultManager.encrypt(token, encrypt.getKeyBlock(), encrypt.getData(), encrypt.getIv());
+                value = vaultManager.encrypt(credential, encrypt.getKeyBlock(), encrypt.getData(), encrypt.getIv());
             } else if (action instanceof Decrypt) {
                 Decrypt decrypt = (Decrypt) action;
                 byte[] result;
                 if (decrypt.getKeyBlock() == null) {
-                    result = vaultManager.decrypt(token, decrypt.getSecret());
+                    result = vaultManager.decrypt(credential, decrypt.getSecret());
                 } else {
-                    result = vaultManager.decrypt(token, decrypt.getKeyBlock(), decrypt.getSecret(), decrypt.getIv());
+                    result = vaultManager.decrypt(credential, decrypt.getKeyBlock(), decrypt.getSecret(), decrypt.getIv());
                 }
                 return vaultManager.getSymmetricCipher().encrypt(clientKey, result, null);
             } else {

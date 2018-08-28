@@ -42,7 +42,7 @@ public class VaultManagerTest {
         ClearText clearText = new ClearText();
         clearText.setBytes(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
         clearText.setProperty("test", "test");
-        manager.addSecretData("secret", clearText, dualEntry);
+        manager.addSecretData(dualEntry, "secret", clearText);
         clearText = manager.getSecretData(dualEntry.getUser1(), "secret");
         manager.newMasterKey(dualEntry);
         String str = manager.getUserLocalStore().writeString();
@@ -60,9 +60,6 @@ public class VaultManagerTest {
         String data = builder.toString();
         String pubEncrypted = manager.encryptPublic(data.getBytes(StandardCharsets.UTF_8));
         String privDecrypted = new String(manager.decryptPrivate(pubEncrypted), StandardCharsets.UTF_8);
-
-        String token = manager.authorize(dualEntry.getUser1());
-        manager.renew(token);
     }
 
     @Test
@@ -101,12 +98,11 @@ public class VaultManagerTest {
 
     private void testEncrypt(String key) throws Exception {
         SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
-        String token = manager.authorize(dualEntry.getUser1());
         String iv = cipher.generateIV();
         String text = "Hello World!";
         byte[] data = text.getBytes(StandardCharsets.UTF_8);
-        String encrypted = manager.encrypt(token, key, data, iv);
-        byte[] decrypted = manager.decrypt(token, key, encrypted, iv);
+        String encrypted = manager.encrypt(dualEntry.getUser1(), key, data, iv);
+        byte[] decrypted = manager.decrypt(dualEntry.getUser1(), key, encrypted, iv);
         assertTrue(new String(decrypted, StandardCharsets.UTF_8).equals(text));
     }
 
@@ -115,7 +111,7 @@ public class VaultManagerTest {
         ClearText clearText = new ClearText();
         clearText.setBytes(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
         clearText.setProperty("test", "test");
-        manager.addSecretData("secret", clearText, dualEntry);
+        manager.addSecretData(dualEntry,"secret", clearText);
 
         char[] oldPwd = "password1".toCharArray();
         char[] newPwd = "newpassword".toCharArray();

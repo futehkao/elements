@@ -72,14 +72,14 @@ public class KeyClientTest {
         ClearText ct = new ClearText();
         ct.setBytes("db-password".getBytes(StandardCharsets.UTF_8));
         ct.setProperty("username", "user");
-        manager.passphraseLock("db", ct, dualEntry);
+        manager.passphraseLock(dualEntry, "db", ct);
        // manager.getUserLocalStore().save();
 
         // set up a secret
         ClearText clearText = new ClearText();
         clearText.setBytes(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
         clearText.setProperty("test", "test");
-        manager.addSecretData("secret", clearText, dualEntry);
+        manager.addSecretData(dualEntry, "secret", clearText);
 
         // set up a key
         appKey = manager.generateKey(dualEntry);
