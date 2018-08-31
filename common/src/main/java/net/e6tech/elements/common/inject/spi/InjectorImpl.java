@@ -93,7 +93,8 @@ public class InjectorImpl implements Injector {
         return Optional.ofNullable(binding);
     }
 
-    public void inject(Object instance) {
+    @Override
+    public void inject(Object instance, boolean strict) {
         if (instance == null)
             return;
         Class instanceClass = instance.getClass();
@@ -102,7 +103,7 @@ public class InjectorImpl implements Injector {
             points = injectionPoints.get(instanceClass);
             points.forEach(pt ->{
                 boolean injected = inject(pt, instance);
-                if (!injected) {
+                if (!injected && strict) {
                     throw new SystemException("Cannot inject " + pt + "; no instances bound to " + pt.getType());
                 }
             });

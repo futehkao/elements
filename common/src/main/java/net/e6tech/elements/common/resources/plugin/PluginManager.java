@@ -20,6 +20,7 @@ import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
@@ -117,6 +118,7 @@ public class PluginManager {
         return Optional.ofNullable(lookup);
     }
 
+    @SuppressWarnings({"unchecked" ,"squid:S3776"})
     public <T extends Plugin> Optional<T> get(PluginPaths<T> paths, Object ... args) {
         Object lookup = null;
         PluginPath pluginPath = null;
@@ -130,7 +132,6 @@ public class PluginManager {
             }
         }
 
-
         // if still null, look up from default plugin
         if (lookup == null) {
             // get default plugin
@@ -141,23 +142,37 @@ public class PluginManager {
             pluginPath = PluginPath.of(paths.getType(), DEFAULT_PLUGIN);
         }
 
+        // at this point lookup cannot be null
+
         T plugin;
         if (lookup instanceof Class) {
             try {
-                plugin = (T) ((Class) lookup).getDeclaredConstructor().newInstance();
-                inject(plugin, args);
+                plugin = ((Class<T>) lookup).getDeclaredConstructor().newInstance();
                 plugin.initialize(pluginPath);
+                inject(plugin, args);
             } catch (Exception e) {
                 throw new SystemException(e);
             }
         } else {
-            plugin = (T) lookup;
-        }
-
-        if (plugin instanceof PluginFactory) {
-            plugin = ((PluginFactory) plugin).create(resources);
-            inject(plugin, args);
-            plugin.initialize(pluginPath);
+            if (lookup instanceof PluginFactory) {
+                plugin = ((PluginFactory) lookup).create(resources);
+                plugin.initialize(pluginPath);
+                inject(plugin, args);
+            } else {
+                T prototype = (T) lookup;
+                if (prototype.isPrototype()) {
+                    try {
+                        plugin = (T) prototype.getClass().getDeclaredConstructor().newInstance();
+                        Reflection.copyInstance(plugin, prototype);
+                        plugin.initialize(pluginPath);
+                        inject(plugin, args);
+                    } catch (Exception e) {
+                        throw new SystemException(e);
+                    }
+                } else {
+                    plugin = prototype;
+                }
+            }
         }
 
         return Optional.of(plugin);
@@ -191,7 +206,7 @@ public class PluginManager {
                 injectionListener = (InjectionListener) instance;
                 injectionListener.preInject(resourcePool);
             }
-            injector.inject(instance);
+            injector.inject(instance, true);
             if (injectionListener != null)
                 injectionListener.injected(resourcePool);
         } else if (instance != null && resources != null) {
@@ -209,13 +224,19 @@ public class PluginManager {
 
     public synchronized <T extends Plugin> void add(PluginPath<T> path, T singleton) {
         plugins.put(path, singleton);
-        resourceManager.inject(singleton);
+        if (singleton.isPrototype())
+            resourceManager.inject(singleton, false);
+        else
+            resourceManager.inject(singleton, true);
         singleton.initialize(path);
     }
 
     public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, U singleton) {
         defaultPlugins.put(cls, singleton);
-        resourceManager.inject(singleton);
+        if (singleton.isPrototype())
+            resourceManager.inject(singleton, false);
+        else
+            resourceManager.inject(singleton, true);
         singleton.initialize(PluginPath.of(cls, DEFAULT_PLUGIN));
     }
 

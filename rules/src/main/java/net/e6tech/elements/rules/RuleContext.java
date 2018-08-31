@@ -76,6 +76,14 @@ public class RuleContext implements GroovyObject {
         this.completed = completed;
     }
 
+    public String getFailedMessage() {
+        return failedMessage;
+    }
+
+    public void setFailedMessage(String failedMessage) {
+        this.failedMessage = failedMessage;
+    }
+
     protected void onCheckFailed() {
         // to be subclassed.  this method is called whenever check fails.
     }
@@ -92,22 +100,28 @@ public class RuleContext implements GroovyObject {
     // rule threw an exception
     void ruleFailed(Rule rule, String failedMessage) {
         ruleFailed = rule;
-        if (failedMessage == null) {
-            this.failedMessage = RULE_FAILED_MSG + rule.getName() + ".";
-        } else {
-            this.failedMessage = RULE_FAILED_MSG + rule.getName() + " - " + failedMessage;
+        if (this.failedMessage == null) {
+            if (failedMessage == null) {
+                this.failedMessage = RULE_FAILED_MSG + rule.getName() + ".";
+            } else {
+                this.failedMessage = RULE_FAILED_MSG + rule.getName() + " - " + failedMessage;
+            }
         }
     }
 
     void ruleFailed(Rule rule, Throwable throwable) {
         exception = throwable;
         ruleFailed = rule;
-        if (failedMessage == null) {
-            this.failedMessage = RULE_FAILED_MSG + rule.getName() + ".";
-        } else {
-            this.failedMessage = RULE_FAILED_MSG + rule.getName() + " - " + throwable.getMessage();
+        if (this.failedMessage == null) {
+            if (throwable == null) {
+                this.failedMessage = RULE_FAILED_MSG + rule.getName() + ".";
+            } else {
+                this.failedMessage = RULE_FAILED_MSG + rule.getName() + " - " + throwable.getMessage();
+            }
         }
-        logger.debug(throwable.getMessage(), throwable);
+        if (throwable != null) {
+            logger.debug(throwable.getMessage(), throwable);
+        }
     }
 
     public Rule getRuleExecuted(String ruleName) {
@@ -120,10 +134,6 @@ public class RuleContext implements GroovyObject {
 
     public Rule getRuleFailed() {
         return ruleFailed;
-    }
-
-    public String getFailedMessage() {
-        return failedMessage;
     }
 
     public Throwable getException() {

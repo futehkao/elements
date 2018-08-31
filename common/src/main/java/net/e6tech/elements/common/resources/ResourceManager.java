@@ -410,16 +410,36 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public <T> T inject(T obj) {
+        return inject(obj, true);
+    }
+
+    /**
+     *
+     * @param obj target
+     * @param strict usually it should be true.  Only false if you are injecting a prototype plugin.
+     * @param <T> Type of obj to be injected
+     * @return the injected object
+     */
+    public <T> T inject(T obj, boolean strict) {
         if (obj == null)
-            return obj;
-        if (obj instanceof InjectionListener) {
-            ((InjectionListener) obj).preInject(this);
+            return null;
+
+        if (strict) {
+            if (obj instanceof InjectionListener) {
+                ((InjectionListener) obj).preInject(this);
+            }
+
+            injector.inject(obj, true);
+
+            if (obj instanceof InjectionListener) {
+                ((InjectionListener) obj).injected(this);
+            }
+
+            listeners.forEach(l -> l.injected(obj));
+        } else {
+            injector.inject(obj, false);
         }
-        injector.inject(obj);
-        if (obj instanceof InjectionListener) {
-            ((InjectionListener) obj).injected(this);
-        }
-        listeners.forEach(l -> l.injected(obj));
+
         return obj;
     }
 

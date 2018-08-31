@@ -21,7 +21,11 @@ package net.e6tech.elements.common.inject;
  */
 public interface Injector {
 
-    void inject(Object object);
+    default void inject(Object object) {
+        inject(object, true);
+    }
+
+    void inject(Object object, boolean strict);
 
     <T> T getInstance(Class<T> type);
 

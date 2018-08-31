@@ -63,7 +63,6 @@ public class VaultManager {
     private KeyProtected keyEncryption = new KeyProtected();
 
     private VaultManagerState state = new VaultManagerState();
-    private Random random = new Random();
 
     public VaultManager() {
         symmetricCipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);

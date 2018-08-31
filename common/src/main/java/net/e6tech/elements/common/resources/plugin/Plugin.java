@@ -20,6 +20,11 @@ package net.e6tech.elements.common.resources.plugin;
  * Created by futeh.
  */
 public interface Plugin {
+
+    default boolean isPrototype() {
+        return false;
+    }
+
     default void initialize(PluginPath path) {
     }
 }
