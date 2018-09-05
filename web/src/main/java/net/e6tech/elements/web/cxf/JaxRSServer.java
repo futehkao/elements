@@ -22,49 +22,30 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Module;
-import net.e6tech.elements.common.interceptor.CallFrame;
-import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.notification.ShutdownNotification;
-import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Configuration;
-import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
-import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.common.util.datastructure.Pair;
-import net.e6tech.elements.jmx.JMXService;
-import net.e6tech.elements.jmx.stat.Measurement;
-import net.e6tech.elements.web.JaxExceptionHandler;
 import org.apache.cxf.ext.logging.LoggingFeature;
 import org.apache.cxf.ext.logging.event.LogEvent;
 import org.apache.cxf.ext.logging.event.LogEventSender;
 import org.apache.cxf.ext.logging.event.LogMessageFormatter;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
-import org.apache.cxf.jaxrs.lifecycle.PerRequestResourceProvider;
 import org.apache.cxf.jaxrs.lifecycle.ResourceProvider;
-import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
-import org.apache.cxf.message.Message;
 import org.apache.cxf.rs.security.cors.CrossOriginResourceSharingFilter;
-import org.apache.cxf.transport.http.AbstractHTTPDestination;
 
-import javax.annotation.Nonnull;
-import javax.annotation.PreDestroy;
-import javax.management.JMException;
-import javax.management.ObjectInstance;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by futeh.
@@ -84,19 +65,16 @@ public class JaxRSServer extends CXFServer {
     private static final String REGISTER_BEAN = "registerBean";
     private static final String NAME = "name";
     private static final String PROTOTYPE = "prototype";
-    private static Logger messageLogger = Logger.getLogger(JaxRSServer.class.getName() + ".message");
-    private static Map<Integer, ServerFactorBeanEntry> entries = new Hashtable();
+    private static final Logger messageLogger = Logger.getLogger(JaxRSServer.class.getName() + ".message");
+    private static final Map<Integer, ServerFactorBeanEntry> entries = new ConcurrentHashMap<>();
     private static Logger logger = Logger.getLogger();
 
-    private Observer headerObserver;
     private List<Map<String, Object>> resources = new ArrayList<>();
-    private ExceptionMapper exceptionMapper;
-    private Map<String, Object> instances = new Hashtable<>();
+    private Map<String, Object> instances = new ConcurrentHashMap<>();
     private boolean corsFilter = false;
-    private boolean measurement = false;
     private SecurityAnnotationEngine securityAnnotationEngine;
     private Configuration.Resolver resolver;
-    private Map<String, String> responseHeaders = new LinkedHashMap<>();
+
     private LogEventSender logEventSender;
 
     public static Logger getLogger() {
@@ -107,30 +85,12 @@ public class JaxRSServer extends CXFServer {
         JaxRSServer.logger = logger;
     }
 
-    @Inject(optional = true)
-    public Observer getHeaderObserver() {
-        return headerObserver;
-    }
-
-    public void setHeaderObserver(Observer headerObserver) {
-        this.headerObserver = headerObserver;
-    }
-
     public List<Map<String, Object>> getResources() {
         return resources;
     }
 
     public void setResources(List<Map<String, Object>> resources) {
         this.resources = resources;
-    }
-
-    public ExceptionMapper getExceptionMapper() {
-        return exceptionMapper;
-    }
-
-    @Inject(optional = true)
-    public void setExceptionMapper(ExceptionMapper exceptionMapper) {
-        this.exceptionMapper = exceptionMapper;
     }
 
     public Map<String, Object> getInstances() {
@@ -158,14 +118,6 @@ public class JaxRSServer extends CXFServer {
         this.securityAnnotationEngine = securityAnnotationEngine;
     }
 
-    public boolean isMeasurement() {
-        return measurement;
-    }
-
-    public void setMeasurement(boolean measurement) {
-        this.measurement = measurement;
-    }
-
     @Inject(optional = true)
     public Configuration.Resolver getResolver() {
         return resolver;
@@ -173,14 +125,6 @@ public class JaxRSServer extends CXFServer {
 
     public void setResolver(Configuration.Resolver resolver) {
         this.resolver = resolver;
-    }
-
-    public Map<String, String> getResponseHeaders() {
-        return responseHeaders;
-    }
-
-    public void setResponseHeaders(Map<String, String> responseHeaders) {
-        this.responseHeaders = responseHeaders;
     }
 
     public LogEventSender getLogEventSender() {
@@ -192,7 +136,7 @@ public class JaxRSServer extends CXFServer {
     }
 
     @Override
-    @SuppressWarnings("squid:S2112")
+    @SuppressWarnings({"unchecked", "squid:S2112"})
     public void initialize(Resources res) {
         if (getURLs().isEmpty()) {
             throw new IllegalStateException("address not set");
@@ -234,7 +178,7 @@ public class JaxRSServer extends CXFServer {
             }
 
             // determine if we should bind header observer or not
-            Observer hObserver = headerObserver;
+            Observer hObserver = getHeaderObserver();
             boolean bindHeaderObserver = (map.get(BIND_HEADER_OBSERVER) == null) ? true : (Boolean) map.get(BIND_HEADER_OBSERVER);
             if (!bindHeaderObserver)
                 hObserver = null;
@@ -254,15 +198,6 @@ public class JaxRSServer extends CXFServer {
                 prototype = resolver.resolve(prototypeExpression);
             }
 
-            // instance for singleton and for analysis
-            Object instance = null;
-            try {
-                instance = resourceClass.getDeclaredConstructor().newInstance();
-                injectInitialize(res, instance);
-            } catch (Exception e) {
-                throw new SystemException(e);
-            }
-
             if (securityAnnotationEngine != null) {
                 securityAnnotationEngine.register(resourceClass);
             }
@@ -270,14 +205,20 @@ public class JaxRSServer extends CXFServer {
             ResourceProvider resourceProvider ;
             if (singleton) {
                 if (prototype == null) {
-                    prototype = instance;
+                    try {
+                        prototype = resourceClass.getDeclaredConstructor().newInstance();
+                    } catch (Exception e) {
+                        throw new SystemException(e);
+                    }
+                    injectInitialize(res, prototype);
                 }
-                resourceProvider = new SharedResourceProvider(map, prototype, hObserver);
+                resourceProvider = new SharedResourceProvider(this, prototype, hObserver);
                 String beanName = (String) map.get(REGISTER_BEAN);
                 if (beanName != null)
                     getProvision().getResourceManager().registerBean(beanName, prototype);
             } else {
-                resourceProvider = new InstanceResourceProvider(map, resourceClass, prototype, res.getModule(), getProvision(), hObserver);
+                Module module = (res == null) ? null : res.getModule();
+                resourceProvider = new InstanceResourceProvider(this, resourceClass, prototype, module, getProvision(), hObserver);
             }
 
             for (ServerFactorBeanEntry entry : entryList)
@@ -360,7 +301,7 @@ public class JaxRSServer extends CXFServer {
         }
 
         for (JAXRSServerFactoryBean bean: beans)
-            bean.setProvider(new InternalExceptionMapper(exceptionMapper));
+            bean.setProvider(new InternalExceptionMapper(getExceptionMapper()));
         for (JAXRSServerFactoryBean bean: beans)
             logger.info("Starting Restful at address {} {} ", bean.getAddress(), bean.getResourceClasses());
         for (JAXRSServerFactoryBean bean: beans) {
@@ -372,21 +313,6 @@ public class JaxRSServer extends CXFServer {
             }
         }
         super.start();
-    }
-
-    @SuppressWarnings("squid:S00112")
-    private void handleException(CallFrame frame, Throwable th) throws Throwable {
-        Throwable throwable = ExceptionMapper.unwrap(th);
-        if (frame.getTarget() instanceof JaxExceptionHandler) {
-            Object response = ((JaxExceptionHandler) frame.getTarget()).handleException(frame, throwable);
-            if (response != null) {
-                throw new InvocationException(response);
-            } else {
-                // do nothing
-            }
-        } else {
-            throw throwable;
-        }
     }
 
     private class DefaultLogEventSender implements LogEventSender {
@@ -401,194 +327,6 @@ public class JaxRSServer extends CXFServer {
 
         private String getLogMessage(LogEvent event) {
             return LogMessageFormatter.format(event);
-        }
-    }
-
-    private class InstanceResourceProvider extends PerRequestResourceProvider {
-        private Provision provision;
-        private Observer observer;
-        private Module module;
-        private Map<String, Object> map;  // map is the Map<String, Object> in JaxRSServer's resources. It's used to record measurement
-        private Map<Method, String> methods = new Hashtable<>();
-        private Object prototype;
-
-        public InstanceResourceProvider(Map<String, Object> map, Class resourceClass, Object prototype, Module module, Provision provision, Observer observer) {
-            super(resourceClass);
-            this.provision = provision;
-            this.observer = observer;
-            this.module = module;
-            this.map = map;
-            this.prototype = prototype;
-        }
-
-        @Override
-        protected Object createInstance(Message message) {
-            Object instance = super.createInstance(message);
-            if (prototype != null)
-                Reflection.copyInstance(instance, prototype);
-            Observer cloneObserver = (observer == null) ? null : observer.clone();
-            UnitOfWork uow = provision.preOpen(res -> {
-                    res.addModule(module);
-                if (exceptionMapper != null) {
-                    res.rebind(ExceptionMapper.class, exceptionMapper);
-                    res.rebind((Class<ExceptionMapper>) exceptionMapper.getClass(), exceptionMapper);
-                }
-                });
-            return getInterceptor().newInterceptor(instance, new Handler(uow, map, methods, cloneObserver, message));
-        }
-    }
-
-    private class Handler implements InterceptorHandler {
-        UnitOfWork uow;
-        Message message;
-        Observer observer;
-        Map<String, Object> map;  // map is the Map<String, Object> in JaxRSServer's resources. It's used to record measurement
-        Map<Method, String> methods;
-
-        public Handler(UnitOfWork uow, Map<String, Object> map, Map<Method, String> methods, Observer observer, Message message) {
-            this.uow = uow;
-            this.message = message;
-            this.observer = observer;
-            this.map = map;
-            this.methods = methods;
-        }
-
-        private void open(Object target, Method method) {
-            Class cls = target.getClass();
-            for (Annotation annotation : cls.getAnnotations())
-                uow.put((Class) annotation.annotationType(), annotation);
-            for (Annotation annotation : method.getAnnotations())
-                uow.put((Class) annotation.annotationType(), annotation);
-            uow.open();
-        }
-
-        @Override
-        public Object invoke(CallFrame frame) throws Throwable {
-            boolean abort = false;
-            Object result = null;
-            boolean ignored = false;
-
-            // Note PostConstruct is handled by CXF during createInstance
-            boolean uowOpen = false;
-            if (frame.getAnnotation(PreDestroy.class) != null) {
-                ignored = true;
-            } else {
-                try {
-                    open(frame.getTarget(), frame.getMethod());
-                    uowOpen = true;
-                } catch (Exception th) {
-                    logger.debug(th.getMessage(), th);
-                    handleException(frame, th);
-                }
-            }
-
-            try {
-                checkInvocation(frame.getMethod(), frame.getArguments());
-                Pair<HttpServletRequest, HttpServletResponse> pair = getSevletRequestResponse(message);
-                if (!ignored) {
-                    long start = System.currentTimeMillis();
-                    result = uow.submit(() -> {
-                        if (observer != null) {
-                            uow.getResources().inject(observer);
-                            observer.beforeInvocation(pair.key(), pair.value(), frame.getTarget(), frame.getMethod(), frame.getArguments());
-                        }
-                        uow.getResources().inject(frame.getTarget());
-                        Object ret = frame.invoke();
-                        if (observer != null)
-                            observer.afterInvocation(ret);
-
-                        return ret;
-                    });
-
-                    long duration = System.currentTimeMillis() - start;
-                    computePerformance(frame.getMethod(), methods, map, duration);
-                } else {
-                    // PreDestroy is called
-                    result = frame.invoke();
-                }
-            } catch (Exception th) {
-                if (!ignored && observer != null) {
-                    try {
-                        observer.onException(th);
-                    } catch (Exception ex) {
-                        Logger.suppress(ex);
-                    }
-                }
-                recordFailure(frame.getMethod(), methods, map);
-                abort = true;
-                logger.debug(th.getMessage(), th);
-                handleException(frame, th);
-            } finally {
-                if (uowOpen) {
-                    if (abort)
-                        uow.abort();
-                    else if (!uow.isAborted()) // application can call abort
-                        uow.commit();
-                }
-            }
-            return result;
-        }
-    }
-
-    private Pair<HttpServletRequest, HttpServletResponse> getSevletRequestResponse(Message message) {
-        Pair<HttpServletRequest, HttpServletResponse> pair = new Pair<>(null, null);
-        if (message != null) {
-            HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
-            HttpServletResponse response = (HttpServletResponse) message.get(AbstractHTTPDestination.HTTP_RESPONSE);
-            pair = new Pair<>(request, response);
-            if (response != null)
-                responseHeaders.forEach(response::setHeader);
-        }
-        return pair;
-    }
-
-    private class SharedResourceProvider extends SingletonResourceProvider {
-
-        Observer observer;
-        Object proxy = null;
-        Map<String, Object> map;
-        Map<Method, String> methods = new Hashtable<>();
-
-        public SharedResourceProvider(Map<String, Object> map, Object instance, Observer observer) {
-            super(instance, true);
-            this.observer = observer;
-            this.map = map;
-        }
-
-        @Override
-        @SuppressWarnings("squid:S1188")
-        public Object getInstance(Message m) {
-            Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
-            if (proxy == null) {
-                proxy = getInterceptor().newInterceptor(super.getInstance(m), frame -> {
-                    try {
-                        checkInvocation(frame.getMethod(), frame.getArguments());
-                        Pair<HttpServletRequest, HttpServletResponse> pair = getSevletRequestResponse(m);
-                        if (cloneObserver != null) {
-                            getProvision().inject(cloneObserver);
-                            cloneObserver.beforeInvocation(pair.key(), pair.value(), frame.getTarget(), frame.getMethod(), frame.getArguments());
-                        }
-                        long start = System.currentTimeMillis();
-
-                        Object result = frame.invoke();
-
-                        long duration = System.currentTimeMillis() - start;
-                        computePerformance(frame.getMethod(), methods, map, duration);
-                        if (cloneObserver != null)
-                            cloneObserver.afterInvocation(result);
-
-                        return result;
-                    } catch (Exception th) {
-                        if (cloneObserver != null)
-                            cloneObserver.onException(th);
-                        recordFailure(frame.getMethod(), methods, map);
-                        logger.debug(th.getMessage(), th);
-                        handleException(frame, th);
-                    }
-                    return null;
-                });
-            }
-            return proxy;
         }
     }
 
@@ -624,7 +362,7 @@ public class JaxRSServer extends CXFServer {
 
         ExceptionMapper mapper;
 
-        public InternalExceptionMapper(ExceptionMapper mapper) {
+        InternalExceptionMapper(ExceptionMapper mapper) {
             this.mapper = mapper;
         }
 
@@ -672,82 +410,4 @@ public class JaxRSServer extends CXFServer {
             return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(response).build();
         }
     }
-
-    @SuppressWarnings("squid:S1172")
-    private void computePerformance(Method method, Map<Method,String> methods,  Map<String, Object> map, long duration) {
-        ObjectInstance instance = null;
-        try {
-            instance = getMeasurement(method, methods);
-            JMXService.invoke(instance.getObjectName(), "add", duration);
-        } catch (Exception e) {
-            logger.debug("Unable to record measurement for " + method, e);
-        }
-    }
-
-    @SuppressWarnings("squid:S1172")
-    private void recordFailure(Method method, Map<Method,String> methods,  Map<String, Object> map) {
-        ObjectInstance instance = null;
-        try {
-            instance = getMeasurement(method, methods);
-            JMXService.invoke(instance.getObjectName(), "fail");
-        } catch (Exception e) {
-            logger.debug("Unable to record fail measurement for " + method, e);
-        }
-    }
-
-    private ObjectInstance getMeasurement(Method method, Map<Method, String> methods) throws JMException {
-        String methodName = methods.computeIfAbsent(method, m ->{
-            StringBuilder builder = new StringBuilder();
-            builder.append(m.getDeclaringClass().getTypeName());
-            builder.append(".");
-            builder.append(m.getName());
-            Class[] types = m.getParameterTypes();
-            for (int i = 0; i < types.length; i++) {
-                builder.append("|"); // separating parameters using underscores instead commas because of JMX
-                // ObjectName constraint
-                builder.append(types[i].getSimpleName());
-            }
-            return builder.toString();
-        });
-
-        String objectName = "net.e6tech:type=Restful,name=" + methodName;
-        return JMXService.registerIfAbsent(objectName, () -> new Measurement(methodName, "ms", measurement));
-    }
-
-    @SuppressWarnings( "squid:S134")
-    private static void checkInvocation(Method method, Object[] args) {
-        Parameter[] params = method.getParameters();
-        int idx = 0;
-        StringBuilder builder = null;
-        final String CANNOT_BE_NULL = " cannot be null. \n";
-        for (Parameter param : params) {
-            QueryParam queryParam =  param.getAnnotation(QueryParam.class);
-            PathParam pathParam =  param.getAnnotation(PathParam.class);
-            if (args[idx] == null || (args[idx] instanceof String && ((String) args[idx]).trim().isEmpty())) {
-                if (pathParam != null) {
-                    if (builder == null)
-                        builder = new StringBuilder();
-                    builder.append("path parameter ").append(pathParam.value()).append(CANNOT_BE_NULL);
-                }
-
-                if (param.getAnnotation(Nonnull.class) != null) {
-                    if (queryParam != null) {
-                        if (builder == null)
-                            builder = new StringBuilder();
-                        builder.append("query parameter ").append(queryParam.value()).append(CANNOT_BE_NULL);
-                    } else if (pathParam == null) {
-                        if (builder == null)
-                            builder = new StringBuilder();
-                        builder.append("post parameter ").append("arg").append(idx).append(CANNOT_BE_NULL);
-                    }
-                }
-            }
-
-            idx++;
-        }
-        if (builder != null) {
-            throw new IllegalArgumentException(builder.toString());
-        }
-    }
-
 }

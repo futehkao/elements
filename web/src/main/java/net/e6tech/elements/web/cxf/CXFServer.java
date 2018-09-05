@@ -16,33 +16,48 @@ limitations under the License.
 package net.e6tech.elements.web.cxf;
 
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.Interceptor;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.Startable;
+import net.e6tech.elements.common.util.ExceptionMapper;
+import net.e6tech.elements.common.util.datastructure.Pair;
+import net.e6tech.elements.jmx.JMXService;
+import net.e6tech.elements.jmx.stat.Measurement;
 import net.e6tech.elements.security.JavaKeyStore;
 import net.e6tech.elements.security.SelfSignedCert;
+import net.e6tech.elements.web.JaxExceptionHandler;
 import org.apache.cxf.configuration.jsse.TLSServerParameters;
 import org.apache.cxf.configuration.security.ClientAuthentication;
 import org.apache.cxf.endpoint.Server;
+import org.apache.cxf.message.Message;
 import org.apache.cxf.transport.Destination;
+import org.apache.cxf.transport.http.AbstractHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngine;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngineFactory;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
+import javax.annotation.Nonnull;
+import javax.management.JMException;
+import javax.management.ObjectInstance;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -50,6 +65,8 @@ import java.util.concurrent.ExecutorService;
  */
 @SuppressWarnings("squid:S134")
 public class CXFServer implements Initializable, Startable {
+    private static final String CANNOT_BE_NULL = " cannot be null. \n";
+    private static final Logger logger = Logger.getLogger();
     private Provision provision;
     private Interceptor interceptor;
     private List<Server> servers = new ArrayList<>();
@@ -64,6 +81,10 @@ public class CXFServer implements Initializable, Startable {
     private QueuedThreadPool queuedThreadPool;
     private boolean initialized = false;
     private boolean started = false;
+    private boolean measurement = false;
+    private Observer headerObserver;
+    private ExceptionMapper exceptionMapper;
+    private Map<String, String> responseHeaders = new LinkedHashMap<>();
 
     public void setAddresses(List<String> addresses) throws MalformedURLException {
         for (String address : addresses) {
@@ -160,6 +181,40 @@ public class CXFServer implements Initializable, Startable {
         this.queuedThreadPool = queuedThreadPool;
     }
 
+    public boolean isMeasurement() {
+        return measurement;
+    }
+
+    @Inject(optional = true)
+    public Observer getHeaderObserver() {
+        return headerObserver;
+    }
+
+    public void setHeaderObserver(Observer headerObserver) {
+        this.headerObserver = headerObserver;
+    }
+
+    public void setMeasurement(boolean measurement) {
+        this.measurement = measurement;
+    }
+
+    public ExceptionMapper getExceptionMapper() {
+        return exceptionMapper;
+    }
+
+    @Inject(optional = true)
+    public void setExceptionMapper(ExceptionMapper exceptionMapper) {
+        this.exceptionMapper = exceptionMapper;
+    }
+
+    public Map<String, String> getResponseHeaders() {
+        return responseHeaders;
+    }
+
+    public void setResponseHeaders(Map<String, String> responseHeaders) {
+        this.responseHeaders = responseHeaders;
+    }
+
     protected void registerServer(Server server) {
         if (!servers.contains(server))
             servers.add(server);
@@ -215,24 +270,26 @@ public class CXFServer implements Initializable, Startable {
                 JettyHTTPServerEngine engine = factory.retrieveJettyHTTPServerEngine(url.getPort());
                 TLSServerParameters existingParams = (engine == null) ? null : engine.getTlsServerParameters();
                 if (existingParams != null) {
+                    // key managers
                     Set<KeyManager> keyManagerSet = new LinkedHashSet<>();
                     if (existingParams.getKeyManagers() != null) {
-                        for (KeyManager km : existingParams.getKeyManagers())
-                            keyManagerSet.add(km);
+                        Collections.addAll(keyManagerSet, existingParams.getKeyManagers());
                     }
-                    for (KeyManager km : keyManagers)
-                        if (!keyManagerSet.contains(km))
-                            keyManagerSet.add(km);
+
+                    if (keyManagers != null)
+                        Collections.addAll(keyManagerSet, keyManagers);
+
+                    // trust manager
                     Set<TrustManager> trustManagerSet = new LinkedHashSet<>();
                     if (existingParams.getTrustManagers() != null) {
-                        for (TrustManager tm : existingParams.getTrustManagers())
-                            trustManagerSet.add(tm);
+                        Collections.addAll(trustManagerSet, existingParams.getTrustManagers());
                     }
-                    for (TrustManager tm : trustManagers)
-                        if (!trustManagerSet.contains(tm))
-                            trustManagerSet.add(tm);
-                    existingParams.setKeyManagers(keyManagerSet.toArray(new KeyManager[keyManagerSet.size()]));
-                    existingParams.setTrustManagers(trustManagerSet.toArray(new TrustManager[trustManagerSet.size()]));
+
+                    if (trustManagers != null)
+                        Collections.addAll(trustManagerSet, trustManagers);
+
+                    existingParams.setKeyManagers(keyManagerSet.toArray(new KeyManager[0]));
+                    existingParams.setTrustManagers(trustManagerSet.toArray(new TrustManager[0]));
                 } else {
                     factory.setTLSServerParametersForPort(url.getPort(), tlsParams);
                 }
@@ -285,6 +342,105 @@ public class CXFServer implements Initializable, Startable {
         for (Server server : servers )
             server.stop();
         started = false;
+    }
+
+    Pair<HttpServletRequest, HttpServletResponse> getServletRequestResponse(Message message) {
+        Pair<HttpServletRequest, HttpServletResponse> pair = new Pair<>(null, null);
+        if (message != null) {
+            HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
+            HttpServletResponse response = (HttpServletResponse) message.get(AbstractHTTPDestination.HTTP_RESPONSE);
+            pair = new Pair<>(request, response);
+            if (response != null)
+                getResponseHeaders().forEach(response::setHeader);
+        }
+        return pair;
+    }
+
+    @SuppressWarnings("squid:S00112")
+    void handleException(CallFrame frame, Throwable th) throws Throwable {
+        Throwable throwable = ExceptionMapper.unwrap(th);
+        if (frame.getTarget() instanceof JaxExceptionHandler) {
+            Object response = ((JaxExceptionHandler) frame.getTarget()).handleException(frame, throwable);
+            if (response != null) {
+                throw new InvocationException(response);
+            } else {
+                // do nothing
+            }
+        } else {
+            throw throwable;
+        }
+    }
+
+    void computePerformance(Method method, Map<Method,String> methods, long duration) {
+        ObjectInstance instance = null;
+        try {
+            instance = getMeasurement(method, methods);
+            JMXService.invoke(instance.getObjectName(), "add", duration);
+        } catch (Exception e) {
+            logger.debug("Unable to record measurement for " + method, e);
+        }
+    }
+
+    void recordFailure(Method method, Map<Method,String> methods) {
+        try {
+            ObjectInstance instance = getMeasurement(method, methods);
+            JMXService.invoke(instance.getObjectName(), "fail");
+        } catch (Exception e) {
+            logger.debug("Unable to record fail measurement for " + method, e);
+        }
+    }
+
+    private ObjectInstance getMeasurement(Method method, Map<Method, String> methods) throws JMException {
+        String methodName = methods.computeIfAbsent(method, m -> {
+            StringBuilder builder = new StringBuilder();
+            builder.append(m.getDeclaringClass().getTypeName());
+            builder.append(".");
+            builder.append(m.getName());
+            Class[] types = m.getParameterTypes();
+            for (int i = 0; i < types.length; i++) {
+                builder.append("|"); // separating parameters using underscores instead commas because of JMX
+                // ObjectName constraint
+                builder.append(types[i].getSimpleName());
+            }
+            return builder.toString();
+        });
+
+        String objectName = "net.e6tech:type=Restful,name=" + methodName;
+        return JMXService.registerIfAbsent(objectName, () -> new Measurement(methodName, "ms", isMeasurement()));
+    }
+
+    void checkInvocation(Method method, Object[] args) {
+        Parameter[] params = method.getParameters();
+        int idx = 0;
+        StringBuilder builder = null;
+        for (Parameter param : params) {
+            QueryParam queryParam =  param.getAnnotation(QueryParam.class);
+            PathParam pathParam =  param.getAnnotation(PathParam.class);
+            if (args[idx] == null || (args[idx] instanceof String && ((String) args[idx]).trim().isEmpty())) {
+                if (pathParam != null) {
+                    if (builder == null)
+                        builder = new StringBuilder();
+                    builder.append("path parameter ").append(pathParam.value()).append(CANNOT_BE_NULL);
+                }
+
+                if (param.getAnnotation(Nonnull.class) != null) {
+                    if (queryParam != null) {
+                        if (builder == null)
+                            builder = new StringBuilder();
+                        builder.append("query parameter ").append(queryParam.value()).append(CANNOT_BE_NULL);
+                    } else if (pathParam == null) {
+                        if (builder == null)
+                            builder = new StringBuilder();
+                        builder.append("post parameter ").append("arg").append(idx).append(CANNOT_BE_NULL);
+                    }
+                }
+            }
+
+            idx++;
+        }
+        if (builder != null) {
+            throw new IllegalArgumentException(builder.toString());
+        }
     }
 }
 

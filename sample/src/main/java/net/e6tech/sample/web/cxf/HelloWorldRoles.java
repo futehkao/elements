@@ -18,9 +18,8 @@ package net.e6tech.sample.web.cxf;
 
 import javax.annotation.security.RolesAllowed;
 
-public abstract class HelloWorldRoles extends HelloWorld {
+public abstract class HelloWorldRoles {
 
     @RolesAllowed({"role1", "role2"})
-    @Override
     public abstract String withSecurity(String greeting);
 }

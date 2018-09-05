@@ -16,9 +16,7 @@
 
 package net.e6tech.sample.web.cxf;
 
-import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Atom;
-import net.e6tech.elements.network.restful.Response;
 import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.elements.web.cxf.SecurityAnnotationEngine;
 import net.e6tech.sample.BaseCase;
@@ -26,8 +24,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotSupportedException;
-import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.util.Set;
 
@@ -66,10 +62,14 @@ public class HellowWorldTest extends BaseCase {
         SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
         assertTrue(engine.getSecurityProvider(HelloWorld.class).equals(HelloWorldRoles.class));
         Method method = HelloWorld.class.getDeclaredMethod("withSecurity", String.class);
-        Set<String> roles = engine.lookupRole(HelloWorld.class, method);
+        Set<String> roles = engine.lookupRoles(HelloWorld.class, method);
         assertTrue(roles.contains("role1"));
         assertTrue(roles.contains("role2"));
         helloWorld.withSecurity("hello");
+
+        method = HelloWorld.class.getDeclaredMethod("sayHello", String.class);
+        roles = engine.lookupRoles(HelloWorld.class, method);
+        assertTrue(roles.contains("PermitAll"));
     }
 
     @Test

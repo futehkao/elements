@@ -62,14 +62,21 @@ public class SecurityAnnotationEngine {
         return roleProvider;
     }
 
-    public <T> SecurityAnnotationEngine register(Class<T> cls) {
-        Class<? extends T> roleProvider = getSecurityProvider(cls);
+    public SecurityAnnotationEngine register(Class cls) {
+        Class roleProvider = getSecurityProvider(cls);
         // populate from most specific to least specific.  Once a method signature
         // acquires a role set, it won't be re-populated.
         Map<MethodSignature, Set<String>> methodMap = scannedClassMap.computeIfAbsent(cls.getName(), key -> new HashMap<>());
         scanRoles(roleProvider, methodMap, RolesAllowed.class);
         scanRoles(roleProvider, methodMap, DenyAll.class);
         scanRoles(roleProvider, methodMap, PermitAll.class);
+
+        if (cls != roleProvider) {
+            scanRoles(cls, methodMap, RolesAllowed.class);
+            scanRoles(cls, methodMap, DenyAll.class);
+            scanRoles(cls, methodMap, PermitAll.class);
+        }
+
         if (methodMap.isEmpty()) {
             logger.warn("The roles map is empty, the service object is not protected: " + cls.getName());
         }
@@ -87,7 +94,7 @@ public class SecurityAnnotationEngine {
     }
 
     public boolean hasAccess(Object instance, Method method, Object[] args, List<String> userRoles) {
-        Set<String> value = lookupRole(instance, method, args);
+        Set<String> value = lookupRoles(instance, method, args);
         if (value == null) {
             if (logger.isWarnEnabled())
                 logger.warn("no security map entry found: class: {} method:{}",
@@ -107,12 +114,12 @@ public class SecurityAnnotationEngine {
     }
 
     @SuppressWarnings("squid:S1172")
-    public Set<String> lookupRole(Object instance, Method method, Object[] args) {
+    public Set<String> lookupRoles(Object instance, Method method, Object[] args) {
         Class<?> cls = ClassHelper.getRealClass(instance);
-        return lookupRole(cls, method);
+        return lookupRoles(cls, method);
     }
 
-    public Set<String> lookupRole(Class cls, Method method) {
+    public Set<String> lookupRoles(Class cls, Method method) {
         MethodSignature methodSig = createMethodSig(method);
         logger.trace("lookupRole: class: {} method:{}", cls.getName(), methodSig);
 
@@ -122,6 +129,8 @@ public class SecurityAnnotationEngine {
 
         Set<String> roles = methodMap.get(methodSig);
         logger.trace("==> cls:{} m:{} roles:{}", cls, methodSig, roles);
+        if (roles == null)
+            roles = Collections.emptySet();
         return roles;
     }
 
@@ -135,7 +144,7 @@ public class SecurityAnnotationEngine {
                 List<MethodSignature> methodNameList = new ArrayList<>(methodMap.keySet());
                 for (MethodSignature signature : methodNameList) {
                     Set<String> roles = methodMap.get(signature);
-                    logger.trace("  method:{} roles:{}", signature, roles);
+                    logger.trace(" method:{} roles:{}", signature, roles);
                 }
             }
         }
@@ -204,7 +213,7 @@ public class SecurityAnnotationEngine {
 
         public boolean equals(Object obj) {
             if (obj instanceof MethodSignature) {
-                MethodSignature other = (MethodSignature)obj;
+                MethodSignature other = (MethodSignature) obj;
                 if (name.equals(other.name)) {
                     if (!returnType.equals(other.returnType))
                         return false;

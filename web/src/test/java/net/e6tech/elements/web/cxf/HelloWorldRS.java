@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.web.cxf;
 
-import javax.jws.WebParam;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
