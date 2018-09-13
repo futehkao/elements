@@ -25,6 +25,7 @@ import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.datastructure.Pair;
+import org.apache.cxf.io.CachedOutputStream;
 import org.apache.cxf.jaxrs.lifecycle.PerRequestResourceProvider;
 import org.apache.cxf.message.Message;
 
@@ -122,6 +123,10 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                     result = uow.submit(() -> {
                         if (observer != null) {
                             uow.getResources().inject(observer);
+                            CachedOutputStream cachedOutputStream = message.getContent(CachedOutputStream.class);
+                            if (cachedOutputStream != null) {
+                                pair.key().setAttribute("Content", cachedOutputStream.getBytes());
+                            }
                             observer.beforeInvocation(pair.key(), pair.value(), frame.getTarget(), frame.getMethod(), frame.getArguments());
                         }
                         uow.getResources().inject(frame.getTarget());

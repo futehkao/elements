@@ -49,11 +49,12 @@ public class HellowWorldTest extends BaseCase {
     public void sayHello() {
         helloWorld.ping();
         String response = helloWorld.sayHello("hello");
-        // System.out.println(response);
-
         response = helloWorld.sayHello2("hello2", "blah");
-        // System.out.println(response);
+    }
 
+    @Test
+    public void withParam() {
+        helloWorld.withParam("1234", "WWWWWWWWWWWW");
     }
 
     @Test

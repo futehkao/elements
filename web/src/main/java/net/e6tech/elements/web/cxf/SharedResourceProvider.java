@@ -17,6 +17,7 @@
 package net.e6tech.elements.web.cxf;
 
 import net.e6tech.elements.common.util.datastructure.Pair;
+import org.apache.cxf.io.CachedOutputStream;
 import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
 import org.apache.cxf.message.Message;
 
@@ -50,6 +51,10 @@ class SharedResourceProvider extends SingletonResourceProvider {
                     Pair<HttpServletRequest, HttpServletResponse> pair = server.getServletRequestResponse(m);
                     if (cloneObserver != null) {
                         server.getProvision().inject(cloneObserver);
+                        CachedOutputStream cachedOutputStream = m.getContent(CachedOutputStream.class);
+                        if (cachedOutputStream != null) {
+                            pair.key().setAttribute("Content", cachedOutputStream.getBytes());
+                        }
                         cloneObserver.beforeInvocation(pair.key(), pair.value(), frame.getTarget(), frame.getMethod(), frame.getArguments());
                     }
                     long start = System.currentTimeMillis();

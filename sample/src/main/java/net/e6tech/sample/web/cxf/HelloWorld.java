@@ -74,6 +74,17 @@ public class HelloWorld {
         return "ping ...";
     }
 
+    @POST
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/withParam")
+    @EntityManagerConfig(disable = true)
+    public String withParam(@QueryParam("param") String param, String post) {
+        String str = "hello " + param;
+        if (extraMessage != null)
+            str += " " + extraMessage;
+        return str;
+    }
+
     @PermitAll
     @GET
     @Produces({MediaType.APPLICATION_JSON})
