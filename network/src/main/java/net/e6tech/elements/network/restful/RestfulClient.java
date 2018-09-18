@@ -180,6 +180,14 @@ public class RestfulClient {
         this.proxyPort = proxyPort;
     }
 
+    public Marshaller getMarshaller() {
+        return marshaller;
+    }
+
+    public void setMarshaller(Marshaller marshaller) {
+        this.marshaller = marshaller;
+    }
+
     @SuppressWarnings("squid:S134")
     private Param[] toParams(Object object) {
         List<Param> params = new ArrayList<>();
@@ -449,7 +457,7 @@ public class RestfulClient {
     }
 
     @SuppressWarnings("squid:MethodCyclomaticComplexity")
-    private void checkResponseCode(int code, String message) {
+    protected void checkResponseCode(int code, String message) {
         javax.ws.rs.core.Response.Status status = javax.ws.rs.core.Response.Status.fromStatusCode(code);
         if (code == 500)
             throw new InternalServerErrorException();
