@@ -28,10 +28,7 @@ import net.e6tech.elements.common.util.datastructure.Pair;
 
 import javax.ws.rs.*;
 import java.io.PrintWriter;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -221,6 +218,7 @@ public class RestfulProxy {
         String context;
         QueryParam[] queryParams;
         PathParam[] pathParams;
+        BeanParam[] beanParams;
 
         MethodForwarder(String context, Method method) {
             returnType = method.getReturnType();
@@ -230,18 +228,24 @@ public class RestfulProxy {
             this.context = context;
             queryParams = new QueryParam[paramTypes.length];
             pathParams = new PathParam[paramTypes.length];
+            beanParams = new BeanParam[paramTypes.length];
 
             int idx = 0;
             params = method.getParameters();
             for (Parameter param : params) {
                 QueryParam queryParam = param.getAnnotation(QueryParam.class);
                 PathParam pathParam = param.getAnnotation(PathParam.class);
+                BeanParam beanParam = param.getAnnotation(BeanParam.class);
                 if (queryParam != null) {
                     queryParams[idx] = queryParam;
                 }
 
                 if(pathParam != null) {
                     pathParams[idx] = pathParam;
+                }
+
+                if(beanParam != null) {
+                    beanParams[idx] = beanParam;
                 }
                 idx++;
             }
@@ -257,6 +261,19 @@ public class RestfulProxy {
             } else {
                 throw new IllegalArgumentException("Method " + method + " is not annotated with GET, PUT, POST or DELETE.");
             }
+        }
+
+        private Optional<Object> getValue(Object o, AccessibleObject a) {
+            try {
+                if (a instanceof Method) {
+                    return Optional.ofNullable(((Method) a).invoke(o));
+                } else if (a instanceof Field) {
+                    return Optional.ofNullable(Reflection.getProperty(o, ((Field) a).getName()));
+                }
+            } catch(IllegalAccessException | InvocationTargetException e) {
+                //ignore;
+            }
+            return Optional.empty();
         }
 
         @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S3776"})
@@ -280,7 +297,36 @@ public class RestfulProxy {
                     fullContext = fullContext.replace("{" + pathParams[i].value() + "}", valueEscaped);
                 }
 
-                if (pathParams[i] == null && queryParams[i] == null)
+                if(beanParams[i] != null && args[i] != null) {
+                    Object beanParamObj = args[i];
+
+                    Map<String, String> pathParamMap = new HashMap<>();
+                    Reflection.forEachAnnotatedAccessor(beanParamObj.getClass(), PathParam.class, member ->
+                            pathParamMap.put(member.getAnnotation(PathParam.class).value(),
+                                    getValue(beanParamObj, member).map(Object::toString).orElse(null)));
+
+
+                    for(Map.Entry<String, String> entry : pathParamMap.entrySet()) {
+                        if (entry.getValue() == null)
+                            throw new IllegalArgumentException("PathParam {" + entry.getKey() + "} cannot be null");
+                        String valueEscaped = URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8.name()).replaceAll("\\+", "%20");
+                        fullContext = fullContext.replace("{" + entry.getKey() + "}", valueEscaped);
+                    }
+
+                    Map<String, String> queryParamMap = new HashMap<>();
+                    Reflection.forEachAnnotatedAccessor(beanParamObj.getClass(), QueryParam.class, member ->
+                            queryParamMap.put(member.getAnnotation(QueryParam.class).value(),
+                                    getValue(beanParamObj, member).map(Object::toString).orElse(null)));
+
+                    for(Map.Entry<String, String> entry : queryParamMap.entrySet()) {
+                        if (entry.getValue() == null) continue;
+                        Param p = new Param(entry.getKey(), entry.getValue());
+                        paramList.add(p);
+                    }
+
+                }
+
+                if (pathParams[i] == null && queryParams[i] == null && beanParams[i] == null)
                     postData = args[i];
             }
 
