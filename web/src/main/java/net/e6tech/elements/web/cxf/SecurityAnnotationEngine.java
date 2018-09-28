@@ -22,6 +22,7 @@ import org.apache.cxf.common.util.ClassHelper;
 import javax.annotation.security.DenyAll;
 import javax.annotation.security.PermitAll;
 import javax.annotation.security.RolesAllowed;
+import javax.ws.rs.GET;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
@@ -88,23 +89,33 @@ public class SecurityAnnotationEngine {
 
     public boolean hasAccess(Object instance, Method method, Object[] args, String userRole) {
         if (userRole == null) {
-            return hasAccess(instance, method, args, Collections.emptyList());
+            return hasAccess(instance, method, args, Collections.emptySet());
         }
-        return hasAccess(instance, method, args, Arrays.asList(userRole));
+        Set<String> roles = new HashSet<>();
+        roles.add(userRole);
+        return hasAccess(instance, method, args, roles);
     }
 
-    public boolean hasAccess(Object instance, Method method, Object[] args, List<String> userRoles) {
+    public boolean hasAccess(Object instance, Method method, Object[] args, Set<String> userRoles) {
         Set<String> value = lookupRoles(instance, method, args);
         if (value == null) {
             if (logger.isWarnEnabled())
                 logger.warn("no security map entry found: class: {} method:{}",
                         instance.getClass().getName(), createMethodSig(method));
             return true;
-        } else if (value.contains(DenyAll.class.getSimpleName()))
+        }
+
+        if (userRoles.contains("ReadOnly") && method.getAnnotation(GET.class) == null) {
             return false;
-        else if (value.contains(PermitAll.class.getSimpleName()))
+        }
+
+        if (userRoles.contains("PermitAll")) {
             return true;
-        else {
+        } else if (value.contains(DenyAll.class.getSimpleName())) {
+            return false;
+        } else if (value.contains(PermitAll.class.getSimpleName())) {
+            return true;
+        } else {
             for (String userRole : userRoles) {
                 if (value.contains(userRole))
                     return true;

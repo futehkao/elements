@@ -73,6 +73,23 @@ public class HellowWorldTest extends BaseCase {
         assertTrue(roles.contains("PermitAll"));
     }
 
+    // even though the method is annotated with DenyAll, a user with PermitAll can still access
+    @Test
+    public void readOnlly() throws Exception {
+        Atom atom = provision.getResourceManager().getAtom("helloWorld");
+        SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
+        Method method = HelloWorld.class.getDeclaredMethod("post", HelloData.class);
+        assertTrue(!engine.hasAccess(new HelloWorld(), method, new Object[] { new HelloData()}, "ReadOnly"));
+    }
+
+    @Test
+    public void permitAll() throws Exception {
+        Atom atom = provision.getResourceManager().getAtom("helloWorld");
+        SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
+        Method method = HelloWorld.class.getDeclaredMethod("withSecurity", String.class);
+        assertTrue(engine.hasAccess(new HelloWorld(), method, new Object[] { "test" }, "PermitAll"));
+    }
+
     @Test
     public void post() {
         HelloData data = new HelloData();
