@@ -63,6 +63,19 @@ public class TextSubstitutionTest {
     }
 
     @Test
+    public void minusDefault() throws Exception {
+        String text = "Parameter value ${1} for parameter named ${0} is invalid${2:+: }${2}.";
+        TextSubstitution sub = new TextSubstitution(text);
+        Map<String, Object> map = new HashMap<>();
+        map.put("0", "NAME");
+        map.put("1", "NULL");
+        map.put("2", "NULL");
+        String output = sub.build(map);
+        System.out.println(output);
+
+    }
+
+    @Test
     public void moreTest() {
         String  template = "Purchase${location:+ at }${location}";
         TextSubstitution sub = new TextSubstitution(template);

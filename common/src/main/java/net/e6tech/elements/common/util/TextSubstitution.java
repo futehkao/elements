@@ -35,6 +35,7 @@ import static java.util.Locale.ENGLISH;
  *
  *  ${var:default} expands to default if var not defined, to var if var is defined.
  *  ${var:+default}  expands to "" if var is not defined, to default if var is defined.
+ *  ${var:-default} expands to default if var not defined, to "" if var is defined.
  */
 public class TextSubstitution {
 
@@ -113,6 +114,13 @@ public class TextSubstitution {
                     key = expression.substring(0, index).trim();
                     defVal = expression.substring(index + 2);
                     strategy = ":+";
+                }
+            } else if (expression.contains(":-")) {
+                int index = expression.indexOf(":-");
+                if (index >= 0) {
+                    key = expression.substring(0, index).trim();
+                    defVal = expression.substring(index + 2);
+                    strategy = ":-";
                 }
             } else if (expression.contains(":")) {
                 int index = expression.indexOf(':');
@@ -240,6 +248,8 @@ public class TextSubstitution {
                 // variable not defined
                 if (":+".equals(strategy)) {
                     return "";
+                } else if (":-".equals(strategy)) {
+                    return (defaultValue == null) ? "" : defaultValue;
                 } else if (":".equals(strategy)) {
                     return (defaultValue == null) ? "" : defaultValue;
                 }
@@ -248,6 +258,8 @@ public class TextSubstitution {
                 // variable is defined
                 if (":+".equals(strategy)) {
                     return defaultValue;
+                } else if (":-".equals(strategy)) {
+                    return "";
                 } else if (":".equals(strategy)) {
                     return result.toString();
                 }

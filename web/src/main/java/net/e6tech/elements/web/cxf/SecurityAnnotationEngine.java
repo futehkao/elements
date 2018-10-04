@@ -105,7 +105,7 @@ public class SecurityAnnotationEngine {
             return true;
         }
 
-        if (userRoles.contains("ReadOnly") && method.getAnnotation(GET.class) == null) {
+        if (userRoles.contains("ReadOnly") && method.getAnnotation(GET.class) == null && method.getAnnotation(ReadOnly.class) == null) {
             return false;
         }
 
