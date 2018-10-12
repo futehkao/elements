@@ -56,7 +56,8 @@ public class Statement<T> {
     }
 
     public void or(Runnable runnable) {
-        Where wh = new Where(this.where, this.where.getPath());
+        Where<T> wh = new Where(this.where, this.where.getPath());
+        wh.setTemplate(this.where.getTemplate());
         Interceptor.setInterceptorHandler(wh.getTemplate(), wh);
         wh.predicates = new ArrayList<>();
         runnable.run();
