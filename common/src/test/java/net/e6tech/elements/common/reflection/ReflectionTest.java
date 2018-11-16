@@ -18,6 +18,10 @@ package net.e6tech.elements.common.reflection;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
@@ -44,6 +48,20 @@ public class ReflectionTest {
         x.setType(X.Type.b);
         Reflection.copyInstance(y, x);
         assertTrue(y.getType().equals("b"));
+
+        Z z = new Z();
+        z.setType(Z.Type.a);
+        Reflection.copyInstance(x, z);
+        assertTrue(x.getType() == X.Type.a);
+    }
+
+    @Test
+    public void copyEnumList() {
+        X1 x = new X1();
+        x.getTypes().add(X1.Type.a);
+
+        Z1 z = Reflection.newInstance(Z1.class, x);
+        assertTrue(z.getTypes().get(0) == Z1.Type.a);
     }
 
     public static class X {
@@ -72,4 +90,50 @@ public class ReflectionTest {
             this.type = type;
         }
     }
+
+    public static class Z {
+        enum Type {
+            a, b
+        }
+        private Type type;
+
+        public Type getType() {
+            return type;
+        }
+
+        public void setType(Type type) {
+            this.type = type;
+        }
+    }
+
+    public static class X1 {
+        enum Type {
+            a, b
+        }
+        private List<Type> types = new ArrayList<>();
+
+        public List<Type> getTypes() {
+            return types;
+        }
+
+        public void setTypes(List<Type> types) {
+            this.types = types;
+        }
+    }
+
+    public static class Z1 {
+        enum Type {
+            a, b
+        }
+        private List<Type> types = new ArrayList<>();
+
+        public List<Type> getTypes() {
+            return types;
+        }
+
+        public void setTypes(List<Type> types) {
+            this.types = types;
+        }
+    }
+
 }

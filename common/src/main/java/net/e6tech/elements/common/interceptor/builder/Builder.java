@@ -76,10 +76,11 @@ public class Builder<T> implements InterceptorHandler {
     }
 
     public Builder(T target) {
+        T t = Interceptor.isProxyObject(target) ? Interceptor.getTarget(target) : target;
         try {
-            this.target = target;
-            if (target != null)
-                proxy = interceptor.newInterceptor(target, this);
+            this.target = t;
+            if (t != null)
+                proxy = interceptor.newInterceptor(t, this);
         } catch (Exception e) {
             throw new SystemException(e);
         }

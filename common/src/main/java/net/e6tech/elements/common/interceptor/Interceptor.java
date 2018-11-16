@@ -217,12 +217,12 @@ public class Interceptor {
         return cloneProxy;
     }
 
-    public static Object getTarget(Object proxyObject) {
+    public static <T> T getTarget(T proxyObject) {
         InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
-        return wrapper.target;
+        return (T) wrapper.target;
     }
 
-    public static void setTarget(Object proxyObject, Object target) {
+    public static <T> void setTarget(T proxyObject, T target) {
         InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
         if (target != null && !target.getClass().isAssignableFrom(wrapper.targetClass)) {
             throw new IllegalArgumentException("Target class " + target.getClass() + " is not assignable from " + wrapper.targetClass);

@@ -34,9 +34,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by futeh.
  */
 public abstract class EntityManagerProvider implements ResourceProvider, Initializable {
-
-    private static final Logger logger = Logger.getLogger();
-
     private ExecutorService threadPool;
     private NotificationCenter notificationCenter;
     protected EntityManagerFactory emf;
@@ -49,7 +46,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private boolean firstQuery = true;
     private AtomicInteger ignoreInitialLongTransactions = new AtomicInteger(1);
     private BlockingQueue<EntityManagerMonitor> monitorQueue = new LinkedBlockingQueue<>();
-    private List<EntityManagerMonitor> entityManagerMonitors = new ArrayList<>();
+    private final List<EntityManagerMonitor> entityManagerMonitors = new ArrayList<>();
     private long monitorIdle = 60000;
     private boolean monitoring = false;
 
@@ -201,9 +198,11 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         }
 
         EntityManager em = emf.createEntityManager();
+        EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(em, System.currentTimeMillis() + timeout, new Throwable());
         if (monitor) {
-            monitor(new EntityManagerMonitor(em, System.currentTimeMillis() + timeout, new Throwable()));
+            monitor(entityManagerMonitor);
         }
+        resources.bind(EntityManagerMonitor.class, entityManagerMonitor);
 
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
         emHandler.setLongTransaction(longQuery);
@@ -255,14 +254,15 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                         Iterator<EntityManagerMonitor> iterator = entityManagerMonitors.iterator();
                         while (iterator.hasNext()) {
                             EntityManagerMonitor m = iterator.next();
-                            if (!m.entityManager.isOpen()) { // already closed
+                            if (!m.getEntityManager().isOpen()) { // already closed
                                 iterator.remove();
-                            } else if (m.expiration < System.currentTimeMillis()) {
+                            } else if (m.getExpiration() < System.currentTimeMillis()) {
                                 m.rollback();  // rollback
                                 iterator.remove();
                             } else {
                                 // for find out the shortest sleep time
-                                if (expiration == 0 || m.expiration < expiration) expiration = m.expiration;
+                                if (expiration == 0 || m.getExpiration() < expiration)
+                                    expiration = m.getExpiration();
                             }
                         }
                     }
@@ -372,28 +372,6 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     public void onShutdown() {
         if (emf.isOpen()) {
             emf.close();
-        }
-    }
-
-    private static class EntityManagerMonitor {
-        EntityManager entityManager;
-        long expiration;
-        Throwable throwable;
-
-        EntityManagerMonitor(EntityManager entityManager, long expiration, Throwable throwable) {
-            this.entityManager = entityManager;
-            this.expiration = expiration;
-            this.throwable = throwable;
-        }
-
-        boolean rollback() {
-            if (entityManager.isOpen()) {
-                entityManager.getTransaction().setRollbackOnly();
-                entityManager.close();
-                logger.warn("EntityManagerProvider timeout", throwable);
-                return true;
-            }
-            return false;
         }
     }
 }

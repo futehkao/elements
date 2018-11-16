@@ -393,12 +393,14 @@ public class Reflection {
         return (new Replicator()).newInstance(cls, object, new HashMap<>(), listener);
     }
 
-    public static void copyInstance(Object target, Object object) {
+    public static <T> T copyInstance(T target, Object object) {
         (new Replicator()).copy(target, object, new HashMap<>(), null);
+        return target;
     }
 
-    public static void copyInstance(Object target, Object object, CopyListener listener) {
+    public static <T> T copyInstance(T target, Object object, CopyListener listener) {
         (new Replicator()).copy(target, object, new HashMap<>(), listener);
+        return target;
     }
 
     public static boolean compare(Object target, Object object) {
