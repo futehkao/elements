@@ -91,7 +91,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
         this.properties = properties;
     }
 
-    protected static Yaml newYaml() {
+    public static Yaml newYaml() {
         return new Yaml(yamlConstructor);
     }
 
@@ -591,7 +591,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
         }
     }
 
-    private static class YamlConstructor extends Constructor {
+    public static class YamlConstructor extends Constructor {
 
         public YamlConstructor() {
             this.yamlConstructors.put(Tag.FLOAT, new BigDecimalConstructor());

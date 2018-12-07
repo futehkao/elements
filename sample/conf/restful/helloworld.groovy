@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
+package  net.e6tech.sample.web.cxf
+
 import net.e6tech.elements.web.cxf.JaxRSServer
 import net.e6tech.elements.web.cxf.SecurityAnnotationEngine
 import net.e6tech.sample.web.cxf.HelloWorld
 import net.e6tech.sample.web.cxf.HelloWorldRoles
+import javax.ws.rs.*
+import javax.ws.rs.core.MediaType
 
 roleMap = [(HelloWorld.getName()): HelloWorldRoles]
 
@@ -30,12 +34,25 @@ atom("helloWorld") {
         - class: "net.e6tech.sample.web.cxf.HelloWorld"
           singleton: false
           prototype: ^_prototype
+        - class: "net.e6tech.sample.web.cxf.HelloWorld2"
+          classLoader: ^_classLoader
     _helloWorld.responseHeaders:
         'X' : 'X val'
         'Y' : 'Y val'
     _securityAnnotation.securityProviders: ^roleMap
  """
+    _classLoader = HelloWorld2.class.getClassLoader()
     _prototype = HelloWorld
     _securityAnnotation = SecurityAnnotationEngine
     _helloWorld = JaxRSServer
+}
+
+@Path("/helloworld")
+class HelloWorld2 {
+    @GET
+    @Produces("application/json")
+    @Path("hello2")
+    String ping() {
+        return "ping ...";
+    }
 }

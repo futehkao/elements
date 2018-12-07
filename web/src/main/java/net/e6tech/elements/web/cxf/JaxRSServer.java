@@ -60,6 +60,7 @@ public class JaxRSServer extends CXFServer {
     }
 
     private static final String CLASS = "class";
+    private static final String CLASS_LOADER = "classLoader";
     private static final String SINGLETON = "singleton";
     private static final String BIND_HEADER_OBSERVER = "bindHeaderObserver";
     private static final String REGISTER_BEAN = "registerBean";
@@ -74,6 +75,7 @@ public class JaxRSServer extends CXFServer {
     private boolean corsFilter = false;
     private SecurityAnnotationEngine securityAnnotationEngine;
     private Configuration.Resolver resolver;
+    private ClassLoader classLoader;
 
     private LogEventSender logEventSender;
 
@@ -135,6 +137,14 @@ public class JaxRSServer extends CXFServer {
         this.logEventSender = logEventSender;
     }
 
+    public ClassLoader getClassLoader() {
+        return classLoader;
+    }
+
+    public void setClassLoader(ClassLoader classLoader) {
+        this.classLoader = classLoader;
+    }
+
     @Override
     @SuppressWarnings({"unchecked", "squid:S2112"})
     public void initialize(Resources res) {
@@ -167,12 +177,20 @@ public class JaxRSServer extends CXFServer {
         for (Map<String, Object> map : resources) {
             boolean singleton = false;
             Class resourceClass = null;
-            String prototypeExpression = null;
+
             String resourceClassName = (String) map.get(CLASS);
             if (resourceClassName == null)
                 throw new SystemException("Missing resource class in resources map");
             try {
-                resourceClass = getProvision().getClass().getClassLoader().loadClass(resourceClassName);
+                String classLoaderExpression = (String) map.get(CLASS_LOADER);
+                ClassLoader loader = null;
+                if (classLoaderExpression != null && resolver != null) {
+                    loader = (ClassLoader) resolver.resolve(classLoaderExpression);
+                }
+                if (loader == null) {
+                    loader = (classLoader == null) ? getProvision().getClass().getClassLoader() : classLoader;
+                }
+                resourceClass = loader.loadClass(resourceClassName);
             } catch (ClassNotFoundException e) {
                 throw new SystemException(e);
             }
@@ -192,6 +210,7 @@ public class JaxRSServer extends CXFServer {
             String resourceName = (String) map.get(NAME);
 
             // prototype
+            String prototypeExpression;
             Object prototype = null;
             prototypeExpression = (String) map.get(PROTOTYPE);
             if (prototypeExpression != null && resolver != null) {
