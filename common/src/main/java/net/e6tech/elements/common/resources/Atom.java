@@ -227,9 +227,7 @@ public class Atom implements Map<String, Object> {
 
         for (Map.Entry<String, Object> entry : boundInstances.entrySet()) {
             Object value = entry.getValue();
-            if (beanLifecycle.isBeanInitialized(value))
-                continue;
-            if (value instanceof Initializable) {
+            if (value instanceof Initializable && !beanLifecycle.isBeanInitialized(value)) {
                 ((Initializable) value).initialize(resources);
             }
             if (!resourceManager.getScripting().isRunnable(value)) {
@@ -279,6 +277,10 @@ public class Atom implements Map<String, Object> {
         return this;
     }
 
+    public void disable(Object bean) {
+        resourceManager.getBeanLifecycle().disableBean(bean);
+    }
+
     // not using closure to minimize Component reference
     static class RunStartable implements Runnable {
         Map<String, Startable> startables = new LinkedHashMap<>();
@@ -297,7 +299,8 @@ public class Atom implements Map<String, Object> {
             try {
                 for (Map.Entry<String, Startable> entry : startables.entrySet()) {
                     Startable startable = entry.getValue();
-                    if (!resourceManager.getBeanLifecycle().isBeanStarted(startable)) {
+                    BeanLifecycle lifecycle = resourceManager.getBeanLifecycle();
+                    if (!lifecycle.isBeanStarted(startable) && !lifecycle.isBeanDisabled(startable)) {
                         long s = System.currentTimeMillis();
                         startable.start();
                         if (!resourceManager.isSilent())
@@ -329,7 +332,8 @@ public class Atom implements Map<String, Object> {
             try {
                 for (Map.Entry<String, LaunchListener> entry : listeners.entrySet()) {
                     LaunchListener listener = entry.getValue();
-                    if (!provision.getResourceManager().getBeanLifecycle().isBeanLaunched(listener)) {
+                    BeanLifecycle lifecycle = provision.getResourceManager().getBeanLifecycle();
+                    if (!lifecycle.isBeanLaunched(listener) && !lifecycle.isBeanDisabled(listener)) {
                         listener.launched(provision);
                         provision.getResourceManager().getBeanLifecycle().fireBeanLaunched(entry.getKey(), listener);
                     }

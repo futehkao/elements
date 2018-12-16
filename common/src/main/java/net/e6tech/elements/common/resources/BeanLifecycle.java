@@ -32,6 +32,7 @@ public class BeanLifecycle {
     private Map<String, Object> initializedBeans = new Hashtable<>();
     private Map<String, Object> startedBeans = new Hashtable<>();
     private Map<String, Object> launchedBeans = new Hashtable<>();
+    private Set<Object> disabledBeans = new HashSet<>();
     private Map<String, List<BeanListener>> namedBeanListeners = new Hashtable<>();
     private Map<Class, List<BeanListener>> classBeanListeners = new Hashtable<>();
 
@@ -89,10 +90,19 @@ public class BeanLifecycle {
         return launchedBeans.containsValue(bean);
     }
 
+    public void disableBean(Object bean) {
+        disabledBeans.add(bean);
+    }
+
+    public boolean isBeanDisabled(Object bean) {
+        return disabledBeans.contains(bean);
+    }
+
     public void clearBeanListeners() {
         initializedBeans.clear();
         startedBeans.clear();
         launchedBeans.clear();
+        disabledBeans.clear();
         namedBeanListeners.clear();
         classBeanListeners.clear();
     }
