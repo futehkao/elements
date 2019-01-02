@@ -375,6 +375,7 @@ public class CXFServer implements Initializable, Startable {
         ObjectInstance instance = null;
         try {
             instance = getMeasurement(method, methods);
+            logger.trace("{} call took {}ms",  instance.getObjectName().getCanonicalName(), duration);
             JMXService.invoke(instance.getObjectName(), "add", duration);
         } catch (Exception e) {
             logger.debug("Unable to record measurement for " + method, e);

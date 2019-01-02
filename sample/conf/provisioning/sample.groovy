@@ -19,6 +19,8 @@ import net.e6tech.elements.jobs.JobServer
 
 registerBean('jobServer', JobServer)
 
+// setup boot profile: directory, init, main components, after etc.
+// For main components, only those listed in the boot components are executed.
 bootstrap.with {
     dir = "$__dir"
     init = ["$__dir/boot_init.groovy",
@@ -35,13 +37,34 @@ bootstrap.with {
     // defaultSystemProperties = ...
 }
 
-bootDisableList = ['cluster']
-preBoot = [ hello: { println 'hello world'}, variables: true ]
-postBoot = [{ println 'boot completed!'}]
-boot(null, 'cluster', 'trivial')
-exec "$__dir/../persist.groovy",
-        "$__dir/../notification.groovy",
-        "$__dir/../prototype/concrete.groovy",
-        "$__dir/../restful/**"
+// see below .preBoot and .postBoot
+// bootDisableList = ['cluster']
+// preBoot = [ hello: { println 'hello world'}, variables: true ]
+// postBoot = [{ println 'boot completed!'}]
+
+// booting up
+// the first parameter is the boot script to set up bootstrap profile.  Since the profile set up is in this script, we
+// pass null to skip this part.
+// the following string parameters are use to indicated which main components should be started.  The main boot order is determined
+// by the profile.
+// If the parameter is a map, its components are added to the boot after map.
+bootstrap
+        .disable('cluster')
+        .preBoot([ hello: { println 'hello world'}, variables: true ])
+        .postBoot([{ println 'boot completed!'}])
+        .boot(null, 'cluster', 'trivial')
+        .bootAfter([persist: "$__dir/../persist.groovy",
+            notification: "$__dir/../notification.groovy",
+            concrete: "$__dir/../prototype/concrete.groovy",
+            restful: "$__dir/../restful/**"])
 
 
+// The boot order is
+// exec boot script
+// boot env
+// boot provision
+// boot init
+// pre boot
+// boot main
+// post boot
+// boot after
