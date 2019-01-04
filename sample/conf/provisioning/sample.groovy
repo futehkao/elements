@@ -25,6 +25,7 @@ bootstrap.with {
     dir = "$__dir"
     init = ["$__dir/boot_init.groovy",
             { println resourceManager }]
+    preBoot = [ defaultThreadPool: { setupThreadPool('DefaultThreadPool') } ]
     main = [
             { variables && cluster }: {
                 println "booting variables and cluster"
@@ -50,14 +51,15 @@ bootstrap.with {
 // If the parameter is a map, its components are added to the boot after map.
 bootstrap
         .disable('cluster')
-        .preBoot([ hello: { println 'hello world'}, variables: true ])
+        .preBoot([ hello: { println 'hello world'},   // since value is a closure, simply runs closure
+                   variables: true ]) // set variables component to true.  This has the effect of turning main component named variables.
+        .preBoot({ println 'hello world'}) // runs an anonymous block
         .postBoot([{ println 'boot completed!'}])
         .boot(null, 'cluster', 'trivial')
-        .bootAfter([persist: "$__dir/../persist.groovy",
+        .after([persist: "$__dir/../persist.groovy",
             notification: "$__dir/../notification.groovy",
             concrete: "$__dir/../prototype/concrete.groovy",
             restful: "$__dir/../restful/**"])
-
 
 // The boot order is
 // exec boot script

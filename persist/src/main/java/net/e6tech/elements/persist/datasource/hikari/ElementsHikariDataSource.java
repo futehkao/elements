@@ -30,6 +30,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+/**
+ * Subclassed from HikariDataSource to support connectionInitStatments.
+ */
 public class ElementsHikariDataSource extends HikariDataSource  {
 
     private List<String> connectionInitStatements = new ArrayList<>();

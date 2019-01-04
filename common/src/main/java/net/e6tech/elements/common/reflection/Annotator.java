@@ -36,7 +36,7 @@ import java.util.function.BiConsumer;
  * See AnnotationTest for an example
  */
 public class Annotator implements InvocationHandler {
-    private static Map<String, Integer> objectMethods = new HashMap<>();
+    static Map<String, Integer> objectMethods = new HashMap<>();
 
     private Map<Method, Object> values;
     private Method lastAccessed;

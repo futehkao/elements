@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-import com.zaxxer.hikari.HikariDataSource
-import com.mchange.v2.c3p0.ComboPooledDataSource
+import net.e6tech.elements.persist.datasource.hikari.ElementsHikariDataSource
 import javax.persistence.EntityManager
 import net.e6tech.elements.persist.hibernate.HibernateEntityManagerProvider
 import net.e6tech.elements.persist.hibernate.TableIdGenerator
@@ -29,6 +28,7 @@ atom("datasource") {
             password: password
             jdbcUrl: "jdbc:mariadb://127.0.0.1:3306/sample"
             maximumPoolSize: $dataSourceMaxPoolSize
+            transactionIsolation: 'TRANSACTION_READ_COMMITTED'
     """
 
     /* below is for c3p0
@@ -44,8 +44,9 @@ atom("datasource") {
     """
     */
 
-    // delegate["dataSource"] = HikariDataSource or
-    dataSource = HikariDataSource
+    dataSource = ElementsHikariDataSource
+    //  To set init statements
+    // dataSource.connectionInitStatements = dataSourceConnectionInitStatements
     // dataSource = ComboPooledDataSource
 }
 

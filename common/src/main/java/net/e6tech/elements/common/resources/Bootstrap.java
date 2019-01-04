@@ -22,15 +22,20 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.script.Scripting;
 import net.e6tech.elements.common.util.InitialContextFactory;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.Terminal;
+import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import org.apache.logging.log4j.ThreadContext;
 
 import javax.script.ScriptException;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.*;
 
 @SuppressWarnings("squid:S3776")
 public class Bootstrap extends GroovyObjectSupport {
+    private static Logger logger = Logger.getLogger();
     private static final String PRE_BOOT = "preBoot";
     private static final String POST_BOOT = "postBoot";
     private static final String BOOT_ENV = "bootEnv";
@@ -42,7 +47,6 @@ public class Bootstrap extends GroovyObjectSupport {
     private static final String HOST_SYSTEM_PROPERTIES_FILE = "hostSystemPropertiesFile";
     private static final String ENVIRONMENT = "environment";
     private static final String SYSTEM_PROPERTIES = "systemProperties";
-    private static Logger logger = Logger.getLogger();
     private static final Object[] EMPTY_OBJECT_ARRAY = {};
     private String  bootstrapDir = ".";
     private String defaultEnvironmentFile;
@@ -63,6 +67,10 @@ public class Bootstrap extends GroovyObjectSupport {
 
     public Bootstrap(ResourceManager rm) {
         this.resourceManager = rm;
+    }
+
+    public ResourceManager getResourceManager() {
+        return resourceManager;
     }
 
     public Map getMain() {
@@ -172,13 +180,21 @@ public class Bootstrap extends GroovyObjectSupport {
         return this;
     }
 
+    public void setPreBoot(Object pre) {
+        setupBootList(pre, preBoot);
+    }
+
     public Bootstrap preBoot(Object pre) {
         setupBootList(pre, preBoot);
         return this;
     }
 
-    public Bootstrap postBoot(Object pre) {
-        setupBootList(pre, postBoot);
+    public void setPostBoot(Object post) {
+        setupBootList(post, postBoot);
+    }
+
+    public Bootstrap postBoot(Object post) {
+        setupBootList(post, postBoot);
         return this;
     }
 
@@ -402,7 +418,7 @@ public class Bootstrap extends GroovyObjectSupport {
 
     private void updateBootList(Object p, Map bootList) {
         if (main.get(p) == null && after.get(p) == null) {  // see if item is a name to main or after
-            String key = "_boot-" + ++bootIndex;
+            String key = "anonymous-" + ++bootIndex;
             expando.setProperty(key, true);
             bootList.put(key, p);
         } else {
@@ -486,7 +502,7 @@ public class Bootstrap extends GroovyObjectSupport {
         logger.info("Done post-booting ******************************************\n");
     }
 
-    public Bootstrap bootAfter(Map map) {
+    public Bootstrap after(Map map) {
         map.forEach((key, value) -> {
             after.put(key, value);
             setComponent(key, true); // default to on unless they are turn off by disable list during bootEnv()
@@ -577,6 +593,62 @@ public class Bootstrap extends GroovyObjectSupport {
 
     private Object getVar(String var) {
         return resourceManager.getScripting().get(var);
+    }
+
+    // convenient method for initBoot
+    public void setupThreadPool(String threadPoolName) {
+        ThreadPool threadPool = ThreadPool.cachedThreadPool(threadPoolName);
+
+        // resourceManager is a special case
+        // that you cannot use component to inject instances.
+        logger.info("***********************************************************");
+        logger.info("Setting up thread pool " + threadPoolName);
+        logger.info("***********************************************************");
+        resourceManager.registerBean(threadPoolName, threadPool);
+        resourceManager.bind(ThreadPool.class, resourceManager.getBean(threadPoolName));
+    }
+
+    // send a shutdown message to a server
+    public void shutdown(int shutdownPort) {
+        try {
+            Socket socket = new Socket(InetAddress.getLoopbackAddress(), shutdownPort);
+            PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+            output.println("shutdown");
+            output.flush();
+            socket.close();
+        } catch (Exception ex) {
+            logger.warn("No local server found at port=" + shutdownPort);
+        }
+        System.exit(0);
+    }
+
+    // starting a shutdown listener
+    public void startShutdownListener(int shutdownPort) throws IOException {
+        logger.info("***********************************************************");
+        logger.info("Starting server shutdown listening thread");
+        logger.info("***********************************************************");
+        Thread thread = new Thread(() -> {
+            try {
+                ServerSocket serverSocket = new ServerSocket(shutdownPort, 0, InetAddress.getLoopbackAddress());
+                while (true) {
+                    Terminal terminal = null;
+                    try {
+                        terminal = new Terminal(serverSocket);
+                    } catch (IOException e) {
+                        break;
+                    }
+                    if (terminal.readLine("").equals("shutdown")) {
+                        logger.info("Received shutdown request.  Shutting down ... ");
+                        resourceManager.shutdown();
+                        System.exit(0);
+                    }
+                }
+                serverSocket.close();
+            } catch (IOException ex) {
+                logger.warn("Unable to start shutdown listener", ex);
+            }
+        });
+        thread.start();
     }
 
     private class MyExpando extends Expando {
