@@ -170,6 +170,15 @@ public class Resources implements AutoCloseable, ResourcePool {
         afterCommit(after);
     }
 
+    public void afterAbort(AfterAbort afterAbort) {
+        addResourceProvider(afterAbort);
+    }
+
+    public void afterAbort(Runnable runnable) {
+        AfterAbort after = res -> runnable.run();
+        afterAbort(after);
+    }
+
     public synchronized void onOpen(OnOpen onOpen) {
         addResourceProvider(onOpen);
     }
@@ -596,6 +605,7 @@ public class Resources implements AutoCloseable, ResourcePool {
                         Logger.suppress(th);
                     }
                 }
+
                 for (ResourceProvider p : getExternalResourceProviders()) {
                     try {
                         p.onAbort(this);
@@ -603,9 +613,22 @@ public class Resources implements AutoCloseable, ResourcePool {
                         Logger.suppress(th);
                     }
                 }
+
+                state.setState(ResourcesState.State.ABORTED);
+                for (int i = 0; i < state.getResourceProviders().size(); i++) {
+                    ResourceProvider resourceProvider = state.getResourceProviders().get(i);
+                    try {
+                        resourceProvider.afterAbort(this);
+                    } catch (Exception th) {
+                        Logger.suppress(th);
+                    }
+                }
             }
         } finally {
-            cleanup();
+            // set set state to abort so that the state is aborted during onClose
+            state.setState(ResourcesState.State.ABORTED);
+            cleanup();  // this will reset state to Initial
+            // and we have to set it to ABORTED again.
             state.setState(ResourcesState.State.ABORTED);
         }
     }

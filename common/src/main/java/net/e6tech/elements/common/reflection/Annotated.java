@@ -66,16 +66,6 @@ public class Annotated<R, A extends Annotation> {
         entries = Collections.unmodifiableList(entries);
     }
 
-    /**
-     * @param target
-     * @param annotationClass
-     * @param function
-     * @param valueType
-     * @param <A>
-     * @param <E> is the type of annotation element
-     * @param <V>
-     * @return
-     */
     public static <A extends Annotation, E, V> Accessor<A, E, V> accessor(Object target, Class<A> annotationClass, Function<A, E> function, Class<V> valueType) {
         Lookup<A, E, V> lookup = lookup(target.getClass(), annotationClass, function, valueType);
         return lookup.accessor(target);

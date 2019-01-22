@@ -29,8 +29,6 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by futeh.
@@ -91,10 +89,4 @@ public class ScratchPad {
         }
         System.out.println("reflection " + (System.currentTimeMillis() - start));
     }
-
-    @Test
-    void test() {
-        System.out.println(new String[0] instanceof Object[]);
-    }
-
 }

@@ -16,12 +16,15 @@
 
 package net.e6tech.elements.common.interceptor;
 
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.FieldAccessor;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.implementation.SuperMethodCall;
@@ -35,36 +38,83 @@ import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 /**
  * Created by futeh.
  */
 public class Interceptor {
-    private LoadingCache<Class, Class> proxyClasses = CacheBuilder.newBuilder()
-            .initialCapacity(100)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .build(new CacheLoader<Class, Class>() {
-        public Class load(Class cls) {
-            return new ByteBuddy()
-                    .subclass(cls)
-                    .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
-                    .intercept(MethodDelegation.toField(HANDLER_FIELD))
-                    .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
-                    .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
-                    .make()
-                    .load(cls.getClassLoader())
-                    .getLoaded();
-        }
-    });
     private static final String HANDLER_FIELD = "handler";
 
     private static Interceptor instance = new Interceptor();
 
+    private static ThreadLocal<Object> anonymousThreadLocal = new ThreadLocal<>();
+
+    private int initialCapacity = 100;
+
+    private Cache<Class, Class> proxyClasses = CacheBuilder.newBuilder()
+            .initialCapacity(initialCapacity)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build();
+
+    private Cache<Class, Class> singletonClasses = CacheBuilder.newBuilder()
+            .initialCapacity(initialCapacity)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build();
+
+    private Cache<Class, AnonymousDescriptor> anonymousClasses = CacheBuilder.newBuilder()
+            .initialCapacity(initialCapacity)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build();
+
+    private Cache<Class, Class> prototypeClasses = CacheBuilder.newBuilder()
+            .initialCapacity(initialCapacity)
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .build();
+
+    public int getInitialCapacity() {
+        return initialCapacity;
+    }
+
+    public void setInitialCapacity(int initialCapacity) {
+        this.initialCapacity = initialCapacity;
+    }
+
     public static Interceptor getInstance() {
         return instance;
+    }
+
+    private <T> Class<? extends T> loadClass(DynamicType.Unloaded<T> unloaded, Class<T> cls, ClassLoader classLoader) {
+        DynamicType.Loaded<T> loaded;
+        try {
+            if (classLoader != null) {
+                loaded = unloaded.load(classLoader);
+            } else if (cls.getClassLoader() == null) {
+                loaded = unloaded.load(getClass().getClassLoader());
+            } else {
+                loaded = unloaded.load(cls.getClassLoader());
+            }
+        } catch (NoClassDefFoundError ex) {
+            ClassLoader delegateLoader = cls.getClassLoader();
+            if (delegateLoader == null) {
+                delegateLoader = ClassLoader.getSystemClassLoader();
+            }
+            loaded = unloaded.load(new JoinClassLoader(getClass().getClassLoader(), delegateLoader));
+        }
+        return loaded.getLoaded();
+    }
+
+    public <T> Class<T> newPrototypeClass(Class<T> cls, T prototype) {
+        return newPrototypeClass(cls, prototype, null);
     }
 
     /**
@@ -76,21 +126,26 @@ public class Interceptor {
      * @return byte manipulated prototype class
      */
     @SuppressWarnings("unchecked")
-    public static <T> Class<T> newPrototypeClass(Class<T> cls, T prototype) {
-        return (Class) new ByteBuddy()
-                .subclass(cls)
-                .constructor(ElementMatchers.any())
-                    .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.to(new Constructor<T>(prototype))))
-                .make()
-                .load(cls.getClassLoader())
-                .getLoaded();
+    public <T> Class<T> newPrototypeClass(Class<T> cls, T prototype, ClassLoader classLoader) {
+        try {
+            return prototypeClasses.get(cls, () -> {
+                DynamicType.Unloaded<T> unloaded = new ByteBuddy()
+                        .subclass(cls)
+                        .constructor(ElementMatchers.any())
+                        .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.to(new PrototypeConstructor<>(prototype))))
+                        .make();
+                return loadClass(unloaded, cls, classLoader);
+            });
+        } catch (ExecutionException e) {
+            throw new SystemException(e.getCause());
+        }
     }
 
     // must be public static
-    public static class Constructor<T> {
+    public static class PrototypeConstructor<T> {
         T prototype;
 
-        public Constructor(T prototype) {
+        public PrototypeConstructor(T prototype) {
             this.prototype = prototype;
         }
 
@@ -104,36 +159,104 @@ public class Interceptor {
      * Create a class that returns a singleton.  When new instance of the class is created, all operations, except
      * for finalize, are delegated to the singleton.
      */
-    public static <T> Class<T> newSingletonClass(Class<T> cls, T singleton) {
-        return newSingletonClass(cls, singleton, null);
+    public <T> Class<T> newSingletonClass(Class<T> cls, T singleton) {
+        return newSingletonClass(cls, singleton, null, null);
     }
 
-    public static <T> Class<T> newSingletonClass(Class<T> cls, T singleton, InterceptorListener listener) {
+    public <T> Class<T> newSingletonClass(Class<T> cls, T singleton, InterceptorListener listener, ClassLoader classLoader) {
         if (singleton == null)
             throw new IllegalArgumentException("target cannot be null");
-        Class proxyClass = new ByteBuddy()
-                .subclass(cls)
-                .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.named("finalize").and(ElementMatchers.hasParameters(ElementMatchers.none())))))
-                .intercept(MethodDelegation.toField(HANDLER_FIELD))
-                .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE, Ownership.STATIC)
-                .make()
-                .load(cls.getClassLoader())
-                .getLoaded();
         try {
+            Class proxyClass = singletonClasses.get(cls,
+                    () -> loadClass(newSingletonBuilder(cls).make(), cls, classLoader));
             Field field = proxyClass.getDeclaredField(HANDLER_FIELD);
             field.setAccessible(true);
-            InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(getInstance(),
-                        proxyClass,
-                        singleton,
-                        ctx -> ctx.invoke(singleton),
-                        listener );
+            InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
+                    proxyClass,
+                    singleton,
+                    ctx -> ctx.invoke(singleton),
+                    listener);
             field.set(null, wrapper);
+            return proxyClass;
+        } catch (ExecutionException e) {
+            throw new SystemException(e.getCause());
         } catch (Exception e) {
             throw new SystemException(e);
         }
-        return proxyClass;
     }
 
+    private <T> DynamicType.Builder<T> newSingletonBuilder(Class<T> cls) {
+        DynamicType.Builder<T> builder =
+                new ByteBuddy()
+                        .subclass(cls)
+                        .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.named("finalize").and(ElementMatchers.hasParameters(ElementMatchers.none())))))
+                        .intercept(MethodDelegation.toField(HANDLER_FIELD))
+                        .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE, Ownership.STATIC);
+        return builder;
+    }
+
+    /**
+     * Trying to emulate Groovy's with block
+     * X x = ...;
+     * runAnonymous(x, new X() {{
+     *     setName(...);
+     *     setInt(...);
+     * }}
+     *
+     * setName and setInt would be called on x.
+     */
+    public <T> void runAnonymous(T target, T anonymous) {
+        Class anonymousClass = anonymous.getClass();
+        try {
+            AnonymousDescriptor descriptor = anonymousClasses.get(anonymousClass, () -> {
+                DynamicType.Builder builder = newSingletonBuilder((Class<T>) anonymousClass);
+                Class p = builder.make()
+                        .load(anonymousClass.getClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                        .getLoaded();
+                Field field = p.getDeclaredField(HANDLER_FIELD);
+                field.setAccessible(true);
+                InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
+                        p,
+                        null,
+                        ctx -> {
+                            Object t = anonymousThreadLocal.get();
+                            return ctx.invoke(t);},
+                        null);
+                field.set(null, wrapper);
+
+                Field[] fields = anonymousClass.getDeclaredFields();
+                AnonymousDescriptor desc = new AnonymousDescriptor();
+                Field[] copy = new Field[fields.length];
+                copy[0] = fields[fields.length - 1];
+                System.arraycopy(fields, 0, copy, 1,fields.length - 1);
+                desc.fields = copy;
+                desc.classes = new Class[copy.length];
+                for (int i = 0; i < copy.length; i++)
+                    desc.classes[i] = copy[i].getType();
+                desc.constructor = p.getDeclaredConstructor(desc.classes);
+                return desc;
+            });
+            anonymousThreadLocal.set(target);
+            descriptor.construct(anonymous);
+        } catch (Exception e) {
+            throw new SystemException(e);
+        } finally {
+            anonymousThreadLocal.remove();
+        }
+    }
+
+    private static final class AnonymousDescriptor {
+        Field[] fields;
+        Class[] classes;
+        Constructor constructor;
+
+        final void construct(final Object anonymous) throws Exception {
+            Object[] values = new Object[fields.length];
+            for (int i = 0; i < values.length; i++)
+                values[i] = fields[i].get(anonymous);
+            constructor.newInstance(values);
+        }
+    }
 
     /**
      * Creates an interceptor for an instance.  All calls for the interceptor, except for methods declared in Object, are
@@ -144,11 +267,15 @@ public class Interceptor {
      * @return an instance of interceptor
      */
     public <T> T newInterceptor(T instance, InterceptorHandler handler) {
-        return newInterceptor(instance, handler, null);
+        return newInterceptor(instance, handler, null, null);
     }
 
-    public <T> T newInterceptor(T instance, InterceptorHandler handler, InterceptorListener listener) {
-        Class proxyClass = createClass(instance.getClass());
+    public <T> T newInterceptor(T instance, InterceptorHandler handler, ClassLoader classLoader) {
+        return newInterceptor(instance, handler, null, classLoader);
+    }
+
+    public <T> T newInterceptor(T instance, InterceptorHandler handler, InterceptorListener listener, ClassLoader classLoader) {
+        Class proxyClass = createInstanceClass(instance.getClass(), classLoader);
         T proxyObject = newObject(proxyClass);
         InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this, proxyClass, instance, handler, listener);
         ((HandlerAccessor) proxyObject).setHandler(wrapper);
@@ -163,11 +290,15 @@ public class Interceptor {
      * @return byte enhanced instance.
      */
     public <T> T newInstance(Class cls, InterceptorHandler handler) {
-        return newInstance(cls, handler, null);
+        return newInstance(cls, handler, null, null);
     }
 
     public <T> T newInstance(Class cls, InterceptorHandler handler, InterceptorListener listener) {
-        Class proxyClass = createClass(cls);
+        return newInstance(cls, handler, listener, null);
+    }
+
+    public <T> T newInstance(Class cls, InterceptorHandler handler, InterceptorListener listener, ClassLoader classLoader) {
+        Class proxyClass = createInstanceClass(cls, classLoader);
         T proxyObject = newObject(proxyClass);
         InterceptorHandlerWrapper wrapper = null;
         try {
@@ -183,16 +314,26 @@ public class Interceptor {
         return proxyObject;
     }
 
-    protected Class createClass(Class cls) {
+    private Class createInstanceClass(Class cls, ClassLoader classLoader) {
         try {
-            return proxyClasses.get(cls);
+            return proxyClasses.get(cls, () -> {
+                DynamicType.Unloaded unloaded =
+                new ByteBuddy()
+                        .subclass(cls)
+                        .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
+                        .intercept(MethodDelegation.toField(HANDLER_FIELD))
+                        .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
+                        .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
+                        .make();
+                return loadClass(unloaded, cls, classLoader);
+            });
         } catch (ExecutionException e) {
             throw new SystemException(e.getCause());
         }
     }
 
     private <T> T newObject(Class proxyClass) {
-        T proxyObject = null;
+        T proxyObject;
         try {
             proxyObject = (T) proxyClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {

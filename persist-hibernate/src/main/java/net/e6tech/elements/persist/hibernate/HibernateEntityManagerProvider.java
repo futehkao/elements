@@ -46,6 +46,8 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
 
     private Map<String, IdentifierGenerator> identifierGenerators = new LinkedHashMap<>();
 
+    private net.e6tech.elements.common.interceptor.Interceptor interceptor = new net.e6tech.elements.common.interceptor.Interceptor();
+
     @Override
     public void initialize(Resources resources) {
         if (System.getProperty(Context.INITIAL_CONTEXT_FACTORY) == null) {
@@ -59,7 +61,7 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         if (identifierGenerators.size() > 0) {
             Map<String, Class<?>> strategies = new LinkedHashMap<>();
             for (Map.Entry<String, IdentifierGenerator> entry: identifierGenerators.entrySet()) {
-                Class<IdentifierGenerator> cls = net.e6tech.elements.common.interceptor.Interceptor
+                Class<IdentifierGenerator> cls = interceptor
                         .newPrototypeClass((Class<IdentifierGenerator>)entry.getValue().getClass(), entry.getValue());
                 strategies.put(entry.getKey(), cls);
             }

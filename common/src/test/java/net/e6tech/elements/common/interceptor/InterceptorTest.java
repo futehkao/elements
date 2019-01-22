@@ -16,11 +16,20 @@
 
 package net.e6tech.elements.common.interceptor;
 
-import javax.annotation.Nonnull;
-
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.junit.jupiter.api.Test;
+
+import javax.annotation.Nonnull;
+import javax.xml.datatype.DatatypeFactory;
+import javax.xml.datatype.XMLGregorianCalendar;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -108,7 +117,7 @@ public class InterceptorTest {
         Interceptor interceptor = new Interceptor();
         TestClass prototype = new TestClass();
         prototype.setValue(10);
-        Class cls = interceptor.newPrototypeClass(TestClass.class, prototype);
+        Class cls = interceptor.newPrototypeClass(TestClass.class, prototype, null);
         TestClass test = (TestClass) cls.newInstance();
         assertTrue(test.getValue() == 10);
         test.setValue(11);
@@ -144,5 +153,55 @@ public class InterceptorTest {
 
         proxy.methodD("calling method D");
         proxy.protectedMethod("calling protected method");
+    }
+
+    @Test
+    void testBootstrapClass() throws Exception {
+        ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault());
+        XMLGregorianCalendar calendar = DatatypeFactory.newInstance()
+                .newXMLGregorianCalendar(zonedDateTime.getYear(), zonedDateTime.getMonthValue(), zonedDateTime.getDayOfMonth(),
+                        zonedDateTime.getHour(), zonedDateTime.getMinute(), zonedDateTime.getSecond(), zonedDateTime.getNano() / 1000000,
+                        zonedDateTime.getOffset().getTotalSeconds() / 60);
+        Interceptor.getInstance().newInterceptor(calendar, frame -> null );
+    }
+
+    @Test
+    void anonymousClassThreads() throws Exception{
+        long start = System.currentTimeMillis();
+        anonymousClass();
+        System.out.println("" + (System.currentTimeMillis() - start) + "ms");
+
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 2000; i++) {
+            threads.add(new Thread(this::anonymousClass));
+        }
+        start = System.currentTimeMillis();
+        for (Thread thread : threads)
+            thread.start();
+
+        for (Thread thread : threads)
+            thread.join();
+        System.out.println("" + (System.currentTimeMillis() - start) + "ms");
+    }
+
+    @Test
+    void anonymousClass() {
+        X target = new X();
+        Random random = new Random();
+        int n = random.nextInt();
+        Interceptor.getInstance().runAnonymous(target, new X() {{
+            setX(n);
+        }});
+        assertTrue(target.getX() == n);
+    }
+
+    private static class X {
+        private int x;
+        public int getX() {
+            return x;
+        }
+        public void setX(int x) {
+            this.x = x;
+        }
     }
 }

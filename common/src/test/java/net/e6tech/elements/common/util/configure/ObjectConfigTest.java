@@ -53,7 +53,11 @@ public class ObjectConfigTest {
                 "  y:",
                 "    integer: 1",
                 "    integer2: null",
-                "    decimal: 2.01");
+                "    decimal: 2.01",
+                "  map:",
+                "    'key':",
+                "      - 1",
+                "      - 2");
         Map<String, Object> map = load(config);
 
         X x = new X();
@@ -62,7 +66,8 @@ public class ObjectConfigTest {
         assertTrue(x.y.integer == 1);
         assertTrue(x.y.integer2 == 0);
         assertTrue(x.y.decimal.compareTo(new BigDecimal("2.01")) == 0);
-
+        assertTrue(x.map.get("key").size() == 2);
+        assertTrue(x.map.get("key").get(0).equals(1));
 
         config = String.join("\n",
                 "_x.a.b: x.a.b",
@@ -145,6 +150,7 @@ public class ObjectConfigTest {
     public static class X {
         A a;
         Y y;
+        Map<String, List<Integer>> map = new HashMap<>();
 
         public A getA() {
             return a;
@@ -160,6 +166,14 @@ public class ObjectConfigTest {
 
         public void setY(Y y) {
             this.y = y;
+        }
+
+        public Map<String, List<Integer>> getMap() {
+            return map;
+        }
+
+        public void setMap(Map<String, List<Integer>> map) {
+            this.map = map;
         }
     }
 
