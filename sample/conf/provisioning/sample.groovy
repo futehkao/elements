@@ -30,11 +30,11 @@ bootstrap.with {
             { variables && cluster }: {
                 println "booting variables and cluster"
             },
-            variables: "$__dir/../variables.groovy",
+            variables: "$__dir/../environment.groovy",
             cluster: "$__dir/../cluster.groovy"
     ]
     after = [{true}: "$__dir/boot_final.groovy"]
-    defaultEnvironmentFile = "$__dir/../variables.groovy"
+    defaultEnvironmentFile = "$__dir/../environment.groovy"
     // defaultSystemProperties = ...
 }
 

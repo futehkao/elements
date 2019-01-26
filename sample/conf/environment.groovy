@@ -35,6 +35,7 @@ systemProperties {
     'hibernate.generate_statistics' "${hibernateGenerateStatistics}"
     'hibernate.cache.use_second_level_cache' "${hibernateCacheUseSecondLevelCache}"
     'log4j.configurationFile'       "${logConfigFile}"
+    'log4j2.contextSelector'        "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
     "${Logger.logDir}"              "$__dir/../logs"                        // log4j output directory
     'isThreadContextMapInheritable' 'true'                                  // for log4j ThreadContext
     'java.util.logging.manager'     "net.e6tech.elements.common.logging.jul.LogManager"

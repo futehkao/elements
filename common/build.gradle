@@ -17,12 +17,13 @@ dependencies {
     compile 'org.yaml:snakeyaml:1.18'
     compile 'simple-jndi:simple-jndi:0.11.4.1'
     compile 'com.google.code.findbugs:jsr305:3.0.2'
-    compile 'org.apache.logging.log4j:log4j-api:2.10.0'
-    compile 'org.apache.logging.log4j:log4j-core:2.10.0'
-    compile ('org.apache.logging.log4j:log4j-slf4j-impl:2.10.0') {
+    compile 'org.apache.logging.log4j:log4j-api:2.11.1'
+    compile 'org.apache.logging.log4j:log4j-core:2.11.1'
+    compile ('org.apache.logging.log4j:log4j-slf4j-impl:2.11.1') {
         exclude group: 'org.slf4j', module: 'slf4j-api'
     }
-    compile 'org.apache.logging.log4j:log4j-jul:2.10.0'
+    compile 'org.apache.logging.log4j:log4j-jul:2.11.1'
+    compile 'com.lmax:disruptor:3.4.2'
     compile 'org.slf4j:slf4j-api:1.7.25'
     compile 'org.codehaus.groovy:groovy-all:2.4.13:indy'
     compile 'com.google.guava:guava:23.6-jre'
