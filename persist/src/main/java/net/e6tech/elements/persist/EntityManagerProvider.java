@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by futeh.
  */
 public abstract class EntityManagerProvider implements ResourceProvider, Initializable {
+    private static Logger logger = Logger.getLogger();
     private ExecutorService threadPool;
     private NotificationCenter notificationCenter;
     protected EntityManagerFactory emf;
@@ -47,8 +48,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private AtomicInteger ignoreInitialLongTransactions = new AtomicInteger(1);
     private BlockingQueue<EntityManagerMonitor> monitorQueue = new LinkedBlockingQueue<>();
     private final List<EntityManagerMonitor> entityManagerMonitors = new ArrayList<>();
-    private long monitorIdle = 60000;
-    private boolean monitoring = false;
+    private volatile boolean shutdown = false;
 
     public EntityManagerProvider() {
     }
@@ -69,14 +69,6 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     @Inject(optional = true)
     public void setNotificationCenter(NotificationCenter center) {
         this.notificationCenter = center;
-    }
-
-    public long getMonitorIdle() {
-        return monitorIdle;
-    }
-
-    public void setMonitorIdle(long monitorIdle) {
-        this.monitorIdle = monitorIdle;
     }
 
     public Broadcast getBroadcast() {
@@ -137,6 +129,10 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         this.ignoreInitialLongTransactions = new AtomicInteger(n);
     }
 
+    public List<EntityManagerMonitor> getEntityManagerMonitors() {
+        return entityManagerMonitors;
+    }
+
     protected void evictCollectionRegion(EvictCollectionRegion notification) {
     }
 
@@ -147,6 +143,9 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     }
 
     public void initialize(Resources resources) {
+
+        startMonitoring();
+
         emf = Persistence.createEntityManagerFactory(persistenceUnitName, persistenceProperties);
 
         EntityManager em = null;
@@ -198,7 +197,9 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         }
 
         EntityManager em = emf.createEntityManager();
-        EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(em, System.currentTimeMillis() + timeout, new Throwable());
+        EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(threadPool, this,
+                resources,
+                em, System.currentTimeMillis() + timeout, new Throwable());
         if (monitor) {
             monitor(entityManagerMonitor);
         }
@@ -217,17 +218,12 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     // when another monitor shows up, the thread task would resume.
     @SuppressWarnings({"squid:S1188", "squid:S134", "squid:S3776", "squid:S899"})
     private void monitor(EntityManagerMonitor monitor) {
-
         // entityManagerMonitors contains open, committed and aborted entityManagers.
-        synchronized (monitorQueue) {
+        if (!shutdown)
             monitorQueue.offer(monitor);
-            if (monitoring) {
-                return;
-            } else {
-                monitoring = true;
-            }
-        }
+    }
 
+    private void startMonitoring() {
         // starting a thread to monitor
         if (threadPool == null) {
             ThreadGroup group = Thread.currentThread().getThreadGroup();
@@ -239,31 +235,23 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             });
         }
 
-        threadPool.execute(()->{
-            try {
-                while (true) {
-                    synchronized (monitorQueue) {
-                        monitoring = true;
-                    }
-
-                    long start = System.currentTimeMillis();
+        threadPool.execute(()-> {
+            while (!shutdown) {
+                try {
                     long expiration = 0;
-
-                    synchronized (entityManagerMonitors) {
-                        monitorQueue.drainTo(entityManagerMonitors);
-                        Iterator<EntityManagerMonitor> iterator = entityManagerMonitors.iterator();
-                        while (iterator.hasNext()) {
-                            EntityManagerMonitor m = iterator.next();
-                            if (!m.getEntityManager().isOpen()) { // already closed
-                                iterator.remove();
-                            } else if (m.getExpiration() < System.currentTimeMillis()) {
-                                m.rollback();  // rollback
-                                iterator.remove();
-                            } else {
-                                // for find out the shortest sleep time
-                                if (expiration == 0 || m.getExpiration() < expiration)
-                                    expiration = m.getExpiration();
-                            }
+                    monitorQueue.drainTo(entityManagerMonitors);
+                    Iterator<EntityManagerMonitor> iterator = entityManagerMonitors.iterator();
+                    while (iterator.hasNext()) {
+                        EntityManagerMonitor m = iterator.next();
+                        if (!m.getEntityManager().isOpen()) { // already closed
+                            iterator.remove();
+                        } else if (m.getExpiration() < System.currentTimeMillis()) {
+                            iterator.remove();
+                            m.rollback();  // rollback
+                        } else {
+                            // for find out the shortest sleep time
+                            if (expiration == 0 || m.getExpiration() < expiration)
+                                expiration = m.getExpiration();
                         }
                     }
 
@@ -272,15 +260,17 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                         sleep = expiration - System.currentTimeMillis();
                         if (sleep < 0) {
                             // probably due to debugging
-                            if (!entityManagerMonitors.isEmpty()) sleep = 1;
-                            else sleep = 0;
+                            if (!entityManagerMonitors.isEmpty())
+                                sleep = 1;
+                            else
+                                sleep = 0;
                         }
                     }
 
                     EntityManagerMonitor newMonitor = null;
                     try {
                         if (sleep == 0) {
-                            newMonitor = monitorQueue.poll(monitorIdle, TimeUnit.MILLISECONDS);
+                            newMonitor = monitorQueue.take();
                         } else {
                             // What if an EntityManager closed during the sleep?
                             newMonitor = monitorQueue.poll(sleep, TimeUnit.MILLISECONDS);
@@ -290,27 +280,10 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                     }
 
                     if (newMonitor != null) {
-                        synchronized (entityManagerMonitors) {
-                            entityManagerMonitors.add(newMonitor);
-                        }
-                    } else {
-                        // Some thread may just add a monitor at this point so that
-                        // we need to check the monitorQueue size before we break out.
-                        // Also, we need to make sure entityManagerMonitors is empty as well.
-                        synchronized (monitorQueue) {
-                            if (monitorQueue.isEmpty()
-                                    && entityManagerMonitors.isEmpty()
-                                    && System.currentTimeMillis() - start > monitorIdle) {
-                                monitoring = false;
-                                break;
-                            }
-                        }
+                        entityManagerMonitors.add(newMonitor);
                     }
-                }
-            } finally {
-                // in case of some exception, we make sure monitoring is set to false.
-                synchronized (monitorQueue) {
-                    monitoring = false;
+                } catch (Throwable ex) {
+                    logger.error("Unexpected exception in EntityManagerProvider during monitoring", ex);
                 }
             }
         });
@@ -323,12 +296,6 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             em.getTransaction().commit();
             em.clear();
             em.close();
-            // to break out the
-            Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
-            boolean monitor = config.map(EntityManagerConfig::monitor).orElse(monitorTransaction);
-            if (monitor) {
-                monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
-            }
         } catch (InstanceNotFoundException ex) {
             Logger.suppress(ex);
         } finally {
@@ -347,11 +314,6 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             em.getTransaction().rollback();
             em.clear();
             em.close();
-            Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
-            boolean monitor = config.map(EntityManagerConfig::monitor).orElse(monitorTransaction);
-            if (monitor) {
-                monitor(new EntityManagerMonitor(em, System.currentTimeMillis(), new Throwable()));
-            }
         } catch (Exception th) {
             Logger.suppress(th);
         }  finally {
@@ -360,12 +322,10 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     }
 
     protected void cleanup(Resources resources) {
-
     }
 
     @Override
     public void onClosed(Resources resources) {
-
     }
 
     @Override
@@ -373,5 +333,9 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         if (emf.isOpen()) {
             emf.close();
         }
+        shutdown = true;
+    }
+
+    public void cancelQuery(Resources resources) {
     }
 }

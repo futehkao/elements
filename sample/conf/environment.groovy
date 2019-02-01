@@ -16,7 +16,7 @@
 import  net.e6tech.elements.common.logging.Logger
 
 dataSourceMaxPoolSize = 20
-entityManagerTxTimeout = 1200000L
+entityManagerTxTimeout = 1000L
 entityManagerLongTransaction = 2000L
 entityManagerMonitorTransaction = true
 hibernateShowSQL = false

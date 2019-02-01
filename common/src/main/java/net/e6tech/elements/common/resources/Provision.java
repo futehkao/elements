@@ -25,6 +25,7 @@ import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.resources.plugin.PluginPath;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.List;
@@ -183,5 +184,9 @@ public class Provision {
         ResourcesFactory factory = new ResourcesFactory();
         inject(factory);
         return factory;
+    }
+
+    public <T extends Annotation> ResourcesBuilder<T> resourceBuilder(Class<T> cls) {
+        return new ResourcesBuilder<T>(this, cls);
     }
 }

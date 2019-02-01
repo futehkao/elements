@@ -147,4 +147,14 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         }
     }
 
+    public void cancelQuery(Resources resources) {
+        super.cancelQuery(resources);
+        try {
+            SessionImpl session = resources.getInstance(SessionImpl.class);
+            session.cancelQuery();
+        } catch (Exception ex) {
+            // don't care
+        }
+    }
+
 }

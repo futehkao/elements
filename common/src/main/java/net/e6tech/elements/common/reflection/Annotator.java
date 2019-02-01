@@ -259,6 +259,10 @@ public class Annotator implements InvocationHandler {
             return _set(callable, value);
         }
 
+        public AnnotationValue set(Callable<Enum> callable, Enum value) {
+            return _set(callable, value);
+        }
+
         @SuppressWarnings("squid:S00100")
         private <K> AnnotationValue _set(Callable<K> callable, K value) {
             try {

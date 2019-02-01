@@ -17,20 +17,31 @@
 package net.e6tech.elements.persist;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.Resources;
 
 import javax.persistence.EntityManager;
+import java.util.concurrent.ExecutorService;
 
 public class EntityManagerMonitor {
     private static final Logger logger = Logger.getLogger();
 
+    private EntityManagerProvider provider;
+    private Resources resources;
     private EntityManager entityManager;
     private long expiration;
     private Throwable throwable;
+    private ExecutorService threadPool;
+    private Thread originatingThread;
 
-    EntityManagerMonitor(EntityManager entityManager, long expiration, Throwable throwable) {
+    EntityManagerMonitor(ExecutorService threadPool, EntityManagerProvider provider, Resources resources,
+                         EntityManager entityManager, long expiration, Throwable throwable) {
+        this.provider = provider;
+        this.resources = resources;
         this.entityManager = entityManager;
         this.expiration = expiration;
         this.throwable = throwable;
+        this.threadPool = threadPool;
+        this.originatingThread = Thread.currentThread();
     }
 
     public long getExpiration() {
@@ -45,11 +56,29 @@ public class EntityManagerMonitor {
         return entityManager;
     }
 
+    // This method cannot throw an exception
     void rollback() {
-        if (entityManager.isOpen()) {
-            entityManager.getTransaction().setRollbackOnly();
-            entityManager.close();
-            logger.warn("EntityManagerProvider timeout", throwable);
-        }
+        threadPool.execute(() -> {
+            // cancel query
+            try {
+                originatingThread.interrupt();
+                if (entityManager.isOpen()) {
+                    provider.cancelQuery(resources);
+                }
+            } catch (Throwable ex) {
+                logger.warn("Unexpected exception in EntityManagerMonitor cancel query", throwable);
+            }
+
+            // rollback
+            try {
+                if (entityManager.isOpen()) {
+                    entityManager.getTransaction().setRollbackOnly();
+                    entityManager.close();
+                    logger.warn("EntityManagerProvider timeout", throwable);
+                }
+            } catch (Throwable ex) {
+                logger.warn("Unexpected exception in EntityManagerMonitor during rollback", throwable);
+            }
+        });
     }
 }
