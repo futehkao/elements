@@ -21,14 +21,11 @@ import net.e6tech.elements.persist.EntityManagerConfig;
 import net.e6tech.elements.persist.EntityManagerProvider;
 import net.e6tech.sample.BaseCase;
 import org.hibernate.internal.SessionImpl;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.jdbc.MariaDbConnection;
 
 import javax.persistence.EntityManager;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EntityManagerMonitorTest extends BaseCase {
     private Employee employee;

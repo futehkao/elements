@@ -71,7 +71,7 @@ public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends 
             return getShell().getScripting().exec(path);
         } catch (ScriptException e) {
             if (e.getCause() instanceof IOException) {
-                logger.info("Script " + path + " not processed: " + e.getCause().getMessage());
+                logger.info("Script {} not processed: {}", path, e.getCause().getMessage());
             } else {
                 logger.warn("Script not processed due to error.", e);
             }

@@ -186,7 +186,7 @@ public class Scripting {
             // rethrow to let caller handle it, instead of logging erro
             throw new ScriptException(e);
         } catch (ScriptException e) {
-            logger.error("Error eval " + script);
+            logger.error("Error eval {}", script);
             throw e;
         } catch (Exception e) {
             logger.error("Error eval " + script, e);

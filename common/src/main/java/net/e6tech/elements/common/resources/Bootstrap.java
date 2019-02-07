@@ -35,6 +35,7 @@ import java.util.*;
 
 @SuppressWarnings("squid:S3776")
 public class Bootstrap extends GroovyObjectSupport {
+    private static final String LINE_SEPARATOR = "***********************************************************";
     private static Logger logger = Logger.getLogger();
     private static final String PRE_BOOT = "preBoot";
     private static final String POST_BOOT = "postBoot";
@@ -152,7 +153,7 @@ public class Bootstrap extends GroovyObjectSupport {
     }
 
     private void bootMessage(String message) {
-        String line = "***********************************************************";
+        String line = LINE_SEPARATOR;
         if (logger.isInfoEnabled()) {
             logger.info(line);
             logger.info(message);
@@ -347,7 +348,7 @@ public class Bootstrap extends GroovyObjectSupport {
 
         // log4j
         ThreadContext.put(ResourceManager.LOG_DIR_ABBREV, System.getProperty(Logger.logDir));
-        logger.info("-> Log4J log4j.configurationFile=" + System.getProperty("log4j.configurationFile"));
+        logger.info("-> Log4J log4j.configurationFile={}", System.getProperty("log4j.configurationFile"));
 
         if (getVar(PRE_BOOT) != null) {
             Object p = getVar(PRE_BOOT);
@@ -468,7 +469,7 @@ public class Bootstrap extends GroovyObjectSupport {
             resourceManager.getScripting().exec(path);
         } catch (ScriptException e) {
             if (e.getCause() instanceof IOException) {
-                logger.info("-> Script " + path + " not processed: " + e.getCause().getMessage());
+                logger.info("-> Script {} not processed: {}", path, e.getCause().getMessage());
             } else {
                 logger.warn("!! Script not processed due to error.", e);
             }
@@ -540,7 +541,7 @@ public class Bootstrap extends GroovyObjectSupport {
                 exec(value);
             } else {
                 if (logger.isInfoEnabled())
-                    logger.info("    !! Closure returns false, skipped running {}", value.toString());
+                    logger.info("    !! Closure returns false, skipped running {}", value);
             }
             if (logger.isInfoEnabled()) {
                 logger.info("    Done running {}", closure.toString());
@@ -601,32 +602,30 @@ public class Bootstrap extends GroovyObjectSupport {
 
         // resourceManager is a special case
         // that you cannot use component to inject instances.
-        logger.info("***********************************************************");
-        logger.info("Setting up thread pool " + threadPoolName);
-        logger.info("***********************************************************");
+        logger.info(LINE_SEPARATOR);
+        logger.info("Setting up thread pool {}", threadPoolName);
+        logger.info(LINE_SEPARATOR);
         resourceManager.registerBean(threadPoolName, threadPool);
         resourceManager.bind(ThreadPool.class, resourceManager.getBean(threadPoolName));
     }
 
     // send a shutdown message to a server
     public void shutdown(int shutdownPort) {
-        try {
-            Socket socket = new Socket(InetAddress.getLoopbackAddress(), shutdownPort);
+        try (Socket socket = new Socket(InetAddress.getLoopbackAddress(), shutdownPort)) {
             PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
             output.println("shutdown");
             output.flush();
-            socket.close();
         } catch (Exception ex) {
-            logger.warn("No local server found at port=" + shutdownPort);
+            logger.warn("No local server found at port={}", shutdownPort);
         }
         System.exit(0);
     }
 
     // starting a shutdown listener
-    public void startShutdownListener(int shutdownPort) throws IOException {
-        logger.info("***********************************************************");
+    public void startShutdownListener(int shutdownPort) {
+        logger.info(LINE_SEPARATOR);
         logger.info("Starting server shutdown listening thread");
-        logger.info("***********************************************************");
+        logger.info(LINE_SEPARATOR);
         Thread thread = new Thread(() -> {
             try {
                 ServerSocket serverSocket = new ServerSocket(shutdownPort, 0, InetAddress.getLoopbackAddress());

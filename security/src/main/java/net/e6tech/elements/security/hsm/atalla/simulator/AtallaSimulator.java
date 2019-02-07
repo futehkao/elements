@@ -165,7 +165,7 @@ public class AtallaSimulator {
         thread.start();
     }
 
-    @SuppressWarnings({"squid:S134", "squid:S1141", "squid:S2589"})
+    @SuppressWarnings({"squid:S134", "squid:S1141", "squid:S2589", "squid:S2189"})
     protected void startServer() {
         try {
             serverSocket = new ServerSocket(port);

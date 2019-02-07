@@ -156,11 +156,8 @@ public class Rule {
     }
 
     public void run(RuleContext context) {
-        if (_run(context, true) == Failed) {
-            context.setCompleted(false);
-        } else {
-            context.setCompleted(true);
-        }
+        boolean failed = _run(context, true) == Failed;
+        context.setCompleted(!failed);
     }
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S3776"})

@@ -55,9 +55,7 @@ public class ResourcesBuilder<T extends Annotation> {
         if (consumers.isEmpty()) {
             return provision.preOpen(null);
         } else {
-            return provision.preOpen(res -> {
-                consumers.forEach(c -> c.accept(res));
-            });
+            return provision.preOpen(res -> consumers.forEach(c -> c.accept(res)));
         }
     }
 

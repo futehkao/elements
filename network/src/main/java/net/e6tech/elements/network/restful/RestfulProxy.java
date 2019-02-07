@@ -271,7 +271,7 @@ public class RestfulProxy {
                     return Optional.ofNullable(Reflection.getProperty(o, ((Field) a).getName()));
                 }
             } catch(IllegalAccessException | InvocationTargetException e) {
-                //ignore;
+                // ignored
             }
             return Optional.empty();
         }

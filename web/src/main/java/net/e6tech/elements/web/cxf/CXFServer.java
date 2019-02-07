@@ -410,6 +410,7 @@ public class CXFServer implements Initializable, Startable {
         return JMXService.registerIfAbsent(objectName, () -> new Measurement(methodName, "ms", isMeasurement()));
     }
 
+    @SuppressWarnings("squid:S3776")
     void checkInvocation(Method method, Object[] args) {
         Parameter[] params = method.getParameters();
         int idx = 0;

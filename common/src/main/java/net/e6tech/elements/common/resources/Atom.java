@@ -309,7 +309,7 @@ public class Atom implements Map<String, Object> {
                     }
                 }
             } catch (RuntimeException ex) {
-                logger.error("Error running startable component name = " + name);
+                logger.error("Error running startable component name = {}", name);
                 throw ex;
             }
         }
@@ -339,7 +339,7 @@ public class Atom implements Map<String, Object> {
                     }
                 }
             } catch (RuntimeException ex) {
-                logger.error("Error running launched component name = " + name);
+                logger.error("Error running launched component name = {}", name);
                 throw ex;
             }
         }

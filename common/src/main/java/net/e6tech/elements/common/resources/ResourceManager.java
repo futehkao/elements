@@ -667,10 +667,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         getNotificationCenter().getNotificationListeners(notification)
                 .forEach(listener -> {
                     if (!silent)
-                        logger.info("Shutting down " + listener.getDescription() + " ...");
+                        logger.info("Shutting down {} ...", listener.getDescription());
                     listener.onEvent(notification);
                     if (!silent)
-                        logger.info(listener.getDescription() + " is down.");
+                        logger.info("{} is down.", listener.getDescription());
                 });
 
         List<ResourceProvider> reversed = new ArrayList<>();
@@ -680,10 +680,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         Collections.reverse(reversed);
         reversed.forEach(rp -> {
             if (!silent)
-                logger.info("Shutting down " + rp.getDescription() + " ...");
+                logger.info("Shutting down {} ...", rp.getDescription());
             rp.onShutdown();
             if (!silent)
-                logger.info(rp.getDescription() + " is down.");
+                logger.info("{} is down.", rp.getDescription());
         });
     }
 

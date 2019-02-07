@@ -84,8 +84,9 @@ public class Resources implements AutoCloseable, ResourcePool {
         return resourceManager.getVariable(key);
     }
 
-    public void setVariable(String key, Object val) {
+    public Resources setVariable(String key, Object val) {
         state.setVariable(key, val);
+        return this;
     }
 
     public Retry getRetry() {
@@ -133,7 +134,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         return state.getResourceProviders();
     }
 
-    public synchronized void addResourceProvider(ResourceProvider resourceProvider) {
+    public synchronized Resources addResourceProvider(ResourceProvider resourceProvider) {
         getResourceProviders().add(resourceProvider);
         if (isOpen()) {
             resourceProvider.onOpen(this);
@@ -150,60 +151,86 @@ public class Resources implements AutoCloseable, ResourcePool {
         if (isAborted()) {
             resourceProvider.onAbort(this);
         }
+
+        return this;
     }
 
-    public void onCommit(OnCommit onCommit) {
+    public synchronized Resources onCommit(OnCommit onCommit) {
         addResourceProvider(onCommit);
+        return this;
     }
 
-    public void onCommit(Runnable runnable) {
+    public synchronized Resources onCommit(Runnable runnable) {
         OnCommit on = res -> runnable.run();
         onCommit(on);
+        return this;
     }
 
-    public void afterCommit(AfterCommit afterCommit) {
+    public synchronized Resources afterCommit(AfterCommit afterCommit) {
         addResourceProvider(afterCommit);
+        return this;
     }
 
-    public void afterCommit(Runnable runnable) {
+    public synchronized Resources afterCommit(Runnable runnable) {
         AfterCommit after = res -> runnable.run();
         afterCommit(after);
+        return this;
     }
 
-    public void afterAbort(AfterAbort afterAbort) {
-        addResourceProvider(afterAbort);
+    public synchronized Resources onCommitOrAbort(Runnable runnable) {
+        onCommit(runnable);
+        onAbort(runnable);
+        return this;
     }
 
-    public void afterAbort(Runnable runnable) {
-        AfterAbort after = res -> runnable.run();
-        afterAbort(after);
-    }
-
-    public synchronized void onOpen(OnOpen onOpen) {
+    public synchronized Resources onOpen(OnOpen onOpen) {
         addResourceProvider(onOpen);
+        return this;
     }
 
-    public synchronized void onOpen(Runnable runnable) {
+    public synchronized Resources onOpen(Runnable runnable) {
         OnOpen on = res -> runnable.run();
         onOpen(on);
+        return this;
     }
 
-    public synchronized void onAbort(OnAbort onAbort) {
+    public synchronized Resources onAbort(OnAbort onAbort) {
         addResourceProvider(onAbort);
+        return this;
     }
 
-    public synchronized void onAbort(Runnable runnable) {
+    public synchronized Resources onAbort(Runnable runnable) {
         OnAbort on = res -> runnable.run();
         onAbort(on);
+        return this;
     }
 
-    public synchronized void onClosed(OnClosed onClosed) {
+    public synchronized Resources afterAbort(AfterAbort afterAbort) {
+        addResourceProvider(afterAbort);
+        return this;
+    }
+
+    public synchronized Resources afterAbort(Runnable runnable) {
+        AfterAbort after = res -> runnable.run();
+        afterAbort(after);
+        return this;
+    }
+
+    public synchronized Resources afterCommitOrAbort(Runnable runnable) {
+        afterCommit(runnable);
+        afterAbort(runnable);
+        return this;
+    }
+
+    public synchronized Resources onClosed(OnClosed onClosed) {
         addResourceProvider(onClosed);
+        return this;
     }
 
-    public synchronized void onClosed(Runnable runnable) {
+    public synchronized Resources onClosed(Runnable runnable) {
         OnClosed on = res -> runnable.run();
         onClosed(on);
+        return this;
     }
 
     public synchronized boolean remove(ResourceProvider provider) {
@@ -242,8 +269,9 @@ public class Resources implements AutoCloseable, ResourcePool {
         return state.getModule();
     }
 
-    public void addModule(Module module) {
+    public Resources addModule(Module module) {
         state.addModule(module);
+        return this;
     }
 
     <T> Binding<T> getBinding(Class<T> cls) {
@@ -273,7 +301,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public <T> boolean isBound(Class<T> cls) {
-        return (getModule().getBoundInstance(cls) != null) ? true : false;
+        return getModule().getBoundInstance(cls) != null;
     }
 
     public <T> T bind(Class<T> cls, T resource) {
@@ -415,15 +443,16 @@ public class Resources implements AutoCloseable, ResourcePool {
     // configurator can be changed by preOpen
     // whereas initialConfigurator records the initial configuration values when Resources is opeen
     // It is then used in replay.
-    public void configure(Configurator configurator) {
+    public Resources configure(Configurator configurator) {
         this.configurator.putAll(configurator);
         if (this.initialConfigurator == null) {
             this.initialConfigurator = new Configurator();
         }
         this.initialConfigurator.putAll(configurator);
+        return this;
     }
 
-    public synchronized void onOpen() {
+    public synchronized Resources onOpen() {
         // state.initModules(this); // MUST initialize injector first by calling initModules
         if (!isOpen()) {
             state.setState(ResourcesState.State.OPEN);
@@ -448,6 +477,7 @@ public class Resources implements AutoCloseable, ResourcePool {
                 throw ex;
             }
         }
+        return this;
     }
 
     protected <T extends Resources, R, E extends Exception> R replay(Exception th, Replay<T, R, E> replay) {
@@ -591,10 +621,11 @@ public class Resources implements AutoCloseable, ResourcePool {
         return ret;
     }
 
-    public synchronized void abort() {
+    @SuppressWarnings("squid:S3776")
+    public synchronized Resources abort() {
         try {
             if (resourceManager == null)
-                return;
+                return this;
 
             if (!isAborted()) {
                 for (int i = 0; i < state.getResourceProviders().size(); i++) {
@@ -631,6 +662,7 @@ public class Resources implements AutoCloseable, ResourcePool {
             // and we have to set it to ABORTED again.
             state.setState(ResourcesState.State.ABORTED);
         }
+        return this;
     }
 
     public void close() throws Exception {

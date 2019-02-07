@@ -79,7 +79,7 @@ public class SecurityAnnotationEngine {
         }
 
         if (methodMap.isEmpty()) {
-            logger.warn("The roles map is empty, the service object is not protected: " + cls.getName());
+            logger.warn("The roles map is empty, the service object is not protected: {}", cls.getName());
         }
 
         scannedClassMap.put(cls.getName(), methodMap);

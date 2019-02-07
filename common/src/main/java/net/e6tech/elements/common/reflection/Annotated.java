@@ -180,7 +180,7 @@ public class Annotated<R, A extends Annotation> {
                 try {
                     value = getter.invoke(target);
                 } catch (Throwable throwable) {
-
+                    // ignore
                 }
             }
             return value;
@@ -193,7 +193,7 @@ public class Annotated<R, A extends Annotation> {
                 try {
                     setter.invoke(target, value);
                 } catch (Throwable throwable) {
-
+                    // ignore
                 }
             }
         }
@@ -228,6 +228,7 @@ public class Annotated<R, A extends Annotation> {
                 try {
                     value = (E) method.invoke(e.annotation);
                 } catch (Exception e1) {
+                    // ignored
                 }
                 if (value != null) {
                     List<Entry<A>> list = annotationValues.computeIfAbsent(value, key2 -> new ArrayList<>());
@@ -303,7 +304,7 @@ public class Annotated<R, A extends Annotation> {
         public Accessor<A, E, V> set(E annotatedValue, Object value) {
             Map<E, List<Entry<A>>> result = lookup.find(annotatedValue);
             List<Entry<A>> list = result.get(annotatedValue);
-            if (list != null && list.size() > 0) {
+            if (list != null && !list.isEmpty()) {
                 list.get(0).set(target, value);
             }
             return this;

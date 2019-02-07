@@ -188,7 +188,7 @@ public class DBVaultStore implements VaultStore {
 
     @Override
     public void close() throws IOException {
-        if (dataSource != null && dataSource instanceof Closeable) {
+        if (dataSource instanceof Closeable) {
             Closeable closeable = (Closeable) dataSource;
             closeable.close();
         }

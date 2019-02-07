@@ -41,7 +41,7 @@ class SharedResourceProvider extends SingletonResourceProvider {
     }
 
     @Override
-    @SuppressWarnings("squid:S1188")
+    @SuppressWarnings({"squid:S1188", "squid:S3776"})
     public Object getInstance(Message m) {
         Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
         if (proxy == null) {

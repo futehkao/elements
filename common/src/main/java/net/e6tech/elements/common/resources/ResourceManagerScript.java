@@ -75,7 +75,7 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
                         Atom atom = (Atom) outerClosure.getDelegate();
                         Object value = atom.get(name);
                         if (value == null) {
-                            logger.warn("component(" + atom.getName() + ")" + " trying to insert Closure with no instance named " + name);
+                            logger.warn("component({})" + " trying to insert Closure with no instance named {}", atom.getName(), name);
                         }
                         return atom.put(name, closure);
                     } else {
@@ -88,7 +88,6 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
                 throw ex;
             }
         } catch (Exception ex) {
-            logger.debug(ex.getMessage(), ex);
             throw new SystemException(ex);
         }
     }
