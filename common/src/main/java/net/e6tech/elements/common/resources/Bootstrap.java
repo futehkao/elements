@@ -544,7 +544,7 @@ public class Bootstrap extends GroovyObjectSupport {
                     logger.info("    !! Closure returns false, skipped running {}", value);
             }
             if (logger.isInfoEnabled()) {
-                logger.info("    Done running {}", closure.toString());
+                logger.info("    Done running {}", closure);
             }
         } else {
             Object on = expando.getProperty(key.toString());

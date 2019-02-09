@@ -13,6 +13,7 @@ CREATE TABLE sample.employee(
     last_name   VARCHAR(32)     NOT NULL,
     gender      CHAR(1)  NOT NULL,
     hire_date   VARCHAR(8)      NOT NULL,
+    additional_info varchar(200) NULL,
     PRIMARY KEY (id)
 );
 

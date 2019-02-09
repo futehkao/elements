@@ -169,7 +169,6 @@ public class KeyServer {
         } catch(RuntimeException ex) {
             throw ex;
         }  catch (Exception ex) {
-            logger.warn("" + action, ex);
             throw new SystemException(ex);
         }
     }

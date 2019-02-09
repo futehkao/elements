@@ -79,7 +79,6 @@ public class BinarySearchList<T extends Comparable> implements Iterable<T> {
         Comparable candidate = get(index);
         if (candidate.compareTo(cmp) == 0) {
             sortedList.add(index, cmp);
-            return;
         } else if (candidate.compareTo(cmp) > 0) { // next candidate needs to be of lower index
             privateAdd(min, (max + min) / 2, cmp); // because (max + min + 1)/2 is biased toward upper value which may end up
                                              // being equal to max

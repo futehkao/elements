@@ -39,6 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class InterceptorTest {
 
+    private int a = 0;
+
     @Test
     public void basic() throws Exception {
         Interceptor interceptor2 = new Interceptor();
@@ -193,9 +195,11 @@ public class InterceptorTest {
             setX(n);
             setY(n);
             setZ(n);
+            a = getX();
         }});
 
         assertTrue(target.getX() == n);
+        assertTrue(a == target.getX());
     }
 
     private static class X {

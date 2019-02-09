@@ -149,7 +149,7 @@ public class Job implements Initializable, Startable, LaunchListener {
 
     public void start() {
         try {
-            logger.info("Scheduled job=" + getName());
+            logger.info("Scheduled job={}", getName());
             init();
             JobDetail jobDetail = newJobDetail();
             CronTrigger trigger = newCronTrigger();

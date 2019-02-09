@@ -44,6 +44,7 @@ public class Password {
             builder.append(ch);
         builder.append("!@#$%^&*-_+=~|<>");
         String charSet = builder.toString();
+
         Random random = new Random();
         int len = min + random.nextInt(max - min);
         char[] password = new char[len];

@@ -153,9 +153,8 @@ public class AtallaSimulator {
 
     public void start() {
         if (threadPool == null) {
-            ThreadGroup group = Thread.currentThread().getThreadGroup();
             threadPool = Executors.newCachedThreadPool(runnable -> {
-                Thread thread = new Thread(group, runnable, "AtallaSimulator");
+                Thread thread = new Thread(null, runnable, "AtallaSimulator");
                 thread.setName("AtallaSimulator-" + thread.getId());
                 thread.setDaemon(true);
                 return thread;

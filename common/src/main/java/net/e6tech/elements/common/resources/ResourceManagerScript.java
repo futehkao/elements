@@ -159,7 +159,7 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
             getShell().addCleanup(() -> {
                 clonedClosure.setDelegate(null);
                 Object owner = clonedClosure.getOwner();
-                if (owner != null && owner instanceof Closure) {
+                if (owner instanceof Closure) {
                     ((Closure) owner).setDelegate(null);
                 }
             });

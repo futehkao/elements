@@ -19,6 +19,7 @@ package net.e6tech.sample.entity;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.persist.criteria.Select;
 import net.e6tech.sample.BaseCase;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,8 @@ import org.junit.jupiter.api.Test;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,6 +48,7 @@ class PersistenceTest extends BaseCase {
         employee.setGender('M');
         employee.setBirthDate("19701101");
         employee.setHireDate("20160101");
+        employee.setAdditionalInfo("info-" + System.currentTimeMillis());
 
         department = new Department();
         department.setName("Test");
@@ -53,7 +57,6 @@ class PersistenceTest extends BaseCase {
     @Test
     void testInsert() {
         provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
-            res.inject(new Object());
             em.persist(employee);
         });
 
@@ -99,5 +102,19 @@ class PersistenceTest extends BaseCase {
             Department d = em.find(Department.class, department.getId());
             assertTrue(d.getEmployees().size() == size);
         });
+    }
+
+    @Test
+    void testIsNull() {
+        provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
+            employee.setAdditionalInfo(null);
+            em.persist(employee);
+        });
+
+        provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
+            List<Employee> list = Select.create(em, Employee.class).where(e -> e.setAdditionalInfo(null)).getResultList();
+            assertTrue(list.size() > 0);
+        });
+
     }
 }

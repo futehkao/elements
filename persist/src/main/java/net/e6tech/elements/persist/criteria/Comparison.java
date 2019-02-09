@@ -27,11 +27,15 @@ import javax.persistence.criteria.Predicate;
 public enum Comparison {
     equal {
         Predicate compare(CriteriaBuilder builder, Expression expression, Object object) {
+            if (object == null)
+                return builder.isNull(expression);
             return builder.equal(expression, object);
         }
     },
     not_equal {
         Predicate compare(CriteriaBuilder builder, Expression expression, Object object) {
+            if (object == null)
+                return builder.isNotNull(expression);
             return builder.notEqual(expression, object);
         }
     },

@@ -18,8 +18,6 @@ package net.e6tech.elements.common.interceptor;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
@@ -38,21 +36,16 @@ import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.*;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 /**
  * Created by futeh.
  */
 public class Interceptor {
+    private static int JVM_VERSION = 0;
+
     private static final String HANDLER_FIELD = "handler";
 
     private static Interceptor instance = new Interceptor();
@@ -80,6 +73,16 @@ public class Interceptor {
             .initialCapacity(initialCapacity)
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .build();
+
+    static {
+        String version = System.getProperty("java.version");
+        int firstIdx = version.indexOf('.');
+        JVM_VERSION = Integer.valueOf(version.substring(0, version.indexOf('.')));
+        if (JVM_VERSION == 1) {
+            int secondIdx = version.indexOf('.', firstIdx + 1);
+            JVM_VERSION = Integer.valueOf(version.substring(firstIdx + 1, secondIdx));
+        }
+    }
 
     public int getInitialCapacity() {
         return initialCapacity;
@@ -186,13 +189,11 @@ public class Interceptor {
     }
 
     private <T> DynamicType.Builder<T> newSingletonBuilder(Class<T> cls) {
-        DynamicType.Builder<T> builder =
-                new ByteBuddy()
-                        .subclass(cls)
-                        .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.named("finalize").and(ElementMatchers.hasParameters(ElementMatchers.none())))))
-                        .intercept(MethodDelegation.toField(HANDLER_FIELD))
-                        .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE, Ownership.STATIC);
-        return builder;
+        return new ByteBuddy()
+                .subclass(cls)
+                .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.named("finalize").and(ElementMatchers.hasParameters(ElementMatchers.none())))))
+                .intercept(MethodDelegation.toField(HANDLER_FIELD))
+                .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE, Ownership.STATIC);
     }
 
     /**
@@ -210,9 +211,16 @@ public class Interceptor {
         try {
             AnonymousDescriptor descriptor = anonymousClasses.get(anonymousClass, () -> {
                 DynamicType.Builder builder = newSingletonBuilder((Class<T>) anonymousClass);
-                Class p = builder.make()
-                        .load(anonymousClass.getClassLoader(), ClassLoadingStrategy.Default.INJECTION)
-                        .getLoaded();
+                Class p;
+                if (JVM_VERSION > 8) {
+                    p = builder.make()
+                            .load(anonymousClass.getClassLoader(), ClassLoadingStrategy.Default.UsingLookup.of(MethodHandles.lookup()))
+                            .getLoaded();
+                } else {
+                    p = builder.make()
+                            .load(anonymousClass.getClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                            .getLoaded();
+                }
                 Field field = p.getDeclaredField(HANDLER_FIELD);
                 field.setAccessible(true);
                 InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
@@ -250,7 +258,7 @@ public class Interceptor {
         Class[] classes;
         Constructor constructor;
 
-        final void construct(final Object anonymous) throws Exception {
+        final void construct(final Object anonymous) throws IllegalAccessException, InvocationTargetException, InstantiationException {
             Object[] values = new Object[fields.length];
             for (int i = 0; i < values.length; i++)
                 values[i] = fields[i].get(anonymous);

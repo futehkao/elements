@@ -30,6 +30,7 @@
         <property name="birthDate" column="birth_date" />
         <property name="hireDate" column="hire_date" />
         <property name="gender" column="gender" />
+        <property name="additionalInfo" column="additional_info" />
     </class>
 
     <class name="net.e6tech.sample.entity.Department" table="department">

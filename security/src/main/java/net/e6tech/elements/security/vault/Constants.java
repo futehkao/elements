@@ -22,6 +22,7 @@ import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 /**
  * Created by futeh on 1/3/16.
  */
+@SuppressWarnings("squid:S2068")
 public class Constants {
 
     public static final String TYPE = "type";

@@ -187,6 +187,6 @@ public class Provision {
     }
 
     public <T extends Annotation> ResourcesBuilder<T> resourceBuilder(Class<T> cls) {
-        return new ResourcesBuilder<T>(this, cls);
+        return new ResourcesBuilder<>(this, cls);
     }
 }

@@ -224,19 +224,13 @@ public class PluginManager {
 
     public synchronized <T extends Plugin> void add(PluginPath<T> path, T singleton) {
         plugins.put(path, singleton);
-        if (singleton.isPrototype())
-            resourceManager.inject(singleton, false);
-        else
-            resourceManager.inject(singleton, true);
+        resourceManager.inject(singleton, !singleton.isPrototype());
         singleton.initialize(path);
     }
 
     public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, U singleton) {
         defaultPlugins.put(cls, singleton);
-        if (singleton.isPrototype())
-            resourceManager.inject(singleton, false);
-        else
-            resourceManager.inject(singleton, true);
+        resourceManager.inject(singleton, !singleton.isPrototype());
         singleton.initialize(PluginPath.of(cls, DEFAULT_PLUGIN));
     }
 

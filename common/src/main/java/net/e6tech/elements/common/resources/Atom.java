@@ -89,7 +89,6 @@ public class Atom implements Map<String, Object> {
                     resourceManager.exec(((List) value).toArray(new Object[0]));
                 }
             } catch (RuntimeException e) {
-                logger.trace(e.getMessage(), e);
                 throw new NestedScriptException(e.getCause());
             }
         });
@@ -669,8 +668,7 @@ public class Atom implements Map<String, Object> {
             // no logging as it is done by the nested script.
             throw th;
         } catch (Exception th) {
-            logger.error("Component name=" + getName() + " has issues", th);
-            throw new SystemException(th);
+            throw new SystemException("Component name=" + getName() + " has issues", th);
         }
 
         return instance;

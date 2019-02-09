@@ -189,7 +189,6 @@ public class Scripting {
             logger.error("Error eval {}", script);
             throw e;
         } catch (Exception e) {
-            logger.error("Error eval " + script, e);
             throw new ScriptException(e.getMessage());
         } finally {
             if (reader != null)
@@ -312,7 +311,7 @@ public class Scripting {
                 Closure closure = (Closure) obj;
                 closure.setDelegate(null);
                 Object owner = closure.getOwner();
-                if (owner != null && owner instanceof Closure) {
+                if (owner instanceof Closure) {
                     ((Closure) owner).setDelegate(null);
                 }
             }
@@ -479,7 +478,7 @@ public class Scripting {
                 try {
                     return scriptEngine.eval(script, scriptContext);
                 } catch (ScriptException e) {
-                    logger.error("Error eval " + script);
+                    logger.error("Error eval {}", script);
                     throw e;
                 }
             }

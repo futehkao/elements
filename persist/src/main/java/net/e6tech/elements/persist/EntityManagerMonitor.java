@@ -57,6 +57,7 @@ public class EntityManagerMonitor {
     }
 
     // This method cannot throw an exception
+    @SuppressWarnings("squid:S1181")
     void rollback() {
         threadPool.execute(() -> {
             // cancel query

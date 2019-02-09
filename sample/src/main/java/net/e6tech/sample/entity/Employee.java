@@ -41,6 +41,8 @@ public class Employee {
     private String hireDate;
     @Column(name = "gender")
     private char gender;
+    @Column(name = "additional_info")
+    private String additionalInfo;
 
     public Long getId() {
         return id;
@@ -88,5 +90,13 @@ public class Employee {
 
     public void setGender(char gender) {
         this.gender = gender;
+    }
+
+    public String getAdditionalInfo() {
+        return additionalInfo;
+    }
+
+    public void setAdditionalInfo(String additionalInfo) {
+        this.additionalInfo = additionalInfo;
     }
 }

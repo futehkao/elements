@@ -115,8 +115,8 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
 
         // cannot call resources.inject(interceptor), resources is not fully open yet
         if (session.getInterceptor() instanceof PersistenceInterceptor) {
-            PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
-            interceptor.setResources(resources);
+            PersistenceInterceptor i = (PersistenceInterceptor) session.getInterceptor();
+            i.setResources(resources);
         }
     }
 
@@ -125,8 +125,8 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         try {
             SessionImpl session = resources.getInstance(SessionImpl.class);
             if (session.getInterceptor() instanceof PersistenceInterceptor) {
-                PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
-                resources.inject(interceptor);
+                PersistenceInterceptor i = (PersistenceInterceptor) session.getInterceptor();
+                resources.inject(i);
             }
         } catch (InstanceNotFoundException ex) {
             // don't care
@@ -139,14 +139,15 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
         try {
             SessionImpl session = resources.getInstance(SessionImpl.class);
             if (session.getInterceptor() instanceof PersistenceInterceptor) {
-                PersistenceInterceptor interceptor = (PersistenceInterceptor) session.getInterceptor();
-                interceptor.cleanup(resources);
+                PersistenceInterceptor i = (PersistenceInterceptor) session.getInterceptor();
+                i.cleanup(resources);
             }
         } catch (InstanceNotFoundException ex) {
             // don't care
         }
     }
 
+    @Override
     public void cancelQuery(Resources resources) {
         super.cancelQuery(resources);
         try {

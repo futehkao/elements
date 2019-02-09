@@ -34,7 +34,7 @@ dependencies {
     compile 'com.fasterxml.jackson.module:jackson-module-jaxb-annotations:2.9.3'
     compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.3'
     // compile 'org.javassist:javassist:3.22.0-CR1'
-    compile 'net.bytebuddy:byte-buddy:1.8.13'
+    compile 'net.bytebuddy:byte-buddy:1.9.9'
     // compile 'org.ow2.asm:asm:5.2'
     compile 'org.ehcache:ehcache:3.4.0'
     compile 'javax.cache:cache-api:1.0.0'

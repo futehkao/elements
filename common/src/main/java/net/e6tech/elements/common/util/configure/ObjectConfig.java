@@ -61,7 +61,7 @@ public class ObjectConfig {
         this.prefix = (prefix == null) ? "" : prefix.trim();
 
         // trim out tailing '.'
-        while (this.prefix.length() > 0 && this.prefix.charAt(prefix.length() - 1) == '.') {
+        while (this.prefix.length() > 0 && this.prefix.charAt(this.prefix.length() - 1) == '.') {
             this.prefix = this.prefix.substring(0, this.prefix.length() - 1).trim();
         }
 
@@ -105,6 +105,7 @@ public class ObjectConfig {
                 .creationListener(instanceCreationListener);
     }
 
+    @SuppressWarnings("squid:S3776")
     public void configure(Map<?,?> map) throws Exception {
         if (instance instanceof Map) {
             configureMap(map);
@@ -207,7 +208,6 @@ public class ObjectConfig {
                 newChild(instance, null).configureMap(asMap(map.get(key)));
             }
         }
-        return;
     }
 
     private Object resolve(String value) {
