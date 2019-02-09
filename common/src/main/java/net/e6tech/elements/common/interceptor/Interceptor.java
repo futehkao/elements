@@ -44,7 +44,7 @@ import java.util.concurrent.ExecutionException;
  * Created by futeh.
  */
 public class Interceptor {
-    private static int JVM_VERSION = 0;
+    private static final int JVM_VERSION;
 
     private static final String HANDLER_FIELD = "handler";
 
@@ -77,11 +77,12 @@ public class Interceptor {
     static {
         String version = System.getProperty("java.version");
         int firstIdx = version.indexOf('.');
-        JVM_VERSION = Integer.valueOf(version.substring(0, version.indexOf('.')));
-        if (JVM_VERSION == 1) {
+        int verNumber = Integer.parseInt(version.substring(0, version.indexOf('.')));
+        if (verNumber == 1) {
             int secondIdx = version.indexOf('.', firstIdx + 1);
-            JVM_VERSION = Integer.valueOf(version.substring(firstIdx + 1, secondIdx));
+            verNumber = Integer.parseInt(version.substring(firstIdx + 1, secondIdx));
         }
+        JVM_VERSION = verNumber;
     }
 
     public int getInitialCapacity() {
@@ -226,7 +227,7 @@ public class Interceptor {
                 InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
                         p,
                         null,
-                        ctx -> {
+                        ctx -> { // the use of anonymousThreadLocal is necessary because the wrapper is only created once and cached.
                             Object t = anonymousThreadLocal.get();
                             return ctx.invoke(t);},
                         null);
@@ -244,6 +245,7 @@ public class Interceptor {
                 desc.constructor = p.getDeclaredConstructor(desc.classes);
                 return desc;
             });
+
             anonymousThreadLocal.set(target);
             descriptor.construct(anonymous);
         } catch (Exception e) {
