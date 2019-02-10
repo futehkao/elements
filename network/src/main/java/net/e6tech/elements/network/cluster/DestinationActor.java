@@ -38,7 +38,7 @@ class DestinationActor extends AbstractActor {
 
     public DestinationActor(Subscriber subscriber) {
         this.subscriber = subscriber;
-        ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
+        ActorRef mediator = DistributedPubSub.lookup().get(getContext().system()).mediator();
         mediator.tell(new DistributedPubSubMediator.Put(getSelf()), getSelf());
     }
 

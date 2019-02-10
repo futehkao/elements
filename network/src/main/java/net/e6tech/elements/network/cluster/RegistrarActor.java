@@ -32,7 +32,7 @@ import java.util.Map;
  * Created by futeh.
  */
 class RegistrarActor extends AbstractActor {
-    private Cluster cluster = Cluster.get(getContext().system());
+    private Cluster cluster = Cluster.lookup().get(getContext().system());
     private Map<String, Router> routes = new HashMap<>();
     private Map<ActorRef, List<String>> actors = new HashMap<>();
     private Registry registry;

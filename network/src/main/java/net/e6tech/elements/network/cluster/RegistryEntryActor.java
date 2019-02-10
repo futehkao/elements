@@ -41,7 +41,7 @@ import akka.pattern.Patterns;
  */
 class RegistryEntryActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-    Cluster cluster = Cluster.get(getContext().system());
+    Cluster cluster = Cluster.lookup().get(getContext().system());
     Events.Registration registration;
     ActorRef workPool;
 

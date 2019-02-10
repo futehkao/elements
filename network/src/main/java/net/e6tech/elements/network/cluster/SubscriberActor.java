@@ -36,7 +36,7 @@ class SubscriberActor extends AbstractActor {
 
     public SubscriberActor(String topic, Subscriber subscriber) {
         this.subscriber = subscriber;
-        ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
+        ActorRef mediator = DistributedPubSub.lookup().get(getContext().system()).mediator();
         mediator.tell(new DistributedPubSubMediator.Subscribe(topic, getSelf()), getSelf());
     }
 

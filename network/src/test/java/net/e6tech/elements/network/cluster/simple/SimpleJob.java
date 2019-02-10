@@ -28,7 +28,7 @@ import java.util.List;
 
 public class SimpleJob extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-    Cluster cluster = Cluster.get(getContext().system());
+    Cluster cluster = Cluster.lookup().get(getContext().system());
     List<ActorRef> actors = new ArrayList<>();
 
     @Override

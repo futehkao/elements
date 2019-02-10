@@ -40,9 +40,21 @@ import java.util.function.Consumer;
 @SuppressWarnings({"squid:S1444", "squid:ClassVariableVisibilityCheck"})
 public class Provision {
 
+    public static final int JVM_VERSION;
     public static Integer cacheBuilderConcurrencyLevel = 32;
 
     private ResourceManager resourceManager;
+
+    static {
+        String version = System.getProperty("java.version");
+        int firstIdx = version.indexOf('.');
+        int verNumber = Integer.parseInt(version.substring(0, version.indexOf('.')));
+        if (verNumber == 1) {
+            int secondIdx = version.indexOf('.', firstIdx + 1);
+            verNumber = Integer.parseInt(version.substring(firstIdx + 1, secondIdx));
+        }
+        JVM_VERSION = verNumber;
+    }
 
     public Provision load(Map<String, Object> map) {
         Class cls = getClass();

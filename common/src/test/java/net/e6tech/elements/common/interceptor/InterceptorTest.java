@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import javax.annotation.Nonnull;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
+import java.lang.invoke.MethodHandles;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -189,9 +190,10 @@ public class InterceptorTest {
     @Test
     void anonymousClass() {
         X target = new X();
+        target.setN(1);
         Random random = new Random();
         int n = random.nextInt();
-        Interceptor.getInstance().runAnonymous(target, new X() {{
+        Interceptor.getInstance().runAnonymous(MethodHandles.lookup(), target, new X() {{
             setX(n);
             setY(n);
             setZ(n);
@@ -200,15 +202,22 @@ public class InterceptorTest {
 
         assertTrue(target.getX() == n);
         assertTrue(a == target.getX());
+        assertTrue(target.getN() == 1);
     }
 
-    private static class X {
+    private static class X extends Y {
         private int x;
         private int y;
         private int z;
+
+        public X() {
+            super();
+        }
+
         public int getX() {
             return x;
         }
+
         public void setX(int x) {
             this.x = x;
         }
@@ -227,6 +236,22 @@ public class InterceptorTest {
 
         public void setZ(int z) {
             this.z = z;
+        }
+    }
+
+    private static class Y {
+        private int n;
+
+        public Y() {
+            setN(10);
+        }
+
+        public int getN() {
+            return n;
+        }
+
+        public void setN(int n) {
+            this.n = n;
         }
     }
 }

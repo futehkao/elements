@@ -29,7 +29,7 @@ import javax.persistence.criteria.Path;
  */
 public abstract class Handler implements InterceptorHandler {
 
-    static Interceptor interceptor = Interceptor.getInstance();
+    static Interceptor interceptor = new Interceptor();
 
     private EntityManager entityManager;
     private CriteriaBuilder builder;

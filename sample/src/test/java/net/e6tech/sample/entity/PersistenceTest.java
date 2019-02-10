@@ -16,9 +16,11 @@
 
 package net.e6tech.sample.entity;
 
+import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.persist.EntityManagerConfig;
 import net.e6tech.elements.persist.criteria.Select;
 import net.e6tech.sample.BaseCase;
 
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -80,10 +83,14 @@ class PersistenceTest extends BaseCase {
     @Test
     void testInsertDepartment() {
 
-        provision.open().commit(EntityManager.class, (em) -> {
+        provision.resourceBuilder(EntityManagerConfig.class)
+                .annotate(c -> c::timeoutExtension, 100000L)
+                .open().commit(EntityManager.class, (em) -> {
             try {
-                Department d = (Department) em.createQuery("select d from Department d where d.name = :name")
-                        .setParameter("name", department.getName())
+                Department d = Select.create(em, Department.class)
+                        .where(new Department() {{
+                            setName(department.getName());
+                        }})
                         .getSingleResult();
                 department = d;
             } catch (NoResultException ex) {
@@ -112,9 +119,11 @@ class PersistenceTest extends BaseCase {
         });
 
         provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
-            List<Employee> list = Select.create(em, Employee.class).where(e -> e.setAdditionalInfo(null)).getResultList();
+            List<Employee> list = Select.create(em, Employee.class)
+                    .where(new Employee() {{
+                        setAdditionalInfo(null);
+                    }}).getResultList();
             assertTrue(list.size() > 0);
         });
-
     }
 }

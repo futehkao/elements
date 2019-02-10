@@ -33,7 +33,7 @@ import java.util.Optional;
 
 public class SimpleActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-    Cluster cluster = Cluster.get(getContext().system());
+    Cluster cluster = Cluster.lookup().get(getContext().system());
 
     //subscribe to cluster changes
     @Override

@@ -34,7 +34,7 @@ class MessagingActor extends AbstractActor {
     private static final String DESTINATION_PREFIX = "destination-";
 
     // activate the extension
-    ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
+    ActorRef mediator = DistributedPubSub.lookup().get(getContext().system()).mediator();
     Map<String, Map<Subscriber, ActorRef>> subscribers = new HashMap<>();
     Map<String, ActorRef> destinations = new HashMap<>();
 

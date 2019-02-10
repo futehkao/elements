@@ -22,6 +22,7 @@ import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.dynamic.loading.ClassInjector;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.FieldAccessor;
 import net.bytebuddy.implementation.MethodDelegation;
@@ -31,6 +32,7 @@ import net.bytebuddy.implementation.bind.annotation.Origin;
 import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import net.bytebuddy.implementation.bind.annotation.This;
 import net.bytebuddy.matcher.ElementMatchers;
+import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
@@ -39,13 +41,12 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by futeh.
  */
 public class Interceptor {
-    private static final int JVM_VERSION;
-
     private static final String HANDLER_FIELD = "handler";
 
     private static Interceptor instance = new Interceptor();
@@ -53,36 +54,19 @@ public class Interceptor {
     private static ThreadLocal<Object> anonymousThreadLocal = new ThreadLocal<>();
 
     private int initialCapacity = 100;
+    private int maximumSize = 1000;
+    private long expiration = 60 * 60 * 1000L; // one hour
+    private Cache<Class, Class> proxyClasses;
+    private Cache<Class, Class> singletonClasses;
+    private Cache<Class, AnonymousDescriptor> anonymousClasses;
+    private Cache<Class, Class> prototypeClasses;
 
-    private Cache<Class, Class> proxyClasses = CacheBuilder.newBuilder()
-            .initialCapacity(initialCapacity)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .build();
+    public static Interceptor getInstance() {
+        return instance;
+    }
 
-    private Cache<Class, Class> singletonClasses = CacheBuilder.newBuilder()
-            .initialCapacity(initialCapacity)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .build();
-
-    private Cache<Class, AnonymousDescriptor> anonymousClasses = CacheBuilder.newBuilder()
-            .initialCapacity(initialCapacity)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .build();
-
-    private Cache<Class, Class> prototypeClasses = CacheBuilder.newBuilder()
-            .initialCapacity(initialCapacity)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .build();
-
-    static {
-        String version = System.getProperty("java.version");
-        int firstIdx = version.indexOf('.');
-        int verNumber = Integer.parseInt(version.substring(0, version.indexOf('.')));
-        if (verNumber == 1) {
-            int secondIdx = version.indexOf('.', firstIdx + 1);
-            verNumber = Integer.parseInt(version.substring(firstIdx + 1, secondIdx));
-        }
-        JVM_VERSION = verNumber;
+    public Interceptor() {
+        initialize();
     }
 
     public int getInitialCapacity() {
@@ -93,8 +77,36 @@ public class Interceptor {
         this.initialCapacity = initialCapacity;
     }
 
-    public static Interceptor getInstance() {
-        return instance;
+    public int getMaximumSize() {
+        return maximumSize;
+    }
+
+    public void setMaximumSize(int maximumSize) {
+        this.maximumSize = maximumSize;
+    }
+
+    public long getExpiration() {
+        return expiration;
+    }
+
+    public void setExpiration(long expiration) {
+        this.expiration = expiration;
+    }
+
+    private <T> Cache<Class, T> createCache() {
+        return CacheBuilder.newBuilder()
+                .initialCapacity(initialCapacity)
+                .maximumSize(maximumSize)
+                .expireAfterWrite(expiration, TimeUnit.MILLISECONDS)
+                .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+                .build();
+    }
+
+    public void initialize() {
+        proxyClasses = createCache();
+        singletonClasses = createCache();
+        anonymousClasses = createCache();
+        prototypeClasses = createCache();
     }
 
     private <T> Class<? extends T> loadClass(DynamicType.Unloaded<T> unloaded, Class<T> cls, ClassLoader classLoader) {
@@ -197,8 +209,33 @@ public class Interceptor {
                 .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE, Ownership.STATIC);
     }
 
+    private ClassLoadingStrategy getClassLoadingStrategy(MethodHandles.Lookup lookup, Class targetClass) {
+        ClassLoadingStrategy<ClassLoader> strategy;
+        try {
+            if (ClassInjector.UsingLookup.isAvailable()) {
+                Class<?> methodHandles = Class.forName("java.lang.invoke.MethodHandles");
+                Method privateLookupIn = methodHandles.getMethod("privateLookupIn",
+                        Class.class,
+                        Class.forName("java.lang.invoke.MethodHandles$Lookup"));
+                Object privateLookup = privateLookupIn.invoke(null, targetClass, lookup);
+                strategy = ClassLoadingStrategy.UsingLookup.of(privateLookup);
+            } else if (ClassInjector.UsingReflection.isAvailable()) {
+                strategy = ClassLoadingStrategy.Default.INJECTION;
+            } else {
+                throw new IllegalStateException("No code loading strategy available");
+            }
+        } catch (Exception ex) {
+            throw new SystemException(ex);
+        }
+        return strategy;
+    }
+
+    public <T> void runAnonymous(T target, T anonymous) {
+        runAnonymous(MethodHandles.lookup(), target, anonymous);
+    }
+
     /**
-     * Trying to emulate Groovy's with block
+     * Trying to emulate Groovy's with block.  The constructor must be a no-arg.
      * X x = ...;
      * runAnonymous(x, new X() {{
      *     setName(...);
@@ -207,29 +244,30 @@ public class Interceptor {
      *
      * setName and setInt would be called on x.
      */
-    public <T> void runAnonymous(T target, T anonymous) {
+    public <T> void runAnonymous(MethodHandles.Lookup lookup, T target, T anonymous) {
         Class anonymousClass = anonymous.getClass();
         try {
             AnonymousDescriptor descriptor = anonymousClasses.get(anonymousClass, () -> {
                 DynamicType.Builder builder = newSingletonBuilder((Class<T>) anonymousClass);
                 Class p;
-                if (JVM_VERSION > 8) {
-                    p = builder.make()
-                            .load(anonymousClass.getClassLoader(), ClassLoadingStrategy.Default.UsingLookup.of(MethodHandles.lookup()))
-                            .getLoaded();
-                } else {
-                    p = builder.make()
-                            .load(anonymousClass.getClassLoader(), ClassLoadingStrategy.Default.INJECTION)
-                            .getLoaded();
-                }
+                p = builder.make()
+                        .load(anonymousClass.getClassLoader(), getClassLoadingStrategy(lookup, anonymousClass))
+                        .getLoaded();
                 Field field = p.getDeclaredField(HANDLER_FIELD);
                 field.setAccessible(true);
                 InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
                         p,
                         null,
                         ctx -> { // the use of anonymousThreadLocal is necessary because the wrapper is only created once and cached.
-                            Object t = anonymousThreadLocal.get();
-                            return ctx.invoke(t);},
+                            Throwable th = new Throwable();
+                            StackTraceElement[] elements = th.getStackTrace();
+                            if (elements[3].getClassName().equals(anonymousClass.getName())) { // only for calls made within the anonymous class
+                                Object t = anonymousThreadLocal.get();
+                                return ctx.invoke(t);
+                            } else {
+                                return Primitives.defaultValue(ctx.getMethod().getReturnType());
+                            }
+                            },
                         null);
                 field.set(null, wrapper);
 
@@ -239,6 +277,8 @@ public class Interceptor {
                 copy[0] = fields[fields.length - 1];
                 System.arraycopy(fields, 0, copy, 1,fields.length - 1);
                 desc.fields = copy;
+                for (Field f : desc.fields)
+                    f.setAccessible(true);
                 desc.classes = new Class[copy.length];
                 for (int i = 0; i < copy.length; i++)
                     desc.classes[i] = copy[i].getType();
