@@ -93,13 +93,6 @@ public class Select<T> extends Statement<T> {
         return this;
     }
 
-    public Select<T> where(Consumer<Select<T>> consumer, T template) {
-        Where.interceptor.runAnonymous(MethodHandles.lookup(), where.getTemplate(), template);
-        consumer.accept(this);
-        where.onQuery();
-        return this;
-    }
-
     public <R> R getSingleResult() {
         where.onQuery();
         if (selections.size() == 1) {
