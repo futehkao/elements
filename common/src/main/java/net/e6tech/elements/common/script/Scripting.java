@@ -138,7 +138,7 @@ public class Scripting {
         return path;
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2093", "squid:S3776"})
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2093", "squid:S3776", "squid:S2139"})
     // script is the full path name
     private Object eval(String script, boolean topLevel) throws ScriptException {
         String prevRootDir = null;
@@ -183,12 +183,13 @@ public class Scripting {
                 return engine.eval(scriptPath.getPath().toFile());
             }
         } catch (IOException e) {
-            // rethrow to let caller handle it, instead of logging erro
+            // rethrow to let caller handle it, instead of logging error
             throw new ScriptException(e);
         } catch (ScriptException e) {
             logger.error("Error eval {}", script);
             throw e;
         } catch (Exception e) {
+            logger.error("Error eval " + script, e);
             throw new ScriptException(e.getMessage());
         } finally {
             if (reader != null)
