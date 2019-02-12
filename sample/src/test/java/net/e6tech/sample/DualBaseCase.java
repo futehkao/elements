@@ -16,20 +16,19 @@
 
 package net.e6tech.sample;
 
-import net.e6tech.elements.common.launch.LaunchController;
+import net.e6tech.elements.common.launch.Launch;
 import net.e6tech.elements.common.resources.Provision;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class GroovyTest {
+public class DualBaseCase {
+
     public static Provision provision;
 
-    @BeforeEach
-    public void launch() {
-        LaunchController controller = new LaunchController();
-        controller.launchScript("conf/provisioning/groovy_test.groovy")
-                .addLaunchListener(p -> provision = p.getInstance(Provision.class))
-                .launch();
+    @BeforeAll
+    public static void launch() {
+        Launch.main("launch=./conf/provisioning/sample/sample.groovy", "home=.", "name=sample", "end",
+                "launch=./conf/provisioning/sample2/sample2.groovy", "home=.", "name=sample2", "end");
     }
 
     @Test

@@ -190,7 +190,7 @@ public class Scripting {
             throw e;
         } catch (Exception e) {
             logger.error("Error eval " + script, e);
-            throw new ScriptException(e.getMessage());
+            throw new SystemException(e.getMessage(), e);
         } finally {
             if (reader != null)
                 try {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Futeh Kao
+ * Copyright 2017 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,18 +23,18 @@ registerBean('jobServer', JobServer)
 // For main components, only those listed in the boot components are executed.
 bootstrap.with {
     dir = "$__dir"
-    init = ["$__dir/boot_init.groovy",
+    init = ["$__dir/../bootstrap/boot_init.groovy",
             { println resourceManager }]
     preBoot = [ defaultThreadPool: { setupThreadPool('DefaultThreadPool') } ]
     main = [
             { variables && cluster }: {
                 println "booting variables and cluster"
             },
-            variables: "$__dir/../environment.groovy",
-            cluster: "$__dir/../cluster.groovy"
+            variables: "$__dir/../../environment.groovy",
+            cluster: "$__dir/../../cluster.groovy"
     ]
-    after = [{true}: "$__dir/boot_final.groovy"]
-    defaultEnvironmentFile = "$__dir/../environment.groovy"
+    after = [{true}: "$__dir/../bootstrap/boot_final.groovy"]
+    defaultEnvironmentFile = "$__dir/../../environment.groovy"
     // defaultSystemProperties = ...
 }
 
@@ -56,10 +56,10 @@ bootstrap
         .preBoot({ println 'hello world'}) // runs an anonymous block
         .postBoot([{ println 'boot completed!'}])
         .boot(null, 'cluster', 'trivial')
-        .after([persist: "$__dir/../persist.groovy",
-            notification: "$__dir/../notification.groovy",
-            concrete: "$__dir/../prototype/concrete.groovy",
-            restful: "$__dir/../restful/**"])
+        .after([persist: "$__dir/../../persist.groovy",
+            notification: "$__dir/../../notification.groovy",
+            concrete: "$__dir/../../prototype/concrete.groovy",
+            restful: "$__dir/../../restful/**"])
 
 // The boot order is
 // exec boot script

@@ -53,27 +53,26 @@ class Launcher {
         if (file == null)
             throw new IllegalArgumentException("launch file not specified, use launch=<file>");
 
-        Thread thread = new Thread(() -> {
-            resourceManager = new ResourceManager(controller.getProperties());
-            controller.created(resourceManager);
-            listeners.forEach(listener -> listener.created(resourceManager));
-            try {
-                resourceManager.load(file);
-            } catch (Exception e) {
-                e.printStackTrace(); // we cannot use Logger yet
-                System.exit(1);
+        resourceManager = new ResourceManager(controller.getProperties());
+        controller.created(resourceManager);
+        listeners.forEach(listener -> listener.created(resourceManager));
+        try {
+            resourceManager.load(file);
+        } catch (Exception e) {
+            e.printStackTrace(); // we cannot use Logger yet
+            System.exit(1);
+        }
+        latch.countDown();
+
+        // if ShutdownNotification is detected, this code will call resourceManager.notifyAll in order
+        // to break out of the next synchronized block that contains resourceManager.wait.
+        resourceManager.addResourceProvider(ResourceProvider.wrap("Launcher", (OnShutdown) () -> {
+            synchronized (resourceManager) {
+                resourceManager.notifyAll();
             }
-            latch.countDown();
+        }));
 
-            // if ShutdownNotification is detected, this code will call resourceManager.notifyAll in order
-            // to break out of the next synchronized block that contains resourceManager.wait.
-            resourceManager.addResourceProvider(ResourceProvider.wrap("Launcher", (OnShutdown) () -> {
-                synchronized (resourceManager) {
-                    resourceManager.notifyAll();
-                }
-            }));
-
-            /* Another way of doing it ...
+        /* Another way of doing it ...
             resourceManager.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
                 NotificationListener.wrap(getClass().getName(), (notification) -> {
                 synchronized (resourceManager) {
@@ -82,6 +81,7 @@ class Launcher {
             }));
             */
 
+        Thread thread = new Thread(() -> {
             // wait on resourceManager ... if ShutdownNotification is detected, the code just above will break out of
             // the wait.
             synchronized (resourceManager) {

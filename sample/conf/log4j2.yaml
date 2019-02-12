@@ -19,51 +19,45 @@ configuration:
       level: debug
       additivity: false
       AppenderRef:
-      - ref: Console
+        - ref: Console
 
     - name: net.e6tech.elements
       level: info
       additivity: false
       AppenderRef:
-      - ref: Console
+        - ref: Console
 
     - name: org.hibernate
       level: info
       additivity: false
       AppenderRef:
-      - ref: Console
+        - ref: Console
 
     - name: org.hibernate.SQL
       level: info
       additivity: false
       AppenderRef:
-      - ref: Console
+        - ref: Console
 
     - name: org.hibernate.stat
       level: 'off'
       additivity: false
       AppenderRef:
-      - ref: Console
-
-    - name: net.e6tech.h3.common.exception.ExceptionMapper
-      level: 'off'
-      additivity: false
-      AppenderRef:
-      - ref: Console
+        - ref: Console
 
     - name: net.e6tech.elements.web.cxf.JaxRSServer
       level: debug
       additivity: false
       AppenderRef:
-      - ref: Console
+        - ref: Console
 
     - name: net.e6tech.elements.web.cxf.JaxRSServer.message
       level: trace   # to turn on message logging the level needs to be trace
       additivity: false
       AppenderRef:
-      - ref: Console
+        - ref: Console
 
     root:
       level: warn
       AppenderRef:
-      - ref: Console
+        - ref: Console
