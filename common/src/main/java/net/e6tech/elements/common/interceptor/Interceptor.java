@@ -25,6 +25,7 @@ import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassInjector;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.FieldAccessor;
+import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.implementation.SuperMethodCall;
 import net.bytebuddy.implementation.bind.annotation.AllArguments;
@@ -214,6 +215,10 @@ public class Interceptor {
         try {
             if (ClassInjector.UsingLookup.isAvailable()) {
                 Class<?> methodHandles = Class.forName("java.lang.invoke.MethodHandles");
+                Method lookupMethod = methodHandles.getMethod("lookup");
+                if (lookup == null) {
+                    lookup = (MethodHandles.Lookup) lookupMethod.invoke(null);
+                }
                 Method privateLookupIn = methodHandles.getMethod("privateLookupIn",
                         Class.class,
                         Class.forName("java.lang.invoke.MethodHandles$Lookup"));
@@ -231,7 +236,7 @@ public class Interceptor {
     }
 
     public <T> void runAnonymous(T target, T anonymous) {
-        runAnonymous(MethodHandles.lookup(), target, anonymous);
+        runAnonymous(null, target, anonymous);
     }
 
     /**
@@ -248,10 +253,28 @@ public class Interceptor {
         Class anonymousClass = anonymous.getClass();
         try {
             AnonymousDescriptor descriptor = anonymousClasses.get(anonymousClass, () -> {
+                ClassLoadingStrategy strategy;
+                Class<?> enclosingClass = anonymousClass.getEnclosingClass();
+                if (lookup == null && enclosingClass != null && ClassInjector.UsingLookup.isAvailable() && Modifier.isPublic(enclosingClass.getModifiers())) {
+                    Class<?> methodHandles = Class.forName("java.lang.invoke.MethodHandles");
+                    Method lookupMethod = methodHandles.getMethod("lookup");
+                    DynamicType.Unloaded unloaded = new ByteBuddy()
+                            .subclass(enclosingClass)
+                            .defineMethod("_methodHandlesLookup", MethodHandles.Lookup.class, Modifier.PUBLIC ^ Modifier.STATIC)
+                            .intercept(MethodCall.invoke(lookupMethod))
+                            .make();
+                    Class enclosingClass2 = loadClass(unloaded, enclosingClass, null);
+                    Method enclosingLookup = enclosingClass2.getMethod("_methodHandlesLookup");
+                    MethodHandles.Lookup lookup2 = (MethodHandles.Lookup) enclosingLookup.invoke(null);
+                    strategy = getClassLoadingStrategy(lookup2, anonymousClass);
+                } else {
+                    strategy = getClassLoadingStrategy(lookup, anonymousClass);
+                }
+
                 DynamicType.Builder builder = newSingletonBuilder((Class<T>) anonymousClass);
                 Class p;
                 p = builder.make()
-                        .load(anonymousClass.getClassLoader(), getClassLoadingStrategy(lookup, anonymousClass))
+                        .load(anonymousClass.getClassLoader(), strategy)
                         .getLoaded();
                 Field field = p.getDeclaredField(HANDLER_FIELD);
                 field.setAccessible(true);

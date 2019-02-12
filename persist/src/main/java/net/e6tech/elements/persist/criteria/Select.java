@@ -24,7 +24,6 @@ import javax.persistence.Query;
 import javax.persistence.criteria.*;
 import javax.persistence.metamodel.EntityType;
 import java.beans.PropertyDescriptor;
-import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -82,7 +81,7 @@ public class Select<T> extends Statement<T> {
     }
 
     public Select<T> where(T template) {
-        Where.interceptor.runAnonymous(MethodHandles.lookup(), where.getTemplate(), template);
+        Where.interceptor.runAnonymous(null, where.getTemplate(), template);
         where.onQuery();
         return this;
     }

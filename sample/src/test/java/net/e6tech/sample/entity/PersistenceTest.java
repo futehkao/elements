@@ -16,21 +16,15 @@
 
 package net.e6tech.sample.entity;
 
-import net.e6tech.elements.common.interceptor.Interceptor;
-import net.e6tech.elements.common.launch.LaunchController;
-import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.persist.EntityManagerConfig;
 import net.e6tech.elements.persist.criteria.Select;
 import net.e6tech.sample.BaseCase;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
-
-import java.lang.invoke.MethodHandles;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,7 +32,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
-class PersistenceTest extends BaseCase {
+
+public class PersistenceTest extends BaseCase {
 
     private Employee employee;
     private Department department;

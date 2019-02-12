@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import javax.annotation.Nonnull;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
-import java.lang.invoke.MethodHandles;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -29,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -193,7 +191,7 @@ public class InterceptorTest {
         target.setN(1);
         Random random = new Random();
         int n = random.nextInt();
-        Interceptor.getInstance().runAnonymous(MethodHandles.lookup(), target, new X() {{
+        Interceptor.getInstance().runAnonymous(target, new X() {{
             setX(n);
             setY(n);
             setZ(n);
