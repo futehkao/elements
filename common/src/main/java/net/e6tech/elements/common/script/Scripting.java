@@ -328,7 +328,7 @@ public class Scripting {
         try {
             String path = normalizePath(originalPath);
             paths = FileUtil.listFiles(path, getExtension());
-            if (paths == null || paths.length == 0)
+            if ((paths == null || paths.length == 0) && !(path.endsWith("**") || path.endsWith("*")))
                 throw new IOException("Script not found " + originalPath);
         } catch (IOException e) {
             throw new ScriptException(e);

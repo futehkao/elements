@@ -50,13 +50,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private static Logger logger = Logger.getLogger();
     static final String LOG_DIR_ABBREV = "logDir";
     private static final String ALREADY_BOUND_MSG = "Class %s is already bound to %s";
+    private static Map<String, ResourceManager> resourceManagers = Collections.synchronizedMap(new HashMap<>());
 
     private String name;
     private Injector injector;
     private Module module = ModuleFactory.getInstance().create();
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private AllocationMonitor allocation = new AllocationMonitor();
-    private Map<String, ResourceManager> resourceManagers;
+
     private Map<String, Atom> atoms = new LinkedHashMap<>();
     private NotificationCenter notificationCenter = new NotificationCenter();
     private BeanLifecycle beanLifecycle = new BeanLifecycle();
@@ -69,6 +70,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         this(new Properties());
     }
 
+    // this is for running a script based on an existing provision, i.e. a very transient process.
     public ResourceManager(Provision provision) {
         initialize(pluginManager.getPluginClassLoader(), provision.getProperties());
         selfInit(provision.getProperties());
@@ -77,9 +79,24 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         myProvision.load(provision.getResourceManager().getScripting().getVariables());
     }
 
+    // This is for launch a brand new ResourceManager
     public ResourceManager(Properties properties) {
         initialize(pluginManager.getPluginClassLoader(), updateProperties(properties));
         selfInit(properties);
+
+        if (getName() != null) {
+            if (getName() != null && getResourceManagers().containsKey(getName()))
+                throw new SystemException("ResourceManager with name=" + getName() + " exists.");
+            resourceManagers.put(getName(), this);
+        }
+    }
+
+    public static Map<String, ResourceManager> getResourceManagers() {
+        return Collections.unmodifiableMap(resourceManagers);
+    }
+
+    public static ResourceManager getResourceManager(String name) {
+        return resourceManagers.get(name);
     }
 
     public boolean isSilent() {
@@ -166,23 +183,15 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return name;
     }
 
-    public void setName(String name) {
-        if (this.name != null)
+    public synchronized void setName(String name) {
+        if (this.name != null) {
             getScripting().remove(this.name);
+            resourceManagers.remove(this.name);
+        }
+
         this.name = name;
         getScripting().put(name, getProperties().getProperty("home"));
-    }
-
-    public Map<String, ResourceManager> getResourceManagers() {
-        return resourceManagers;
-    }
-
-    public void setResourceManagers(Map<String, ResourceManager> resourceManagers) {
-        this.resourceManagers = resourceManagers;
-    }
-
-    public ResourceManager getResourceManager(String name) {
-        return resourceManagers.get(name);
+        resourceManagers.put(this.name, this);
     }
 
     public AllocationMonitor getAllocationMonitor() {
@@ -685,6 +694,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             if (!silent)
                 logger.info("{} is down.", rp.getDescription());
         });
+        resourceManagers.remove(name);
     }
 
     Map<Class, ClassInjectionInfo> getInjections() {

@@ -94,8 +94,10 @@ public class ModuleImpl implements Module {
         Type[] types = getBindTypes(cls);
         Binding binding = new Binding(instance);
         for (Type type : types) {
-            BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
-            bindList.bind(null, binding);
+             if (!directory.containsKey(type)) {
+                 BindingMap bindingMap = directory.computeIfAbsent(type, t -> new BindingMap());
+                 bindingMap.bind(null, binding);
+             }
         }
         singletons.add(binding);
         bindProperties(cls, null, inst);
@@ -113,8 +115,10 @@ public class ModuleImpl implements Module {
             Type[] propTypes = getBindTypes(propType);
             Binding binding = new Binding(propertyValue);
             for (Type type : propTypes) {
-                BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
-                bindList.bind(name, binding);
+                if (!directory.containsKey(type)) {
+                    BindingMap bindingMap = directory.computeIfAbsent(type, t -> new BindingMap());
+                    bindingMap.bind(name, binding);
+                }
             }
             singletons.add(binding);
         }

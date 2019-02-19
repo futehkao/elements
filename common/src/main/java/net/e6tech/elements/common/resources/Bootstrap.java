@@ -366,6 +366,9 @@ public class Bootstrap extends GroovyObjectSupport {
         }
 
         if (getVar(BOOT_AFTER) != null) {
+            if (!(getVar(BOOT_AFTER) instanceof Map)) {
+                throw new SystemException("Expecting variable " + BOOT_AFTER + " to be a Map instead of " + getVar(BOOT_AFTER).getClass());
+            }
             Map p = (Map) getVar(BOOT_AFTER);
             p.forEach((key, value) -> {
                 after.put(key, value);

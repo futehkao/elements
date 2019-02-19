@@ -44,6 +44,19 @@ public class Provision {
     public static Integer cacheBuilderConcurrencyLevel = 32;
 
     private ResourceManager resourceManager;
+    private boolean suppressLogging = false;
+
+    public void suppressLogging() {
+        suppressLogging = true;
+    }
+
+    public void resumeLogging() {
+        suppressLogging = false;
+    }
+
+    public boolean isSuppressLogging() {
+        return suppressLogging;
+    }
 
     static {
         String version = System.getProperty("java.version");
@@ -86,8 +99,20 @@ public class Provision {
         }
     }
 
-    public void log(Logger logger, LogLevel level, String message, Throwable th) {
-       logger.log(level, message, th);
+    public void log(Logger logger, LogLevel level, String message, Throwable thIn) {
+        if (suppressLogging)
+            return;
+        Throwable th = thIn;
+        while (th instanceof RuntimeException) {
+            if (th.getCause() == null || th == th.getCause())
+                break;
+            th = th.getCause();
+        }
+        doLog(logger, level, message, th);
+    }
+
+    protected void doLog(Logger logger, LogLevel level, String message, Throwable th) {
+        logger.log(level, message, th);
     }
 
     public ResourceManager getResourceManager() {

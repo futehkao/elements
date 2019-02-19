@@ -32,13 +32,11 @@ public class Launch {
     private static final String LAUNCH = "launch";
     private static final String END = "end";
 
-    List<Launcher> launchers = new ArrayList<>();
-    Map<String, ResourceManager> resourceManagers = new HashMap<>();
+    List<LaunchController> controllers = new ArrayList<>();
 
     public Launch(LaunchController ... controllers) {
         for (LaunchController controller : controllers) {
-            Launcher launcher = new Launcher(controller);
-            launchers.add(launcher);
+            this.controllers.add(controller);
         }
     }
 
@@ -136,10 +134,10 @@ public class Launch {
             for (LaunchListener l : launchListeners)
                 listeners.add(l);
 
-        CountDownLatch latch = new CountDownLatch(launchers.size());
-        for (Launcher launcher : launchers) {
-            launcher.setLatch(latch);
-            launcher.launch(listeners);
+        CountDownLatch latch = new CountDownLatch(controllers.size());
+        for (LaunchController controller : controllers) {
+            controller.setLatch(latch);
+            controller.launch(listeners);
         }
 
         try {
@@ -150,36 +148,10 @@ public class Launch {
         }
 
         // fire launched
-        for (Launcher launcher : launchers) {
-            Provision provision = launcher.resourceManager.getInstance(Provision.class);
-            launcher.controller.launched(provision);
+        for (LaunchController controller : controllers) {
+            Provision provision = controller.getResourceManager().getInstance(Provision.class);
+            controller.launched(provision);
             listeners.forEach(listener -> listener.launched(provision));
         }
-
-        for (Launcher launcher : launchers) {
-            ResourceManager resourceManager = launcher.resourceManager;
-            if (resourceManager.getName() == null)
-                throw new IllegalStateException("ResourceManager name not set");
-            if (resourceManagers.get(resourceManager.getName()) != null)
-                throw new IllegalStateException("Duplicate ResourceManager name=" + resourceManager.getName());
-            resourceManagers.put(resourceManager.getName(), resourceManager);
-        }
-        resourceManagers = Collections.unmodifiableMap(resourceManagers);
-
-        for (Launcher launcher : launchers) {
-            launcher.resourceManager.setResourceManagers(resourceManagers);
-        }
-
-        for (Launcher launcher : launchers) {
-            launcher.onLaunched();
-        }
-    }
-
-    public Map<String, ResourceManager> getResourceManagers() {
-        return resourceManagers;
-    }
-
-    public ResourceManager getResourceManager(String name) {
-        return resourceManagers.get(name);
     }
 }

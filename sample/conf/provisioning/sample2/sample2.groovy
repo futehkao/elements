@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import net.e6tech.elements.common.launch.LaunchController
 import net.e6tech.elements.jobs.JobServer
 
 
@@ -23,8 +23,9 @@ registerBean('jobServer', JobServer)
 // For main components, only those listed in the boot components are executed.
 bootstrap.with {
     dir = "$__dir"
-    init = ["$__dir/../bootstrap/boot_init.groovy",
-            { println resourceManager }]
+    init = [{ new LaunchController().launchScript("$__dir/../sample/sample.groovy")
+                        .property("name", "sample")
+                        .launch() }]
     preBoot = [ defaultThreadPool: { setupThreadPool('DefaultThreadPool') } ]
     main = [
             { variables && cluster }: {

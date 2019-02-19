@@ -31,12 +31,20 @@ import java.util.concurrent.Callable;
  * Created by futeh.
  */
 public abstract class AbstractScriptShell {
+    private static Map<String, Object> constants = new HashMap<>();
     private static Logger logger = Logger.getLogger();
     private Map<String, List<String>> knownEnvironments = new LinkedHashMap<>();
     private Scripting scripting;
     private Properties properties;
     List<Runnable> cleanup = new LinkedList<>();
     boolean loading = false;
+
+    static {
+        constants.put("SECOND", 1000L);
+        constants.put("MINUTE", 60 * 1000L);
+        constants.put("HOUR", 24 * 60 * 1000L);
+        constants.put("DAY", 24 * 60 * 60 * 1000L);
+    }
 
     protected AbstractScriptShell() {
     }
@@ -77,6 +85,9 @@ public abstract class AbstractScriptShell {
         String shellName = Introspector.decapitalize(simpleName);
         scripting.put(shellName, this);
         scripting.put("shell", this);
+        for (Map.Entry<String, Object> entry : constants.entrySet()) {
+            scripting.put(entry.getKey(), entry.getValue());
+        }
     }
 
     public Scripting getScripting() {

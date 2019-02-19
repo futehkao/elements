@@ -16,10 +16,14 @@
 
 package net.e6tech.elements.common.launch;
 
+import net.e6tech.elements.common.resources.OnShutdown;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.ResourceManager;
+import net.e6tech.elements.common.resources.ResourceProvider;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Created by futeh.
@@ -29,6 +33,8 @@ public class LaunchController implements LaunchListener {
     private Properties properties = new Properties();
     private List<LaunchListener> listeners = new LinkedList<>();
     private List<String> arguments = new ArrayList<>();
+    private ResourceManager resourceManager;
+    private CountDownLatch latch;
 
     public LaunchController() {
         property("home", System.getProperty("home", System.getProperty("user.dir")));
@@ -47,6 +53,10 @@ public class LaunchController implements LaunchListener {
 
     public void setProperties(Properties properties) {
         this.properties = properties;
+    }
+
+    public ResourceManager getResourceManager() {
+        return resourceManager;
     }
 
     public LaunchController property(String property, String value) {
@@ -131,6 +141,8 @@ public class LaunchController implements LaunchListener {
         provisions.put(getLaunchScript(), provision);
         for (LaunchListener listener : listeners)
             listener.launched(provision);
+
+        resourceManager.onLaunched();
     }
 
     public LaunchController launch() {
@@ -139,5 +151,64 @@ public class LaunchController implements LaunchListener {
             return this;
         (new Launch(this)).launch();
         return this;
+    }
+
+    public CountDownLatch getLatch() {
+        return latch;
+    }
+
+    public void setLatch(CountDownLatch latch) {
+        this.latch = latch;
+    }
+
+    public void launch(List<LaunchListener> listeners ) {
+        String file = getLaunchScript();
+        if (file == null)
+            throw new IllegalArgumentException("launch file not specified, use launch=<file>");
+
+        resourceManager = new ResourceManager(getProperties());
+
+        created(resourceManager);
+        listeners.forEach(listener -> listener.created(resourceManager));
+        try {
+            resourceManager.load(file);
+        } catch (Exception e) {
+            e.printStackTrace(); // we cannot use Logger yet
+            System.exit(1);
+        }
+        latch.countDown();
+
+        // if ShutdownNotification is detected, this code will call resourceManager.notifyAll in order
+        // to break out of the next synchronized block that contains resourceManager.wait.
+        resourceManager.addResourceProvider(ResourceProvider.wrap("Launcher", (OnShutdown) () -> {
+            synchronized (resourceManager) {
+                resourceManager.notifyAll();
+            }
+        }));
+
+        /* Another way of doing it ...
+            resourceManager.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
+                NotificationListener.wrap(getClass().getName(), (notification) -> {
+                synchronized (resourceManager) {
+                    resourceManager.notifyAll();
+                }
+            }));
+            */
+
+        Thread thread = new Thread(() -> {
+            // wait on resourceManager ... if ShutdownNotification is detected, the code just above will break out of
+            // the wait.
+            synchronized (resourceManager) {
+                try {
+                    resourceManager.wait();
+                    System.out.println("Launcher thread stopped");  // we cannot use Logger yet
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+
+        thread.setDaemon(false);
+        thread.start();
     }
 }

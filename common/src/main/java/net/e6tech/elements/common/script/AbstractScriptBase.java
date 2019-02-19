@@ -125,4 +125,9 @@ public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends 
             closure.call();
         }
     }
+
+    public String getenv(String envName, String defaultVal) {
+        String value = System.getenv(envName);
+        return (value != null) ? value : defaultVal;
+    }
 }

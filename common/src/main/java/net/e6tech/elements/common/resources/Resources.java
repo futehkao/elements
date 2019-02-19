@@ -456,11 +456,24 @@ public class Resources implements AutoCloseable, ResourcePool {
         // state.initModules(this); // MUST initialize injector first by calling initModules
         if (!isOpen()) {
             state.setState(ResourcesState.State.OPEN);
-            // this loop can produce recursive onOpen call
             try {
-                for (ResourceProvider resourceProvider : state.getResourceProviders()) {
-                    resourceProvider.onOpen(this);
+                // this loop can produce recursive onOpen call
+                // so below is a special treatment
+                List<ResourceProvider> list = state.getResourceProviders();
+                List<ResourceProvider> originalList = list;
+                while (!list.isEmpty()) {
+                    List<ResourceProvider> additionalResourceProviders = new ArrayList<>();
+                    state.setResourceProviders(additionalResourceProviders);
+                    for (ResourceProvider resourceProvider : list) {
+                        resourceProvider.onOpen(this);
+                    }
+                    // because onOpen can create more onOpen
+                    originalList.addAll(additionalResourceProviders);
+
+                    // set list to additional added providers and go throught the loop again
+                    list = additionalResourceProviders;
                 }
+                state.setResourceProviders(originalList);
 
                 state.onOpen(this);
 
