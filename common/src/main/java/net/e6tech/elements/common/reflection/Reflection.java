@@ -587,6 +587,16 @@ public class Reflection {
                     Method setter = targetDesc.getWriteMethod();
                     if (setter == null)
                         continue;
+
+                    if (setter.getAnnotation(DoNotAccept.class) != null) {
+                        continue;
+                    }
+
+                    Method getter = targetDesc.getReadMethod();
+                    if (getter != null && getter.getAnnotation(DoNotAccept.class) != null) {
+                        continue;
+                    }
+
                     try {
                         boolean annotated = (prop.getReadMethod().getAnnotation(DoNotCopy.class) != null);
                         if (!annotated && prop.getWriteMethod() != null) {

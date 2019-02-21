@@ -359,7 +359,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public <T> T rebind(Class<T> cls, T resource) {
-        module.bindInstance(cls, resource);
+        module.rebindInstance(cls, resource);
         injector = module.build();
         T instance = getInstance(cls);
         listeners.forEach(l -> l.bound(cls, instance));
@@ -412,7 +412,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public <T> T rebindNamedInstance(Class<T> cls, String name, T resource) {
-        T instance = (T) module.bindNamedInstance(cls, name, resource);
+        T instance = (T) module.rebindNamedInstance(cls, name, resource);
         injector = module.build();
         listeners.forEach(l -> l.namedInstanceBound(name, cls, instance));
         return instance;

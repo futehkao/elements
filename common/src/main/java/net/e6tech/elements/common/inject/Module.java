@@ -125,6 +125,8 @@ public interface Module {
 
     Object bindInstance(Class cls, Object instance);
 
+    Object rebindInstance(Class cls, Object instance);
+
     Object unbindInstance(Class cls);
 
     Object unbindNamedInstance(Class cls, String name);
@@ -132,6 +134,8 @@ public interface Module {
     <T> T getBoundInstance(Class<T> cls);
 
     Object bindNamedInstance(Class cls, String name, Object instance);
+
+    Object rebindNamedInstance(Class cls, String name, Object instance);
 
     <T> T getBoundNamedInstance(Class<T> cls, String name);
 

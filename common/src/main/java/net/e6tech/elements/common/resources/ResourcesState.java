@@ -171,7 +171,7 @@ class ResourcesState {
         T instance = null;
 
         try {
-            instance = (T) getModule().bindInstance(cls, resource);
+            instance = (T) getModule().rebindInstance(cls, resource);
         } catch (Exception e) {
             throw new SystemException(e);
         }
@@ -205,7 +205,7 @@ class ResourcesState {
     }
 
     public <T> T rebindNamedInstance(Class<T> cls, String name, T resource) {
-        return (T) getModule().bindNamedInstance(cls, name, resource);
+        return (T) getModule().rebindNamedInstance(cls, name, resource);
     }
 
     public boolean hasInstance(Resources resources, Class cls) {

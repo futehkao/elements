@@ -60,7 +60,6 @@ public class Interceptor {
     private Cache<Class, Class> proxyClasses;
     private Cache<Class, Class> singletonClasses;
     private Cache<Class, AnonymousDescriptor> anonymousClasses;
-    private Cache<Class, Class> prototypeClasses;
 
     public static Interceptor getInstance() {
         return instance;
@@ -107,7 +106,6 @@ public class Interceptor {
         proxyClasses = createCache();
         singletonClasses = createCache();
         anonymousClasses = createCache();
-        prototypeClasses = createCache();
     }
 
     private <T> Class<? extends T> loadClass(DynamicType.Unloaded<T> unloaded, Class<T> cls, ClassLoader classLoader) {
@@ -130,6 +128,7 @@ public class Interceptor {
         return loaded.getLoaded();
     }
 
+    // NEVER cache prototype class because the cls could be the same while prototype changes.
     public <T> Class<T> newPrototypeClass(Class<T> cls, T prototype) {
         return newPrototypeClass(cls, prototype, null);
     }
@@ -144,18 +143,14 @@ public class Interceptor {
      */
     @SuppressWarnings("unchecked")
     public <T> Class<T> newPrototypeClass(Class<T> cls, T prototype, ClassLoader classLoader) {
-        try {
-            return prototypeClasses.get(cls, () -> {
-                DynamicType.Unloaded<T> unloaded = new ByteBuddy()
+        // NEVER cache prototype class because the cls could be the same while prototype changes.
+         DynamicType.Unloaded<T> unloaded = new ByteBuddy()
                         .subclass(cls)
                         .constructor(ElementMatchers.any())
                         .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.to(new PrototypeConstructor<>(prototype))))
                         .make();
-                return loadClass(unloaded, cls, classLoader);
-            });
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+         return (Class) loadClass(unloaded, cls, classLoader);
+
     }
 
     // must be public static

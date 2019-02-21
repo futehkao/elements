@@ -90,21 +90,30 @@ public class ModuleImpl implements Module {
 
     @Override
     public Object bindInstance(Class cls, Object inst) {
+        return bindInstance(cls, inst, false);
+    }
+
+    @Override
+    public Object rebindInstance(Class cls, Object inst) {
+        return bindInstance(cls, inst, true);
+    }
+
+    private Object bindInstance(Class cls, Object inst, boolean rebind) {
         Object instance = newInstance(inst);
         Type[] types = getBindTypes(cls);
         Binding binding = new Binding(instance);
         for (Type type : types) {
-             if (!directory.containsKey(type)) {
-                 BindingMap bindingMap = directory.computeIfAbsent(type, t -> new BindingMap());
-                 bindingMap.bind(null, binding);
-             }
+            if (!directory.containsKey(type) || rebind) {
+                BindingMap bindingMap = directory.computeIfAbsent(type, t -> new BindingMap());
+                bindingMap.bind(null, binding);
+            }
         }
         singletons.add(binding);
-        bindProperties(cls, null, inst);
+        bindProperties(cls, null, inst, rebind);
         return instance;
     }
 
-    private void bindProperties(Class cls, String name, Object inst) {
+    private void bindProperties(Class cls, String name, Object inst, boolean rebind) {
         for (String propName : getBindProperties(cls)) {
             PropertyDescriptor desc = Reflection.getPropertyDescriptor(cls, propName);
             Object propertyValue = getProperty(cls, propName, inst);
@@ -115,7 +124,7 @@ public class ModuleImpl implements Module {
             Type[] propTypes = getBindTypes(propType);
             Binding binding = new Binding(propertyValue);
             for (Type type : propTypes) {
-                if (!directory.containsKey(type)) {
+                if (!directory.containsKey(type) || rebind) {
                     BindingMap bindingMap = directory.computeIfAbsent(type, t -> new BindingMap());
                     bindingMap.bind(name, binding);
                 }
@@ -139,16 +148,27 @@ public class ModuleImpl implements Module {
 
     @Override
     public Object bindNamedInstance(Class cls, String name, Object inst) {
+        return bindNamedInstance(cls, name, inst, false);
+    }
+
+    @Override
+    public Object rebindNamedInstance(Class cls, String name, Object inst) {
+        return bindNamedInstance(cls, name, inst, true);
+    }
+
+    private Object bindNamedInstance(Class cls, String name, Object inst, boolean rebind) {
         Object instance = newInstance(inst);
         Type[] types = getBindTypes(cls);
         Binding binding = new Binding(instance);
         synchronized (directory) {
             for (Type type : types) {
-                BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
-                bindList.bind(name, binding);
+                if (!directory.containsKey(type) || rebind) {
+                    BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
+                    bindList.bind(name, binding);
+                }
             }
             singletons.add(binding);
-            bindProperties(cls, name, inst);
+            bindProperties(cls, name, inst, rebind);
         }
         return instance;
     }
