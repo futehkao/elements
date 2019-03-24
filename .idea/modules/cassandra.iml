@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id=":cassandra" external.linked.project.path="$MODULE_DIR$/../../cassandra" external.root.project.path="$MODULE_DIR$/../.." external.system.id="GRADLE" external.system.module.group="net.e6tech" external.system.module.version="2.4.32" type="JAVA_MODULE" version="4">
+  <component name="ExternalSystem" linkedProjectPath="$MODULE_DIR$/../.." rootProjectPath="$MODULE_DIR$/../.." />
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../cassandra">
+      <excludeFolder url="file://$MODULE_DIR$/../../cassandra/.gradle" />
+      <excludeFolder url="file://$MODULE_DIR$/../../cassandra/build" />
+      <excludeFolder url="file://$MODULE_DIR$/../../cassandra/out" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

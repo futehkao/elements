@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: io.netty:netty-transport:4.0.56.Final">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.0.56.Final/535223be500f76fd02b271e4c15c8678d10830ab/netty-transport-4.0.56.Final.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.0.56.Final/e9bb7fcfd3c9a9d3c37a65095b0836e3117ce973/netty-transport-4.0.56.Final-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

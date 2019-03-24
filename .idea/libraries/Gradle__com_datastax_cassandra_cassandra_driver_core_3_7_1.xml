@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.datastax.cassandra:cassandra-driver-core:3.7.1">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.cassandra/cassandra-driver-core/3.7.1/e05e4cab9ca6b06b7c055c5f9988092fa7b7f7e9/cassandra-driver-core-3.7.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.cassandra/cassandra-driver-core/3.7.1/397e6760f2fa0e531135df9cb1395591a1f69690/cassandra-driver-core-3.7.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
