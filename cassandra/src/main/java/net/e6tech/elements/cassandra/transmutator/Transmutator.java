@@ -122,6 +122,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         for (Entry entry : transmutators) {
             entry.context.setStartTime(context.getStartTime());
             entry.context.setProvision(context.getProvision());
+            entry.context.setBatchSize(context.getBatchSize());
         }
 
         for (Entry entry : transmutators) {
