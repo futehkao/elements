@@ -28,7 +28,7 @@ import java.util.*;
 
 public abstract class Transmutator implements Strategy<PartitionContext> {
 
-    private LinkedList<Entry> transmutators = new LinkedList<>();
+    private LinkedList<Descriptor> descriptors = new LinkedList<>();
 
     protected <T> Map<PrimaryKey, T> transform(PartitionContext context, Set<PrimaryKey> keys, Class<T> tableClass) {
         Map<PrimaryKey, T> map = new HashMap<>();
@@ -69,7 +69,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
                 .inCompletionOrder();
     }
 
-    private void analyze() {
+    protected void analyze() {
         Class cls = getClass();
         while (cls != null && cls != Object.class) {
             Method[] methods = cls.getDeclaredMethods();
@@ -101,8 +101,8 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
                             throw new SystemException(e);
                         }
                     });
-                    Entry entry = new Entry(loader.value(), context, strategy);
-                    transmutators.addLast(entry);
+                    Descriptor entry = new Descriptor(loader.value(), context, strategy);
+                    descriptors.addLast(entry);
                 } catch (Exception e) {
                     throw new SystemException(e);
                 }
@@ -110,7 +110,11 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             cls = cls.getSuperclass();
         }
 
-        Collections.sort(transmutators, Comparator.comparingInt(p -> p.order));
+        Collections.sort(descriptors, Comparator.comparingInt(p -> p.order));
+    }
+
+    protected List<Descriptor> describe() {
+        return descriptors;
     }
 
     @Override
@@ -119,17 +123,17 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         analyze();
         int count = 0;
 
-        for (Entry entry : transmutators) {
+        for (Descriptor entry : descriptors) {
             entry.context.setStartTime(context.getStartTime());
             entry.context.setProvision(context.getProvision());
             entry.context.setBatchSize(context.getBatchSize());
         }
 
-        for (Entry entry : transmutators) {
+        for (Descriptor entry : descriptors) {
             undo(entry.context);
         }
 
-        for (Entry entry : transmutators) {
+        for (Descriptor entry : descriptors) {
             try {
                 count += entry.strategy.run(entry.context);
             } catch (Exception ex) {
@@ -140,12 +144,12 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         return count;
     }
 
-    private static class Entry {
+    public static class Descriptor {
         int order;
         PartitionContext context;
         PartitionStrategy strategy;
 
-        Entry(int order, PartitionContext context, PartitionStrategy strategy) {
+        Descriptor(int order, PartitionContext context, PartitionStrategy strategy) {
             this.order = order;
             this.context = context;
             this.strategy= strategy;

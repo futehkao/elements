@@ -63,6 +63,7 @@ public abstract class ETLContext {
     private TimeUnit timeUnit;
     private boolean initialized = false;
     private long startTime = System.currentTimeMillis();
+    private boolean saveNullFields = false;
 
     public Provision getProvision() {
         return provision;
@@ -137,6 +138,14 @@ public abstract class ETLContext {
         this.extractorName = extractorName;
     }
 
+    public boolean isSaveNullFields() {
+        return saveNullFields;
+    }
+
+    public void setSaveNullFields(boolean saveNullFields) {
+        this.saveNullFields = saveNullFields;
+    }
+
     public String extractor() {
         return getExtractorName() != null ? getExtractorName() : getSourceClass().getName();
     }
@@ -197,9 +206,10 @@ public abstract class ETLContext {
         try {
             if (options != null && options.length > 0) {
                 List<Mapper.Option> all = new ArrayList<>();
-                for (Mapper.Option option : options)
+                for (Mapper.Option option : options) {
                     all.add(option);
-                all.add(Mapper.Option.saveNullFields(false));
+                }
+                all.add(Mapper.Option.saveNullFields(isSaveNullFields()));
                 mapper.setDefaultSaveOptions(all.toArray(new Mapper.Option[0]));
             } else {
                 mapper.setDefaultSaveOptions(Mapper.Option.saveNullFields(false));
@@ -237,12 +247,22 @@ public abstract class ETLContext {
         return getInspector(getSourceClass()).tableName();
     }
 
+    public void saveLastUpdate(LastUpdate lastUpdate) {
+        Class<LastUpdate> lastUpdateClass = getProvision().open().apply(Resources.class,
+                resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
+        getMapper(lastUpdateClass).save(lastUpdate);
+    }
+
+    public LastUpdate lookupLastUpdate() {
+        return open().apply(Resources.class, resources -> {
+            Class<? extends LastUpdate> cls = resources.getInstance(SessionProvider.class).getLastUpdateClass();
+            return resources.getInstance(MappingManager.class).mapper(cls).get(extractor());
+        });
+    }
+
     public LastUpdate getLastUpdate() {
         String name = extractor();
-        LastUpdate lastUpdate = open().apply(Resources.class, resources -> {
-            Class<? extends LastUpdate> cls = resources.getInstance(SessionProvider.class).getLastUpdateClass();
-            return resources.getInstance(MappingManager.class).mapper(cls).get(name);
-        });
+        LastUpdate lastUpdate = lookupLastUpdate();
 
         if (lastUpdate == null) {
             lastUpdate = new LastUpdate();

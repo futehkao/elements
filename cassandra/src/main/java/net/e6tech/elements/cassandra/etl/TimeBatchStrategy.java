@@ -31,7 +31,10 @@ public interface TimeBatchStrategy<S> extends BatchStrategy<S, TimeBatch> {
      */
     @Override
     default List<S> extract(TimeBatch context) {
-        return extractUpdate(context, context.getLastUpdate());
+        LastUpdate lastUpdate = context.getLastUpdate();
+        List<S> list = extractUpdate(context, lastUpdate);
+        context.saveLastUpdate(lastUpdate);
+        return list;
     }
 
     /**

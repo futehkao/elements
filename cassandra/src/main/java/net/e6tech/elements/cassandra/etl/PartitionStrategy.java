@@ -114,10 +114,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                 lastUpdate.update(partition);
             }
             importedCount += run(concurrent, context);
-
-           Class<LastUpdate> lastUpdateClass = context.getProvision().open().apply(Resources.class,
-                   resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
-            context.getMapper(lastUpdateClass).save(lastUpdate);
+            context.saveLastUpdate(lastUpdate);
         }
 
         logger.info("Done loading {} instances of {}", importedCount, context.getSourceClass());
