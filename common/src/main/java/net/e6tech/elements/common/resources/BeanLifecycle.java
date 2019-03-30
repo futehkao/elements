@@ -19,6 +19,8 @@ package net.e6tech.elements.common.resources;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Created by futeh.
@@ -29,19 +31,19 @@ public class BeanLifecycle {
     private static final int BEAN_STARTED = 1;
     private static final int BEAN_LAUNCHED = 2;
 
-    private Map<String, Object> initializedBeans = new Hashtable<>();
-    private Map<String, Object> startedBeans = new Hashtable<>();
-    private Map<String, Object> launchedBeans = new Hashtable<>();
+    private Map<String, Object> initializedBeans = new ConcurrentHashMap<>();
+    private Map<String, Object> startedBeans = new ConcurrentHashMap<>();
+    private Map<String, Object> launchedBeans = new ConcurrentHashMap<>();
     private Set<Object> disabledBeans = new HashSet<>();
-    private Map<String, List<BeanListener>> namedBeanListeners = new Hashtable<>();
-    private Map<Class, List<BeanListener>> classBeanListeners = new Hashtable<>();
+    private Map<String, List<BeanListener>> namedBeanListeners = new ConcurrentHashMap<>();
+    private Map<Class, List<BeanListener>> classBeanListeners = new ConcurrentHashMap<>();
 
     public void addBeanListener(String name, BeanListener beanListener) {
         if (initializedBeans.get(name) != null) {
             beanListener.initialized(initializedBeans.get(name));
             return;
         }
-        List<BeanListener> listeners = namedBeanListeners.computeIfAbsent(name, n -> new Vector<>());
+        List<BeanListener> listeners = namedBeanListeners.computeIfAbsent(name, n -> new CopyOnWriteArrayList<>());
         listeners.add(beanListener);
     }
 
@@ -52,7 +54,7 @@ public class BeanLifecycle {
             }
         }
 
-        List<BeanListener> listeners = classBeanListeners.computeIfAbsent(cls, n -> new Vector<>());
+        List<BeanListener> listeners = classBeanListeners.computeIfAbsent(cls, n -> new CopyOnWriteArrayList<>());
         listeners.add(beanListener);
     }
 

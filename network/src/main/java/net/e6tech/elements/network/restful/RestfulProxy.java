@@ -25,6 +25,7 @@ import net.e6tech.elements.common.interceptor.InterceptorListener;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.datastructure.Pair;
+import org.ehcache.impl.internal.concurrent.ConcurrentHashMap;
 
 import javax.ws.rs.*;
 import java.io.PrintWriter;
@@ -128,8 +129,8 @@ public class RestfulProxy {
     private static class InvocationHandler implements InterceptorHandler {
         private RestfulProxy proxy;
         private String context;
-        private Map<Method, MethodForwarder> methodForwarders = Collections.synchronizedMap(new HashMap<>());
-        private Map<Method, String> methodSignatures = Collections.synchronizedMap(new HashMap<>());
+        private Map<Method, MethodForwarder> methodForwarders = new ConcurrentHashMap<>();
+        private Map<Method, String> methodSignatures = new ConcurrentHashMap<>();
         private PrintWriter printer;
 
         InvocationHandler(RestfulProxy proxy, Class<?> serviceClass, PrintWriter printer) {

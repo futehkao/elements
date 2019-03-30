@@ -22,10 +22,7 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -52,8 +49,10 @@ public class NotificationProcessor implements NotificationListener {
                         && Notification.class.isAssignableFrom(method.getParameterTypes()[0])) {
                     method.setAccessible(true);
                     Class<? extends Notification> notificationType = (Class<? extends Notification>) method.getParameterTypes()[0];
-                    methods.computeIfAbsent(notificationType, key -> method);
-                    types.add(notificationType);
+                    methods.computeIfAbsent(notificationType, key -> {
+                        types.add(notificationType);
+                        return method;
+                    });
                 }
             }
             cls = cls.getSuperclass();

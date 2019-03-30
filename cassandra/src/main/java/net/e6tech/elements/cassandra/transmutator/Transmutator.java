@@ -127,6 +127,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             entry.context.setStartTime(context.getStartTime());
             entry.context.setProvision(context.getProvision());
             entry.context.setBatchSize(context.getBatchSize());
+            entry.context.setExtractAll(context.isExtractAll());
         }
 
         for (Descriptor entry : descriptors) {

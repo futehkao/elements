@@ -18,6 +18,7 @@ package net.e6tech.elements.common.util.concurrent;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  */
 @SuppressWarnings({"squid:S2276","squid:S134", "squid:S1188", "squid:S1066", "squid:S2864", "squid:S1149"})
 public class Wait<K, V> {
-    Hashtable<K, Entry<V>> table = new Hashtable<>();
+    Map<K, Entry<V>> table = new Hashtable<>();
     Thread thread;
 
     @SuppressWarnings("squid:S899")

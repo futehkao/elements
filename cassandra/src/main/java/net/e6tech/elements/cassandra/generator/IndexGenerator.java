@@ -115,7 +115,7 @@ public class IndexGenerator extends AbstractGenerator{
         for (Map.Entry<String, Index> entry : indexes.entrySet()) {
             Index index = entry.getValue();
             builder.append("CREATE INDEX IF NOT EXISTS ");
-            builder.append(getTable().name()).append("_").append(entry.getKey());
+            builder.append(getTable().name()).append("__").append(entry.getKey());
             builder.append(" ON ");
             builder.append(fullyQualifiedTableName());
             builder.append("(");
@@ -133,7 +133,7 @@ public class IndexGenerator extends AbstractGenerator{
 
         for (String column : implicitIndexes.keySet()) {
             builder.append("CREATE CUSTOM INDEX IF NOT EXISTS ");
-            builder.append(getTable().name()).append("_").append(column).append("_idx");
+            builder.append(getTable().name()).append("__").append(column).append("_idx");
             builder.append(" ON ");
             builder.append(fullyQualifiedTableName());
             builder.append("(");

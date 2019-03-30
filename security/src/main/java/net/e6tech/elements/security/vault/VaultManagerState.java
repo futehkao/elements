@@ -17,6 +17,7 @@ limitations under the License.
 package net.e6tech.elements.security.vault;
 
 import net.e6tech.elements.common.util.SystemException;
+import org.ehcache.impl.internal.concurrent.ConcurrentHashMap;
 
 import java.util.*;
 
@@ -27,7 +28,7 @@ public class VaultManagerState implements Cloneable {
 
     private char[] password;
     private ClearText signature;
-    private Map<String, ClearText> cachedKeys = Collections.synchronizedMap(new HashMap<>());
+    private Map<String, ClearText> cachedKeys = new ConcurrentHashMap<>();
 
     @SuppressWarnings("squid:S2975")
     public VaultManagerState clone() {

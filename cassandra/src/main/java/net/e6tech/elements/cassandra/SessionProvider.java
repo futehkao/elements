@@ -49,6 +49,7 @@ public class SessionProvider implements ResourceProvider, Initializable {
     private HostDistance distance = HostDistance.LOCAL;
     private NamingStrategy namingStrategy = new DefaultNamingStrategy(NamingConventions.LOWER_CAMEL_CASE, NamingConventions.LOWER_SNAKE_CASE);
     private Class<? extends LastUpdate> lastUpdateClass = LastUpdate.class;
+    private boolean saveNullFields = false;
 
     public Provision getProvision() {
         return provision;
@@ -147,6 +148,14 @@ public class SessionProvider implements ResourceProvider, Initializable {
         });
     }
 
+    public boolean isSaveNullFields() {
+        return saveNullFields;
+    }
+
+    public void setSaveNullFields(boolean saveNullFields) {
+        this.saveNullFields = saveNullFields;
+    }
+
     public Class<? extends LastUpdate> getLastUpdateClass() {
         return lastUpdateClass;
     }
@@ -197,6 +206,13 @@ public class SessionProvider implements ResourceProvider, Initializable {
             getSession();
         }
         getMappingManager();
+        provision.getResourceManager().rebind(Session.class, getSession());
+        provision.getResourceManager().rebind(MappingManager.class, getMappingManager());
+        provision.getResourceManager().rebind(Cluster.class, getCluster());
+        provision.getResourceManager().rebind(SessionProvider.class, this);
+        Sibyl sibyl = provision.newInstance(Sibyl.class);
+        sibyl.setSaveNullFields(isSaveNullFields());
+        provision.getResourceManager().rebind(Sibyl.class, sibyl);
     }
 
     public void registerCodec(Class<? extends TypeCodec> codecClass) {
@@ -226,10 +242,6 @@ public class SessionProvider implements ResourceProvider, Initializable {
 
     @Override
     public void onOpen(Resources resources) {
-        resources.bind(Session.class, getSession());
-        resources.bind(MappingManager.class, getMappingManager());
-        resources.bind(Cluster.class, getCluster());
-        resources.bind(SessionProvider.class, this);
     }
 
     @Override

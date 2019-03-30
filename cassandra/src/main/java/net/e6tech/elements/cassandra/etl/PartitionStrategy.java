@@ -20,8 +20,6 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
-import com.datastax.driver.mapping.MappingManager;
-import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.async.Async;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.TextBuilder;
@@ -126,7 +124,8 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         context.setPartitions(partitions);
         List<S> batchResults = extract(context);
         int processedCount = load(context, batchResults);
-        logger.info("Processed {} instance of {}", processedCount, context.extractor());
+        if (logger.isInfoEnabled())
+            logger.info("Processed {} instance of {}", processedCount, context.extractor());
         return processedCount;
     }
 }

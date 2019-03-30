@@ -22,9 +22,10 @@ import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Session;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
-import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.resources.Provision;
 
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,10 +35,11 @@ import java.util.function.Function;
 
 public class Async {
     private PreparedStatement preparedStatement;
-    private List<ListenableFuture> futures;
+    private List<ListenableFuture> futures = Lists.newArrayList();
     private Map<ListenableFuture, Object> futuresData = new IdentityHashMap<>();
     private Session session;
     private AsyncResultSet result;
+    private Provision provision;
 
     public static void resetAll(Async... asyncs) {
         if (asyncs != null)
@@ -45,26 +47,27 @@ public class Async {
                 async.reset();
     }
 
-    public Async(Resources resources) {
-        this.session = resources.getInstance(Session.class);
-        init(resources, null);
-    }
-
-    public Async(Resources resources, String stmt) {
-        this.session = resources.getInstance(Session.class);
-        init(resources, resources.getInstance(Session.class).prepare(stmt));
-    }
-
-    public Async(Resources resources, PreparedStatement stmt) {
-        this.session = resources.getInstance(Session.class);
-        init(resources, stmt);
-    }
-
-    private void init(Resources resources, PreparedStatement stmt) {
-        this.session = resources.getInstance(Session.class);
-        preparedStatement = stmt;
-        futures = Lists.newArrayList();
+    public Async() {
         result = new AsyncResultSet(this, futures, futuresData);
+    }
+
+    public Provision getProvision() {
+        return provision;
+    }
+
+    @Inject
+    public void setProvision(Provision provision) {
+        this.provision = provision;
+        this.session = provision.getInstance(Session.class);
+    }
+
+    public Async prepare(String stmt) {
+        return prepare(session.prepare(stmt));
+    }
+
+    public Async prepare(PreparedStatement stmt) {
+        preparedStatement = stmt;
+        return this;
     }
 
     public Async reset() {

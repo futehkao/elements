@@ -24,6 +24,7 @@ import javax.cache.Caching;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by futeh.
@@ -33,7 +34,7 @@ public class CacheConfiguration {
     public static final long DEFAULT_EXPIRY = 15 * 60 * 1000L;
 
     private static final String DEFAULT_PROVIDER = "net.e6tech.elements.common.cache.ehcache.EhcacheProvider";
-    private static Map<String, CacheManager> managers = Collections.synchronizedMap(new HashMap<>());
+    private static Map<String, CacheManager> managers = new ConcurrentHashMap<>();
 
     private CacheProvider provider;
     private CacheManager cacheManager;

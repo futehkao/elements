@@ -37,6 +37,7 @@ public class TableGenerator extends AbstractGenerator {
     private List<KeyColumn> clusterKeys = new ArrayList<>();
     private List<KeyColumn> partitionKeys = new ArrayList<>();
 
+    @SuppressWarnings({"squid:S3776", "squid:S135"})
     TableGenerator(Generator generator, Class entityClass) throws IntrospectionException {
         super(generator);
         LinkedList<Class> classHierarchy = analyze(entityClass);
@@ -110,8 +111,8 @@ public class TableGenerator extends AbstractGenerator {
             builder.append(",\n");
         }
 
-        Collections.sort(partitionKeys, Comparator.comparingInt(p -> p.getPosition()));
-        Collections.sort(clusterKeys, Comparator.comparingInt(p -> p.getPosition()));
+        Collections.sort(partitionKeys, Comparator.comparingInt(KeyColumn::getPosition));
+        Collections.sort(clusterKeys, Comparator.comparingInt(KeyColumn::getPosition));
         boolean first = true;
         builder.append("PRIMARY KEY (");
         if (partitionKeys.size() > 1)

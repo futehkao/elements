@@ -16,14 +16,12 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.mapping.Mapper;
 import com.datastax.driver.mapping.MappingManager;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.cassandra.SessionProvider;
+import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.async.Async;
 import net.e6tech.elements.cassandra.async.AsyncFutures;
 import net.e6tech.elements.cassandra.generator.Generator;
@@ -31,21 +29,13 @@ import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
-import net.e6tech.elements.common.util.SystemException;
 
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
+import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
-public abstract class ETLContext {
-    private static Cache<Class, Inspector> inspectors = CacheBuilder.newBuilder()
-            .concurrencyLevel(32)
-            .initialCapacity(128)
-            .maximumSize(2000)
-            .build();
-
+public class ETLContext {
     public static final long DAY = 24 * 60 * 60 * 1000L;
     public static final long HOUR = 60 * 60 * 1000L;
     public static final long MINUTE = 60 * 1000L;
@@ -56,14 +46,15 @@ public abstract class ETLContext {
     private int batchSize = 1000;
     private long timeLag = 5 * 60 * 1000L;
     private int importedCount;
-    private Map<Class, Mapper> mappers = new HashMap<>();
     private String extractorName;
     private boolean extractAll = true;
     private Class sourceClass;
     private TimeUnit timeUnit;
     private boolean initialized = false;
     private long startTime = System.currentTimeMillis();
-    private boolean saveNullFields = false;
+    private Sibyl sibyl;
+    private Class<LastUpdate> lastUpdateClass;
+    private LastUpdate lastUpdate;
 
     public Provision getProvision() {
         return provision;
@@ -72,6 +63,9 @@ public abstract class ETLContext {
     @Inject
     public void setProvision(Provision provision) {
         this.provision = provision;
+        if (provision != null) {
+            sibyl = provision.getInstance(Sibyl.class);
+        }
     }
 
     public Generator getGenerator() {
@@ -126,8 +120,16 @@ public abstract class ETLContext {
         this.startTime = startTime;
     }
 
+    public boolean isExtractAll() {
+        return extractAll;
+    }
+
+    public void setExtractAll(boolean extractAll) {
+        this.extractAll = extractAll;
+    }
+
     public <T> Mapper<T> getMapper(Class<T> cls) {
-        return mappers.computeIfAbsent(cls, key -> open().apply(Resources.class, res -> res.getInstance(MappingManager.class).mapper(cls)));
+        return sibyl.getMapper(cls);
     }
 
     public String getExtractorName() {
@@ -138,16 +140,16 @@ public abstract class ETLContext {
         this.extractorName = extractorName;
     }
 
-    public boolean isSaveNullFields() {
-        return saveNullFields;
-    }
-
-    public void setSaveNullFields(boolean saveNullFields) {
-        this.saveNullFields = saveNullFields;
-    }
-
     public String extractor() {
         return getExtractorName() != null ? getExtractorName() : getSourceClass().getName();
+    }
+
+    public Class<LastUpdate> getLastUpdateClass() {
+        return lastUpdateClass;
+    }
+
+    public void setLastUpdateClass(Class<LastUpdate> lastUpdateClass) {
+        this.lastUpdateClass = lastUpdateClass;
     }
 
     public Class getPartitionKeyType() {
@@ -156,7 +158,6 @@ public abstract class ETLContext {
     }
 
     public void reset() {
-        mappers.clear();
     }
 
     public TimeUnit getTimeUnit() {
@@ -189,42 +190,25 @@ public abstract class ETLContext {
     }
 
     public Async createAsync() {
-        return getProvision().open().apply(Resources.class, Async::new);
+        return getProvision().newInstance(Async.class);
     }
 
     public Async createAsync(String query) {
-        return getProvision().open().apply(Resources.class, resources -> new Async(resources, query));
+        return getProvision().newInstance(Async.class).prepare(query);
     }
 
-    public Async createAsync(PreparedStatement query) {
-        return getProvision().open().apply(Resources.class, resources -> new Async(resources, query));
+    public Async createAsync(PreparedStatement stmt) {
+        return getProvision().newInstance(Async.class).prepare(stmt);
     }
 
     public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, Mapper.Option... options) {
-        Async async = getProvision().open().apply(Resources.class, Async::new);
-        Mapper<X> mapper = getMapper(cls);
-        try {
-            if (options != null && options.length > 0) {
-                List<Mapper.Option> all = new ArrayList<>();
-                for (Mapper.Option option : options) {
-                    all.add(option);
-                }
-                all.add(Mapper.Option.saveNullFields(isSaveNullFields()));
-                mapper.setDefaultSaveOptions(all.toArray(new Mapper.Option[0]));
-            } else {
-                mapper.setDefaultSaveOptions(Mapper.Option.saveNullFields(false));
-            }
-            return async.accept(list, mapper::saveAsync);
-        } finally {
-            mapper.resetDefaultSaveOptions();
-        }
+        Sibyl s = provision.getInstance(Sibyl.class);
+        return s.save(list, cls, options);
     }
 
     public <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls) {
-        Async async = getProvision().open().apply(Resources.class, Async::new);
-        Mapper<X> mapper = getMapper(cls);
-        mapper.setDefaultGetOptions(Mapper.Option.consistencyLevel(ConsistencyLevel.SERIAL));
-        return async.accept(list, k -> mapper.getAsync(k.getKeys()));
+        Sibyl s = provision.getInstance(Sibyl.class);
+        return s.get(list, cls);
     }
 
     public <T, E> Transform<T,E> transform(E[] array, Class<T> targetClass, BiConsumer<Transform<T, E>, E> consumer) {
@@ -236,7 +220,7 @@ public abstract class ETLContext {
     }
 
     public PrimaryKey getPrimaryKey(Object instance) {
-        return getInspector((Class) instance.getClass()).getPrimaryKey(instance);
+        return getInspector(instance.getClass()).getPrimaryKey(instance);
     }
 
     public void setPrimaryKey(PrimaryKey key, Object instance) {
@@ -248,21 +232,28 @@ public abstract class ETLContext {
     }
 
     public void saveLastUpdate(LastUpdate lastUpdate) {
-        Class<LastUpdate> lastUpdateClass = getProvision().open().apply(Resources.class,
+        if (lastUpdateClass == null)
+            lastUpdateClass = getProvision().open().apply(Resources.class,
                 resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
         getMapper(lastUpdateClass).save(lastUpdate);
+        this.lastUpdate = lastUpdate;
     }
 
     public LastUpdate lookupLastUpdate() {
-        return open().apply(Resources.class, resources -> {
-            Class<? extends LastUpdate> cls = resources.getInstance(SessionProvider.class).getLastUpdateClass();
-            return resources.getInstance(MappingManager.class).mapper(cls).get(extractor());
+        if (lastUpdate != null)
+            return lastUpdate;
+        if (lastUpdateClass == null)
+            lastUpdateClass = getProvision().open().apply(Resources.class,
+                    resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
+        lastUpdate = open().apply(Resources.class, resources -> {
+            return resources.getInstance(MappingManager.class).mapper(lastUpdateClass).get(extractor());
         });
+        return lastUpdate;
     }
 
     public LastUpdate getLastUpdate() {
         String name = extractor();
-        LastUpdate lastUpdate = lookupLastUpdate();
+        lookupLastUpdate();
 
         if (lastUpdate == null) {
             lastUpdate = new LastUpdate();
@@ -287,8 +278,8 @@ public abstract class ETLContext {
     }
 
     public Object getLastUpdateValue() {
-        LastUpdate lastUpdate = getLastUpdate();
-        return getGenerator().getDataValue(lastUpdate.getDataType(), lastUpdate.getLastUpdate());
+        LastUpdate l = getLastUpdate();
+        return getGenerator().getDataValue(l.getDataType(), l.getLastUpdate());
     }
 
     public Comparable getCutoff() {
@@ -328,21 +319,7 @@ public abstract class ETLContext {
     }
 
     public Inspector getInspector(Class cls) {
-        Callable<Inspector> loader = () -> {
-            Inspector inspector = new Inspector(cls, getGenerator());
-            inspector.initialize();
-            return inspector;
-        };
-
-        try {
-            return inspectors.get(cls, loader);
-        } catch (ExecutionException e) {
-            try {
-                return loader.call();
-            } catch (Exception e1) {
-                throw new SystemException(e);
-            }
-        }
+        return provision.getInstance(Sibyl.class).getInspector(cls);
     }
 
     public void initialize() {

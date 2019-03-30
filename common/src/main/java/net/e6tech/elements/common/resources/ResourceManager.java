@@ -38,6 +38,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /**
@@ -50,7 +51,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private static Logger logger = Logger.getLogger();
     static final String LOG_DIR_ABBREV = "logDir";
     private static final String ALREADY_BOUND_MSG = "Class %s is already bound to %s";
-    private static Map<String, ResourceManager> resourceManagers = Collections.synchronizedMap(new HashMap<>());
+    private static Map<String, ResourceManager> resourceManagers = new ConcurrentHashMap<>();
 
     private String name;
     private Injector injector;
@@ -63,7 +64,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private BeanLifecycle beanLifecycle = new BeanLifecycle();
     private PluginManager pluginManager = new PluginManager(this);
     private List<ResourceManagerListener> listeners = new LinkedList<>();
-    private Map<Class, ClassInjectionInfo> injections = Collections.synchronizedMap(new HashMap<>()); // a cache to be used by Resources.
+    private Map<Class, ClassInjectionInfo> injections = new ConcurrentHashMap<>(); // a cache to be used by Resources.
     private boolean silent = false;
 
     public ResourceManager() {
