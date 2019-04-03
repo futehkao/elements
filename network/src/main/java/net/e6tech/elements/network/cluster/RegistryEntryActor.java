@@ -29,14 +29,14 @@ import akka.pattern.Patterns;
 
 /**
  * Created by futeh.
- *
+ * <p>
  * This actor bridges between service provider and the akka world.
  * It is created with a callback function in Events.Register.  When
  * messages are send to it the function is invoked.
- *
+ * <p>
  * In addition, during registration, it sends its location to RegistrarActor
  * so that callers can find it.
- *
+ * <p>
  * Each entry corresponds to a method.
  */
 class RegistryEntryActor extends AbstractActor {
@@ -67,14 +67,16 @@ class RegistryEntryActor extends AbstractActor {
 
     @Override
     public AbstractActor.Receive createReceive() {
-        return receiveBuilder().match(ClusterEvent.MemberUp.class, member -> register(member.member()))
+        return receiveBuilder()
+                .match(ClusterEvent.MemberUp.class, member -> register(member.member()))
                 .match(ClusterEvent.CurrentClusterState.class, state -> {
-            for (Member member : state.getMembers()) {
-                if (member.status().equals(MemberStatus.up())) {
-                    register(member);
-                }
-            }
-        }).match(ClusterEvent.UnreachableMember.class, member -> log.info("Member detected as unreachable: {}", member.member()))
+                    for (Member member : state.getMembers()) {
+                        if (member.status().equals(MemberStatus.up())) {
+                            register(member);
+                        }
+                    }
+                })
+                .match(ClusterEvent.UnreachableMember.class, member -> log.info("Member detected as unreachable: {}", member.member()))
                 .match(ClusterEvent.MemberRemoved.class, member -> log.info("Member is Removed: {}", member.member()))
                 .match(Events.Invocation.class, message -> {
                     final ActorRef sender = getSender();
@@ -96,9 +98,10 @@ class RegistryEntryActor extends AbstractActor {
                         if (throwable == null) throwable = ex;
                         sender.tell(new Status.Failure(throwable), self);
                     }
-        }).build();
+                }).build();
     }
 
+    // tell other member about this RegistryEntryActor
     void register(Member member) {
         getContext().actorSelection(member.address() + "/user/" + Registry.getPath())
                 .tell(new Events.Announcement(registration), getSelf());

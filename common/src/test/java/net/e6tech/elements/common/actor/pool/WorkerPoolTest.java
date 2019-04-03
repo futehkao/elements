@@ -17,16 +17,10 @@
 package net.e6tech.elements.common.actor.pool;
 
 import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
 import akka.pattern.Patterns;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.Resources;
 import org.junit.jupiter.api.Test;
-
-import java.io.File;
 
 /**
  * Created by futeh.

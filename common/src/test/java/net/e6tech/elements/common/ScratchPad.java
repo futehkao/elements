@@ -15,6 +15,10 @@ limitations under the License.
 */
 package net.e6tech.elements.common;
 
+import com.lmax.disruptor.EventPoller;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.util.DaemonThreadFactory;
 import net.e6tech.elements.common.inject.BindPropA;
 import net.e6tech.elements.common.inject.BindPropX;
 import org.junit.jupiter.api.Test;
@@ -23,17 +27,86 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by futeh.
  */
 public class ScratchPad {
+
+    public static class LongEvent {
+        private long value;
+
+        public void set(long value) {
+            this.value = value;
+        }
+    }
+
+    @Test
+    void disruptor() throws Exception {
+        // ThreadPool
+        ExecutorService pool = Executors.newCachedThreadPool();
+
+        // Specify the size of the ring buffer, must be power of 2.
+        int bufferSize = 1024;
+
+        // Construct the Disruptor
+        Disruptor<LongEvent> disruptor = new Disruptor<>(LongEvent::new, bufferSize, DaemonThreadFactory.INSTANCE);
+
+        // Connect the handler
+        /* disruptor.handleEventsWith((event, sequence, endOfBatch) -> {
+            pool.submit(() -> {
+                System.out.println("Event: " + event + " Thread: " + Thread.currentThread());
+                try {
+                    Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+        }); */
+
+
+        // Start the Disruptor, starts all threads running
+        disruptor.start();
+
+        // Get the ring buffer from the Disruptor to be used for publishing.
+        RingBuffer<LongEvent> ringBuffer = disruptor.getRingBuffer();
+        EventPoller<LongEvent> poller = ringBuffer.newPoller();
+
+        Thread thread = new Thread(() -> {
+            try {
+                while (true) {
+                    poller.poll((event, sequence, endOfBatch) -> {
+                        System.out.println("Event: " + event + " Thread: " + Thread.currentThread());
+                        return true;
+                    });
+                    Thread.sleep(10L);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        thread.start();
+
+        System.out.println("Main thread: " + Thread.currentThread());
+        ByteBuffer bb = ByteBuffer.allocate(8);
+        for (long l = 0; l < 10; l++) {
+            bb.putLong(0, l);
+            ringBuffer.publishEvent((event, sequence, buffer) -> event.set(buffer.getLong(0)), bb);
+        }
+
+        synchronized (this) {
+            this.wait();
+        }
+    }
 
     @Test
     void scratch() throws Exception {

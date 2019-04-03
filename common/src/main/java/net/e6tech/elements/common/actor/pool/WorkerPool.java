@@ -90,27 +90,31 @@ public class WorkerPool extends AbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .match(Events.IdleWorker.class, event -> idle(event.getWorker()))
-                .match(Terminated.class, event -> {
-                    workers.remove(event.actor());
-                    idleWorkers.remove(event.actor());
-                })
+                .match(Events.IdleWorker.class, this::idle)
+                .match(Terminated.class, this::terminated)
                 .match(Runnable.class, this::newTask)
                 .match(Callable.class, this::newTask)
-                .match(Events.Cleanup.class, events -> {
-                    if (idleWorkers.size() > initialCapacity) {
-                        Iterator<ActorRef> iterator = idleWorkers.iterator();
-                        int removeCount = idleWorkers.size() - initialCapacity;
-                        for (int i = 0; i < removeCount; i++) {
-                            ActorRef worker = iterator.next();
-                            iterator.remove();
-                            workers.remove(worker);
-                            worker.tell(PoisonPill.getInstance(), getSelf());
-                        }
-                    }
-                    cleanupScheduled = false;
-                })
+                .match(Events.Cleanup.class, this::cleanup)
                 .build();
+    }
+
+    private void idle(Events.IdleWorker event) {
+        idle(event.getWorker());
+    }
+
+    private void idle(ActorRef worker) {
+        if (!waiting.isEmpty()) {
+            Task task = waiting.removeFirst();
+            worker.tell(task.getWork(), task.getSender());
+        } else {
+            idleWorkers.add(worker);
+            cleanup();
+        }
+    }
+
+    private void terminated(Terminated event) {
+        workers.remove(event.actor());
+        idleWorkers.remove(event.actor());
     }
 
     private void newTask(Object event) {
@@ -120,6 +124,7 @@ public class WorkerPool extends AbstractActor {
             iterator.remove();
             worker.forward(event, getContext());
         } else if (workers.size() < maxCapacity) {
+            // put in waiting list.  When a work becomes idled, it will be picked up
             waiting.add(new Task(getSender(), event));
             newWorker();
         } else {
@@ -134,14 +139,19 @@ public class WorkerPool extends AbstractActor {
         idle(worker);
     }
 
-    private void idle(ActorRef worker) {
-        if (!waiting.isEmpty()) {
-            Task task = waiting.removeFirst();
-            worker.tell(task.getWork(), task.getSender());
-        } else {
-            idleWorkers.add(worker);
-            cleanup();
+    // this is for reducing the number of idle workers
+    private void cleanup(Events.Cleanup event) {
+        if (idleWorkers.size() > initialCapacity) {
+            Iterator<ActorRef> iterator = idleWorkers.iterator();
+            int removeCount = idleWorkers.size() - initialCapacity;
+            for (int i = 0; i < removeCount; i++) {
+                ActorRef worker = iterator.next();
+                iterator.remove();
+                workers.remove(worker);
+                worker.tell(PoisonPill.getInstance(), getSelf());
+            }
         }
+        cleanupScheduled = false;
     }
 
     private void cleanup() {
@@ -154,6 +164,7 @@ public class WorkerPool extends AbstractActor {
                 () -> getSelf().tell(new Events.Cleanup(), getSelf()),
                 getContext().dispatcher()
         );
+        cleanupScheduled = true;
     }
 
     private class Task {

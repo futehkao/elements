@@ -189,7 +189,7 @@ public class Genesis implements Initializable {
         Future future = Patterns.ask(workerPool, callable, timeout);
         return FutureConverters.toJava(future).thenApplyAsync(ret -> {
             Events.Response response = (Events.Response) ret;
-            return (R) response.getValue();
+            return response.getValue();
         });
     }
 }

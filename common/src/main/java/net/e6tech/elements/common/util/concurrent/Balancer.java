@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -36,12 +37,15 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class Balancer<T> {
 
+    private static Logger logger= Logger.getLogger();
     private BlockingQueue<T> liveList = new LinkedBlockingQueue<>();
+    private ConcurrentLinkedQueue<T> processingList = new ConcurrentLinkedQueue<>();
     private BlockingQueue<T>  deadList = new LinkedBlockingQueue<>();
     private long timeout = 3000L;
     private long recoveryPeriod = 60000L;
     private Thread recoveryThread;
     private volatile boolean stopped = false;
+    private boolean threadSafe = false;
 
     @SuppressWarnings({"unchecked"})
     public T getService() {
@@ -66,8 +70,20 @@ public abstract class Balancer<T> {
         this.recoveryPeriod = recoveryPeriod;
     }
 
+    public boolean isThreadSafe() {
+        return threadSafe;
+    }
+
+    public void setThreadSafe(boolean threadSafe) {
+        this.threadSafe = threadSafe;
+    }
+
     public void addService(T service) {
         liveList.add(service);
+    }
+
+    public int getAvailable() {
+        return liveList.size();
     }
 
     public void start() {
@@ -78,7 +94,7 @@ public abstract class Balancer<T> {
             try {
                start(service);
             } catch (Exception th) {
-                Logger.suppress(th);
+                logger.warn("Cannot start service " + service.getClass(), th);
                 iterator.remove();
                 recover(service);
             }
@@ -95,24 +111,34 @@ public abstract class Balancer<T> {
 
     @SuppressWarnings("squid:S899")
     private void recoverTask() {
-        List<T> list = new LinkedList<>();
+        try {
+            recovering();
+        } finally {
+            synchronized (this) {
+                recoveryThread = null;
+            }
+        }
+    }
+
+    private void recovering() {
         while (!stopped) {
-            list.clear();
-            T service = deadList.poll();
+            T service = null;
             try {
+                service = deadList.take();
                 start(service);
                 liveList.offer(service);
             } catch (Exception ex) {
-                Logger.suppress(ex);
-                try {
-                    stop(service);
-                } catch (Exception e) {
-                    Logger.suppress(e);
+                if (service != null) {
+                    logger.warn("Cannot restart service " + service.getClass(), ex);
+                    try {
+                        stop(service);
+                    } catch (Exception e) {
+                        logger.warn("Cannot restart service " + service.getClass(), ex);
+                    }
+                    deadList.offer(service);
                 }
-                list.add(service);
             }
 
-            list.forEach(h -> deadList.offer(h));
             try {
                 Thread.sleep(recoveryPeriod);
             } catch (InterruptedException e) {
@@ -140,11 +166,23 @@ public abstract class Balancer<T> {
     public <R> R execute(FunctionWithException<T, R, Exception> submit) throws IOException {
         while (true) {  // the while loop is for in case of IOException
             T service;
+            boolean owner = false;
             try {
                 service = liveList.poll(timeout, TimeUnit.MILLISECONDS);
+                if (service != null) {
+                    processingList.offer(service);
+                    owner = true;
+                }
             } catch (InterruptedException e) {
+                if (owner) {
+                    processingList.poll();
+                }
                 Thread.currentThread().interrupt();
                 throw new IOException();
+            }
+
+            if (service == null && threadSafe) {
+                service = processingList.peek();
             }
 
             if (service == null)
@@ -153,21 +191,35 @@ public abstract class Balancer<T> {
             SystemException error = null;
             try {
                 R ret = submit.apply(service);
-                liveList.offer(service);
+                if (owner) {
+                    liveList.offer(service);
+                }
                 return ret;
-            } catch (IOException ex) {
-                Logger.suppress(ex);
-                recover(service);
-            } catch (SystemException e) {
-                error = e;
-            } catch (InvocationTargetException | RuntimeException e) {
-                error = new SystemException(e.getCause());
-            } catch (Exception e) {
-                error = new SystemException(e);
+            } catch (Exception ex) {
+                if (shouldRecover(ex)) {
+                    if (owner) {
+                        processingList.poll();
+                        recover(service);
+                    }
+                } else {
+                    if (ex instanceof SystemException) {
+                        error = (SystemException) ex;
+                    } else if (ex instanceof InvocationTargetException) {
+                        error = new SystemException(ex.getCause());
+                    } else if (ex instanceof RuntimeException) {
+                        error = new SystemException(ex.getCause());
+                    } else {
+                        error = new SystemException(ex);
+                    }
+                }
             }
 
-            liveList.offer(service);
-            throw error;
+            if (error != null)
+                throw error;
         }
+    }
+
+    protected boolean shouldRecover(Exception exception) {
+        return exception instanceof IOException;
     }
 }

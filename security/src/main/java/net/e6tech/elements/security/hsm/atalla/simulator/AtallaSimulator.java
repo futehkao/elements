@@ -82,6 +82,14 @@ public class AtallaSimulator {
         }
     }
 
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
     public String getMasterKey() {
         return Hex.toString(masterKey);
     }

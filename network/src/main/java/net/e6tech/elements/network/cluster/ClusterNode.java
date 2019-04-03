@@ -57,7 +57,7 @@ public class ClusterNode implements Initializable {
         if (broadcast != null)
             broadcast.setTimeout(timeout);
         if (registry != null)
-            registry .setTimeout(timeout);
+            registry.setTimeout(timeout);
     }
 
     public String getName() {
@@ -120,7 +120,7 @@ public class ClusterNode implements Initializable {
         if (started)
             return;
         if (membership == null)
-            membership = genesis.getSystem().actorOf(Props.create(Membership.class, Membership::new ));
+            membership = genesis.getSystem().actorOf(Props.create(Membership.class, Membership::new));
 
         if (broadcast == null) {
             broadcast = new Messaging();
@@ -163,23 +163,24 @@ public class ClusterNode implements Initializable {
 
         @Override
         public AbstractActor.Receive createReceive() {
-            return receiveBuilder().match(ClusterEvent.MemberUp.class, member -> {
-                members.put(member.member().address(), member.member());
-                memberListeners.forEach(listener -> listener.memberUp(member.member().address().toString()));
-            }).match(ClusterEvent.CurrentClusterState.class, state -> {
-                for (Member member : state.getMembers()) {
-                    if (member.status().equals(MemberStatus.up())) {
-                        members.put(member.address(), member);
-                        memberListeners.forEach(listener -> listener.memberUp(member.address().toString()));
-                    }
-                }
-            }).match(ClusterEvent.UnreachableMember.class, member -> {
-                members.remove(member.member().address());
-                memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
-            }).match(ClusterEvent.MemberRemoved.class, member -> {
-                members.remove(member.member().address());
-                memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
-            }).build();
+            return receiveBuilder()
+                    .match(ClusterEvent.MemberUp.class, member -> {
+                        members.put(member.member().address(), member.member());
+                        memberListeners.forEach(listener -> listener.memberUp(member.member().address().toString()));
+                    }).match(ClusterEvent.CurrentClusterState.class, state -> {
+                        for (Member member : state.getMembers()) {
+                            if (member.status().equals(MemberStatus.up())) {
+                                members.put(member.address(), member);
+                                memberListeners.forEach(listener -> listener.memberUp(member.address().toString()));
+                            }
+                        }
+                    }).match(ClusterEvent.UnreachableMember.class, member -> {
+                        members.remove(member.member().address());
+                        memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
+                    }).match(ClusterEvent.MemberRemoved.class, member -> {
+                        members.remove(member.member().address());
+                        memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
+                    }).build();
         }
     }
 

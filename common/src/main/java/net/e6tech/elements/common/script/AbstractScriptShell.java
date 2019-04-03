@@ -42,7 +42,7 @@ public abstract class AbstractScriptShell {
     static {
         constants.put("SECOND", 1000L);
         constants.put("MINUTE", 60 * 1000L);
-        constants.put("HOUR", 24 * 60 * 1000L);
+        constants.put("HOUR", 60 * 60 * 1000L);
         constants.put("DAY", 24 * 60 * 60 * 1000L);
     }
 
