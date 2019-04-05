@@ -1,5 +1,6 @@
+
 /*
-Copyright 2015 Futeh Kao
+Copyright 2019 Futeh Kao
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,44 +14,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-apply plugin: 'application'
 
 dependencies {
     compile project(':common')
-    compile project(':jmx')
-    compile project(':persist-hibernate')
-    compile project(':jobs')
-    compile project(':security')
-    compile project(':network')
-    compile project(':web')
+
+    compile 'com.datastax.cassandra:cassandra-driver-core:3.7.1'
+    compile 'com.datastax.cassandra:cassandra-driver-mapping:3.7.1'
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
     testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
-}
-
-uploadArchives.enabled = false
-
-mainClassName = '''net.e6tech.elements.common.launch.Launch \\
-launch="$APP_HOME"/conf/sample.provision.groovy \\
-home="$APP_HOME" \\
-end \\
-'''
-
-
-task(copyConf, type: Copy) {
-    from "conf"
-    into "$buildDir/conf"
-}
-
-processResources.dependsOn.add copyConf
-
-// distTar.archiveName = 'h3.tar'
-distTar.from("$buildDir/conf") {
-    // into "h3/conf"
-    into "$project.name-$project.version/conf"
-}
-
-installDist.from("$buildDir/conf") {
-    into "conf"
 }

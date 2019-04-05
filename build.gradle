@@ -117,3 +117,6 @@ subprojects {
         }
     }
 }
+
+ext.junitPlatformLauncherVersion = "1.4.1"
+ext.junitJupiterVersion = "5.4.1"

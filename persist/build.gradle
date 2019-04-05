@@ -20,7 +20,7 @@ dependencies {
     compile 'org.mariadb.jdbc:mariadb-java-client:2.2.1'
     compile 'javax:javaee-api:7.0'
 
-    testCompile("org.junit.jupiter:junit-jupiter-api:5.0.3")
-    testCompile("org.junit.platform:junit-platform-launcher:1.0.3")
-    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.3")
+    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
+    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }
