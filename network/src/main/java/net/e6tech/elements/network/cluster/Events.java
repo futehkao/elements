@@ -16,9 +16,12 @@
 
 package net.e6tech.elements.network.cluster;
 
+import akka.actor.Actor;
+import akka.actor.ActorRef;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -31,6 +34,7 @@ public class Events {
     }
 
     public static class Subscribe implements Serializable {
+        private static final long serialVersionUID = 7295040545418105218L;
         String topic;
         Subscriber subscriber;
 
@@ -41,6 +45,7 @@ public class Events {
     }
 
     public static class Unsubscribe implements Serializable  {
+        private static final long serialVersionUID = 5224795221846176188L;
         String topic;
         Subscriber subscriber;
 
@@ -116,16 +121,16 @@ public class Events {
 
     public static class Registration {
         private RegisterReference reference;
-        private Function<Object[], Object> function;
+        private BiFunction<Actor, Object[], Object> function;
         private long timeout;
 
-        public Registration(String path, Function<Object[], Object> function, long timeout) {
+        public Registration(String path, BiFunction<Actor, Object[], Object> function, long timeout) {
             this.reference = new RegisterReference(path);
             this.function = function;
             this.timeout = timeout;
         }
 
-        public Function<Object[], Object> function() {
+        public BiFunction<Actor, Object[], Object> function() {
             return function;
         }
 
@@ -153,22 +158,39 @@ public class Events {
         }
     }
 
+    public static class Routes {
+        private RegisterReference reference;
+        private Function<Object[], Object> function;
+        private long timeout;
+
+        public Routes(String path) {
+            this.reference = new RegisterReference(path);
+        }
+
+        public String path() {
+            return reference.path();
+        }
+    }
+
     public static class Response implements Serializable {
         private Object value;
+        private ActorRef responder;
 
         public Response() {
         }
 
-        public Response(Object value) {
+        public Response(Object value, ActorRef responder) {
             this.value = value;
+            this.responder = responder;
         }
 
         public Object getValue() {
             return value;
         }
 
-        public void setValue(Object value) {
-            this.value = value;
+        public ActorRef getResponder() {
+            return responder;
         }
+
     }
 }

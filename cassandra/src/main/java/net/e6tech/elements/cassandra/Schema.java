@@ -46,6 +46,7 @@ import java.lang.reflect.TypeVariable;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 
 public class Schema {
     private static Cache<String, List<String>> scriptCache = CacheBuilder.newBuilder()
@@ -303,6 +304,10 @@ public class Schema {
     }
 
     public void extract(String packageName, boolean recursive) {
+        extract(packageName, recursive, null);
+    }
+
+    public void extract(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
         PackageScanner scanner = new PackageScanner();
         List<Class> classList = new ArrayList<>();
         Class[] classes = recursive ? scanner.getTopLevelClassesRecursive(Strategy.class.getClassLoader(), packageName)
@@ -334,6 +339,9 @@ public class Schema {
             ETLContext context = null;
             try {
                 context = (ETLContext) provision.newInstance(entry.getValue());
+                if (customizer != null) {
+                    customizer.accept(context);
+                }
                 Strategy strategy = (Strategy) entry.getKey().getDeclaredConstructor().newInstance();
                 strategy.run(context);
             } catch (Exception e) {

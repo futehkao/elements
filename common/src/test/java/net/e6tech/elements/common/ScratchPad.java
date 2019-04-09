@@ -17,7 +17,10 @@ package net.e6tech.elements.common;
 
 import com.lmax.disruptor.EventPoller;
 import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.WorkHandler;
+import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.dsl.ProducerType;
 import com.lmax.disruptor.util.DaemonThreadFactory;
 import net.e6tech.elements.common.inject.BindPropA;
 import net.e6tech.elements.common.inject.BindPropX;
@@ -34,6 +37,9 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Spliterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -50,29 +56,72 @@ public class ScratchPad {
         }
     }
 
+
     @Test
     void disruptor() throws Exception {
         // ThreadPool
         ExecutorService pool = Executors.newCachedThreadPool();
 
         // Specify the size of the ring buffer, must be power of 2.
+        // This will create 1024 LongEvents at the very beginning.
+        int bufferSize = 1024;
+
+        // Construct the Disruptor
+        Disruptor<LongEvent> disruptor = new Disruptor<>(LongEvent::new, bufferSize, DaemonThreadFactory.INSTANCE,
+                ProducerType.SINGLE, new YieldingWaitStrategy());
+
+        // Connect the handler
+        WorkHandler<LongEvent> handler = event -> {
+            try {
+                Thread.sleep(1000L);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println("Event: " + event + " Thread: " + Thread.currentThread());
+        };
+        WorkHandler<LongEvent>[] workers = new WorkHandler[10];
+        for (int i = 0; i < workers.length; i++) {
+            workers[i] = handler;
+        }
+
+        disruptor.handleEventsWithWorkerPool(workers);
+        /*
+        disruptor.handleEventsWith((event, sequence, endOfBatch) -> {
+            System.out.println("Event: " + event + " Thread: " + Thread.currentThread());
+            try {
+                Thread.sleep(10000L);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }); */
+
+
+        // Start the Disruptor, starts all threads running
+        disruptor.start();
+
+        // Get the ring buffer from the Disruptor to be used for publishing.
+        RingBuffer<LongEvent> ringBuffer = disruptor.getRingBuffer();
+
+        System.out.println("Main thread: " + Thread.currentThread());
+        ByteBuffer bb = ByteBuffer.allocate(8);
+        for (long l = 0; l < 10; l++) {
+            bb.putLong(0, l);
+            ringBuffer.publishEvent((event, sequence, buffer) -> event.set(buffer.getLong(0)), bb);
+        }
+
+        synchronized (this) {
+            this.wait();
+        }
+    }
+
+    @Test
+    void disruptorPoll() throws Exception {
+
+        // Specify the size of the ring buffer, must be power of 2.
         int bufferSize = 1024;
 
         // Construct the Disruptor
         Disruptor<LongEvent> disruptor = new Disruptor<>(LongEvent::new, bufferSize, DaemonThreadFactory.INSTANCE);
-
-        // Connect the handler
-        /* disruptor.handleEventsWith((event, sequence, endOfBatch) -> {
-            pool.submit(() -> {
-                System.out.println("Event: " + event + " Thread: " + Thread.currentThread());
-                try {
-                    Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            });
-        }); */
-
 
         // Start the Disruptor, starts all threads running
         disruptor.start();
@@ -161,5 +210,17 @@ public class ScratchPad {
             field.set(x, a);
         }
         System.out.println("reflection " + (System.currentTimeMillis() - start));
+    }
+
+    @Test
+    void spliterator() {
+        for (int i = 1; i < 20; i++) {
+            double ln = Math.log(i) / Math.log(2);
+            int whole = (int) ln;
+            if (Math.pow(2, ln) - Math.pow(2, whole) > whole * .2) {
+                whole++;
+            }
+            System.out.println("" + i + " " + whole);
+        }
     }
 }

@@ -84,13 +84,13 @@ class RegistryEntryActor extends AbstractActor {
                     try {
                         if (workPool != null && registration.timeout() > 0) {
                             Patterns.ask(workPool, (Runnable) () -> {
-                                Object ret = registration.function().apply(message.arguments());
-                                sender.tell(new Events.Response(ret), self);
+                                Object ret = registration.function().apply(this, message.arguments());
+                                sender.tell(new Events.Response(ret, self), self);
                             }, registration.timeout());
                         } else {
                             Registry.getThreadPool().execute(() -> {
-                                Object ret = registration.function().apply(message.arguments());
-                                sender.tell(new Events.Response(ret), self);
+                                Object ret = registration.function().apply(this, message.arguments());
+                                sender.tell(new Events.Response(ret, self), self);
                             });
                         }
                     } catch (RuntimeException ex) {
@@ -103,7 +103,9 @@ class RegistryEntryActor extends AbstractActor {
 
     // tell other member about this RegistryEntryActor
     void register(Member member) {
-        getContext().actorSelection(member.address() + "/user/" + Registry.getPath())
-                .tell(new Events.Announcement(registration), getSelf());
+        if (!cluster.selfAddress().equals(member.address())) {
+            getContext().actorSelection(member.address() + "/user/" + Registry.getPath())
+                    .tell(new Events.Announcement(registration), getSelf());
+        }
     }
 }

@@ -16,10 +16,7 @@
 
 package net.e6tech.elements.network.cluster;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.PoisonPill;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.pattern.Patterns;
 import net.e6tech.elements.common.actor.pool.WorkerPool;
 import net.e6tech.elements.common.logging.Logger;
@@ -32,8 +29,11 @@ import scala.concurrent.Future;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -119,12 +119,37 @@ public class Registry {
         Patterns.ask(registrar, PoisonPill.getInstance(), timeout);
     }
 
-    public <R> void register(String path, Function<Object[], R> function) {
-        Patterns.ask(registrar, new Events.Registration(path, (Function<Object[], Object>) function, 0L), this.timeout);
+    public <R> void register(String path, BiFunction<Actor, Object[], R> function, long timeout) {
+        Patterns.ask(registrar, new Events.Registration(path, (BiFunction<Actor, Object[], Object>) function, timeout), this.timeout);
     }
 
-    public <R> void register(String path, Function<Object[], R> function, long timeout) {
-        Patterns.ask(registrar, new Events.Registration(path, (Function<Object[], Object>) function, timeout), this.timeout);
+    public <T> Collection routes(String qualifier, Class<T> interfaceClass) {
+        if (!interfaceClass.isInterface())
+            throw new IllegalArgumentException("interfaceClass needs to be an interface");
+        for (Method method : interfaceClass.getMethods()) {
+            String methodName = method.getName();
+            if ("hashCode".equals(methodName) && method.getParameterCount() == 0
+                    || "equals".equals(methodName) && method.getParameterCount() == 1
+                    || "toString".equals(methodName) && method.getParameterCount() == 0) {
+                // ignored
+            } else {
+                String path = fullyQualify(qualifier, interfaceClass, method);
+                return routes(path);
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    public Collection routes(String path) {
+        Future<Events.Response> future = (Future) Patterns.ask(registrar, new Events.Routes(path), this.timeout);
+        return FutureConverters.toJava(future)
+                .toCompletableFuture()
+                .thenApply(response -> (Collection)response.getValue())
+                .join();
+    }
+
+    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, long timeout) {
+        register(qualifier, interfaceClass, implementation, null, timeout);
     }
 
     /**
@@ -137,7 +162,7 @@ public class Registry {
      * @param timeout timout period
      */
     @SuppressWarnings({"squid:S1067", "squid:S3776"})
-    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, long timeout) {
+    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker, long timeout) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
 
@@ -148,17 +173,12 @@ public class Registry {
                     || "toString".equals(methodName) && method.getParameterCount() == 0) {
                 // ignored
             } else {
+                if (customizedInvoker == null) {
+                    customizedInvoker = new Invoker();
+                }
+                Invoker invoker = customizedInvoker;
                 register(fullyQualify(qualifier, interfaceClass, method),
-                        t -> {
-                            try {
-                                return method.invoke(implementation, t);
-                            } catch (IllegalAccessException e) {
-                                throw new SystemException(e);
-                            } catch (InvocationTargetException e) {
-                                Logger.suppress(e);
-                                throw new SystemException(e.getCause());
-                            }
-                        }, timeout);
+                        (actor, args) -> invoker.invoke(actor, implementation, method, args), timeout);
             }
         }
     }
@@ -188,25 +208,22 @@ public class Registry {
     }
 
     @SuppressWarnings("unchecked")
-    public Function<Object[], CompletionStage> route(String qualifier, Class interfaceClass, Method method, long timeout) {
+    public Function<Object[], CompletionStage<Events.Response>> route(String qualifier, Class interfaceClass, Method method, long timeout) {
         return route(fullyQualify(qualifier, interfaceClass, method), timeout);
     }
 
-    public Function<Object[], CompletionStage> route(String path, long timeout) {
+    public Function<Object[], CompletionStage<Events.Response>> route(String path, long timeout) {
         return arguments -> {
             Future future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
-            return FutureConverters.toJava(future).thenApplyAsync(ret -> {
-                Events.Response response = (Events.Response) ret;
-                return response.getValue();
-            });
+            return FutureConverters.toJava(future).thenApplyAsync(ret -> ret);
         };
     }
 
-    public <T> Async<T> async(String qualifier, Class<T> interfaceClass) {
+    public <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass) {
         return new AsyncImpl<>(this, qualifier, interfaceClass, getTimeout());
     }
 
-    public <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout) {
+    public <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass, long timeout) {
         return new AsyncImpl<>(this, qualifier, interfaceClass, timeout);
     }
 }

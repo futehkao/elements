@@ -17,6 +17,7 @@ apply plugin: 'application'
 
 dependencies {
     compile project(':common')
+    compile project(':cassandra')
     compile project(':jmx')
     compile project(':persist-hibernate')
     compile project(':jobs')

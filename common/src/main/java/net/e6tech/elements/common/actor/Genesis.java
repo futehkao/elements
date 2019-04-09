@@ -131,7 +131,7 @@ public class Genesis implements Initializable {
         system = ActorSystem.create(name, config);
 
         // Create a worker pool
-        workerPool =  WorkerPool.newPool(system, initialCapacity, maxCapacity, idleTimeout);
+        workerPool = WorkerPool.newPool(system, initialCapacity, maxCapacity, idleTimeout);
     }
 
     public void shutdown() {

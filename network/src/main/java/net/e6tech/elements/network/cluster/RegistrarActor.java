@@ -19,22 +19,20 @@ package net.e6tech.elements.network.cluster;
 import akka.actor.*;
 import akka.cluster.Cluster;
 import akka.routing.RoundRobinRoutingLogic;
+import akka.routing.Routee;
 import akka.routing.Router;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.NotAvailableException;
+import scala.collection.JavaConverters;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by futeh.
  */
 class RegistrarActor extends AbstractActor {
-    private Cluster cluster = Cluster.lookup().get(getContext().system());
-    private Map<String, Router> routes = new HashMap<>();
-    private Map<ActorRef, List<String>> actors = new HashMap<>();
+    private Map<String, Router> routes = new HashMap<>(); // key is the context@method
+    private Map<ActorRef, List<String>> actors = new HashMap<>(); // key is actor, values is a list of context@method registered by the actor.
     private Registry registry;
     private ActorRef workerPool;
 
@@ -83,6 +81,15 @@ class RegistrarActor extends AbstractActor {
                         getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")), getSelf());
                     } else {
                         router.route(invocation, getSender());
+                    }
+                })
+                .match(Events.Routes.class, r -> { // from Registry.route().apply(r)
+                    Router router = routes.get(r.path());
+                    if (router == null || router.routees().length() == 0) {
+                        getSender().tell(new Events.Response(Collections.emptyList(), getSelf()), getSelf());
+                    } else {
+                        Collection<Routee> collection = JavaConverters.asJavaCollection(router.routees());
+                        getSender().tell(new Events.Response(collection, getSelf()), getSelf());
                     }
                 })
                 .build();

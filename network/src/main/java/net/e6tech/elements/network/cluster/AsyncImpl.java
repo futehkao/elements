@@ -29,13 +29,13 @@ import java.util.function.Function;
 /**
  * Created by futeh.
  */
-public class AsyncImpl<U> implements Async<U> {
+public class AsyncImpl<U> implements ClusterAsync<U> {
 
     Class<U> interfaceClass;
     Registry registry;
     String qualifier;
     long timeout = 5000L;
-    CompletionStage completionStage;
+    CompletionStage<Events.Response> completionStage;
     U proxy;
 
     public AsyncImpl(Registry registry, String qualifier, Class<U> interfaceClass, long timeout) {
@@ -63,10 +63,16 @@ public class AsyncImpl<U> implements Async<U> {
     public <R> CompletionStage<R> apply(Function<U, R> function) {
         completionStage = null;
         function.apply(proxy);
-        return completionStage;
+        return completionStage.thenApply(response -> (R) response.getValue());
     }
 
     public CompletionStage<Void> accept(Consumer<U> consumer) {
+        completionStage = null;
+        consumer.accept(proxy);
+        return completionStage.thenApply(response -> null);
+    }
+
+    public CompletionStage<Events.Response> ask(Consumer<U> consumer) {
         completionStage = null;
         consumer.accept(proxy);
         return completionStage;
@@ -85,7 +91,7 @@ public class AsyncImpl<U> implements Async<U> {
                 return AsyncImpl.this.toString();
             }
 
-            Function<Object[], CompletionStage> function = registry.route(qualifier, interfaceClass, method, timeout);
+            Function<Object[], CompletionStage<Events.Response>> function = registry.route(qualifier, interfaceClass, method, timeout);
             completionStage = function.apply(args);
             return Primitives.defaultValue(method.getReturnType());
 

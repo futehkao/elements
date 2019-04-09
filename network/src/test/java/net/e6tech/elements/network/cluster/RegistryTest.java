@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,10 +36,16 @@ import java.util.function.Function;
 @SuppressWarnings("all")
 public class RegistryTest {
 
-    ClusterNode create(int port) {
+    public static ClusterNode create(int port) {
         String userDir = System.getProperty("user.dir");
         File file = new File(userDir + "/src/test/resources/akka.conf");
-        Config config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).withFallback(ConfigFactory.parseFile(file));
+        Config config = ConfigFactory.parseString(
+                "akka { remote { \n " +
+                        "netty.tcp.port=" + port + "\n" +
+                        "artery.canonical.port=" + port + "\n" +
+                        "} }"
+                )
+                .withFallback(ConfigFactory.parseFile(file));
 
         // Create an Akka system
         Genesis genesis = new Genesis();
@@ -55,7 +62,7 @@ public class RegistryTest {
         ClusterNode clusterNode = create(2552);
         Registry registry = clusterNode.getRegistry();
 
-        registry.register("blah", (sv) -> {
+        registry.register("blah", (actor, sv) -> {
             return ((String)sv[0]).toUpperCase();
         }, 0L);
         Thread.sleep(100L);
@@ -138,6 +145,8 @@ public class RegistryTest {
         Thread.sleep(2000L);
     }
 
+    // For the following test, start asyncVM1, asyncVM1_1 and then asyncVM2.
+    // asyncVM2 will then submit jobs to the cluster.
     @Test
     public void asyncVM1() throws Exception {
         ClusterNode clusterNode = create(2551);
@@ -216,12 +225,18 @@ public class RegistryTest {
         }
         System.out.println("Detected announcement in " + (System.currentTimeMillis() - start) + "ms");
 
-        Async<X> async = registry.async("blah", X.class, 5000L);
-        async.apply(p -> p.doSomething(6))
-                .thenAccept(result -> {
-                    System.out.println(result);
-                });
+        Collection routes = registry.routes("blah", X.class);
 
+        for (int i = 0; i< 10; i++) {
+            ClusterAsync<X> async = registry.async("blah", X.class, 5000L);
+            int arg = i;
+            async.ask(p -> p.doSomething(arg))
+                    .thenAccept(result -> {
+                        System.out.println("value=" + result.getValue() + " sender=" + result.getResponder());
+                    });
+        }
+
+        Async<X> async = registry.async("blah", X.class, 5000L);
         Request request = new Request();
         request.map.put("key", "value");
         async.apply(p -> p.request(request))
@@ -234,6 +249,7 @@ public class RegistryTest {
                 .thenRun(() -> {
                     System.out.println("Got response: " + (System.currentTimeMillis() - callVoidStart) + "ms");
                 });
+
         Thread.sleep(2000L);
     }
 

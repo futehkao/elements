@@ -17,6 +17,7 @@
 package net.e6tech.elements.network.cluster;
 
 import akka.actor.*;
+import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
@@ -147,7 +148,7 @@ public class ClusterNode implements Initializable {
 
     class Membership extends AbstractActor {
 
-        akka.cluster.Cluster cluster = akka.cluster.Cluster.lookup().get(getContext().system());
+        Cluster cluster = akka.cluster.Cluster.lookup().get(getContext().system());
 
         //subscribe to cluster changes
         @Override
