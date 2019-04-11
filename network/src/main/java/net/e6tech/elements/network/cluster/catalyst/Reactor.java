@@ -16,10 +16,11 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
-import java.io.Serializable;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
-@FunctionalInterface
-// Note Serializable is needed so that its lambdas can be sent remotely for execution
-public interface Mapping<T, U, R> extends BiFunction<T, U, R>, Serializable {
+public interface Reactor {
+
+    default <R> R apply(Function<Reactor, R> function) {
+        return function.apply(this);
+    }
 }

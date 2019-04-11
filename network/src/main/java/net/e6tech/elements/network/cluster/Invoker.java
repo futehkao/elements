@@ -20,7 +20,6 @@ import akka.actor.Actor;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.io.Serializable;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class Invoker implements Serializable {
@@ -29,10 +28,8 @@ public class Invoker implements Serializable {
     public Object invoke(Actor actor, Object target, Method method, Object[] arguments) {
         try {
             return method.invoke(target, arguments);
-        } catch (IllegalAccessException e) {
+        } catch (Exception e) {
             throw new SystemException(e);
-        } catch (InvocationTargetException e) {
-            throw new SystemException(e.getCause());
         }
     }
 }

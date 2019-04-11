@@ -18,19 +18,20 @@ package net.e6tech.elements.network.cluster.catalyst;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.function.Function;
 
-public class Scalar<T, R> implements Serializable {
+public class Scalar<T, R> implements Function<Reactor, R>, Serializable {
     private static final long serialVersionUID = 1676649613567136786L;
-    private Transforms<?, T> transforms;
-    private Mapping<Operator, Collection<T>, R> mapping;
+    private Function<Reactor, Collection<T>>  transform;
+    private Mapping<Reactor, Collection<T>, R> mapping;
 
-    public Scalar(Transforms<?, T> transforms, Mapping<Operator, Collection<T>, R> mapping) {
-        this.transforms = transforms;
+    public Scalar(Function<Reactor, Collection<T>> transform, Mapping<Reactor, Collection<T>, R> mapping) {
+        this.transform = transform;
         this.mapping = mapping;
     }
 
-    R scalar(Operator operator) {
-        Collection<T> collection = transforms.transform(operator);
-        return mapping.apply(operator, collection);
+    public R apply(Reactor reactor) {
+        Collection<T> collection = transform.apply(reactor);
+        return mapping.apply(reactor, collection);
     }
 }

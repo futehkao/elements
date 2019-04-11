@@ -26,6 +26,7 @@ import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.pattern.Patterns;
+import net.e6tech.elements.common.resources.NotAvailableException;
 
 /**
  * Created by futeh.
@@ -84,13 +85,21 @@ class RegistryEntryActor extends AbstractActor {
                     try {
                         if (workPool != null && registration.timeout() > 0) {
                             Patterns.ask(workPool, (Runnable) () -> {
-                                Object ret = registration.function().apply(this, message.arguments());
-                                sender.tell(new Events.Response(ret, self), self);
+                                try {
+                                    Object ret = registration.function().apply(this, message.arguments());
+                                    sender.tell(new Events.Response(ret, self), self);
+                                } catch (Exception ex) {
+                                    sender.tell(new Status.Failure(ex), self);
+                                }
                             }, registration.timeout());
                         } else {
                             Registry.getThreadPool().execute(() -> {
-                                Object ret = registration.function().apply(this, message.arguments());
-                                sender.tell(new Events.Response(ret, self), self);
+                                try {
+                                    Object ret = registration.function().apply(this, message.arguments());
+                                    sender.tell(new Events.Response(ret, self), self);
+                                } catch (Exception ex) {
+                                    sender.tell(new Status.Failure(ex), self);
+                                }
                             });
                         }
                     } catch (RuntimeException ex) {

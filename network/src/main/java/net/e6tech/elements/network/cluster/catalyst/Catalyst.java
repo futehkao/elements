@@ -18,26 +18,62 @@ package net.e6tech.elements.network.cluster.catalyst;
 
 import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.Registry;
+import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
+import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionSegment;
+import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
+import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
+import net.e6tech.elements.network.cluster.catalyst.transform.Transform;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Spliterator;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class Catalyst<T, R> {
     private Registry registry;
     private long waitTime = 20000L;
-    private List<Collection<T>> segments = new ArrayList<>();
     private String qualifier;
-    private Collection<T> collection;
-    private Transforms<T, R> transforms = new Transforms<>();
+    private DataSet<T> dataSet;
+    private Tuple<T, R> tuple = new Tuple<>();
 
-    public Catalyst(String qualifier, Registry registry, Collection<T> collection) {
+    public Catalyst(String qualifier, Registry registry, Collection<T> dataSet) {
         this.qualifier = qualifier;
         this.registry = registry;
-        this.collection = collection;
+        this.dataSet = new CollectionDataSet<>(dataSet);
+    }
+
+    public Catalyst(String qualifier, Registry registry, DataSet<T> dataSet) {
+        this.qualifier = qualifier;
+        this.registry = registry;
+        this.dataSet = dataSet;
+    }
+
+    public Catalyst(String qualifier, Registry registry, long waitTime, Function<Reactor, Collection<T>>... transformables) {
+        this.qualifier = qualifier;
+        this.registry = registry;
+        this.waitTime = waitTime;
+
+        if (transformables != null) {
+            List<Work<Function<Reactor, Collection<T>>, Collection<T>>> workLoad = new ArrayList<>();
+            for (Function<Reactor, Collection<T>> t : transformables) {
+                workLoad.add(new Work(registry.async(qualifier, Reactor.class, waitTime), t,
+                        (BiFunction<Reactor, Function<Reactor, Collection<T>>, Collection<T>>) (reactor, tr) -> reactor.apply(tr)));
+            }
+            List<T> result = new ArrayList<>();
+            for (Work<Function<Reactor, Collection<T>>, Collection<T>> work : workLoad) {
+                result.addAll(work.value());
+            }
+            this.dataSet = new CollectionDataSet<>(result);
+        }
+    }
+
+    protected Catalyst(Catalyst catalyst, Collection<T> dataSet) {
+        this.qualifier = catalyst.qualifier;
+        this.registry = catalyst.registry;
+        this.dataSet = new CollectionDataSet<>(dataSet);;
+        this.waitTime = catalyst.waitTime;
     }
 
     public long getWaitTime() {
@@ -48,102 +84,86 @@ public class Catalyst<T, R> {
         this.waitTime = waitTime;
     }
 
-    private void segment() {
-        int routes = registry.routes(qualifier, Operator.class).size();
-        int split = 0;
-        if (routes > 1) {
-            double ln = Math.log(routes) / Math.log(2);
-            int whole = (int) ln;
-            if (Math.pow(2, ln) - Math.pow(2, whole) > whole * .2) {
-                whole++;
-            }
-            split = whole;
-        }
-
-        List<Spliterator<T>> tmp = new ArrayList<>();
-        Spliterator<T> spliterator = collection.spliterator();
-        List<Spliterator<T>> spliterators = new ArrayList<>();
-        spliterators.clear();
-        spliterators.add(spliterator);
-        for (int i = 0; i < split; i++) {
-            tmp.clear();
-            for (Spliterator<T> segment : spliterators) {
-                Spliterator<T> second = segment.trySplit();
-                if (second != null) {
-                    tmp.add(second);
-                }
-                tmp.add(segment);
-            }
-            spliterators.clear();
-            spliterators.addAll(tmp);
-        }
-        for (Spliterator<T> s : spliterators) {
-            segments.add(StreamSupport.stream(s, false).collect(Collectors.toList()));
-        }
+    public String getQualifier() {
+        return qualifier;
     }
 
-    public <U> Catalyst<T, U> map(Mapping<Operator, R, U> mapping) {
-        transforms.add(new MapTransform<>(mapping));
+    public Registry getRegistry() {
+        return registry;
+    }
+
+    public <U> Catalyst<T, U> addTransform(Transform<R, U> transform) {
+        tuple.add(transform);
         return (Catalyst) this;
     }
 
-    public R scalar(Mapping<Operator, Collection<R>, R> mapping) {
+    public R scalar(Mapping<Reactor, Collection<R>, R> mapping) {
         Collection<R> result = collect(mapping);
-        Async<Operator> async = registry.async(qualifier, Operator.class, waitTime);
-        Transforms<R, R> nullTransforms = new Transforms<>();
-        return async.apply(p -> p.scalar(new Scalar<>(nullTransforms.of(result), mapping)))
+        Async<Reactor> async = registry.async(qualifier, Reactor.class, waitTime);
+        Tuple<R, R> nullTransforms = new Tuple<>();
+        return async.apply(p -> p.apply(new Scalar<>(nullTransforms.of(new CollectionSegment<>(result)), mapping)))
                 .toCompletableFuture().join();
     }
 
-    protected Collection<R> collect(Mapping<Operator, Collection<R>, R> mapping) {
-        List<Work<T>> workLoad = prepareWork();
+    protected Collection<R> collect(Mapping<Reactor, Collection<R>, R> mapping) {
+        List<Work<Segment<T>, R>> workLoad = prepareWork((reactor, segment) ->
+                reactor.apply(new Scalar<>(tuple.of(segment), mapping)));
         List<R> result = new ArrayList<>();
-        for (Work<T> work: workLoad) {
-            try {
-                R value = work.async.apply(p -> p.scalar(new Scalar<>(transforms.of(work.segment), mapping)))
-                        .toCompletableFuture().join();
-                result.add(value);
-            } catch (Exception ex) {
-                R value = work.async.apply(p -> p.scalar(new Scalar<>(transforms.of(work.segment), mapping)))
-                        .toCompletableFuture().join();
-                result.add(value);
-            }
+        for (Work<Segment<T>, R> work: workLoad) {
+            work.start();
+        }
 
+        for (Work<Segment<T>, R> work: workLoad) {
+            result.add(work.value());
         }
         return result;
     }
 
-    public Collection<R> transform() {
-        List<Work<T>> workLoad = prepareWork();
-        List<R> result = new ArrayList<>();
-        for (Work<T> work : workLoad) {
-            try {
-                Collection<R> collection = work.async.apply(p -> p.transform(transforms.of(work.segment))).toCompletableFuture().join();
-                result.addAll(collection);
-            } catch (Exception ex) {
-                Collection<R> collection = work.async.apply(p -> p.transform(transforms.of(work.segment))).toCompletableFuture().join();
-                result.addAll(collection);
-            }
+    public Catalyst<R, R> transform() {
+        List<Work<Segment<T>, Collection<R>>> workLoad = prepareWork((reactor, segment) -> reactor.apply(tuple.of(segment)));
+        for (Work<Segment<T>, Collection<R>> work: workLoad) {
+            work.start();
         }
-        return result;
+
+        List<R> result = new ArrayList<>();
+        for (Work<Segment<T>, Collection<R>> work: workLoad) {
+            result.addAll(work.value());
+        }
+        return new Catalyst<>(this, result);
     }
 
-    private List<Work<T>> prepareWork() {
-        segment();
-        List<Work<T>> workLoad = new ArrayList<>();
-        for (Collection<T> segment : segments) {
-            workLoad.add(new Work(registry.async(qualifier, Operator.class, waitTime), segment));
+    private <In, Out> List<Work<In, Out>> prepareWork(BiFunction<Reactor, In, Out> work) {
+        dataSet.initialize(this);
+        List<Work<In, Out>> workLoad = new ArrayList<>();
+        for (Segment<T> segment : dataSet.segments()) {
+            workLoad.add(new Work(registry.async(qualifier, Reactor.class, waitTime), segment, work));
         }
         return workLoad;
     }
 
-    private static class Work<T> {
-        Async<Operator> async;
-        Collection<T> segment;
+    private static class Work<In, Out> {
+        Async<Reactor> async;
+        In input;
+        CompletableFuture<Out> future;
+        BiFunction<Reactor, In, Out> work;
 
-        Work(Async<Operator> async, Collection<T> segment) {
+        Work(Async<Reactor> async, In input, BiFunction<Reactor, In, Out> work) {
             this.async = async;
-            this.segment = segment;
+            this.input = input;
+            this.work = work;
+        }
+
+        void start() {
+            future = async.apply(p -> work.apply(p, input)).toCompletableFuture();
+        }
+
+        Out value() {
+            try {
+                return future.join();
+            } catch (Exception ex) {
+                start();
+                return future.join();
+            }
         }
     }
 }

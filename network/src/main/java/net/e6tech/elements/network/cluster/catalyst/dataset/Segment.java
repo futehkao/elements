@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.dataset;
+
+import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
 import java.io.Serializable;
-import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
-@FunctionalInterface
-// Note Serializable is needed so that its lambdas can be sent remotely for execution
-public interface Mapping<T, U, R> extends BiFunction<T, U, R>, Serializable {
+public interface Segment<E> extends Serializable {
+    Stream<E> stream(Reactor reactor);
 }

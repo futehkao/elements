@@ -14,22 +14,25 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.transform;
 
-import java.io.Serializable;
+import net.e6tech.elements.network.cluster.catalyst.Mapping;
+import net.e6tech.elements.network.cluster.catalyst.Reactor;
+
 import java.util.stream.Stream;
 
-public abstract class Transform<T, R> implements Serializable {
-    private static final long serialVersionUID = -6216804622554747554L;
-    private Mapping<Operator, T, R> mapping;
+/**
+ * Transform each member of type R of a Stream into a Stream of type T.
+ */
+public class MapTransform<T, R> extends Transform<T, R> {
+    private Mapping<Reactor, T, R> mapping;
 
-    public Transform(Mapping<Operator, T, R> mapping) {
+    public MapTransform(Mapping<Reactor, T, R> mapping) {
         this.mapping = mapping;
     }
 
-    public abstract Stream<R> transform(Operator operator, Stream<T> stream);
-
-    protected R mapping(Operator operator, T t) {
-        return mapping.apply(operator, t);
+    @Override
+    public Stream<R> transform(Reactor operator, Stream<T> stream) {
+        return stream.map(t -> mapping.apply(operator, t));
     }
 }

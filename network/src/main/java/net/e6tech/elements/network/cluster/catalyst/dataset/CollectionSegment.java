@@ -14,17 +14,23 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.dataset;
+
+import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
 import java.util.Collection;
+import java.util.stream.Stream;
 
-public interface Operator {
+public class CollectionSegment<E> implements Segment<E> {
 
-    default <T, R> R scalar(Scalar<T, R> scalar) {
-        return scalar.scalar(this);
+    private Collection<E> segment;
+
+    public CollectionSegment(Collection<E> segment) {
+        this.segment = segment;
     }
 
-    default <T, R> Collection<R> transform(Transforms<T, R> transforms) {
-        return transforms.transform(this);
+    @Override
+    public Stream<E> stream(Reactor reactor) {
+        return segment.stream();
     }
 }

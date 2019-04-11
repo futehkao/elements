@@ -20,6 +20,7 @@ import akka.actor.Actor;
 import akka.actor.ActorRef;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -142,14 +143,19 @@ public class Events {
     public static class Invocation implements Serializable {
         private static final long serialVersionUID = -264975294117974773L;
         private RegisterReference reference;
-        private Object[] arguments;
+        private byte[] payload;
+        private transient Object[] arguments;
 
-        public Invocation(String path, Object[] arguments) {
+        public Invocation(String path, Object[] arguments) throws IOException {
             this.reference = new RegisterReference(path);
             this.arguments = arguments;
+            this.payload = CompressionSerializer.toBytes(arguments);
         }
 
-        public Object[] arguments() {
+        public Object[] arguments() throws IOException, ClassNotFoundException {
+            if (arguments == null && payload != null) {
+                arguments = CompressionSerializer.fromBytes(payload);
+            }
             return arguments;
         }
 

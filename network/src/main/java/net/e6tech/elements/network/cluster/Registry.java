@@ -26,6 +26,7 @@ import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -214,7 +215,12 @@ public class Registry {
 
     public Function<Object[], CompletionStage<Events.Response>> route(String path, long timeout) {
         return arguments -> {
-            Future future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
+            Future future = null;
+            try {
+                future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
+            } catch (IOException e) {
+                throw new SystemException(e);
+            }
             return FutureConverters.toJava(future).thenApplyAsync(ret -> ret);
         };
     }

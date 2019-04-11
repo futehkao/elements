@@ -14,12 +14,28 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.dataset;
 
-import java.io.Serializable;
-import java.util.function.BiFunction;
+import net.e6tech.elements.network.cluster.catalyst.Catalyst;
 
-@FunctionalInterface
-// Note Serializable is needed so that its lambdas can be sent remotely for execution
-public interface Mapping<T, U, R> extends BiFunction<T, U, R>, Serializable {
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+public class RemoteDataSet<E> implements DataSet<E> {
+    private List<Segment<E>> segments = new ArrayList<>();
+
+    public void add(Segment<E> segment) {
+        segments.add(segment);
+    }
+
+    @Override
+    public void initialize(Catalyst catalyst) {
+        // do nothing
+    }
+
+    @Override
+    public Collection<Segment<E>> segments() {
+        return segments;
+    }
 }

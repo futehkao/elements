@@ -14,18 +14,13 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.dataset;
 
-import java.util.stream.Stream;
+import net.e6tech.elements.network.cluster.catalyst.Catalyst;
 
-public class MapTransform<T, R> extends Transform<T, R> {
+import java.util.Collection;
 
-    public MapTransform(Mapping<Operator, T, R> mapping) {
-        super(mapping);
-    }
-
-    @Override
-    public Stream<R> transform(Operator operator, Stream<T> stream) {
-        return stream.map(t -> mapping(operator, t));
-    }
+public interface DataSet<E> {
+    void initialize(Catalyst catalyst);
+    Collection<Segment<E>> segments();
 }
