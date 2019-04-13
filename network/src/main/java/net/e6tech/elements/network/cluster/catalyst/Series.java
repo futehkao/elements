@@ -16,7 +16,10 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
+import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
+import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
+import net.e6tech.elements.network.cluster.catalyst.dataset.Segments;
 import net.e6tech.elements.network.cluster.catalyst.transform.Transform;
 
 import java.io.Serializable;
@@ -33,11 +36,23 @@ import java.util.stream.Stream;
  * @param <T> Input type
  * @param <R> Output type
  */
-public class Tuple<T, R> implements Serializable, Function<Reactor, Collection<R>> {
+public class Series<T, R> implements Serializable, Function<Reactor, Collection<R>> {
     private static final long serialVersionUID = 5420350641543073437L;
 
-    private Segment<T> segment;
-    private List<Transform> transforms = new ArrayList<>();
+    protected Segment<T> segment;
+    protected List<Transform> transforms = new ArrayList<>();
+
+    public Series() {
+    }
+
+    public Series(Series<T, R> other) {
+        transforms.addAll(other.transforms);
+    }
+
+    public static <I, O> Series<I, O> from(Transform<? extends Reactor, I, O> transform) {
+        Series<I, I> t  = new Series<>();
+        return t.add(transform);
+    }
 
     @Override
     public Collection<R> apply(Reactor reactor) {
@@ -50,15 +65,23 @@ public class Tuple<T, R> implements Serializable, Function<Reactor, Collection<R
         return (Collection) stream.collect(Collectors.toList());
     }
 
-    public <U> Tuple<T, U> add(Transform<R, U> transform) {
+    public <U> Series<T, U> add(Transform<? extends Reactor, R, U> transform) {
         transforms.add(transform);
-        return (Tuple) this;
+        return (Series) this;
     }
 
-    public Tuple<T, R> of(Segment<T> segment) {
-        Tuple<T, R> generator = new Tuple<>();
-        generator.segment = segment;
-        generator.transforms = transforms;
-        return generator;
+    public Series<T, R> allocate(Segments<T> segments) {
+        Series<T, R> copy = new Series<>();
+        copy.segment = segments.remove();
+        for (Transform t : this.transforms) {
+            Transform p = t.allocate(segments);
+            copy.transforms.add(p);
+        }
+        return copy;
     }
+
+    public DataSet<R> transform(Catalyst<? extends Reactor> catalyst, DataSet<T> dataSet) {
+        return new CollectionDataSet(catalyst.transformToList(dataSet, this));
+    }
+
 }

@@ -23,9 +23,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static net.e6tech.elements.rules.ControlFlow.Continue;
-import static net.e6tech.elements.rules.ControlFlow.Failed;
-import static net.e6tech.elements.rules.ControlFlow.Success;
+import static net.e6tech.elements.rules.ControlFlow.*;
 
 /**
  * VERY IMPORTANT.  This class must be thread safe and not keep any mutable data.

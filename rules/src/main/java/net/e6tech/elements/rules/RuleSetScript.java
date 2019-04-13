@@ -16,8 +16,8 @@ limitations under the License.
 package net.e6tech.elements.rules;
 
 import groovy.lang.Closure;
-import net.e6tech.elements.common.script.AbstractScriptBase;
 import net.e6tech.elements.common.resources.Configuration;
+import net.e6tech.elements.common.script.AbstractScriptBase;
 
 import java.util.List;
 import java.util.Map;

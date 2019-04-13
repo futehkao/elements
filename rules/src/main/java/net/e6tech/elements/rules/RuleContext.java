@@ -21,11 +21,13 @@ import groovy.lang.MetaClass;
 import groovy.lang.MissingMethodException;
 import net.e6tech.elements.common.logging.Logger;
 import org.codehaus.groovy.runtime.InvokerHelper;
-import static net.e6tech.elements.rules.ControlFlow.*;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import static net.e6tech.elements.rules.ControlFlow.Continue;
+import static net.e6tech.elements.rules.ControlFlow.Failed;
 
 /**
  * Created by futeh.

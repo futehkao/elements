@@ -21,6 +21,6 @@ import net.e6tech.elements.network.cluster.catalyst.Catalyst;
 import java.util.Collection;
 
 public interface DataSet<E> {
-    void initialize(Catalyst catalyst);
-    Collection<Segment<E>> segments();
+    Segments<E> segment(Catalyst catalyst);
+    Collection<E> asCollection();
 }

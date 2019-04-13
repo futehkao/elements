@@ -16,24 +16,32 @@
 
 package net.e6tech.elements.network.cluster.catalyst.transform;
 
-import net.e6tech.elements.network.cluster.catalyst.Mapping;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
-/**
- * Transform a Stream R directly to Stream T
- */
-public class FlatMapTransform<T, R> extends Transform<T, R> {
+public class Intersection<Re extends Reactor, T> implements Transform<Re, T, T> {
 
-    private Mapping<Reactor, Stream<T>, Stream<R>> mapping;
+    private Set<T> dataSet;
 
-    public FlatMapTransform(Mapping<Reactor, Stream<T>, Stream<R>> mapping) {
-        this.mapping = mapping;
+    public Intersection(Set<T> set) {
+        dataSet = set;
     }
 
     @Override
-    public Stream<R> transform(Reactor operator, Stream<T> stream) {
-        return mapping.apply(operator, stream);
+    public Stream<T> transform(Re reactor, Stream<T> stream) {
+        List<T> intersection = new ArrayList<>();
+        Iterator<T> iterator = stream.iterator();
+        while (iterator.hasNext()) {
+            T t = iterator.next();
+            if (dataSet.contains(t)) {
+                intersection.add(t);
+            }
+        }
+        return intersection.stream();
     }
 }

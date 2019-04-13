@@ -30,13 +30,26 @@ public class CollectionDataSet<E> implements DataSet<E> {
 
     private List<Segment<E>> segments = new ArrayList<>();
     private Collection<E> dataSet;
+    private int splitFactor = 1;
 
     public CollectionDataSet(Collection<E> dataSet) {
         this.dataSet = dataSet;
     }
 
+    /**
+     *
+     * @param dataSet data
+     * @param splitFactor determine addition rounds of splits.  For example, if it were 3, a segment for a node would
+     *                    be split into 8 segments because 2^3 is 8.  Default is 1 so that each node ideally handles two
+     *                    segments.
+     */
+    public CollectionDataSet(Collection<E> dataSet, int splitFactor) {
+        this.dataSet = dataSet;
+        this.splitFactor = splitFactor;
+    }
+
     @Override
-    public void initialize(Catalyst catalyst) {
+    public Segments<E> segment(Catalyst catalyst) {
         int routes = catalyst.getRegistry().routes(catalyst.getQualifier(), Reactor.class).size();
         int split = 0;
         if (routes > 1) {
@@ -45,7 +58,7 @@ public class CollectionDataSet<E> implements DataSet<E> {
             if (Math.pow(2, ln) - Math.pow(2, whole) > whole * .2) {
                 whole++;
             }
-            split = whole;
+            split = whole + splitFactor;
         }
 
         List<Spliterator<E>> tmp = new ArrayList<>();
@@ -66,12 +79,14 @@ public class CollectionDataSet<E> implements DataSet<E> {
         }
         segments.clear();
         for (Spliterator<E> s : spliterators) {
-            segments.add(new CollectionSegment<>(StreamSupport.stream(s, false).collect(Collectors.toList())));
+            List<E> list = StreamSupport.stream(s, false).collect(Collectors.toList());
+            segments.add(reactor -> list.stream());
         }
+        return new Segments<>(catalyst, segments);
     }
 
     @Override
-    public Collection<Segment<E>> segments() {
-        return segments;
+    public Collection<E> asCollection() {
+        return dataSet;
     }
 }

@@ -21,28 +21,49 @@ import net.e6tech.elements.network.cluster.ClusterNode;
 import net.e6tech.elements.network.cluster.Invoker;
 import net.e6tech.elements.network.cluster.Registry;
 import net.e6tech.elements.network.cluster.RegistryTest;
+import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
+import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
+import net.e6tech.elements.network.cluster.catalyst.transform.Filter;
+import net.e6tech.elements.network.cluster.catalyst.transform.Intersection;
 import net.e6tech.elements.network.cluster.catalyst.transform.MapTransform;
+import net.e6tech.elements.network.cluster.catalyst.transform.Union;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CatalystTest {
+    Registry registry;
+    SimpleCatalyst catalyst;
+    DataSet<Integer> dataSet;
 
-    public Registry create(int port)  {
+    public Registry create(int port) {
         ClusterNode clusterNode = RegistryTest.create(port);
-        Registry registry = clusterNode.getRegistry();
-        registry.register("blah", Reactor.class, new Reactor() { }, new Invoker() {
-            public Object invoke(Actor actor, Object target, Method method, Object[] arguments) {
-                System.out.println("Method " + method.getName() + " handled by " + actor.self());
-                return super.invoke(actor, target, method, arguments);
-            }
-        }, 1000L);
+        registry = clusterNode.getRegistry();
+        registry.register("blah", Reactor.class, new Reactor() {
+                },
+                new Invoker() {
+                    public Object invoke(Actor actor, Object target, Method method, Object[] arguments) {
+                        System.out.println("Method " + target.getClass().getName() + "::" + method.getName() + " handled by " + actor.self());
+                        return super.invoke(actor, target, method, arguments);
+                    }
+                }, 1000L);
         return registry;
+    }
+
+    void prepareDateSet() {
+        List<Integer> list = new ArrayList<>();
+        for (int i = 0; i < 10000; i++) {
+            list.add(i);
+        }
+        catalyst = new SimpleCatalyst("blah", registry);
+        catalyst.setWaitTime(1000000L);
+        dataSet = new CollectionDataSet<>(list);
     }
 
     @Test
@@ -65,46 +86,91 @@ public class CatalystTest {
     public void map() throws Exception {
         Registry registry = create(2552);
 
-        while (registry.routes("blah", Reactor.class).size() < 3)
+        while (registry.routes("blah", Reactor.class).size() < 1)
             Thread.sleep(100);
 
-        List<Integer> list = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            list.add(i);
-        }
-        Catalyst<Integer, Integer> propagator = new Catalyst<>("blah", registry, list);
-        Catalyst<Integer, Long> p2 = propagator.addTransform(new MapTransform<>((operator, number) ->
+        prepareDateSet();
+        Series<Integer, Long> t = Series.from(new MapTransform<>((reactor, number) ->
                 (long) (number * number)));
-        Catalyst<Long, Long> result = p2.transform();
-        Thread.sleep(100);
+
+        DataSet<Long> result = t.transform(catalyst, dataSet);
+        assertEquals(result.asCollection().size(), dataSet.asCollection().size());
     }
 
     @Test
-    public void max() throws Exception {
-        Registry registry = create(2552);
+    public void filter() throws Exception {
+        create(2552);
 
-        while (registry.routes("blah", Reactor.class).size() < 2)
+        while (registry.routes("blah", Reactor.class).size() < 1)
             Thread.sleep(100);
 
-        List<Integer> list = new ArrayList<>();
-        for (int i = 0; i < 10000000; i++) {
-            list.add(i);
-        }
-        Catalyst<Integer, Integer> p1 = new Catalyst<>("blah", registry, list);
-        p1.setWaitTime(100000L);
-        Catalyst<Integer, Double> p2 = p1.addTransform(new MapTransform<>((operator, number) ->
-                 Math.sin(number * Math.PI / 360)));
+        prepareDateSet();
+        Series<Integer, Integer> t = Series.from(new Filter<>((reactor, number) ->
+                number % 2 == 0));
+
+        DataSet<Integer> result = t.transform(catalyst, dataSet);
+        assertEquals(result.asCollection().size(), dataSet.asCollection().size() / 2);
+    }
+
+    @Test
+    public void intersection() throws Exception {
+        create(2552);
+
+        while (registry.routes("blah", Reactor.class).size() < 1)
+            Thread.sleep(100);
+
+        prepareDateSet();
+        Set<Integer> set = new HashSet<>();
+        set.add(-1);
+        set.add(0);
+        set.add(1);
+        Series<Integer, Integer> t = Series.from(new Intersection<>(set));
+
+        DataSet<Integer> result = t.transform(catalyst, dataSet);
+        assertTrue(result.asCollection().size() == set.size() - 1); // not including -1
+    }
+
+    @Test
+    public void union() throws Exception {
+        create(2552);
+
+        while (registry.routes("blah", Reactor.class).size() < 1)
+            Thread.sleep(100);
+
+        prepareDateSet();
+        Set<Integer> set = new HashSet<>();
+        set.add(-1);
+        set.add(0);
+        set.add(1);
+        Series<Integer, Integer> t = Series.from(new Union<>(new CollectionDataSet<>(set)));
+
+        DataSet<Integer> result = t.transform(catalyst, dataSet);
+        assertEquals(result.asCollection().size(), dataSet.asCollection().size() + 1); // including -1
+    }
+
+
+    @Test
+    public void max() throws Exception {
+        create(2552);
+
+        while (registry.routes("blah", Reactor.class).size() < 3)
+            Thread.sleep(100);
+
+        prepareDateSet();
+        Series<Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
+                Math.sin(number * Math.PI / 360)));
 
         long start = System.currentTimeMillis();
-        Double max = p2.scalar(((operator, longs) -> {
+        Scalar<Integer, Double> scalar = new Scalar<>(p2, ((reactor, numbers) -> {
             Double value = null;
-            for (double item : longs) {
+            for (double item : numbers) {
                 if (value == null || value < item) {
                     value = item;
                 }
             }
             return value;
         }));
+        Double max = scalar.scalar(catalyst, dataSet);
         System.out.println("Max " + max + " found in " + (System.currentTimeMillis() - start) + "ms");
     }
 
@@ -125,23 +191,59 @@ public class CatalystTest {
             return list.stream();
         };
 
-        for (int i = 0; i < 5; i ++) {
+        for (int i = 0; i < 5; i++) {
             remoteDataSet.add(segment);
         }
-        Catalyst<Integer, Integer> p1 = new Catalyst<>("blah", registry, remoteDataSet);
-        p1.setWaitTime(100000L);
-        Catalyst<Integer, Double> p2 = p1.addTransform(new MapTransform<>((operator, number) ->
+
+        SimpleCatalyst catalyst = new SimpleCatalyst("blah", registry);
+        catalyst.setWaitTime(1000000L);
+
+        Series<Integer, Double> transforms = Series.from(new MapTransform<>((operator, number) ->
                 Math.sin(number * Math.PI / 360)));
 
-        Double max = p2.scalar(((operator, longs) -> {
+        Scalar<Integer, Double> scalar = new Scalar<>(transforms, ((reactor, numbers) -> {
             Double value = null;
-            for (double item : longs) {
+            for (double item : numbers) {
                 if (value == null || value < item) {
                     value = item;
                 }
             }
             return value;
         }));
+        Double max = scalar.scalar(catalyst, remoteDataSet);
         System.out.println("Max " + max);
+    }
+
+    @Test
+    public void distinct() throws Exception {
+        create(2552);
+        while (registry.routes("blah", Reactor.class).size() < 1)
+            Thread.sleep(100);
+
+        List<Integer> list = new ArrayList<>();
+        for (int i = 0; i < 10000; i++) {
+            list.add(i);
+        }
+        prepareDateSet();
+
+        Series<Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
+                Math.sin(number * Math.PI / 360)));
+
+        DataSet<Double> distinct = new Distinct<>(p2).distinct(catalyst, dataSet);
+        DataSet<Double> distinct2 = new Distinct<Double, Double>().distinct(catalyst, distinct);
+    }
+
+    @Test
+    public void reduce() throws Exception {
+        create(2552);
+        while (registry.routes("blah", Reactor.class).size() < 1)
+            Thread.sleep(100);
+
+        prepareDateSet();
+
+        Series<Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
+                Math.sin(number * Math.PI / 360)));
+        Double reduce = new Reduce<>(p2).reduce(catalyst, dataSet, (a, b) -> a + b);
+        System.out.println(reduce);
     }
 }

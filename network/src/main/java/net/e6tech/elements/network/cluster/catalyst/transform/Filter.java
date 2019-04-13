@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst.dataset;
+package net.e6tech.elements.network.cluster.catalyst.transform;
 
+import net.e6tech.elements.network.cluster.catalyst.Mapping;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
-import java.util.Collection;
 import java.util.stream.Stream;
 
-public class CollectionSegment<E> implements Segment<E> {
+public class Filter<Re extends Reactor, T> implements Transform<Re, T, T> {
+    private static final long serialVersionUID = -8421079688575649162L;
+    Mapping<Re, T, Boolean> mapping;
 
-    private Collection<E> segment;
-
-    public CollectionSegment(Collection<E> segment) {
-        this.segment = segment;
+    public Filter(Mapping<Re, T, Boolean> mapping) {
+        this.mapping = mapping;
     }
 
     @Override
-    public Stream<E> stream(Reactor reactor) {
-        return segment.stream();
+    public Stream<T> transform(Re reactor, Stream<T> stream) {
+        return stream.filter(t ->
+                mapping.apply(reactor, t));
     }
 }

@@ -17,7 +17,6 @@
 package net.e6tech.elements.network.cluster;
 
 import akka.actor.*;
-import akka.cluster.Cluster;
 import akka.routing.RoundRobinRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;

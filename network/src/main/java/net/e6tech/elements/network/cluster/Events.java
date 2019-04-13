@@ -19,11 +19,11 @@ package net.e6tech.elements.network.cluster;
 import akka.actor.Actor;
 import akka.actor.ActorRef;
 import net.e6tech.elements.common.subscribe.Subscriber;
+import net.e6tech.elements.common.util.CompressionSerializer;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * Created by futeh.
@@ -147,9 +147,10 @@ public class Events {
         private transient Object[] arguments;
 
         public Invocation(String path, Object[] arguments) throws IOException {
+            CompressionSerializer serializer = new CompressionSerializer();
             this.reference = new RegisterReference(path);
             this.arguments = arguments;
-            this.payload = CompressionSerializer.toBytes(arguments);
+            this.payload = serializer.toBytes(arguments);
         }
 
         public Object[] arguments() throws IOException, ClassNotFoundException {
@@ -166,8 +167,6 @@ public class Events {
 
     public static class Routes {
         private RegisterReference reference;
-        private Function<Object[], Object> function;
-        private long timeout;
 
         public Routes(String path) {
             this.reference = new RegisterReference(path);

@@ -24,15 +24,16 @@ import java.util.stream.Stream;
 /**
  * Transform each member of type R of a Stream into a Stream of type T.
  */
-public class MapTransform<T, R> extends Transform<T, R> {
-    private Mapping<Reactor, T, R> mapping;
+public class MapTransform<Re extends Reactor, T, R> implements Transform<Re, T, R> {
+    private Mapping<Re, T, R> mapping;
 
-    public MapTransform(Mapping<Reactor, T, R> mapping) {
+    public MapTransform(Mapping<Re, T, R> mapping) {
         this.mapping = mapping;
     }
 
     @Override
-    public Stream<R> transform(Reactor operator, Stream<T> stream) {
-        return stream.map(t -> mapping.apply(operator, t));
+    public Stream<R> transform(Re reactor, Stream<T> stream) {
+        return stream.map(t ->
+                mapping.apply(reactor, t));
     }
 }

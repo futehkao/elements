@@ -26,7 +26,6 @@ import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.pattern.Patterns;
-import net.e6tech.elements.common.resources.NotAvailableException;
 
 /**
  * Created by futeh.

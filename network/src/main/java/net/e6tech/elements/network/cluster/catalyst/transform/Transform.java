@@ -17,6 +17,7 @@
 package net.e6tech.elements.network.cluster.catalyst.transform;
 
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
+import net.e6tech.elements.network.cluster.catalyst.dataset.Segments;
 
 import java.io.Serializable;
 import java.util.stream.Stream;
@@ -28,9 +29,11 @@ import java.util.stream.Stream;
  * @param <T> input stream type
  * @param <R> output stream type
  */
-public abstract class Transform<T, R> implements Serializable {
-    private static final long serialVersionUID = -6216804622554747554L;
+public interface Transform<Re extends Reactor, T, R> extends Serializable {
 
-    public abstract Stream<R> transform(Reactor operator, Stream<T> stream);
+    Stream<R> transform(Re reactor, Stream<T> stream);
 
+    default Transform<Re, T, R> allocate(Segments<?> root) {
+        return this;  // default is not to segment.
+    }
 }

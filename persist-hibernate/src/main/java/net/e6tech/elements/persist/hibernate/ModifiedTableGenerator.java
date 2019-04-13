@@ -16,26 +16,12 @@
 
 package net.e6tech.elements.persist.hibernate;
 
-import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Properties;
-
 import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.boot.model.relational.Database;
-import org.hibernate.boot.model.relational.InitCommand;
-import org.hibernate.boot.model.relational.Namespace;
-import org.hibernate.boot.model.relational.QualifiedName;
-import org.hibernate.boot.model.relational.QualifiedNameParser;
+import org.hibernate.boot.model.relational.*;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.config.spi.ConfigurationService;
@@ -46,12 +32,7 @@ import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.jdbc.spi.SqlStatementLogger;
 import org.hibernate.engine.spi.SessionEventListenerManager;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.id.Configurable;
-import org.hibernate.id.ExportableColumn;
-import org.hibernate.id.IdentifierGenerator;
-import org.hibernate.id.IdentifierGeneratorHelper;
-import org.hibernate.id.IntegralDataTypeHolder;
-import org.hibernate.id.PersistentIdentifierGenerator;
+import org.hibernate.id.*;
 import org.hibernate.id.enhanced.*;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
@@ -64,8 +45,13 @@ import org.hibernate.service.ServiceRegistry;
 import org.hibernate.type.LongType;
 import org.hibernate.type.StringType;
 import org.hibernate.type.Type;
-
 import org.jboss.logging.Logger;
+
+import java.io.Serializable;
+import java.sql.*;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Properties;
 
 /**
  * An enhanced version of table-based id generation.

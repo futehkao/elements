@@ -14,19 +14,32 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.common.util;
 
 import java.io.*;
+import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class CompressionSerializer {
 
-    public static byte[] toBytes(Object obj) throws IOException {
-        if(obj != null) {
+    int compressionLevel = Deflater.BEST_SPEED;
+
+    public CompressionSerializer() {
+    }
+
+    public CompressionSerializer(int level) {
+        this.compressionLevel = level;
+    }
+
+    public byte[] toBytes(Object obj) throws IOException {
+        if (obj != null) {
             try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                 GZIPOutputStream zos = new GZIPOutputStream(bos);
-                 ObjectOutputStream oos = new ObjectOutputStream(zos)) {
+                  GZIPOutputStream zos = new GZIPOutputStream(bos) {
+                      { this.def.setLevel(compressionLevel); }
+                 };
+                 ObjectOutputStream oos = new ObjectOutputStream(zos)
+            ) {
                 oos.writeObject(obj);
                 oos.flush();
                 zos.finish();
@@ -39,12 +52,12 @@ public class CompressionSerializer {
 
     @SuppressWarnings("unchecked")
     public static <T> T fromBytes(byte[] obj) throws IOException, ClassNotFoundException {
-        if(obj != null) {
+        if (obj != null) {
             try (ObjectInputStream ois =
                          new ObjectInputStream(
                                  new GZIPInputStream(
                                          new ByteArrayInputStream(obj)))) {
-                return (T)ois.readObject();
+                return (T) ois.readObject();
             }
         } else {
             return null;

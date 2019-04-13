@@ -20,6 +20,7 @@ import net.e6tech.elements.network.cluster.catalyst.Catalyst;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 public class RemoteDataSet<E> implements DataSet<E> {
@@ -30,12 +31,12 @@ public class RemoteDataSet<E> implements DataSet<E> {
     }
 
     @Override
-    public void initialize(Catalyst catalyst) {
-        // do nothing
+    public Segments<E> segment(Catalyst catalyst) {
+        return new Segments<>(catalyst, segments);
     }
 
     @Override
-    public Collection<Segment<E>> segments() {
-        return segments;
+    public Collection<E> asCollection() {
+        return Collections.emptyList();
     }
 }

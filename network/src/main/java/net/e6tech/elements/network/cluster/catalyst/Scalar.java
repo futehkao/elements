@@ -16,22 +16,31 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
+import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
+
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.function.Function;
 
 public class Scalar<T, R> implements Function<Reactor, R>, Serializable {
     private static final long serialVersionUID = 1676649613567136786L;
-    private Function<Reactor, Collection<T>>  transform;
-    private Mapping<Reactor, Collection<T>, R> mapping;
+    private Series<T, R> series;
+    private Mapping<? extends Reactor, Collection<R>, R> mapping;
 
-    public Scalar(Function<Reactor, Collection<T>> transform, Mapping<Reactor, Collection<T>, R> mapping) {
-        this.transform = transform;
+    public Scalar(Series<T, R> series, Mapping< ? extends Reactor, Collection<R>, R> mapping) {
+        this.series = series;
         this.mapping = mapping;
     }
 
     public R apply(Reactor reactor) {
-        Collection<T> collection = transform.apply(reactor);
-        return mapping.apply(reactor, collection);
+        Function<Reactor, Collection<R>> t = series;
+        Collection<R> collection = t.apply(reactor);
+        Mapping<Reactor, Collection<?>, R>  m = (Mapping) mapping;
+        return m.apply(reactor, collection);
+    }
+
+    public <S extends Reactor> R scalar(Catalyst<S> catalyst, DataSet<T> dataSet) {
+        Mapping<S, Collection<R>, R> m = (Mapping) mapping;
+        return catalyst.scalar(dataSet, series, m);
     }
 }

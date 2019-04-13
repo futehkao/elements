@@ -16,18 +16,11 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
-import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.network.cluster.Registry;
 
-import java.util.function.Function;
+public class SimpleCatalyst extends Catalyst<Reactor> {
 
-public interface Reactor {
-
-    default Provision getProvision() {
-        return null;
-    }
-
-    default <R> R apply(Function<? extends Reactor, R> function) {
-        Function<Reactor, R> capture = (Function) function;
-        return capture.apply(this);
+    public SimpleCatalyst(String qualifier, Registry registry) {
+        super(qualifier, Reactor.class, registry);
     }
 }

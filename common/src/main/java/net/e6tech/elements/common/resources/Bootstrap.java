@@ -16,7 +16,10 @@
 
 package net.e6tech.elements.common.resources;
 
-import groovy.lang.*;
+import groovy.lang.Closure;
+import groovy.lang.GString;
+import groovy.lang.GroovyObjectSupport;
+import groovy.lang.GroovyRuntimeException;
 import groovy.util.Expando;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.script.Scripting;
@@ -27,7 +30,10 @@ import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import org.apache.logging.log4j.ThreadContext;
 
 import javax.script.ScriptException;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
