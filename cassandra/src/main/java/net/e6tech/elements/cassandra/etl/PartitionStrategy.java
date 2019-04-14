@@ -52,8 +52,9 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                             "start", lastUpdate.getLastUpdate(), "end", end);
             ResultSet rs = res.getInstance(Session.class).execute(query);
             for (Row row : rs.all()) {
-                map.put((Comparable) row.get(0, context.getPartitionKeyType()), row.getLong(1));
-                partitions.add(row.getLong(0));
+                Comparable pk = (Comparable) row.get(0, context.getPartitionKeyType());
+                map.put(pk, row.getLong(1));
+                partitions.add(pk);
             }
         });
         Collections.sort(partitions);

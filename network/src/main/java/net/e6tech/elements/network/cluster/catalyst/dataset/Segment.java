@@ -21,6 +21,7 @@ import net.e6tech.elements.network.cluster.catalyst.Reactor;
 import java.io.Serializable;
 import java.util.stream.Stream;
 
+@FunctionalInterface
 public interface Segment<E> extends Serializable {
     Stream<E> stream(Reactor reactor);
 }

@@ -44,6 +44,7 @@ class RegistryEntryActor extends AbstractActor {
     Cluster cluster = Cluster.lookup().get(getContext().system());
     Events.Registration registration;
     ActorRef workPool;
+    ActorRef registra;
 
     public RegistryEntryActor(Events.Registration registration, ActorRef workPool) {
         this.registration = registration;
@@ -55,8 +56,7 @@ class RegistryEntryActor extends AbstractActor {
     public void preStart() {
         cluster.subscribe(getSelf(), ClusterEvent.MemberEvent.class, ClusterEvent.UnreachableMember.class);
         // register within its own cluster.
-        getContext().actorSelection(getSelf().path().root().address() + "/user/" + Registry.getPath())
-                .tell(new Events.Announcement(registration), getSelf());
+        getContext().getParent().tell(new Events.Announcement(registration), getSelf());
     }
 
     //re-subscribe when restart

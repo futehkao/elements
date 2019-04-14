@@ -105,6 +105,7 @@ public class Catalyst<Re extends Reactor> {
         Segments<T> segments;
         CompletableFuture<R> future;
         Function<Segments<T>, Function<? extends Reactor, R>> work;
+        Function<? extends Reactor, R> function;
 
         Work(Async<Reactor> async, Segments<T> segments, Function<Segments<T>, Function<? extends Reactor, R>> work) {
             this.async = async;
@@ -113,7 +114,11 @@ public class Catalyst<Re extends Reactor> {
         }
 
         void start() {
-            Function<? extends Reactor, R> function = work.apply(segments);
+            if (function == null) {
+                // this will create a Series, Scalar or other Function<Reactor, R> for submiting to Reactor
+                // the result should contain a segment removed from segments.  Therefore, work.apply should only be called once.
+                function = work.apply(segments);
+            }
             future = async.apply(reactor -> reactor.apply(function)).toCompletableFuture();
         }
 
