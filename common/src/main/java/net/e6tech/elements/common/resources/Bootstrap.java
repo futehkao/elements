@@ -71,6 +71,7 @@ public class Bootstrap extends GroovyObjectSupport {
     private boolean bootEnv = false;
     private boolean bootProvision = false;
     private boolean bootInit = false;
+    private List<BootstrapListener> listeners = new ArrayList<>();
 
     public Bootstrap(ResourceManager rm) {
         this.resourceManager = rm;
@@ -145,6 +146,78 @@ public class Bootstrap extends GroovyObjectSupport {
     public void setAfter(Map after) {
         this.after = after;
         after.keySet().forEach(key -> setComponent(key, false));
+    }
+
+    public List<ComponentInfo> componentInfos() {
+        List<ComponentInfo> list = new ArrayList<>();
+        preBoot.forEach((key, value) -> list.add(this.componentInfo(PRE_BOOT, key, value)));
+        main.forEach((key, value) -> list.add(this.componentInfo("main", key, value)));
+        postBoot.forEach((key, value) -> list.add(this.componentInfo(POST_BOOT, key, value)));
+        after.forEach((key, value) -> list.add(this.componentInfo(BOOT_AFTER, key, value)));
+        return list;
+    }
+
+    private ComponentInfo componentInfo(String stage, Object key, Object value) {
+        ComponentInfo info = new ComponentInfo();
+        info.stage = stage;
+        if (key instanceof Closure) {
+            info.name = value.toString();
+            Closure closure = (Closure) key;
+            if (closure.isCase(EMPTY_OBJECT_ARRAY)) {
+                info.enabled = true;
+            } else {
+                info.enabled = false;
+            }
+        } else {
+            info.name = key.toString();
+            Object on = expando.getProperty(key.toString());
+            if (Boolean.TRUE.equals(on)) {
+                info.enabled = true;
+            } else {
+                info.enabled = false;
+            }
+        }
+        return info;
+    }
+
+    public void addBootstrapListener(BootstrapListener listener) {
+        listeners.add(listener);
+    }
+
+    public boolean removeBootstrapListener(BootstrapListener listener) {
+        return listeners.remove(listener);
+    }
+
+    public void addBootstrapBeginEnv(BootstrapBeginEnv listener) {
+        listeners.add(listener);
+    }
+
+    public void addBootstrapEndEnv(BootstrapEndEnv listener) {
+        listeners.add(listener);
+    }
+
+    public void addBootstrapSystemPropertiesListener(BootstrapSystemPropertiesListener listener) {
+        listeners.add(listener);
+    }
+
+    public Map getBootEnv() {
+        Object bootEnvOverride = getVar(BOOT_ENV);
+        if (bootEnvOverride instanceof Map) {
+            return (Map) bootEnvOverride;
+        }
+        return null;
+    }
+
+    public void setBootEnv(Map map) {
+        if (map == null)
+            return;
+        Map override = getBootEnv();
+        if (override != null) {
+            override.putAll(map);
+        } else {
+            override = map;
+            resourceManager.getScripting().put(BOOT_ENV, override);
+        }
     }
 
     private void setComponent(Object key, boolean on) {
@@ -224,7 +297,7 @@ public class Bootstrap extends GroovyObjectSupport {
             logger.warn("Components not configured.  Use main or after to configure components.");
         }
 
-        bootEnv();
+        bootEnvironment();
         bootProvision();
         bootInitialContext();
 
@@ -260,6 +333,8 @@ public class Bootstrap extends GroovyObjectSupport {
             }
         }
 
+        listeners.forEach( l -> l.beginBoot(this));
+
         // boot initialization
         if (initBoot != null && !initBoot.isEmpty()) {
             initBoot();  // set by bootstrap script
@@ -285,6 +360,8 @@ public class Bootstrap extends GroovyObjectSupport {
             bootAfter(); // set by bootstrap script
         }
 
+        listeners.forEach( l -> l.endBoot(this));
+
         bootMessage("Booting completed");
 
         // After this point, additional scripts are run by the launch script via exec ResourceManagerScript
@@ -292,13 +369,14 @@ public class Bootstrap extends GroovyObjectSupport {
         return this;
     }
 
-    private void bootEnv() {
+    private void bootEnvironment() {
         if (bootEnv)
             return;
 
         bootMessage("Loading environment");
+        listeners.forEach( l -> l.beginEnv(this));
 
-        // default environment
+        // default environment, either explicit set as defaultEnvironmentFile or an accompanied file when boot is called
         if (defaultEnvironmentFile != null) {
             exec(defaultEnvironmentFile);
         } else {
@@ -325,13 +403,15 @@ public class Bootstrap extends GroovyObjectSupport {
             map.forEach((key, val) -> resourceManager.getScripting().put(key, val));
         }
 
-        // host environment file
+        // host environment file, e.g. /usr/local/e6tech/environment.groovy
         if (getVar(HOST_ENVIRONMENT_FILE) != null) {
             envFile = getVar(HOST_ENVIRONMENT_FILE).toString();
             tryExec(envFile);
         }
 
-        // startup system properties
+        listeners.forEach( l -> l.beginSystemProperties(this));
+
+        // default system properties, either explicit set as defaultSystemProperties or an accompanied file when boot is called
         if (defaultSystemProperties != null)
             exec(defaultSystemProperties);
         else {
@@ -346,11 +426,13 @@ public class Bootstrap extends GroovyObjectSupport {
         }
         tryExec(sysFile);
 
-        // host system properties
+        // host system properties, e.g. /usr/local/e6tech/system_properties.groovy
         if (getVar(HOST_SYSTEM_PROPERTIES_FILE) != null) {
             sysFile = getVar(HOST_SYSTEM_PROPERTIES_FILE).toString();
             tryExec(sysFile);
         }
+
+        listeners.forEach( l -> l.endSystemProperties(this));
 
         // log4j
         ThreadContext.put(ResourceManager.LOG_DIR_ABBREV, System.getProperty(Logger.logDir));
@@ -381,6 +463,8 @@ public class Bootstrap extends GroovyObjectSupport {
                 setComponent(key, true);
             });
         }
+
+        listeners.forEach( l -> l.endEnv(this));
 
         bootEnv = true;
         logger.info("Done loading environment **********************************\n");
@@ -512,6 +596,12 @@ public class Bootstrap extends GroovyObjectSupport {
         logger.info("Done post-booting ******************************************\n");
     }
 
+    private void bootAfter() {
+        bootMessage("Boot after");
+        after.forEach(this::runComponent);
+        logger.info("Done boot after ********************************************\n");
+    }
+
     public Bootstrap after(Map map) {
         map.forEach((key, value) -> {
             after.put(key, value);
@@ -524,12 +614,6 @@ public class Bootstrap extends GroovyObjectSupport {
         }
         bootAfter();
         return this;
-    }
-
-    private void bootAfter() {
-        bootMessage("Boot after");
-        after.forEach(this::runComponent);
-        logger.info("Done boot after ********************************************\n");
     }
 
     private void runComponentMessage(String message) {
@@ -697,6 +781,36 @@ public class Bootstrap extends GroovyObjectSupport {
             if (components != null)
                 for (String component : components)
                     setProperty(component, false);
+        }
+    }
+
+    public static class ComponentInfo {
+        private String stage;
+        private String name;
+        private boolean enabled;
+
+        public String getStage() {
+            return stage;
+        }
+
+        public void setStage(String stage) {
+            this.stage = stage;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
         }
     }
 }

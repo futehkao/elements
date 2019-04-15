@@ -20,6 +20,8 @@ import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Session;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.e6tech.elements.common.inject.Inject;
@@ -29,11 +31,18 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class Async {
+    private static Cache<String, PreparedStatement> preparedStatementCache = CacheBuilder.newBuilder()
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .initialCapacity(200)
+            .maximumSize(500)
+            .build();
+
     private PreparedStatement preparedStatement;
     private List<ListenableFuture> futures = Lists.newArrayList();
     private Map<ListenableFuture, Object> futuresData = new IdentityHashMap<>();
@@ -62,7 +71,11 @@ public class Async {
     }
 
     public Async prepare(String stmt) {
-        return prepare(session.prepare(stmt));
+        try {
+            return prepare(preparedStatementCache.get(stmt, () -> session.prepare(stmt)));
+        } catch (ExecutionException e) {
+            return prepare(session.prepare(stmt));
+        }
     }
 
     public Async prepare(PreparedStatement stmt) {

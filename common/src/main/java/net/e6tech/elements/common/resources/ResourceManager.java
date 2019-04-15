@@ -114,6 +114,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return this;
     }
 
+    public Bootstrap getBootstrap() {
+        return nullableVar("bootstrap");
+    }
+
     private void selfInit(Properties properties) {
         String logDir = properties.getProperty(LOG_DIR_ABBREV);
         if (logDir != null)
@@ -144,6 +148,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         getScripting().put("notificationCenter", notificationCenter);
         getScripting().put("interceptor", Interceptor.getInstance());
         getScripting().put("pluginManager", pluginManager);
+        getScripting().put("bootstrap", new Bootstrap(this));
     }
 
     public void addListener(ResourceManagerListener listener) {

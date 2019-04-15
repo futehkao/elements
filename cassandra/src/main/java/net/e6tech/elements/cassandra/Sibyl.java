@@ -37,11 +37,19 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
 public class Sibyl {
+
     private static Cache<Class, Inspector> inspectors = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
             .initialCapacity(128)
             .maximumSize(2000)
             .build();
+
+    private static Cache<String, PreparedStatement> preparedStatementCache = CacheBuilder.newBuilder()
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .initialCapacity(200)
+            .maximumSize(500)
+            .build();
+
     private Provision provision;
     private Map<Class, Mapper> mappers = new HashMap<>();
     private boolean saveNullFields = false;
@@ -123,8 +131,17 @@ public class Sibyl {
     }
 
     public ResultSet execute(String query, Map<String, Object> map) {
-        PreparedStatement pstmt = getSession().prepare(query);
-        BoundStatement bound = pstmt.bind();
+        PreparedStatement pstmt = null;
+        try {
+            pstmt = preparedStatementCache.get(query, () -> getSession().prepare(query));
+        } catch (ExecutionException e) {
+            pstmt = getSession().prepare(query);
+        }
+        return execute(pstmt, map);
+    }
+
+    public ResultSet execute(PreparedStatement pstmt, Map<String, Object> map) {
+       BoundStatement bound = pstmt.bind();
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             if (entry.getValue() == null) {
                 bound.setToNull(entry.getKey());

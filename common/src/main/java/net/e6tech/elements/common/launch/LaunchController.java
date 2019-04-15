@@ -58,8 +58,10 @@ public class LaunchController implements LaunchListener {
         return resourceManager;
     }
 
-    public LaunchController property(String property, String value) {
-        properties.setProperty(property, value);
+    public LaunchController property(String property, Object value) {
+        if (value == null)
+            return this;
+        properties.put(property, value);
         return this;
     }
 
