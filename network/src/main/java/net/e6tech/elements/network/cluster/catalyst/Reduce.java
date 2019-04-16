@@ -21,16 +21,16 @@ import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import java.io.Serializable;
 import java.util.Collection;
 
-public class Reduce<T, R> extends Series<T, R> {
+public class Reduce<Re extends Reactor, T, R> extends Series<Re, T, R> {
 
     public Reduce() {
     }
 
-    public Reduce(Series<T, R> other) {
+    public Reduce(Series<Re, T, R> other) {
         super(other);
     }
 
-    public R reduce(Catalyst<? extends Reactor> catalyst, DataSet<T> dataSet, ReduceOp<R> reduce) {
+    public R reduce(Catalyst<Re> catalyst, DataSet<T> dataSet, ReduceOp<R> reduce) {
         Collection<R> result = catalyst.collect(dataSet, this, (reactor, collection) -> reduce.reduce(collection));
         return reduce.reduce(result);
     }

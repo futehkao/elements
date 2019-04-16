@@ -14,26 +14,14 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster;
 
-import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.network.cluster.Local;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import java.util.function.Function;
-
-public interface Reactor {
-
-    default Provision getProvision() {
-        return null;
-    }
-
-    @Local
-    default <T> T get(Class<T> cls) {
-        return null;
-    }
-
-    default <R> R apply(Function<? extends Reactor, R> function) {
-        Function<Reactor, R> capture = (Function) function;
-        return capture.apply(this);
-    }
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Local {
 }

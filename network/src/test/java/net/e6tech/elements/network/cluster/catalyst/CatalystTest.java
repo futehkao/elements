@@ -90,7 +90,7 @@ public class CatalystTest {
             Thread.sleep(100);
 
         prepareDateSet();
-        Series<Integer, Long> t = Series.from(new MapTransform<>((reactor, number) ->
+        Series<Reactor, Integer, Long> t = Series.from(new MapTransform<>((reactor, number) ->
                 (long) (number * number)));
 
         DataSet<Long> result = t.transform(catalyst, dataSet);
@@ -105,7 +105,7 @@ public class CatalystTest {
             Thread.sleep(100);
 
         prepareDateSet();
-        Series<Integer, Integer> t = Series.from(new Filter<>((reactor, number) ->
+        Series<Reactor, Integer, Integer> t = Series.from(new Filter<>((reactor, number) ->
                 number % 2 == 0));
 
         DataSet<Integer> result = t.transform(catalyst, dataSet);
@@ -124,7 +124,7 @@ public class CatalystTest {
         set.add(-1);
         set.add(0);
         set.add(1);
-        Series<Integer, Integer> t = Series.from(new Intersection<>(set));
+        Series<Reactor, Integer, Integer> t = Series.from(new Intersection<>(set));
 
         DataSet<Integer> result = t.transform(catalyst, dataSet);
         assertTrue(result.asCollection().size() == set.size() - 1); // not including -1
@@ -142,7 +142,7 @@ public class CatalystTest {
         set.add(-1);
         set.add(0);
         set.add(1);
-        Series<Integer, Integer> t = Series.from(new Union<>(new CollectionDataSet<>(set)));
+        Series<Reactor, Integer, Integer> t = Series.from(new Union<>(new CollectionDataSet<>(set)));
 
         DataSet<Integer> result = t.transform(catalyst, dataSet);
         assertEquals(result.asCollection().size(), dataSet.asCollection().size() + 1); // including -1
@@ -157,11 +157,11 @@ public class CatalystTest {
             Thread.sleep(100);
 
         prepareDateSet();
-        Series<Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
+        Series<Reactor, Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
                 Math.sin(number * Math.PI / 360)));
 
         long start = System.currentTimeMillis();
-        Scalar<Integer, Double> scalar = new Scalar<>(p2, ((reactor, numbers) -> {
+        Scalar<Reactor, Integer, Double> scalar = new Scalar<>(p2, ((reactor, numbers) -> {
             Double value = null;
             for (double item : numbers) {
                 if (value == null || value < item) {
@@ -198,10 +198,10 @@ public class CatalystTest {
         SimpleCatalyst catalyst = new SimpleCatalyst("blah", registry);
         catalyst.setWaitTime(1000000L);
 
-        Series<Integer, Double> transforms = Series.from(new MapTransform<>((operator, number) ->
+        Series<Reactor, Integer, Double> transforms = Series.from(new MapTransform<>((operator, number) ->
                 Math.sin(number * Math.PI / 360)));
 
-        Scalar<Integer, Double> scalar = new Scalar<>(transforms, ((reactor, numbers) -> {
+        Scalar<Reactor, Integer, Double> scalar = new Scalar<>(transforms, ((reactor, numbers) -> {
             Double value = null;
             for (double item : numbers) {
                 if (value == null || value < item) {
@@ -226,11 +226,11 @@ public class CatalystTest {
         }
         prepareDateSet();
 
-        Series<Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
+        Series<Reactor, Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
                 Math.sin(number * Math.PI / 360)));
 
         DataSet<Double> distinct = new Distinct<>(p2).distinct(catalyst, dataSet);
-        DataSet<Double> distinct2 = new Distinct<Double, Double>().distinct(catalyst, distinct);
+        DataSet<Double> distinct2 = new Distinct<Reactor, Double, Double>().distinct(catalyst, distinct);
     }
 
     @Test
@@ -241,7 +241,7 @@ public class CatalystTest {
 
         prepareDateSet();
 
-        Series<Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
+        Series<Reactor, Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
                 Math.sin(number * Math.PI / 360)));
         Double reduce = new Reduce<>(p2).reduce(catalyst, dataSet, (a, b) -> a + b);
         System.out.println(reduce);

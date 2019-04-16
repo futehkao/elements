@@ -24,16 +24,16 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 
-public class Distinct<T, R> extends Series<T, R> {
+public class Distinct<Re extends Reactor, T, R> extends Series<Re, T, R> {
 
     public Distinct() {
     }
 
-    public Distinct(Series<T, R> other) {
+    public Distinct(Series<Re, T, R> other) {
         super(other);
     }
 
-    public DataSet<R> distinct(Catalyst<? extends Reactor> catalyst, DataSet<T> dataSet) {
+    public DataSet<R> distinct(Catalyst<Re> catalyst, DataSet<T> dataSet) {
         // add a Transform that collects a stream into a set and then output the set's stream.
         add(((reactor, stream) -> stream.collect(Collectors.toSet()).stream()));
         DataSet<R> result = transform(catalyst, dataSet);

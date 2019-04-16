@@ -125,6 +125,9 @@ public class Registry {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
         for (Method method : interfaceClass.getMethods()) {
+            Local local = method.getAnnotation(Local.class);
+            if (local != null)
+                continue;
             String methodName = method.getName();
             if ("hashCode".equals(methodName) && method.getParameterCount() == 0
                     || "equals".equals(methodName) && method.getParameterCount() == 1
@@ -165,6 +168,9 @@ public class Registry {
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
 
         for (Method method : interfaceClass.getMethods()) {
+            Local local = method.getAnnotation(Local.class);
+            if (local != null)
+                continue;
             String methodName = method.getName();
             if ("hashCode".equals(methodName) && method.getParameterCount() == 0
                     || "equals".equals(methodName) && method.getParameterCount() == 1

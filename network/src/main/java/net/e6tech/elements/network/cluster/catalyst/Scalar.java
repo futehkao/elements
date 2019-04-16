@@ -22,25 +22,25 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.function.Function;
 
-public class Scalar<T, R> implements Function<Reactor, R>, Serializable {
+public class Scalar<Re extends Reactor, T, R> implements Function<Re, R>, Serializable {
     private static final long serialVersionUID = 1676649613567136786L;
-    private Series<T, R> series;
-    private Mapping<? extends Reactor, Collection<R>, R> mapping;
+    private Series<Re, T, R> series;
+    private Mapping<Re, Collection<R>, R> mapping;
 
-    public Scalar(Series<T, R> series, Mapping< ? extends Reactor, Collection<R>, R> mapping) {
+    public Scalar(Series<Re, T, R> series, Mapping<Re, Collection<R>, R> mapping) {
         this.series = series;
         this.mapping = mapping;
     }
 
-    public R apply(Reactor reactor) {
-        Function<Reactor, Collection<R>> t = series;
+    public R apply(Re reactor) {
+        Function<Re, Collection<R>> t = series;
         Collection<R> collection = t.apply(reactor);
         Mapping<Reactor, Collection<?>, R>  m = (Mapping) mapping;
         return m.apply(reactor, collection);
     }
 
-    public <S extends Reactor> R scalar(Catalyst<S> catalyst, DataSet<T> dataSet) {
-        Mapping<S, Collection<R>, R> m = (Mapping) mapping;
+    public  R scalar(Catalyst<Re> catalyst, DataSet<T> dataSet) {
+        Mapping<Re, Collection<R>, R> m = mapping;
         return catalyst.scalar(dataSet, series, m);
     }
 }

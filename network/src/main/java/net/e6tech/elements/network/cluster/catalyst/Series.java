@@ -36,7 +36,7 @@ import java.util.stream.Stream;
  * @param <T> Input type
  * @param <R> Output type
  */
-public class Series<T, R> implements Serializable, Function<Reactor, Collection<R>> {
+public class Series<Re extends Reactor, T, R> implements Serializable, Function<Re, Collection<R>> {
     private static final long serialVersionUID = 5420350641543073437L;
 
     protected Segment<T> segment;
@@ -45,12 +45,12 @@ public class Series<T, R> implements Serializable, Function<Reactor, Collection<
     public Series() {
     }
 
-    public Series(Series<T, R> other) {
+    public Series(Series<Re, T, R> other) {
         transforms.addAll(other.transforms);
     }
 
-    public static <I, O> Series<I, O> from(Transform<? extends Reactor, I, O> transform) {
-        Series<I, I> t  = new Series<>();
+    public static <Re extends Reactor, I, O> Series<Re, I, O> from(Transform<Re, I, O> transform) {
+        Series<Re, I, I> t  = new Series<>();
         return t.add(transform);
     }
 
@@ -65,13 +65,13 @@ public class Series<T, R> implements Serializable, Function<Reactor, Collection<
         return (Collection) stream.collect(Collectors.toList());
     }
 
-    public <U> Series<T, U> add(Transform<? extends Reactor, R, U> transform) {
+    public <U> Series<Re, T, U> add(Transform<Re, R, U> transform) {
         transforms.add(transform);
         return (Series) this;
     }
 
-    public Series<T, R> allocate(Segments<T> segments) {
-        Series<T, R> copy = new Series<>();
+    public Series<Re, T, R> allocate(Segments<T> segments) {
+        Series<Re, T, R> copy = new Series<>();
         copy.segment = segments.remove();
         for (Transform t : this.transforms) {
             Transform p = t.allocate(segments);
@@ -80,7 +80,7 @@ public class Series<T, R> implements Serializable, Function<Reactor, Collection<
         return copy;
     }
 
-    public DataSet<R> transform(Catalyst<? extends Reactor> catalyst, DataSet<T> dataSet) {
+    public DataSet<R> transform(Catalyst<Re> catalyst, DataSet<T> dataSet) {
         return new CollectionDataSet(catalyst.transformToList(dataSet, this));
     }
 

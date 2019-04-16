@@ -56,15 +56,15 @@ public class Catalyst<Re extends Reactor> {
         return registry;
     }
 
-    public <T, R> R scalar(DataSet<T> dataSet, Series<T, R> series, Mapping<Re, Collection<R>, R> mapping) {
+    public <T, R> R scalar(DataSet<T> dataSet, Series<Re, T, R> series, Mapping<Re, Collection<R>, R> mapping) {
         Collection<R> result = collect(dataSet, series, mapping);
         Async<Re> async = registry.async(qualifier, reactorClass, waitTime);
-        Series<R, R> emptySeries = new Series<>();
+        Series<Re, R, R> emptySeries = new Series<>();
         return async.apply(p -> p.apply(new Scalar<>(emptySeries.allocate(new CollectionDataSet<>(result).segment(this)), mapping)))
                 .toCompletableFuture().join();
     }
 
-    public <T, R> Collection<R> collect(DataSet<T> dataSet, Series<T, R> series, Mapping<Re, Collection<R>, R> mapping) {
+    public <T, R> Collection<R> collect(DataSet<T> dataSet, Series<Re, T, R> series, Mapping<Re, Collection<R>, R> mapping) {
         List<Work<T, R>> workLoad = prepareWork(dataSet,
                 segments -> new Scalar<>(series.allocate(segments), mapping));
         List<R> result = new ArrayList<>();
@@ -77,7 +77,7 @@ public class Catalyst<Re extends Reactor> {
         return result;
     }
 
-    public  <T, R> List<R> transformToList(DataSet<T> dataSet, Series<T, R> series) {
+    public  <T, R> List<R> transformToList(DataSet<T> dataSet, Series<Re, T, R> series) {
         List<Work<T, Collection<R>>> workLoad =
                 prepareWork(dataSet, segments -> series.allocate(segments));
         for (Work<T, Collection<R>> work: workLoad) {
