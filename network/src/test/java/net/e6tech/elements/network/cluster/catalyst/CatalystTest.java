@@ -93,7 +93,9 @@ public class CatalystTest {
         Series<Reactor, Integer, Long> t = Series.from(new MapTransform<>((reactor, number) ->
                 (long) (number * number)));
 
-        DataSet<Long> result = t.transform(catalyst, dataSet);
+        DataSet<Long> result = catalyst.builder(dataSet)
+                .add(new MapTransform<>((reactor, number) -> (long) (number * number)))
+                .transform();
         assertEquals(result.asCollection().size(), dataSet.asCollection().size());
     }
 
@@ -105,10 +107,10 @@ public class CatalystTest {
             Thread.sleep(100);
 
         prepareDateSet();
-        Series<Reactor, Integer, Integer> t = Series.from(new Filter<>((reactor, number) ->
-                number % 2 == 0));
-
-        DataSet<Integer> result = t.transform(catalyst, dataSet);
+        DataSet<Integer> result = catalyst.builder(dataSet)
+                .add(new Filter<>((reactor, number) ->
+                        number % 2 == 0))
+                .transform();
         assertEquals(result.asCollection().size(), dataSet.asCollection().size() / 2);
     }
 
@@ -124,9 +126,10 @@ public class CatalystTest {
         set.add(-1);
         set.add(0);
         set.add(1);
-        Series<Reactor, Integer, Integer> t = Series.from(new Intersection<>(set));
+        DataSet<Integer> result = catalyst.builder(dataSet)
+                .add(new Intersection<>(set))
+                .transform();
 
-        DataSet<Integer> result = t.transform(catalyst, dataSet);
         assertTrue(result.asCollection().size() == set.size() - 1); // not including -1
     }
 
@@ -142,9 +145,10 @@ public class CatalystTest {
         set.add(-1);
         set.add(0);
         set.add(1);
-        Series<Reactor, Integer, Integer> t = Series.from(new Union<>(new CollectionDataSet<>(set)));
+        DataSet<Integer> result = catalyst.builder(dataSet)
+                .add(new Union<>(new CollectionDataSet<>(set)))
+                .transform();
 
-        DataSet<Integer> result = t.transform(catalyst, dataSet);
         assertEquals(result.asCollection().size(), dataSet.asCollection().size() + 1); // including -1
     }
 
@@ -157,11 +161,8 @@ public class CatalystTest {
             Thread.sleep(100);
 
         prepareDateSet();
-        Series<Reactor, Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
-                Math.sin(number * Math.PI / 360)));
-
         long start = System.currentTimeMillis();
-        Scalar<Reactor, Integer, Double> scalar = new Scalar<>(p2, ((reactor, numbers) -> {
+        Scalar<Reactor, Integer, Double> scalar = new Scalar<>(((reactor, numbers) -> {
             Double value = null;
             for (double item : numbers) {
                 if (value == null || value < item) {
@@ -170,7 +171,10 @@ public class CatalystTest {
             }
             return value;
         }));
-        Double max = scalar.scalar(catalyst, dataSet);
+
+        Double max = catalyst.builder(dataSet)
+                .add(new MapTransform<>((operator, number) -> Math.sin(number * Math.PI / 360)))
+                .scalar(scalar);
         System.out.println("Max " + max + " found in " + (System.currentTimeMillis() - start) + "ms");
     }
 
@@ -198,10 +202,7 @@ public class CatalystTest {
         SimpleCatalyst catalyst = new SimpleCatalyst("blah", registry);
         catalyst.setWaitTime(1000000L);
 
-        Series<Reactor, Integer, Double> transforms = Series.from(new MapTransform<>((operator, number) ->
-                Math.sin(number * Math.PI / 360)));
-
-        Scalar<Reactor, Integer, Double> scalar = new Scalar<>(transforms, ((reactor, numbers) -> {
+        Scalar<Reactor, Integer, Double> scalar = new Scalar<>(((reactor, numbers) -> {
             Double value = null;
             for (double item : numbers) {
                 if (value == null || value < item) {
@@ -210,7 +211,12 @@ public class CatalystTest {
             }
             return value;
         }));
-        Double max = scalar.scalar(catalyst, remoteDataSet);
+
+        Double max = catalyst.builder(remoteDataSet)
+                .add(new MapTransform<>((operator, number) ->
+                Math.sin(number * Math.PI / 360)))
+                .scalar(scalar);
+
         System.out.println("Max " + max);
     }
 
@@ -226,11 +232,10 @@ public class CatalystTest {
         }
         prepareDateSet();
 
-        Series<Reactor, Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
-                Math.sin(number * Math.PI / 360)));
-
-        DataSet<Double> distinct = new Distinct<>(p2).distinct(catalyst, dataSet);
-        DataSet<Double> distinct2 = new Distinct<Reactor, Double, Double>().distinct(catalyst, distinct);
+        DataSet<Double> distinct = catalyst.builder(new Distinct<>(), dataSet)
+                .add(new MapTransform<>((operator, number) ->
+                Math.sin(number * Math.PI / 360)))
+                .transform();
     }
 
     @Test
@@ -241,9 +246,10 @@ public class CatalystTest {
 
         prepareDateSet();
 
-        Series<Reactor, Integer, Double> p2 = Series.from(new MapTransform<>((operator, number) ->
-                Math.sin(number * Math.PI / 360)));
-        Double reduce = new Reduce<>(p2).reduce(catalyst, dataSet, (a, b) -> a + b);
+        Double reduce = catalyst.builder(dataSet)
+            .add(new MapTransform<>((operator, number) ->
+                    Math.sin(number * Math.PI / 360)))
+                .scalar(new Reduce<>(Double::sum));
         System.out.println(reduce);
     }
 }

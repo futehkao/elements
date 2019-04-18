@@ -16,24 +16,26 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+public class Gatherer<E> {
 
-public class Distinct<Re extends Reactor, T, R> extends Series<Re, T, R> {
+    Collection<E> collection = new ArrayList<>();
 
-    private static final long serialVersionUID = 3951801632368827650L;
-
-    public Distinct() {
+    public Gatherer() {
     }
 
-    protected Collection<R> collect(Stream<R> stream) {
-        return stream.collect(Collectors.toSet());
+    public Gatherer(Collection<E> collection) {
+        this.collection = collection;
     }
 
-    public Gatherer<R> gatherer() {
-        return new Gatherer<>(new HashSet<>());
+    public Gatherer<E> gather(Collection<E> collection) {
+        this.collection.addAll(collection);
+        return this;
+    }
+
+    public Collection<E> collection() {
+        return collection;
     }
 }

@@ -16,28 +16,23 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
-import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
-
 import java.io.Serializable;
 import java.util.Collection;
 
-public class Reduce<Re extends Reactor, T, R> extends Series<Re, T, R> {
+public class Reduce<Re extends Reactor, T, R> extends Scalar<Re, T, R> {
+
+    private static final long serialVersionUID = 2541978434272522759L;
+    private transient ReduceOp<R> reduceOp;
 
     public Reduce() {
     }
 
-    public Reduce(Series<Re, T, R> other) {
-        super(other);
-    }
-
-    public R reduce(Catalyst<Re> catalyst, DataSet<T> dataSet, ReduceOp<R> reduce) {
-        Collection<R> result = catalyst.collect(dataSet, this, (reactor, collection) -> reduce.reduce(collection));
-        return reduce.reduce(result);
+    public Reduce(ReduceOp<R> reduce) {
+        setMapping((reactor, collection) -> reduce.reduce(collection));
     }
 
     @FunctionalInterface
     public interface ReduceOp<T> extends Serializable {
-
         default T reduce(Collection<T> collection) {
             T accumulator = null;
             boolean first = true;

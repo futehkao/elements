@@ -16,20 +16,22 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
-import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.function.Function;
 
-public class Scalar<Re extends Reactor, T, R> implements Function<Re, R>, Serializable {
+public class Scalar<Re extends Reactor, T, R> implements Cloneable, Function<Re, R>, Serializable {
     private static final long serialVersionUID = 1676649613567136786L;
     private Series<Re, T, R> series;
     private Mapping<Re, Collection<R>, R> mapping;
 
-    public Scalar(Series<Re, T, R> series, Mapping<Re, Collection<R>, R> mapping) {
-        this.series = series;
-        this.mapping = mapping;
+    public Scalar() {
+    }
+
+    public Scalar(Mapping<Re, Collection<R>, R> mapping) {
+        setMapping(mapping);
     }
 
     public R apply(Re reactor) {
@@ -39,8 +41,27 @@ public class Scalar<Re extends Reactor, T, R> implements Function<Re, R>, Serial
         return m.apply(reactor, collection);
     }
 
-    public  R scalar(Catalyst<Re> catalyst, DataSet<T> dataSet) {
-        Mapping<Re, Collection<R>, R> m = mapping;
-        return catalyst.scalar(dataSet, series, m);
+    public Scalar<Re, T, R> clone() {
+        try {
+            return (Scalar) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new SystemException(e);
+        }
+    }
+
+    public Series<Re, T, R> getSeries() {
+        return series;
+    }
+
+    public void setSeries(Series<Re, T, R> series) {
+        this.series = series;
+    }
+
+    public Mapping<Re, Collection<R>, R> getMapping() {
+        return mapping;
+    }
+
+    public void setMapping(Mapping<Re, Collection<R>, R> mapping) {
+        this.mapping = mapping;
     }
 }

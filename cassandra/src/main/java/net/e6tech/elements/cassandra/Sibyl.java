@@ -92,7 +92,13 @@ public class Sibyl {
     }
 
     public Async createAsync(String query) {
-        return getProvision().newInstance(Async.class).prepare(query);
+        PreparedStatement pstmt = null;
+        try {
+            pstmt = preparedStatementCache.get(query, () -> getSession().prepare(query));
+        } catch (ExecutionException e) {
+            pstmt = getSession().prepare(query);
+        }
+        return getProvision().newInstance(Async.class).prepare(pstmt);
     }
 
     public Async createAsync(PreparedStatement stmt) {

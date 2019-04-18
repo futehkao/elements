@@ -16,14 +16,14 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.Registry;
-import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
-import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
-import net.e6tech.elements.network.cluster.catalyst.dataset.Segments;
+import net.e6tech.elements.network.cluster.catalyst.dataset.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -56,17 +56,40 @@ public class Catalyst<Re extends Reactor> {
         return registry;
     }
 
-    public <T, R> R scalar(DataSet<T> dataSet, Series<Re, T, R> series, Mapping<Re, Collection<R>, R> mapping) {
-        Collection<R> result = collect(dataSet, series, mapping);
+    public <T> Builder<Re, T, T> builder(DataSet<T> dataSet) {
+        return new Builder<Re, T, T>(this, dataSet);
+    }
+
+    public <T> Builder<Re, T, T> builder(Series<Re, T, T> series, DataSet<T> dataSet) {
+        return new Builder<>(this, series, dataSet);
+    }
+
+    public <T, R> R scalar(Scalar<Re, T, R> scalar, DataSet<T> dataSet) {
+        Collection<R> result = collect(scalar, dataSet);
         Async<Re> async = registry.async(qualifier, reactorClass, waitTime);
         Series<Re, R, R> emptySeries = new Series<>();
-        return async.apply(p -> p.apply(new Scalar<>(emptySeries.allocate(new CollectionDataSet<>(result).segment(this)), mapping)))
+        Scalar<Re, R, R> copy;
+        try {
+            copy = (Scalar) scalar.clone();
+            copy.setSeries(emptySeries.allocate(new CollectionDataSet<>(result).segment(this)));
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
+        return async.apply(p -> p.apply(copy))
                 .toCompletableFuture().join();
     }
 
-    public <T, R> Collection<R> collect(DataSet<T> dataSet, Series<Re, T, R> series, Mapping<Re, Collection<R>, R> mapping) {
+    public <T, R> Collection<R> collect(Scalar<Re, T, R> scalar, DataSet<T> dataSet) {
         List<Work<T, R>> workLoad = prepareWork(dataSet,
-                segments -> new Scalar<>(series.allocate(segments), mapping));
+                segments -> {
+                    try {
+                        Scalar<Re, T, R> copy = scalar.clone();
+                        copy.setSeries(scalar.getSeries().allocate(segments));
+                        return copy;
+                    } catch (Exception e) {
+                        throw new SystemException(e);
+                    }
+                });
         List<R> result = new ArrayList<>();
         for (Work<T, R> work: workLoad) {
             work.start();
@@ -77,18 +100,28 @@ public class Catalyst<Re extends Reactor> {
         return result;
     }
 
-    public  <T, R> List<R> transformToList(DataSet<T> dataSet, Series<Re, T, R> series) {
+    public void run(Runnable ... runnables) {
+        RemoteDataSet<?> dataSet = new RemoteDataSet<>();
+        for (Runnable runnable : runnables)
+            dataSet.add(reactor -> {
+                runnable.run();
+                return Collections.EMPTY_LIST.stream();
+            });
+        transform(new Series<>(), dataSet);
+    }
+
+    public <T, R> Collection<R> transform(Series<Re, T, R> series, DataSet<T> dataSet) {
         List<Work<T, Collection<R>>> workLoad =
                 prepareWork(dataSet, segments -> series.allocate(segments));
         for (Work<T, Collection<R>> work: workLoad) {
             work.start();
         }
 
-        List<R> result = new ArrayList<>();
+        Gatherer<R> gatherer = series.gatherer();
         for (Work<T, Collection<R>> work: workLoad) {
-            result.addAll(work.value());
+            gatherer.gather(work.value());
         }
-        return result;
+        return gatherer.collection;
     }
 
     private <T, O> List<Work<T, O>> prepareWork(DataSet<T> dataSet, Function<Segments<T>, Function<? extends Reactor, O>> work) {

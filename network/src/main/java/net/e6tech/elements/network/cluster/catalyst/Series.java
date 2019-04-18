@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
@@ -36,17 +37,13 @@ import java.util.stream.Stream;
  * @param <T> Input type
  * @param <R> Output type
  */
-public class Series<Re extends Reactor, T, R> implements Serializable, Function<Re, Collection<R>> {
+public class Series<Re extends Reactor, T, R> implements Serializable, Cloneable, Function<Re, Collection<R>> {
     private static final long serialVersionUID = 5420350641543073437L;
 
     protected Segment<T> segment;
     protected List<Transform> transforms = new ArrayList<>();
 
     public Series() {
-    }
-
-    public Series(Series<Re, T, R> other) {
-        transforms.addAll(other.transforms);
     }
 
     public static <Re extends Reactor, I, O> Series<Re, I, O> from(Transform<Re, I, O> transform) {
@@ -62,7 +59,15 @@ public class Series<Re extends Reactor, T, R> implements Serializable, Function<
             Stream tmp = transform.transform(reactor, stream);
             stream = tmp;
         }
-        return (Collection) stream.collect(Collectors.toList());
+        return collect(stream);
+    }
+
+    protected Collection<R> collect(Stream<R> stream) {
+        return stream.collect(Collectors.toList());
+    }
+
+    public Gatherer<R> gatherer() {
+        return new Gatherer<>();
     }
 
     public <U> Series<Re, T, U> add(Transform<Re, R, U> transform) {
@@ -70,9 +75,18 @@ public class Series<Re extends Reactor, T, R> implements Serializable, Function<
         return (Series) this;
     }
 
+    public Series<Re, T, R> clone() {
+        try {
+            return (Series<Re, T, R>) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new SystemException(e);
+        }
+    }
+
     public Series<Re, T, R> allocate(Segments<T> segments) {
-        Series<Re, T, R> copy = new Series<>();
+        Series<Re, T, R> copy = clone();
         copy.segment = segments.remove();
+        copy.transforms = new ArrayList<>();
         for (Transform t : this.transforms) {
             Transform p = t.allocate(segments);
             copy.transforms.add(p);
@@ -81,7 +95,7 @@ public class Series<Re extends Reactor, T, R> implements Serializable, Function<
     }
 
     public DataSet<R> transform(Catalyst<Re> catalyst, DataSet<T> dataSet) {
-        return new CollectionDataSet(catalyst.transformToList(dataSet, this));
+        return new CollectionDataSet(catalyst.transform(this, dataSet));
     }
 
 }

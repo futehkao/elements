@@ -196,10 +196,14 @@ public class ETLContext {
     }
 
     public Async createAsync(String query) {
+        if (sibyl != null)
+            return sibyl.createAsync(query);
         return getProvision().newInstance(Async.class).prepare(query);
     }
 
     public Async createAsync(PreparedStatement stmt) {
+        if (sibyl != null)
+            return sibyl.createAsync(stmt);
         return getProvision().newInstance(Async.class).prepare(stmt);
     }
 

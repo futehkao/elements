@@ -26,8 +26,21 @@ import java.util.List;
 public class RemoteDataSet<E> implements DataSet<E> {
     private List<Segment<E>> segments = new ArrayList<>();
 
-    public void add(Segment<E> segment) {
+    public RemoteDataSet() {
+    }
+
+    public RemoteDataSet(Collection<? extends Segment<E>> segments) {
+        this.segments.addAll(segments);
+    }
+
+    public RemoteDataSet<E> add(Segment<E> segment) {
         segments.add(segment);
+        return this;
+    }
+
+    public RemoteDataSet<E> addAll(Collection<? extends Segment<E>> segments) {
+        this.segments.addAll(segments);
+        return this;
     }
 
     @Override
