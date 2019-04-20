@@ -14,34 +14,37 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.scalar;
 
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.network.cluster.catalyst.Mapping;
+import net.e6tech.elements.network.cluster.catalyst.Reactor;
+import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.function.Function;
 
-public class Scalar<Re extends Reactor, T, R> implements Cloneable, Function<Re, R>, Serializable {
+public class Scalar<Re extends Reactor, T, R, U> implements Cloneable, Function<Re, U>, Serializable {
     private static final long serialVersionUID = 1676649613567136786L;
     private Series<Re, T, R> series;
-    private Mapping<Re, Collection<R>, R> mapping;
+    private Mapping<Re, Collection<R>, U> mapping;
 
     public Scalar() {
     }
 
-    public Scalar(Mapping<Re, Collection<R>, R> mapping) {
+    public Scalar(Mapping<Re, Collection<R>, U> mapping) {
         setMapping(mapping);
     }
 
-    public R apply(Re reactor) {
+    public U apply(Re reactor) {
         Function<Re, Collection<R>> t = series;
         Collection<R> collection = t.apply(reactor);
-        Mapping<Reactor, Collection<?>, R>  m = (Mapping) mapping;
+        Mapping<Reactor, Collection<?>, U>  m = (Mapping) mapping;
         return m.apply(reactor, collection);
     }
 
-    public Scalar<Re, T, R> clone() {
+    public Scalar<Re, T, R, U> clone() {
         try {
             return (Scalar) super.clone();
         } catch (CloneNotSupportedException e) {
@@ -57,11 +60,11 @@ public class Scalar<Re extends Reactor, T, R> implements Cloneable, Function<Re,
         this.series = series;
     }
 
-    public Mapping<Re, Collection<R>, R> getMapping() {
+    public Mapping<Re, Collection<R>, U> getMapping() {
         return mapping;
     }
 
-    public void setMapping(Mapping<Re, Collection<R>, R> mapping) {
+    public void setMapping(Mapping<Re, Collection<R>, U> mapping) {
         this.mapping = mapping;
     }
 }

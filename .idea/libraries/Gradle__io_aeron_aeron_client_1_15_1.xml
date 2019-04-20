@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: io.aeron:aeron-client:1.15.1">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.aeron/aeron-client/1.15.1/a608caaa33697b6914b2593f4d4c20f91f2c179b/aeron-client-1.15.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.aeron/aeron-client/1.15.1/a9ec89aaebaeeda7ff6ac55ed3fbed6ea7685b4b/aeron-client-1.15.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

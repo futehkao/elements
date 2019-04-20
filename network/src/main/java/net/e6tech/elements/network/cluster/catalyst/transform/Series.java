@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.transform;
 
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.network.cluster.catalyst.Catalyst;
+import net.e6tech.elements.network.cluster.catalyst.Gatherer;
+import net.e6tech.elements.network.cluster.catalyst.Reactor;
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segments;
-import net.e6tech.elements.network.cluster.catalyst.transform.Transform;
 
 import java.io.Serializable;
 import java.util.ArrayList;

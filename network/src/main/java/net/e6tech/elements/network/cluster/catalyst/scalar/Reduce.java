@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.scalar;
+
+import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
 import java.io.Serializable;
 import java.util.Collection;
 
-public class Reduce<Re extends Reactor, T, R> extends Scalar<Re, T, R> {
+public class Reduce<Re extends Reactor, T, R> extends Scalar<Re, T, R, R> {
 
     private static final long serialVersionUID = 2541978434272522759L;
     private transient ReduceOp<R> reduceOp;
@@ -32,11 +34,11 @@ public class Reduce<Re extends Reactor, T, R> extends Scalar<Re, T, R> {
     }
 
     @FunctionalInterface
-    public interface ReduceOp<T> extends Serializable {
-        default T reduce(Collection<T> collection) {
-            T accumulator = null;
+    public interface ReduceOp<R> extends Serializable {
+        default R reduce(Collection<R> collection) {
+            R accumulator = null;
             boolean first = true;
-            for (T r : collection) {
+            for (R r : collection) {
                 if (r == null)
                     continue;
                 if (first) {
@@ -49,7 +51,7 @@ public class Reduce<Re extends Reactor, T, R> extends Scalar<Re, T, R> {
             return accumulator;
         }
 
-        T reduce(T t1, T t2);
+        R reduce(R t1, R t2);
     }
 
 }

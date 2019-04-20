@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.lmdbjava:lmdbjava:0.6.1">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lmdbjava/lmdbjava/0.6.1/26dc554a4b16f8e540d477766a67a200f76b4860/lmdbjava-0.6.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.lmdbjava/lmdbjava/0.6.1/42a571a45400198c912592f4e055ed476c543efb/lmdbjava-0.6.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -14,26 +14,19 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster.catalyst.scalar;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
+import java.util.Comparator;
 
-public class Distinct<Re extends Reactor, T, R> extends Series<Re, T, R> {
+public class Min<Re extends Reactor, T, R extends Comparable> extends Scalar<Re, T, R,R> {
 
-    private static final long serialVersionUID = 3951801632368827650L;
-
-    public Distinct() {
+    public Min() {
+        this(Comparator.naturalOrder());
     }
 
-    protected Collection<R> collect(Stream<R> stream) {
-        return stream.collect(Collectors.toSet());
-    }
-
-    public Gatherer<R> gatherer() {
-        return new Gatherer<>(new HashSet<>());
+    public Min(Comparator<R> comparator) {
+        setMapping((reactor, collection) -> (R) collection.stream().min(comparator).orElse(null));
     }
 }

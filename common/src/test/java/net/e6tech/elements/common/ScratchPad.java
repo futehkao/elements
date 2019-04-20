@@ -26,12 +26,18 @@ import net.e6tech.elements.common.inject.BindPropA;
 import net.e6tech.elements.common.inject.BindPropX;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -158,6 +164,23 @@ public class ScratchPad {
     }
 
     @Test
+    void bytecode() throws Exception {
+        Class cls = Nested.class;
+        ProtectionDomain pDomain = cls.getProtectionDomain();
+        CodeSource cSource = pDomain.getCodeSource();
+        URL loc = cSource.getLocation();  // file:/c:/almanac14/examples/
+        try (InputStream stream = loc.openStream()) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[2048];
+
+            int read = 0;
+            while ((read = stream.read(buffer)) >= 0) {
+                out.write(buffer, 0, read);
+            }
+        }
+    }
+
+    @Test
     void scratch() throws Exception {
         System.out.println(StandardCharsets.UTF_8.name());
         String settlementDate = "20150911";
@@ -222,5 +245,9 @@ public class ScratchPad {
             }
             System.out.println("" + i + " " + whole);
         }
+    }
+
+    class Nested {
+
     }
 }

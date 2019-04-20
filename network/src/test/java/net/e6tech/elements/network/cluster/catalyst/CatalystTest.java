@@ -25,10 +25,8 @@ import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
-import net.e6tech.elements.network.cluster.catalyst.transform.Filter;
-import net.e6tech.elements.network.cluster.catalyst.transform.Intersection;
-import net.e6tech.elements.network.cluster.catalyst.transform.MapTransform;
-import net.e6tech.elements.network.cluster.catalyst.transform.Union;
+import net.e6tech.elements.network.cluster.catalyst.scalar.*;
+import net.e6tech.elements.network.cluster.catalyst.transform.*;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -58,7 +56,7 @@ public class CatalystTest {
 
     void prepareDateSet() {
         List<Integer> list = new ArrayList<>();
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 100000; i++) {
             list.add(i);
         }
         catalyst = new SimpleCatalyst("blah", registry);
@@ -152,6 +150,22 @@ public class CatalystTest {
         assertEquals(result.asCollection().size(), dataSet.asCollection().size() + 1); // including -1
     }
 
+    @Test
+    public void count() throws Exception {
+        create(2552);
+
+        while (registry.routes("blah", Reactor.class).size() < 1)
+            Thread.sleep(100);
+
+        prepareDateSet();
+        long start = System.currentTimeMillis();
+
+        int count = catalyst.builder(dataSet)
+                .add(new MapTransform<>((operator, number) -> Math.sin(number * Math.PI / 360)))
+                .scalar(new Count<>());
+        System.out.println("Count " + count + " found in " + (System.currentTimeMillis() - start) + "ms");
+    }
+
 
     @Test
     public void max() throws Exception {
@@ -162,20 +176,27 @@ public class CatalystTest {
 
         prepareDateSet();
         long start = System.currentTimeMillis();
-        Scalar<Reactor, Integer, Double> scalar = new Scalar<>(((reactor, numbers) -> {
-            Double value = null;
-            for (double item : numbers) {
-                if (value == null || value < item) {
-                    value = item;
-                }
-            }
-            return value;
-        }));
 
         Double max = catalyst.builder(dataSet)
                 .add(new MapTransform<>((operator, number) -> Math.sin(number * Math.PI / 360)))
-                .scalar(scalar);
+                .scalar(new Max<>());
         System.out.println("Max " + max + " found in " + (System.currentTimeMillis() - start) + "ms");
+    }
+
+    @Test
+    public void min() throws Exception {
+        create(2552);
+
+        while (registry.routes("blah", Reactor.class).size() < 1)
+            Thread.sleep(100);
+
+        prepareDateSet();
+        long start = System.currentTimeMillis();
+
+        Double min = catalyst.builder(dataSet)
+                .add(new MapTransform<>((operator, number) -> Math.sin(number * Math.PI / 360)))
+                .scalar(new Min<>());
+        System.out.println("Min " + min + " found in " + (System.currentTimeMillis() - start) + "ms");
     }
 
     @Test
@@ -202,20 +223,10 @@ public class CatalystTest {
         SimpleCatalyst catalyst = new SimpleCatalyst("blah", registry);
         catalyst.setWaitTime(1000000L);
 
-        Scalar<Reactor, Integer, Double> scalar = new Scalar<>(((reactor, numbers) -> {
-            Double value = null;
-            for (double item : numbers) {
-                if (value == null || value < item) {
-                    value = item;
-                }
-            }
-            return value;
-        }));
-
         Double max = catalyst.builder(remoteDataSet)
                 .add(new MapTransform<>((operator, number) ->
                 Math.sin(number * Math.PI / 360)))
-                .scalar(scalar);
+                .scalar(new Max<>());
 
         System.out.println("Max " + max);
     }

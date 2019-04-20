@@ -18,6 +18,8 @@ package net.e6tech.elements.network.cluster.catalyst;
 
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
+import net.e6tech.elements.network.cluster.catalyst.scalar.Scalar;
+import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 import net.e6tech.elements.network.cluster.catalyst.transform.Transform;
 
 public class Builder<Re extends Reactor, T, R> {
@@ -45,7 +47,7 @@ public class Builder<Re extends Reactor, T, R> {
         return new CollectionDataSet(catalyst.transform(series, dataSet));
     }
 
-    public R scalar(Scalar<Re, T, R> scalar) {
+    public <U> U scalar(Scalar<Re, T, R, U> scalar) {
         scalar.setSeries(series);
         return catalyst.scalar(scalar, dataSet);
     }

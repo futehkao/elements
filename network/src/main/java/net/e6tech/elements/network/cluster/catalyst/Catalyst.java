@@ -20,6 +20,8 @@ import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.Registry;
 import net.e6tech.elements.network.cluster.catalyst.dataset.*;
+import net.e6tech.elements.network.cluster.catalyst.scalar.Scalar;
+import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,11 +66,11 @@ public class Catalyst<Re extends Reactor> {
         return new Builder<>(this, series, dataSet);
     }
 
-    public <T, R> R scalar(Scalar<Re, T, R> scalar, DataSet<T> dataSet) {
-        Collection<R> result = collect(scalar, dataSet);
+    public <T, R, U> U scalar(Scalar<Re, T, R, U> scalar, DataSet<T> dataSet) {
+        Collection<U> result = collect(scalar, dataSet);
         Async<Re> async = registry.async(qualifier, reactorClass, waitTime);
-        Series<Re, R, R> emptySeries = new Series<>();
-        Scalar<Re, R, R> copy;
+        Series<Re, U, U> emptySeries = new Series<>();
+        Scalar<Re, U, U, U> copy;
         try {
             copy = (Scalar) scalar.clone();
             copy.setSeries(emptySeries.allocate(new CollectionDataSet<>(result).segment(this)));
@@ -79,22 +81,22 @@ public class Catalyst<Re extends Reactor> {
                 .toCompletableFuture().join();
     }
 
-    public <T, R> Collection<R> collect(Scalar<Re, T, R> scalar, DataSet<T> dataSet) {
-        List<Work<T, R>> workLoad = prepareWork(dataSet,
+    public <T, R, U> Collection<U> collect(Scalar<Re, T, R, U> scalar, DataSet<T> dataSet) {
+        List<Work<T, U>> workLoad = prepareWork(dataSet,
                 segments -> {
                     try {
-                        Scalar<Re, T, R> copy = scalar.clone();
+                        Scalar<Re, T, R, U> copy = scalar.clone();
                         copy.setSeries(scalar.getSeries().allocate(segments));
                         return copy;
                     } catch (Exception e) {
                         throw new SystemException(e);
                     }
                 });
-        List<R> result = new ArrayList<>();
-        for (Work<T, R> work: workLoad) {
+        List<U> result = new ArrayList<>();
+        for (Work<T, U> work: workLoad) {
             work.start();
         }
-        for (Work<T, R> work: workLoad) {
+        for (Work<T, U> work: workLoad) {
             result.add(work.value());
         }
         return result;
