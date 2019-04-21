@@ -80,9 +80,20 @@ public class InjectorImpl implements Injector {
     private Optional<Binding> privateGetNamedInstance(Type boundClass, String name) {
         Type type = boundClass;
         Binding binding = module.getBinding(type, name);
-        if (binding == null && type instanceof ParameterizedType) {
-            type = ((ParameterizedType) type).getRawType();
-            binding = module.getBinding(type, name);
+
+        if (binding == null) {
+            if (type instanceof ParameterizedType) {
+                type = ((ParameterizedType) type).getRawType();
+                binding = module.getBinding(type, name);
+            } else if (type instanceof TypeVariable) {
+                TypeVariable typeVariable = (TypeVariable) type;
+                Type[] bounds = typeVariable.getBounds();
+                for (Type bound : bounds) {
+                    binding = module.getBinding(bound, name);
+                    if (binding != null)
+                        break;
+                }
+            }
         }
 
         if (binding != null) {
