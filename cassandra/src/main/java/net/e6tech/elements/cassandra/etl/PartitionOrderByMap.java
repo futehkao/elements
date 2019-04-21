@@ -16,6 +16,9 @@
 
 package net.e6tech.elements.cassandra.etl;
 
+import net.e6tech.elements.cassandra.Sibyl;
+import net.e6tech.elements.common.resources.Provision;
+
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -28,31 +31,36 @@ public class PartitionOrderByMap<T extends PartitionOrderBy> {
 
     private Map<Comparable, List<T>> partitionMap = new LinkedHashMap<>();
     private Map<Comparable, List<PrimaryKey>> primaryKeys = new LinkedHashMap<>();
-    private PartitionContext context;
+    private Provision provision;
+    private Class sourceClass;
 
-    public PartitionOrderByMap(PartitionContext context) {
-        this.context = context;
+    public PartitionOrderByMap(Provision provision, Class sourceClass) {
+        this.provision = provision;
+        this.sourceClass = sourceClass;
+    }
+
+    public Inspector getInspector(Class cls) {
+        return provision.getInstance(Sibyl.class).getInspector(cls);
     }
 
     public PartitionOrderByMap<T> addAll(Collection<T> objects) {
         for (T object : objects) {
-            List<T> list = partitionMap.computeIfAbsent((Comparable) context.getInspector().getPartitionKey(object, 0), key -> new ArrayList<>());
+            List<T> list = partitionMap.computeIfAbsent((Comparable) getInspector(sourceClass).getPartitionKey(object, 0), key -> new ArrayList<>());
             list.add(object);
         }
 
         // sort each list using its clustering key
         for (List<T> list : partitionMap.values()) {
-            Collections.sort(list, Comparator.comparing(t -> (Comparable) context.getInspector().getClusteringKey(t, 0)));
+            Collections.sort(list, Comparator.comparing(t -> (Comparable) getInspector(sourceClass).getClusteringKey(t, 0)));
         }
 
         // primary keys
         for (Map.Entry<Comparable, List<T>> entry : partitionMap.entrySet()) {
             List<PrimaryKey> list = primaryKeys.computeIfAbsent(entry.getKey(), key -> new ArrayList<>());
             for (T t : entry.getValue()) {
-                list.add(context.getPrimaryKey(t));
+                list.add(getInspector(t.getClass()).getPrimaryKey(t));
             }
         }
-
         return this;
     }
 

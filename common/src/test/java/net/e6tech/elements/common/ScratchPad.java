@@ -15,6 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.common;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmax.disruptor.EventPoller;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WorkHandler;
@@ -165,19 +166,33 @@ public class ScratchPad {
 
     @Test
     void bytecode() throws Exception {
+        ClassLoader classLoader = getClass().getClassLoader();
+
+        URL codeUrl = classLoader.getResource(ObjectMapper.class.getName().replace('.', '/') + ".class");
+
+        /*
         Class cls = Nested.class;
         ProtectionDomain pDomain = cls.getProtectionDomain();
         CodeSource cSource = pDomain.getCodeSource();
-        URL loc = cSource.getLocation();  // file:/c:/almanac14/examples/
-        try (InputStream stream = loc.openStream()) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+        URL loc = cSource.getLocation();
+        loc = new URL(loc.toString() + Nested.class.getName().replace('.' , '/') + ".class");
+        */
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (InputStream stream = codeUrl.openStream()) {
+
             byte[] buffer = new byte[2048];
 
             int read = 0;
             while ((read = stream.read(buffer)) >= 0) {
                 out.write(buffer, 0, read);
             }
+
+            System.out.println(out.toByteArray().length);
         }
+
+        CustomerClassLoader loader = new CustomerClassLoader(getClass().getClassLoader(), ObjectMapper.class.getName(), out.toByteArray());
+        loader.loadClass(ObjectMapper.DefaultTypeResolverBuilder.class.getName());
     }
 
     @Test
@@ -247,7 +262,15 @@ public class ScratchPad {
         }
     }
 
-    class Nested {
+    class CustomerClassLoader extends ClassLoader {
 
+        public CustomerClassLoader(ClassLoader parent, String name, byte[] bytes) {
+            super(parent);
+            defineClass(name, bytes, 0, bytes.length);
+        }
+
+        public Class findClass(String name) throws ClassNotFoundException {
+            return super.findClass(name);
+        }
     }
 }

@@ -16,12 +16,18 @@
 
 package net.e6tech.elements.cassandra.etl;
 
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.mapping.Mapper;
+import net.e6tech.elements.cassandra.Sibyl;
+import net.e6tech.elements.cassandra.async.Async;
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
 
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * This is a convenient class for helping to transform an array of extracted entities of type E to another set of entities of
@@ -30,19 +36,49 @@ import java.util.function.Consumer;
  * @param <T> Transformed type
  * @param <E> Extracted type
  */
-public class Transform<T, E> {
+public class Transformer<T, E> {
     private Map<PrimaryKey, T> map = new HashMap<>();
     private Class<T> tableClass;
-    private ETLContext context;
+    private Provision provision;
     private Set<PrimaryKey> primaryKeys = new HashSet<>();
     private List<Pair<PrimaryKey, E>> entries = new ArrayList<>();
 
-    public Transform(ETLContext context, Class<T> cls) {
-        this.context = context;
+    public Transformer(Provision provision, Class<T> cls) {
+        this.provision = provision;
         tableClass = cls;
     }
 
-    public Transform<T, E> addPrimaryKey(PrimaryKey key, E e) {
+    public Transformer<T,E> transform(Stream<E> stream, BiConsumer<Transformer<T, E>, E> consumer) {
+        stream.forEach(e -> consumer.accept(this, e));
+        return this;
+    }
+
+    public Transformer<T,E> transform(E[] array, BiConsumer<Transformer<T, E>, E> consumer) {
+        for (E e : array) {
+            consumer.accept(this, e);
+        }
+        return this;
+    }
+
+    public Transformer<T,E> transform(Collection<E> collection, BiConsumer<Transformer<T, E>, E> consumer) {
+        for (E e : collection) {
+            consumer.accept(this, e);
+        }
+        return this;
+    }
+    public Async createAsync() {
+        return provision.newInstance(Async.class);
+    }
+
+    public Async createAsync(String query) {
+        return provision.getInstance(Sibyl.class).createAsync(query);
+    }
+
+    public Async createAsync(PreparedStatement stmt) {
+        return provision.getInstance(Sibyl.class).createAsync(stmt);
+    }
+
+    public Transformer<T, E> addPrimaryKey(PrimaryKey key, E e) {
         if (key == null)
             return this;
         primaryKeys.add(key);
@@ -50,8 +86,9 @@ public class Transform<T, E> {
         return this;
     }
 
-    public Transform<T, E> load() {
-        context.get(keys(), tableClass).inExecutionOrder(map::put);
+    public Transformer<T, E> load() {
+        Sibyl s = provision.getInstance(Sibyl.class);
+        s.get(keys(), tableClass).inExecutionOrder(map::put);
         return this;
     }
 
@@ -63,7 +100,7 @@ public class Transform<T, E> {
         return entries;
     }
 
-    public Transform<T,E> put(PrimaryKey key, T t) {
+    public Transformer<T,E> put(PrimaryKey key, T t) {
         map.put(key, t);
         return this;
     }
@@ -76,10 +113,10 @@ public class Transform<T, E> {
         return map.computeIfAbsent(key, k -> {
             try {
                 T t = tableClass.getDeclaredConstructor().newInstance();
-                context.setPrimaryKey(key, t);
+                setPrimaryKey(key, t);
                 if (consumer != null) {
                     consumer.accept(t);
-                    context.setPrimaryKey(key, t);
+                    setPrimaryKey(key, t);
                 }
                 return t;
             } catch (Exception e) {
@@ -88,12 +125,26 @@ public class Transform<T, E> {
         });
     }
 
-    public Transform<T, E> forEachCreateIfNotExist(BiConsumer<E, T> consumer) {
+    private Inspector getInspector(Class cls) {
+        return provision.getInstance(Sibyl.class).getInspector(cls);
+    }
+
+    private void setPrimaryKey(PrimaryKey primaryKey, T t) {
+        getInspector(t.getClass()).setPrimaryKey(primaryKey, t);
+    }
+
+    public Transformer<T, E> forEachCreateIfNotExist(BiConsumer<E, T> consumer) {
         for (Pair<PrimaryKey, E> e : entries()) {
             T t = computeIfAbsent(e.key());
             consumer.accept(e.value(), t);
             checkpoint(e.value(), t);
         }
+        return this;
+    }
+
+    public Transformer<T, E> save(Mapper.Option... options) {
+        Sibyl s = provision.getInstance(Sibyl.class);
+        s.save(values(), tableClass, options).inCompletionOrder();
         return this;
     }
 
@@ -110,9 +161,9 @@ public class Transform<T, E> {
     }
 
     public void checkpoint(E extraction, T t) {
-        Object extractionKey = context.getInspector(extraction.getClass()).getPartitionKey(extraction, 0);
+        Object extractionKey = getInspector(extraction.getClass()).getPartitionKey(extraction, 0);
         if (extractionKey == null)
             return;
-        context.getInspector(tableClass).setCheckpoint(t, 0, extractionKey);
+        getInspector(tableClass).setCheckpoint(t, 0, extractionKey);
     }
 }

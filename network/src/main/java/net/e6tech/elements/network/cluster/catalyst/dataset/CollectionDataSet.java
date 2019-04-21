@@ -19,10 +19,7 @@ package net.e6tech.elements.network.cluster.catalyst.dataset;
 import net.e6tech.elements.network.cluster.catalyst.Catalyst;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Spliterator;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -31,6 +28,14 @@ public class CollectionDataSet<E> implements DataSet<E> {
     private List<Segment<E>> segments = new ArrayList<>();
     private Collection<E> dataSet;
     private int splitFactor = 1;
+
+    public CollectionDataSet(E ... entries) {
+        if (entries != null) {
+            dataSet = Arrays.asList(entries);
+        } else {
+            dataSet = new ArrayList<>();
+        }
+    }
 
     public CollectionDataSet(Collection<E> dataSet) {
         this.dataSet = dataSet;

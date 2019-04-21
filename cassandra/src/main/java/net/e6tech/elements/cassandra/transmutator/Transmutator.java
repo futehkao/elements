@@ -30,16 +30,6 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
 
     private LinkedList<Descriptor> descriptors = new LinkedList<>();
 
-    protected <T> Map<PrimaryKey, T> transform(PartitionContext context, Set<PrimaryKey> keys, Class<T> tableClass) {
-        Map<PrimaryKey, T> map = new HashMap<>();
-        context.get(keys, tableClass)
-                .inCompletionOrder(item -> {
-                    if (item != null)
-                        map.put(new PrimaryKey(), item);
-                });
-        return map;
-    }
-
     protected abstract void undo(PartitionContext context);
 
     protected void undo(PartitionContext context, Class tableClass) {

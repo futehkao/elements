@@ -54,7 +54,6 @@ public class ETLContext {
     private TimeUnit timeUnit;
     private boolean initialized = false;
     private long startTime = System.currentTimeMillis();
-    private Sibyl sibyl;
     private Class<LastUpdate> lastUpdateClass;
     private LastUpdate lastUpdate;
 
@@ -65,9 +64,6 @@ public class ETLContext {
     @Inject
     public void setProvision(Provision provision) {
         this.provision = provision;
-        if (provision != null) {
-            sibyl = provision.getInstance(Sibyl.class);
-        }
     }
 
     public Generator getGenerator() {
@@ -131,7 +127,7 @@ public class ETLContext {
     }
 
     public <T> Mapper<T> getMapper(Class<T> cls) {
-        return sibyl.getMapper(cls);
+        return provision.getInstance(Sibyl.class).getMapper(cls);
     }
 
     public String getExtractorName() {
@@ -196,15 +192,11 @@ public class ETLContext {
     }
 
     public Async createAsync(String query) {
-        if (sibyl != null)
-            return sibyl.createAsync(query);
-        return getProvision().newInstance(Async.class).prepare(query);
+        return provision.getInstance(Sibyl.class).createAsync(query);
     }
 
     public Async createAsync(PreparedStatement stmt) {
-        if (sibyl != null)
-            return sibyl.createAsync(stmt);
-        return getProvision().newInstance(Async.class).prepare(stmt);
+        return provision.getInstance(Sibyl.class).createAsync(stmt);
     }
 
     public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, Mapper.Option... options) {
@@ -215,22 +207,6 @@ public class ETLContext {
     public <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls) {
         Sibyl s = provision.getInstance(Sibyl.class);
         return s.get(list, cls);
-    }
-
-    public <T, E> Transform<T,E> transform(E[] array, Class<T> targetClass, BiConsumer<Transform<T, E>, E> consumer) {
-        Transform<T, E> keyMap = new Transform<>(this, targetClass);
-        for (E e : array) {
-            consumer.accept(keyMap, e);
-        }
-        return keyMap.load();
-    }
-
-    public PrimaryKey getPrimaryKey(Object instance) {
-        return getInspector(instance.getClass()).getPrimaryKey(instance);
-    }
-
-    public void setPrimaryKey(PrimaryKey key, Object instance) {
-        getInspector(instance.getClass()).setPrimaryKey(key, instance);
     }
 
     public String tableName() {
@@ -251,9 +227,9 @@ public class ETLContext {
         if (lastUpdateClass == null)
             lastUpdateClass = getProvision().open().apply(Resources.class,
                     resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
-        lastUpdate = open().apply(Resources.class, resources -> {
-            return resources.getInstance(MappingManager.class).mapper(lastUpdateClass).get(extractor());
-        });
+        lastUpdate = open().apply(Resources.class, resources ->
+            resources.getInstance(MappingManager.class).mapper(lastUpdateClass).get(extractor())
+        );
         return lastUpdate;
     }
 
