@@ -36,6 +36,11 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         return 0;
     }
 
+    /**
+     * Return a map of partitions and count.  The partitions are sorted from small to large.
+     * @param context PartitionContext
+     * @return map of partition anc count
+     */
     public Map<Comparable, Long> queryPartitions(C context) {
         LastUpdate lastUpdate = context.getLastUpdate();
         Comparable end = context.getCutoff();
@@ -108,11 +113,11 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                 }
             }
 
+            importedCount += run(concurrent, context);
             for (Comparable partition : concurrent) {
                 partitions.remove(partition);
                 lastUpdate.update(partition);
             }
-            importedCount += run(concurrent, context);
             context.saveLastUpdate(lastUpdate);
         }
 

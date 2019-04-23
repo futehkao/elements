@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.cassandra.etl;
 
+import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.mapping.Mapper;
 import net.e6tech.elements.cassandra.Sibyl;
@@ -26,12 +27,13 @@ import net.e6tech.elements.common.util.datastructure.Pair;
 
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
  * This is a convenient class for helping to transform an array of extracted entities of type E to another set of entities of
  * type T.
+ *
+ * NOTE, the entities to be transformed need to be in ascending order.
  *
  * @param <T> Transformed type
  * @param <E> Extracted type
@@ -40,16 +42,23 @@ public class Transformer<T, E> {
     private Map<PrimaryKey, T> map = new HashMap<>();
     private Class<T> tableClass;
     private Provision provision;
-    private Set<PrimaryKey> primaryKeys = new HashSet<>();
     private List<Pair<PrimaryKey, E>> entries = new ArrayList<>();
+    private boolean hasCheckpoint;
+    private Inspector tableInspector;
+    private ConsistencyLevel readConsistency = null;
+    private ConsistencyLevel writeConsistency = null;
 
     public Transformer(Provision provision, Class<T> cls) {
         this.provision = provision;
         tableClass = cls;
+        tableInspector = getInspector(tableClass);
+        hasCheckpoint = tableInspector.getCheckpointColumn(0) != null;
     }
+
 
     public Transformer<T,E> transform(Stream<E> stream, BiConsumer<Transformer<T, E>, E> consumer) {
         stream.forEach(e -> consumer.accept(this, e));
+        load();
         return this;
     }
 
@@ -57,6 +66,7 @@ public class Transformer<T, E> {
         for (E e : array) {
             consumer.accept(this, e);
         }
+        load();
         return this;
     }
 
@@ -64,6 +74,7 @@ public class Transformer<T, E> {
         for (E e : collection) {
             consumer.accept(this, e);
         }
+        load();
         return this;
     }
     public Async createAsync() {
@@ -81,43 +92,37 @@ public class Transformer<T, E> {
     public Transformer<T, E> addPrimaryKey(PrimaryKey key, E e) {
         if (key == null)
             return this;
-        primaryKeys.add(key);
         entries.add(new Pair<>(key, e));
         return this;
     }
 
-    public Transformer<T, E> load() {
+    private Transformer<T, E> load() {
         Sibyl s = provision.getInstance(Sibyl.class);
-        s.get(keys(), tableClass).inExecutionOrder(map::put);
+        map = new HashMap<>(Math.max((int) (entries.size()/.75f) + 1, 16));
+        Set<PrimaryKey> keys = new HashSet<>(Math.max((int) (entries.size()/.75f) + 1, 16));
+        for (Pair<PrimaryKey, E> e : entries()) {
+            keys.add(e.key());
+        }
+        if (readConsistency != null)
+            s.get(keys, tableClass, Mapper.Option.consistencyLevel(readConsistency)).inExecutionOrder(map::put);
+        else
+            s.get(keys, tableClass).inExecutionOrder(map::put);
         return this;
     }
 
-    public Set<PrimaryKey> keys() {
-        return primaryKeys;
-    }
-
-    public Collection<Pair<PrimaryKey, E>> entries() {
+    private Collection<Pair<PrimaryKey, E>> entries() {
         return entries;
     }
 
-    public Transformer<T,E> put(PrimaryKey key, T t) {
-        map.put(key, t);
-        return this;
+    private Inspector getInspector(Class cls) {
+        return provision.getInstance(Sibyl.class).getInspector(cls);
     }
 
-    public T computeIfAbsent(PrimaryKey key) {
-        return computeIfAbsent(key, null);
-    }
-
-    public T computeIfAbsent(PrimaryKey key, Consumer<T> consumer) {
+    private T computeIfAbsent(PrimaryKey key) {
         return map.computeIfAbsent(key, k -> {
             try {
                 T t = tableClass.getDeclaredConstructor().newInstance();
-                setPrimaryKey(key, t);
-                if (consumer != null) {
-                    consumer.accept(t);
-                    setPrimaryKey(key, t);
-                }
+                tableInspector.setPrimaryKey(key, t);
                 return t;
             } catch (Exception e) {
                 throw new SystemException(e);
@@ -125,26 +130,50 @@ public class Transformer<T, E> {
         });
     }
 
-    private Inspector getInspector(Class cls) {
-        return provision.getInstance(Sibyl.class).getInspector(cls);
-    }
-
-    private void setPrimaryKey(PrimaryKey primaryKey, T t) {
-        getInspector(t.getClass()).setPrimaryKey(primaryKey, t);
-    }
-
     public Transformer<T, E> forEachCreateIfNotExist(BiConsumer<E, T> consumer) {
+        Inspector extractedInspector = null;
         for (Pair<PrimaryKey, E> e : entries()) {
             T t = computeIfAbsent(e.key());
-            consumer.accept(e.value(), t);
-            checkpoint(e.value(), t);
+            E extracted = e.value();
+            if (extractedInspector == null)
+                extractedInspector = getInspector(extracted.getClass());
+
+            boolean duplicate = false;
+            if (hasCheckpoint) {
+                Comparable extractedPartitionKey = (Comparable) extractedInspector.getPartitionKey(extracted, 0);
+                if (extractedPartitionKey != null) {
+                    Comparable checkPoint = tableInspector.getCheckpoint(t, 0);
+                    // extracted partition key need to be larger that checkpoint.  Otherwise, it means
+                    // it is a duplicate because of failure conditions.
+                    duplicate = checkPoint != null && extractedPartitionKey.compareTo(checkPoint) <= 0;
+                }
+            }
+            if (!duplicate)
+                consumer.accept(e.value(), t);
+        }
+
+        // update checkpoints.
+        for (Pair<PrimaryKey, E> e : entries()) {
+            E extracted = e.value();
+            if (hasCheckpoint) {
+                T t = computeIfAbsent(e.key());
+                Comparable extractedPartitionKey = (Comparable) extractedInspector.getPartitionKey(extracted, 0);
+                if (extractedPartitionKey != null)
+                    tableInspector.setCheckpoint(t, 0, extractedPartitionKey);
+            }
         }
         return this;
     }
 
     public Transformer<T, E> save(Mapper.Option... options) {
         Sibyl s = provision.getInstance(Sibyl.class);
-        s.save(values(), tableClass, options).inCompletionOrder();
+        if (writeConsistency != null) {
+            Deque<Mapper.Option> mapperOptions = s.mapperOptions(options);
+            mapperOptions.addFirst(Mapper.Option.consistencyLevel(writeConsistency));
+            s.save(values(), tableClass, mapperOptions.toArray(new Mapper.Option[0])).inCompletionOrder();
+        } else {
+            s.save(values(), tableClass).inCompletionOrder();
+        }
         return this;
     }
 
@@ -158,12 +187,5 @@ public class Transformer<T, E> {
 
     public int size() {
         return map.size();
-    }
-
-    public void checkpoint(E extraction, T t) {
-        Object extractionKey = getInspector(extraction.getClass()).getPartitionKey(extraction, 0);
-        if (extractionKey == null)
-            return;
-        getInspector(tableClass).setCheckpoint(t, 0, extractionKey);
     }
 }

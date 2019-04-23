@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Spliterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 /**
  * Created by futeh.
@@ -165,37 +166,6 @@ public class ScratchPad {
     }
 
     @Test
-    void bytecode() throws Exception {
-        ClassLoader classLoader = getClass().getClassLoader();
-
-        URL codeUrl = classLoader.getResource(ObjectMapper.class.getName().replace('.', '/') + ".class");
-
-        /*
-        Class cls = Nested.class;
-        ProtectionDomain pDomain = cls.getProtectionDomain();
-        CodeSource cSource = pDomain.getCodeSource();
-        URL loc = cSource.getLocation();
-        loc = new URL(loc.toString() + Nested.class.getName().replace('.' , '/') + ".class");
-        */
-
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (InputStream stream = codeUrl.openStream()) {
-
-            byte[] buffer = new byte[2048];
-
-            int read = 0;
-            while ((read = stream.read(buffer)) >= 0) {
-                out.write(buffer, 0, read);
-            }
-
-            System.out.println(out.toByteArray().length);
-        }
-
-        CustomerClassLoader loader = new CustomerClassLoader(getClass().getClassLoader(), ObjectMapper.class.getName(), out.toByteArray());
-        loader.loadClass(ObjectMapper.DefaultTypeResolverBuilder.class.getName());
-    }
-
-    @Test
     void scratch() throws Exception {
         System.out.println(StandardCharsets.UTF_8.name());
         String settlementDate = "20150911";
@@ -251,26 +221,15 @@ public class ScratchPad {
     }
 
     @Test
-    void spliterator() {
-        for (int i = 1; i < 20; i++) {
-            double ln = Math.log(i) / Math.log(2);
-            int whole = (int) ln;
-            if (Math.pow(2, ln) - Math.pow(2, whole) > whole * .2) {
-                whole++;
-            }
-            System.out.println("" + i + " " + whole);
-        }
+    void stream() {
+        List<Integer> list = new ArrayList<>();
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        Stream<Integer> stream = list.stream();
+        long count = stream.count();
+        stream.forEach(i -> System.out.println(i));
+
     }
 
-    class CustomerClassLoader extends ClassLoader {
-
-        public CustomerClassLoader(ClassLoader parent, String name, byte[] bytes) {
-            super(parent);
-            defineClass(name, bytes, 0, bytes.length);
-        }
-
-        public Class findClass(String name) throws ClassNotFoundException {
-            return super.findClass(name);
-        }
-    }
 }

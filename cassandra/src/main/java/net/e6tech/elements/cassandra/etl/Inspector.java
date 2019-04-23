@@ -103,7 +103,13 @@ public class Inspector {
         return checkpoints.get(n).columnName;
     }
 
-    public void setCheckpoint(Object object, int n, Object value) {
+    public Comparable getCheckpoint(Object object, int n) {
+        if (checkpoints.size() <= n)
+            return null;
+        return (Comparable) get(checkpoints.get(n), object);
+    }
+
+    public void setCheckpoint(Object object, int n, Comparable value) {
         if (checkpoints.size() <= n)
             return;
         set(checkpoints.get(n), object, value);
@@ -200,12 +206,39 @@ public class Inspector {
         }
     }
 
+    private Descriptor fieldDescriptor(int position, Field field, List<Descriptor> list, Map<String, Descriptor> map) {
+        Generator generator = getGenerator();
+        Column column = field.getAnnotation(Column.class);
+        Descriptor descriptor = new Descriptor(position, generator.getColumnName(column, field), field.getName());
+        descriptor.field = field;
+        field.setAccessible(true);
+        map.put(field.getName(), descriptor);
+        map.put(descriptor.columnName, descriptor);
+        list.add(descriptor);
+        return descriptor;
+    }
+
+    private Descriptor propertyDescriptor(int position, PropertyDescriptor desc, List<Descriptor> list, Map<String, Descriptor> map) {
+        Method m = null;
+        if (desc.getReadMethod() != null) {
+            m = desc.getReadMethod();
+        }
+        Generator generator = getGenerator();
+        Column column = m.getAnnotation(Column.class);
+        Descriptor descriptor = new Descriptor(position, generator.getColumnName(column, m), desc.getName());
+        map.put(desc.getName(), descriptor);
+        map.put(descriptor.columnName, descriptor);
+        list.add(descriptor);
+        return descriptor;
+    }
+
     public void initialize() {
         if (initialized)
             return;
         initialized = true;
         Map<String, Descriptor> propertyMap = new HashMap<>();
-        Map<String, Descriptor> spkMap = new HashMap<>();
+        Map<String, Descriptor> chkMap = new HashMap<>();
+        Map<String, Descriptor> saveMap = new HashMap<>();
 
         Generator generator = getGenerator();
         Class cls = getSourceClass();
@@ -217,39 +250,22 @@ public class Inspector {
                 Transient trans = field.getAnnotation(Transient.class);
                 if (trans != null)
                     continue;
-                ClusteringColumn cc = field.getAnnotation(ClusteringColumn.class);
-                PartitionKey pk = field.getAnnotation(PartitionKey.class);
-                PartitionUnit unit = field.getAnnotation(PartitionUnit.class);
-                Checkpoint spk = field.getAnnotation(Checkpoint.class);
-                Column column = field.getAnnotation(Column.class);
-                if (cc != null) {
-                    Descriptor descriptor = new Descriptor(cc.value(), generator.getColumnName(column, field), field.getName());
-                    descriptor.field = field;
-                    clusteringKeys.add(descriptor);
-                    field.setAccessible(true);
-                    propertyMap.put(field.getName(), descriptor);
-                    propertyMap.put(descriptor.columnName, descriptor);
-                }
 
+                PartitionKey pk = field.getAnnotation(PartitionKey.class);
                 if (pk != null) {
-                    Descriptor descriptor = new Descriptor(pk.value(), generator.getColumnName(column, field), field.getName());
-                    descriptor.field = field;
-                    partitionKeys.add(descriptor);
-                    field.setAccessible(true);
-                    propertyMap.put(field.getName(), descriptor);
-                    propertyMap.put(descriptor.columnName, descriptor);
+                    fieldDescriptor(pk.value(), field, partitionKeys, propertyMap);
+                    PartitionUnit unit = field.getAnnotation(PartitionUnit.class);
                     if (unit != null && pk.value() == 0)
                         timeUnit = unit.value();
                 }
 
-                if (spk != null) {
-                    Descriptor descriptor = new Descriptor(spk.value(), generator.getColumnName(column, field), field.getName());
-                    descriptor.field = field;
-                    field.setAccessible(true);
-                    checkpoints.add(descriptor);
-                    spkMap.put(field.getName(), descriptor);
-                    spkMap.put(descriptor.columnName, descriptor);
-                }
+                ClusteringColumn cc = field.getAnnotation(ClusteringColumn.class);
+                if (cc != null)
+                    fieldDescriptor(cc.value(), field, clusteringKeys, propertyMap);
+
+                Checkpoint chk = field.getAnnotation(Checkpoint.class);
+                if (chk != null)
+                    fieldDescriptor(chk.value(), field, checkpoints, chkMap);
             }
             cls = cls.getSuperclass();
         }
@@ -265,6 +281,7 @@ public class Inspector {
                     Transient trans = m.getAnnotation(Transient.class);
                     if (trans != null)
                         continue;
+
                     Column column = m.getAnnotation(Column.class);
                     Descriptor descriptor = propertyMap.get(desc.getName());
                     String columnName = generator.getColumnName(column, m);
@@ -272,41 +289,33 @@ public class Inspector {
                         descriptor = propertyMap.get(columnName);
                     }
 
-                    ClusteringColumn cc = m.getAnnotation(ClusteringColumn.class);
                     PartitionKey pk = m.getAnnotation(PartitionKey.class);
-                    Checkpoint spk = m.getAnnotation(Checkpoint.class);
-                    PartitionUnit unit = m.getAnnotation(PartitionUnit.class);
-                    if (cc != null && descriptor == null) {
-                        descriptor = new Descriptor(cc.value(),generator.getColumnName(column, m), desc.getName());
-                        clusteringKeys.add(descriptor);
-                        propertyMap.put(desc.getName(), descriptor);
-                        propertyMap.put(descriptor.columnName, descriptor);
-                    }
-
                     if (pk != null && descriptor == null) {
-                        descriptor = new Descriptor(pk.value(),generator.getColumnName(column, m), desc.getName());
-                        partitionKeys.add(descriptor);
-                        propertyMap.put(desc.getName(), descriptor);
-                        propertyMap.put(descriptor.columnName, descriptor);
+                        descriptor = propertyDescriptor(pk.value(), desc, partitionKeys, propertyMap);
+                        PartitionUnit unit = m.getAnnotation(PartitionUnit.class);
                         if (unit != null && pk.value() == 0)
                             timeUnit = unit.value();
+                    }
+
+                    ClusteringColumn cc = m.getAnnotation(ClusteringColumn.class);
+                    if (cc != null && descriptor == null) {
+                        descriptor = propertyDescriptor(cc.value(), desc, clusteringKeys, propertyMap);
                     }
 
                     if (descriptor != null) {
                         descriptor.setPropertyDescriptor(desc);
                     }
 
-                    Descriptor spkDescriptor = spkMap.get(desc.getName());
-                    if (spkDescriptor == null)
-                        spkDescriptor = spkMap.get(columnName);
-                    if (spk != null && spkDescriptor == null) {
-                        spkDescriptor = new Descriptor(spk.value(), generator.getColumnName(column, m), desc.getName());
-                        checkpoints.add(descriptor);
-                        spkMap.put(desc.getName(), descriptor);
-                        spkMap.put(spkDescriptor.columnName, descriptor);
+                    Checkpoint chk = m.getAnnotation(Checkpoint.class);
+
+                    Descriptor chkDescriptor = chkMap.get(desc.getName());
+                    if (chkDescriptor == null)
+                        chkDescriptor = chkMap.get(columnName);
+                    if (chk != null && chkDescriptor == null) {
+                        chkDescriptor = propertyDescriptor(chk.value(), desc, checkpoints, chkMap);
                     }
-                    if (spkDescriptor != null) {
-                        spkDescriptor.setPropertyDescriptor(desc);
+                    if (chkDescriptor != null) {
+                        chkDescriptor.setPropertyDescriptor(desc);
                     }
                 }
             }

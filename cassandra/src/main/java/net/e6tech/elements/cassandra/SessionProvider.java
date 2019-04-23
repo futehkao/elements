@@ -49,7 +49,7 @@ public class SessionProvider implements ResourceProvider, Initializable {
     private HostDistance distance = HostDistance.LOCAL;
     private NamingStrategy namingStrategy = new DefaultNamingStrategy(NamingConventions.LOWER_CAMEL_CASE, NamingConventions.LOWER_SNAKE_CASE);
     private Class<? extends LastUpdate> lastUpdateClass = LastUpdate.class;
-    private boolean saveNullFields = false;
+    private Sibyl sibyl = new Sibyl();
 
     public Provision getProvision() {
         return provision;
@@ -135,6 +135,14 @@ public class SessionProvider implements ResourceProvider, Initializable {
         return sessions.computeIfAbsent(ks, this::buildSession);
     }
 
+    public Sibyl getSibyl() {
+        return sibyl;
+    }
+
+    public void setSibyl(Sibyl sibyl) {
+        this.sibyl = sibyl;
+    }
+
     public MappingManager getMappingManager() {
         return getMappingManager(keyspace);
     }
@@ -146,14 +154,6 @@ public class SessionProvider implements ResourceProvider, Initializable {
             MappingConfiguration conf = MappingConfiguration.builder().withPropertyMapper(propertyMapper).build();
             return new MappingManager(getSession(keyspaceIn), conf);
         });
-    }
-
-    public boolean isSaveNullFields() {
-        return saveNullFields;
-    }
-
-    public void setSaveNullFields(boolean saveNullFields) {
-        this.saveNullFields = saveNullFields;
     }
 
     public Class<? extends LastUpdate> getLastUpdateClass() {
@@ -210,8 +210,7 @@ public class SessionProvider implements ResourceProvider, Initializable {
         provision.getResourceManager().rebind(MappingManager.class, getMappingManager());
         provision.getResourceManager().rebind(Cluster.class, getCluster());
         provision.getResourceManager().rebind(SessionProvider.class, this);
-        Sibyl sibyl = provision.newInstance(Sibyl.class);
-        sibyl.setSaveNullFields(isSaveNullFields());
+        provision.inject(sibyl);
         provision.getResourceManager().rebind(Sibyl.class, sibyl);
     }
 

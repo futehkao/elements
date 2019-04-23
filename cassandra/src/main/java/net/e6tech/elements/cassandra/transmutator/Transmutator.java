@@ -30,8 +30,6 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
 
     private LinkedList<Descriptor> descriptors = new LinkedList<>();
 
-    protected abstract void undo(PartitionContext context);
-
     protected void undo(PartitionContext context, Class tableClass) {
         Inspector inspector = context.getInspector(tableClass);
         String tableName = inspector.tableName();
@@ -121,16 +119,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         }
 
         for (Descriptor entry : descriptors) {
-            undo(entry.context);
-        }
-
-        for (Descriptor entry : descriptors) {
-            try {
-                count += entry.strategy.run(entry.context);
-            } catch (Exception ex) {
-                undo(entry.context);
-                throw ex;
-            }
+            count += entry.strategy.run(entry.context);
         }
         return count;
     }

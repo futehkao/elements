@@ -32,9 +32,7 @@ public interface TimeBatchStrategy<S> extends BatchStrategy<S, TimeBatch> {
     @Override
     default List<S> extract(TimeBatch context) {
         LastUpdate lastUpdate = context.getLastUpdate();
-        List<S> list = extractUpdate(context, lastUpdate);
-        context.saveLastUpdate(lastUpdate);
-        return list;
+        return extractUpdate(context, lastUpdate);
     }
 
     /**
@@ -63,6 +61,7 @@ public interface TimeBatchStrategy<S> extends BatchStrategy<S, TimeBatch> {
         logger.info("Loading Class {}", getClass());
         while (!(batchResults = extract(context)).isEmpty()) {
             int processedCount = load(context, batchResults);
+            context.saveLastUpdate(lastUpdate);
             logger.info("Processed {} instance of {}", processedCount, getClass());
             importedCount += processedCount;
         }

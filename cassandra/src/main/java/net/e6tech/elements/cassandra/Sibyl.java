@@ -51,8 +51,9 @@ public class Sibyl {
             .build();
 
     private Provision provision;
-    private Map<Class, Mapper> mappers = new HashMap<>();
     private boolean saveNullFields = false;
+    private ConsistencyLevel readConsistency = ConsistencyLevel.LOCAL_SERIAL;
+    private ConsistencyLevel writeConsistency = ConsistencyLevel.LOCAL_QUORUM;
 
     public Provision getProvision() {
         return provision;
@@ -67,14 +68,6 @@ public class Sibyl {
         return getProvision().getInstance(Generator.class);
     }
 
-    public Map<Class, Mapper> getMappers() {
-        return mappers;
-    }
-
-    public void setMappers(Map<Class, Mapper> mappers) {
-        this.mappers = mappers;
-    }
-
     public Session getSession() {
         return getProvision().open().apply(Resources.class, resources -> resources.getInstance(Session.class));
     }
@@ -85,6 +78,22 @@ public class Sibyl {
 
     public void setSaveNullFields(boolean saveNullFields) {
         this.saveNullFields = saveNullFields;
+    }
+
+    public ConsistencyLevel getReadConsistency() {
+        return readConsistency;
+    }
+
+    public void setReadConsistency(ConsistencyLevel readConsistency) {
+        this.readConsistency = readConsistency;
+    }
+
+    public ConsistencyLevel getWriteConsistency() {
+        return writeConsistency;
+    }
+
+    public void setWriteConsistency(ConsistencyLevel writeConsistency) {
+        this.writeConsistency = writeConsistency;
     }
 
     public Async createAsync() {
@@ -105,35 +114,36 @@ public class Sibyl {
         return getProvision().newInstance(Async.class).prepare(stmt);
     }
 
-    public <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls) {
+    public Deque<Mapper.Option> mapperOptions (Mapper.Option... options) {
+        LinkedList<Mapper.Option> list = new LinkedList<>();
+        if (options != null) {
+            for (Mapper.Option option : options) {
+                list.add(option);
+            }
+        }
+        return list;
+    }
+
+    public <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls,  Mapper.Option... options) {
         Async async = createAsync();
         Mapper<X> mapper = getMapper(cls);
-        mapper.setDefaultGetOptions(Mapper.Option.consistencyLevel(ConsistencyLevel.SERIAL));
+        Deque<Mapper.Option> mapperOptions = mapperOptions(options);
+        mapperOptions.addFirst(Mapper.Option.consistencyLevel(getReadConsistency()));
+        mapper.setDefaultGetOptions(mapperOptions.toArray(new Mapper.Option[0]));
         return async.accept(list, k -> mapper.getAsync(k.getKeys()));
     }
 
     public <T> Mapper<T> getMapper(Class<T> cls) {
-        return mappers.computeIfAbsent(cls, key -> provision.getInstance(MappingManager.class).mapper(cls));
+        return provision.getInstance(MappingManager.class).mapper(cls);
     }
 
     public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, Mapper.Option... options) {
         Async async = createAsync();
         Mapper<X> mapper = getMapper(cls);
-        try {
-            if (options != null && options.length > 0) {
-                List<Mapper.Option> all = new ArrayList<>();
-                all.add(Mapper.Option.saveNullFields(isSaveNullFields()));
-                for (Mapper.Option option : options) {
-                    all.add(option);
-                }
-                mapper.setDefaultSaveOptions(all.toArray(new Mapper.Option[0]));
-            } else {
-                mapper.setDefaultSaveOptions(Mapper.Option.saveNullFields(false));
-            }
-            return async.accept(list, mapper::saveAsync);
-        } finally {
-            mapper.resetDefaultSaveOptions();
-        }
+        Deque<Mapper.Option> mapperOptions = mapperOptions(options);
+        mapperOptions.addFirst(Mapper.Option.saveNullFields(isSaveNullFields()));
+        mapperOptions.addFirst(Mapper.Option.consistencyLevel(getWriteConsistency()));
+        return async.accept(list, item -> mapper.saveAsync(item, mapperOptions.toArray(new Mapper.Option[0])));
     }
 
     public ResultSet execute(String query, Map<String, Object> map) {

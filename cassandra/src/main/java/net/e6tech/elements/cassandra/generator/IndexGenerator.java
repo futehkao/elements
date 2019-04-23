@@ -67,11 +67,12 @@ public class IndexGenerator extends AbstractGenerator{
                     continue;
                 }
 
-                Checkpoint lastUpdateBy = field.getAnnotation(Checkpoint.class);
-                if (lastUpdateBy != null) {
-                    implicitIndexes.put(generator.getColumnName(column, field), lastUpdateBy);
+                /*
+                Checkpoint checkpoint = field.getAnnotation(Checkpoint.class);
+                if (checkpoint != null) {
+                    implicitIndexes.put(generator.getColumnName(column, field), checkpoint);
                     implicitIndexes2.put(field.getName(), generator.getColumnName(column, field));
-                }
+                } */
             }
         }
 
@@ -97,13 +98,14 @@ public class IndexGenerator extends AbstractGenerator{
                     || partitionKeys.contains(generator.getColumnName(column, method)))
                     continue;
 
-                Checkpoint lastUpdateBy = method.getAnnotation(Checkpoint.class);
-                if (lastUpdateBy != null) {
+                /*
+                Checkpoint checkpoint = method.getAnnotation(Checkpoint.class);
+                if (checkpoint != null) {
                     implicitIndexes.remove(generator.getColumnName(column, method));
                     String columnName = implicitIndexes2.get(desc.getName());
                     implicitIndexes.remove(columnName);
-                    implicitIndexes.put(generator.getColumnName(column, method), lastUpdateBy);
-                }
+                    implicitIndexes.put(generator.getColumnName(column, method), checkpoint);
+                } */
             }
         }
     }
