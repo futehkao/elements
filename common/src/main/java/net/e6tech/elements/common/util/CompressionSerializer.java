@@ -52,7 +52,7 @@ public class CompressionSerializer {
 
     @SuppressWarnings("unchecked")
     public static <T> T fromBytes(byte[] obj) throws IOException, ClassNotFoundException {
-        if (obj != null) {
+        if (obj != null && obj.length > 0) {
             try (ObjectInputStream ois =
                          new ObjectInputStream(
                                  new GZIPInputStream(

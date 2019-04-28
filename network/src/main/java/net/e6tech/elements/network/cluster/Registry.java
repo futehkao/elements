@@ -218,12 +218,7 @@ public class Registry {
 
     public Function<Object[], CompletionStage<Events.Response>> route(String path, long timeout) {
         return arguments -> {
-            Future future = null;
-            try {
-                future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
-            } catch (IOException e) {
-                throw new SystemException(e);
-            }
+            Future future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
             return FutureConverters.toJava(future).thenApplyAsync(ret -> ret);
         };
     }

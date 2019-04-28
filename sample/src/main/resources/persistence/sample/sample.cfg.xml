@@ -22,7 +22,10 @@
         <property name="show_sql">true</property>
         <property name="hibernate.connection.isolation">2</property> <!-- read uncommitted is 1, read committed is 2 etc. see java.sql.Connection -->
         <property name="hibernate.cache.use_query_cache">false</property>
-        <property name="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory</property>
+        <!-- <property name="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory</property> -->
+        <property name="hibernate.cache.region.factory_class">org.hibernate.cache.jcache.JCacheRegionFactory</property>
+        <property name="hibernate.javax.cache.provider">org.ehcache.jsr107.EhcacheCachingProvider</property>
+        <property name="hibernate.javax.cache.uri">classpath://jcache.xml</property>
         <property name="hibernate.cache.use_second_level_cache">${hibernate.cache.use_second_level_cache}</property>
         <property name="hibernate.query.plan_cache_max_size">${hibernate.query.plan_cache_max_size}</property>
         <!--<property name="hibernate.cache.use_structured_entries">true</property>-->

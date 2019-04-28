@@ -162,7 +162,15 @@ public class Sibyl {
             if (entry.getValue() == null) {
                 bound.setToNull(entry.getKey());
             } else {
-                bound.set(entry.getKey(), entry.getValue(), (Class) entry.getValue().getClass());
+                if (entry.getValue() instanceof List) {
+                    bound.setList(entry.getKey(), (List) entry.getValue());
+                } else if (entry.getValue() instanceof Set) {
+                    bound.setSet(entry.getKey(), (Set) entry.getValue());
+                } else if (entry.getValue() instanceof Map) {
+                    bound.setMap(entry.getKey(), (Map) entry.getValue());
+                } else {
+                    bound.set(entry.getKey(), entry.getValue(), (Class) entry.getValue().getClass());
+                }
             }
         }
         return getSession().execute(bound);

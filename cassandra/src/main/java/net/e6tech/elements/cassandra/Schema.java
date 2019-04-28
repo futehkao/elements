@@ -16,8 +16,6 @@
 
 package net.e6tech.elements.cassandra;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.SyntaxError;
@@ -49,6 +47,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 public class Schema {
+
     private static Cache<String, List<String>> scriptCache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
             .initialCapacity(128)
@@ -175,18 +174,6 @@ public class Schema {
                 } catch (Exception e) {
                     throw new SystemException(e);
                 }
-            }
-        });
-    }
-
-    public void createKeyspace(String keyspaceIn, int replication) {
-        provision.open().accept(Resources.class, resources -> {
-            Metadata meta = resources.getInstance(Cluster.class).getMetadata();
-            if (meta.getKeyspace(keyspaceIn) == null) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("CREATE KEYSPACE IF NOT EXISTS ").append(keyspaceIn);
-                sb.append(" WITH replication = {'class':'SimpleStrategy', 'replication_factor' : " + replication + "};");
-                resources.getInstance(Session.class).execute(sb.toString());
             }
         });
     }

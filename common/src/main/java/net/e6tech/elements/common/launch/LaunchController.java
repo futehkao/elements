@@ -16,10 +16,7 @@
 
 package net.e6tech.elements.common.launch;
 
-import net.e6tech.elements.common.resources.OnShutdown;
-import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.common.resources.ResourceManager;
-import net.e6tech.elements.common.resources.ResourceProvider;
+import net.e6tech.elements.common.resources.*;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -162,14 +159,20 @@ public class LaunchController implements LaunchListener {
         this.latch = latch;
     }
 
+    public ResourceManager initResourceManager() {
+        if (resourceManager == null) {
+            resourceManager = new ResourceManager(getProperties());
+            created(resourceManager);
+        }
+        return resourceManager;
+    }
+
     public void launch(List<LaunchListener> listeners ) {
         String file = getLaunchScript();
         if (file == null)
             throw new IllegalArgumentException("launch file not specified, use launch=<file>");
 
-        resourceManager = new ResourceManager(getProperties());
-
-        created(resourceManager);
+        initResourceManager();
         listeners.forEach(listener -> listener.created(resourceManager));
         try {
             resourceManager.load(file);

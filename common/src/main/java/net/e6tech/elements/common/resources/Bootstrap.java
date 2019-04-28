@@ -48,6 +48,7 @@ public class Bootstrap extends GroovyObjectSupport {
     private static final String BOOT_ENV = "bootEnv";
     private static final String BOOT_AFTER = "bootAfter";
     private static final String BOOT_DISABLE_LIST = "bootDisableList";
+    private static final String BOOT_ENABLE_LIST = "bootEnableList";
     private static final String PLUGIN_DIRECTORIES = "pluginDirectories";
     private static final String PROVISION_CLASS = "provisionClass";
     private static final String HOST_ENVIRONMENT_FILE = "hostEnvironmentFile";
@@ -67,6 +68,7 @@ public class Bootstrap extends GroovyObjectSupport {
     private ResourceManager resourceManager;
     private MyExpando expando = new MyExpando();
     private Set<String> disableList = new LinkedHashSet<>();
+    private Set<String> enableList = new LinkedHashSet<>();
     private Set bootComponents = new HashSet();
     private boolean bootEnv = false;
     private boolean bootProvision = false;
@@ -243,6 +245,7 @@ public class Bootstrap extends GroovyObjectSupport {
     public Bootstrap enable(String ... components) {
         if (components != null) {
             for (String component : components) {
+                enableList.add(component);
                 disableList.remove(component);
                 expando.setProperty(component, true);
             }
@@ -254,6 +257,7 @@ public class Bootstrap extends GroovyObjectSupport {
         if (components != null) {
             for (String component : components) {
                 disableList.add(component);
+                enableList.remove(component);
                 expando.setProperty(component, false);
             }
         }
@@ -330,6 +334,12 @@ public class Bootstrap extends GroovyObjectSupport {
         if (disableList != null) {
             for (String component : disableList) {
                 expando.setProperty(component, false);
+            }
+        }
+
+        if (enableList != null) {
+            for (String component : enableList) {
+                expando.setProperty(component, true);
             }
         }
 
@@ -453,6 +463,11 @@ public class Bootstrap extends GroovyObjectSupport {
             setupDisableList(p);
         }
 
+        if (getVar(BOOT_DISABLE_LIST) != null) {
+            Object p = getVar(BOOT_ENABLE_LIST);
+            setupEnableList(p);
+        }
+
         if (getVar(BOOT_AFTER) != null) {
             if (!(getVar(BOOT_AFTER) instanceof Map)) {
                 throw new SystemException("Expecting variable " + BOOT_AFTER + " to be a Map instead of " + getVar(BOOT_AFTER).getClass());
@@ -476,6 +491,15 @@ public class Bootstrap extends GroovyObjectSupport {
             list.forEach(l ->  disable(l.toString()));
         } else if (p != null) {
             disable(p.toString());
+        }
+    }
+
+    private void setupEnableList(Object p) {
+        if (p instanceof List) {
+            List list = (List) p;
+            list.forEach(l ->  enable(l.toString()));
+        } else if (p != null) {
+            enable(p.toString());
         }
     }
 

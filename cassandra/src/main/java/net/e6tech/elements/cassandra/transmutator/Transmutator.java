@@ -18,7 +18,10 @@ package net.e6tech.elements.cassandra.transmutator;
 
 import net.e6tech.elements.cassandra.async.Async;
 import net.e6tech.elements.cassandra.async.AsyncResultSet;
-import net.e6tech.elements.cassandra.etl.*;
+import net.e6tech.elements.cassandra.etl.Inspector;
+import net.e6tech.elements.cassandra.etl.PartitionContext;
+import net.e6tech.elements.cassandra.etl.PartitionStrategy;
+import net.e6tech.elements.cassandra.etl.Strategy;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.reflect.Array;
@@ -29,6 +32,15 @@ import java.util.*;
 public abstract class Transmutator implements Strategy<PartitionContext> {
 
     private LinkedList<Descriptor> descriptors = new LinkedList<>();
+    private Customizer customizer = null;
+
+    public Customizer getCustomizer() {
+        return customizer;
+    }
+
+    public void setCustomizer(Customizer customizer) {
+        this.customizer = customizer;
+    }
 
     protected void undo(PartitionContext context, Class tableClass) {
         Inspector inspector = context.getInspector(tableClass);
@@ -58,6 +70,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
     }
 
     protected void analyze() {
+        descriptors.clear();
         Class cls = getClass();
         while (cls != null && cls != Object.class) {
             Method[] methods = cls.getDeclaredMethods();
@@ -101,7 +114,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         Collections.sort(descriptors, Comparator.comparingInt(p -> p.order));
     }
 
-    protected List<Descriptor> describe() {
+    public List<Descriptor> describe() {
         return descriptors;
     }
 
@@ -116,6 +129,13 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             entry.context.setProvision(context.getProvision());
             entry.context.setBatchSize(context.getBatchSize());
             entry.context.setExtractAll(context.isExtractAll());
+            entry.context.setTimeLag(context.getTimeLag());
+        }
+
+        if (customizer != null) {
+            for (Descriptor entry : descriptors) {
+                customizer.customize(context, entry);
+            }
         }
 
         for (Descriptor entry : descriptors) {
@@ -134,5 +154,9 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             this.context = context;
             this.strategy= strategy;
         }
+    }
+
+    public interface Customizer {
+        void customize(PartitionContext context, Descriptor descriptor);
     }
 }

@@ -18,8 +18,13 @@ package net.e6tech.elements.network.cluster;
 
 import akka.actor.Actor;
 import akka.actor.ActorRef;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.KryoSerializable;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import net.e6tech.elements.common.subscribe.Subscriber;
 import net.e6tech.elements.common.util.CompressionSerializer;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -140,24 +145,58 @@ public class Events {
         }
     }
 
-    public static class Invocation implements Serializable {
+    public static class Invocation implements Serializable, KryoSerializable {
         private static final long serialVersionUID = -264975294117974773L;
-        private RegisterReference reference;
-        private byte[] payload;
+        private transient RegisterReference reference;
         private transient Object[] arguments;
 
-        public Invocation(String path, Object[] arguments) throws IOException {
-            CompressionSerializer serializer = new CompressionSerializer();
+        public Invocation(String path, Object[] arguments)  {
             this.reference = new RegisterReference(path);
             this.arguments = arguments;
-            this.payload = serializer.toBytes(arguments);
         }
 
-        public Object[] arguments() throws IOException, ClassNotFoundException {
-            if (arguments == null && payload != null) {
-                arguments = CompressionSerializer.fromBytes(payload);
-            }
+        public Object[] arguments() {
             return arguments;
+        }
+
+        public void write (Kryo kryo, Output out) {
+            CompressionSerializer serializer = new CompressionSerializer();
+            byte[] payload;
+            try {
+                payload = serializer.toBytes(arguments);
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
+            out.writeInt(payload.length);
+            out.write(payload);
+        }
+        public void read (Kryo kryo, Input in) {
+            CompressionSerializer serializer = new CompressionSerializer();
+            int size = in.readInt();
+            byte[] buffer = new byte[size];
+            in.read(buffer);
+            try {
+                arguments = serializer.fromBytes(buffer);
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
+        }
+
+        private void writeObject(java.io.ObjectOutputStream out)
+                throws IOException {
+            CompressionSerializer serializer = new CompressionSerializer();
+            byte[] payload = serializer.toBytes(arguments);
+            out.writeInt(payload.length);
+            out.write(payload);
+        }
+
+        private void readObject(java.io.ObjectInputStream in)
+                throws IOException, ClassNotFoundException {
+            CompressionSerializer serializer = new CompressionSerializer();
+            int size = in.readInt();
+            byte[] buffer = new byte[size];
+            in.readFully(buffer);
+            arguments = serializer.fromBytes(buffer);
         }
 
         public String path() {

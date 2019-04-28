@@ -28,14 +28,23 @@ import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.ResourceProvider;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.util.MapBuilder;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.TextBuilder;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 public class SessionProvider implements ResourceProvider, Initializable {
     private Cluster cluster;
 
+    private static final String CREATE_KEYSPACE = "CREATE KEYSPACE IF NOT EXISTS ${keyspace}  WITH replication = {'class':'SimpleStrategy', 'replication_factor' : ${replication}};";
+    private static final Map<String, Object> CREATE_KEYSPACE_ARGUMENTS = Collections.unmodifiableMap(MapBuilder.of("replication", 3));
+
+
+    private String createKeyspace = CREATE_KEYSPACE;
+    private Map<String, Object> createKeyspaceArguments = new HashMap<>(CREATE_KEYSPACE_ARGUMENTS);
     private String host;
     private int port = 9042;
     private String keyspace;
@@ -58,6 +67,22 @@ public class SessionProvider implements ResourceProvider, Initializable {
     @Inject
     public void setProvision(Provision provision) {
         this.provision = provision;
+    }
+
+    public String getCreateKeyspace() {
+        return createKeyspace;
+    }
+
+    public void setCreateKeyspace(String createKeyspace) {
+        this.createKeyspace = createKeyspace;
+    }
+
+    public Map<String, Object> getCreateKeyspaceArguments() {
+        return createKeyspaceArguments;
+    }
+
+    public void setCreateKeyspaceArguments(Map<String, Object> createKeyspaceArguments) {
+        this.createKeyspaceArguments = createKeyspaceArguments;
     }
 
     public Cluster getCluster() {
@@ -190,18 +215,14 @@ public class SessionProvider implements ResourceProvider, Initializable {
     public void initialize(Resources resources) {
         generator.setNamingStrategy(namingStrategy);
         provision.getResourceManager().bind(Generator.class, generator);
-        if (cluster != null)
-            return;
         buildCluster();
         try {
             getSession();
         } catch (InvalidQueryException ex) {
             // connect to default keyspace and create a named keyspace
             Session session = getCluster().connect();
-            StringBuilder sb = new StringBuilder();
-            sb.append("CREATE KEYSPACE IF NOT EXISTS ").append(keyspace);
-            sb.append(" WITH replication = {'class':'SimpleStrategy', 'replication_factor' : 1};");
-            session.execute(sb.toString());
+            createKeyspaceArguments.put("keyspace", keyspace);
+            session.execute(TextBuilder.using(createKeyspace).build(createKeyspaceArguments));
             session.close();
             getSession();
         }

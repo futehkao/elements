@@ -25,6 +25,8 @@ import com.lmax.disruptor.dsl.ProducerType;
 import com.lmax.disruptor.util.DaemonThreadFactory;
 import net.e6tech.elements.common.inject.BindPropA;
 import net.e6tech.elements.common.inject.BindPropX;
+import net.e6tech.elements.common.util.MapBuilder;
+import net.e6tech.elements.common.util.TextBuilder;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -46,6 +48,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Spliterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -221,15 +224,11 @@ public class ScratchPad {
     }
 
     @Test
-    void stream() {
-        List<Integer> list = new ArrayList<>();
-        list.add(1);
-        list.add(2);
-        list.add(3);
-        Stream<Integer> stream = list.stream();
-        long count = stream.count();
-        stream.forEach(i -> System.out.println(i));
-
+    void textBuilder() {
+        Map<String, Object> map = MapBuilder.of("replication", 1);
+        String str = TextBuilder.using("CREATE KEYSPACE IF NOT EXISTS ${keyspace} WITH replication = {'class':'SimpleStrategy', 'replication_factor' : ${replication}};")
+                .build(map);
+        System.out.println(str);
     }
 
 }

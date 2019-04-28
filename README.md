@@ -231,3 +231,60 @@ This file is a standard Hibernate configuration file and the only notable entry 
         ...
       </session-factory>
     </hibernate-configuration>
+    
+ ## Cassandra
+ 
+ 
+ ## Network
+ 
+ ### Restful
+ 
+ ### Catalyst
+ Catalyst is a framework that leverages Akka Clustering and allows the user to break up work into smaller pieces in order to distribute them to other nodes for processing.  
+ 
+ A typical Catalyst request looks like the following
+ 
+     Catalyst catalyst = new SimpleCatalyst("acme", registry);
+     catalyst.setWaitTime(1000000L);
+     DataSet<Integer> dataSet = prepareDateSet();
+     Series<Reactor, Integer, Long> t = Series.from(new MapTransform<>((reactor, number) ->
+              (long) (number * number)));
+     DataSet<Long> result = catalyst.builder(dataSet)
+              .add(new MapTransform<>((reactor, number) -> (long) (number * number)))
+              .transform();
+     
+ First, one creates a data set and a Series instance.  The purpose of Series is to perform a number of transformation on the data set.  During the building phase, the user can add a number of Transforms to the Series.  Finally, when the transform method is invoked, Catalyst breaks the data set into several chunks depending on the number of available cluster nodes.  Each chunk and the Transforms are sent to a separate node for execution.  Once processing is done by all of the nodes, Catalyst assembles the results and return it to the caller.
+ 
+ 
+ #### Transform
+ The available Transforms are listed below
+ 
+ * Fitler
+ * FlatMap
+ * Intersection
+ * MapTransform
+ * Union
+ 
+ In addition, one can always create a customized Transform class by implementing a method.
+ 
+     Stream<R> transform(Re reactor, Stream<T> stream)
+     
+Re is the type of Reactor.
+ 
+ #### Scalar
+ 
+ In addition to transforming a data set, Catalyst also supports reducing it to a scalar value.  For example, the code below finds the max value from the data set.
+ 
+    Double max = catalyst.builder(remoteDataSet)
+                 .add(new MapTransform<>((operator, number) ->
+                 Math.sin(number * Math.PI / 360)))
+                 .scalar(new Max<>());
+              
+Below is a list of available Scalar functions.  Of course, one can always subclass the Scalar class to provide customized behavior.            
+ * Count
+ * Distinct
+ * Max
+ * Min
+ * Reduce
+ * Scalar
+ 

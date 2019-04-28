@@ -16,10 +16,16 @@
 
 package net.e6tech.sample.cassandra;
 
+import net.e6tech.elements.cassandra.Schema;
+import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.util.MapBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class CassandraTest {
     public static Provision provision;
@@ -34,6 +40,10 @@ public class CassandraTest {
 
     @Test
     void basic() {
-
+        Schema schema = provision.newInstance(Schema.class);
+        schema.createTables("elements", TestTable.class);
+        List<Long> ids = Arrays.asList(1L, 2L);
+        List<TestTable> testTables = provision.getInstance(Sibyl.class).all(TestTable.class, "select * from test_table where id in :ids",
+                MapBuilder.of("ids", ids));
     }
 }

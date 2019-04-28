@@ -32,7 +32,6 @@ atom("cassandra_session") {
     _schema = Schema
 
     postInit {
-        _schema.createKeyspace("${cassandraKeyspace}", 3)
         _schema.createTables(null, cassandraTables.toArray(new String[0]))
     }
 }

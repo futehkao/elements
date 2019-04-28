@@ -270,15 +270,15 @@ public class ETLContext {
 
     private Comparable cutoffOrUpdate(boolean cutoff) {
         if (TimeUnit.DAYS.equals(getTimeUnit()))
-            return startTime / DAY;
+            return (startTime - timeLag)/ DAY;
         else if (TimeUnit.HOURS.equals(getTimeUnit()))
-            return startTime / HOUR;
+            return (startTime - timeLag) / HOUR;
         else if (TimeUnit.MINUTES.equals(getTimeUnit()))
-            return startTime / MINUTE;
+            return (startTime - timeLag) / MINUTE;
         else if (TimeUnit.SECONDS.equals(getTimeUnit()))
-            return startTime / SECOND;
+            return (startTime - timeLag)  / SECOND;
         else if (TimeUnit.MILLISECONDS.equals(getTimeUnit()))
-            return startTime;
+            return startTime - timeLag;
         else {
             if (cutoff) {
                 if (UUID.class.isAssignableFrom(getPartitionKeyType())) {
