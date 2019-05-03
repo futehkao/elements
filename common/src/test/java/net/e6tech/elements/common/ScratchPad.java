@@ -29,6 +29,9 @@ import net.e6tech.elements.common.util.MapBuilder;
 import net.e6tech.elements.common.util.TextBuilder;
 import org.junit.jupiter.api.Test;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -40,6 +43,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.CodeSource;
+import java.security.KeyStore;
 import java.security.ProtectionDomain;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -224,11 +228,10 @@ public class ScratchPad {
     }
 
     @Test
-    void textBuilder() {
-        Map<String, Object> map = MapBuilder.of("replication", 1);
-        String str = TextBuilder.using("CREATE KEYSPACE IF NOT EXISTS ${keyspace} WITH replication = {'class':'SimpleStrategy', 'replication_factor' : ${replication}};")
-                .build(map);
-        System.out.println(str);
+    void keyManager() throws Exception{
+        KeyManagerFactory factory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        factory.init(null, null);
+        KeyManager[] managers = factory.getKeyManagers();
     }
 
 }

@@ -35,9 +35,9 @@ public class Inspector {
     private Class sourceClass;
     private boolean initialized = false;
     private TimeUnit timeUnit;
-    private List<Descriptor> partitionKeys = new ArrayList<>();
-    private List<Descriptor> clusteringKeys = new ArrayList<>();
-    private List<Descriptor> checkpoints = new ArrayList<>();
+    private List<Descriptor> partitionKeys = new LinkedList<>();
+    private List<Descriptor> clusteringKeys = new LinkedList<>();
+    private List<Descriptor> checkpoints = new LinkedList<>();
 
     public Inspector(Class sourceClass, Generator generator) {
         this.sourceClass = sourceClass;
@@ -64,6 +64,10 @@ public class Inspector {
     public void addClusteringKey(Descriptor descriptor) {
         clusteringKeys.add(descriptor);
         Collections.sort(clusteringKeys, Comparator.comparingInt(p -> p.position));
+    }
+
+    public int getPartitionKeySize() {
+        return partitionKeys.size();
     }
 
     public String getPartitionKeyColumn(int n) {
@@ -115,6 +119,10 @@ public class Inspector {
         set(checkpoints.get(n), object, value);
     }
 
+    public int getCheckpointSize() {
+        return checkpoints.size();
+    }
+
     public String getClusteringKeyColumn(int n) {
         if (clusteringKeys.size() <= n)
             return null;
@@ -127,6 +135,10 @@ public class Inspector {
 
     public Object getClusteringKey(Object object, int n) {
         return getKey(clusteringKeys, object, n);
+    }
+
+    public int getClusteringKeySize() {
+        return clusteringKeys.size();
     }
 
     public String tableName() {

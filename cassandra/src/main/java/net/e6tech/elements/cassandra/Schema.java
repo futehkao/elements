@@ -295,6 +295,18 @@ public class Schema {
     }
 
     public void extract(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
+        Map<Strategy, ETLContext> map = scan(packageName, recursive, customizer);
+        for (Map.Entry<Strategy, ETLContext> entry : map.entrySet()) {
+            try {
+                entry.getKey().run(entry.getValue());
+            } catch (Exception e) {
+                logger.error("Cannot extract {}", entry.getKey().getClass());
+                throw new SystemException(e);
+            }
+        }
+    }
+
+    public Map<Strategy, ETLContext> scan(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
         PackageScanner scanner = new PackageScanner();
         List<Class> classList = new ArrayList<>();
         Class[] classes = recursive ? scanner.getTopLevelClassesRecursive(Strategy.class.getClassLoader(), packageName)
@@ -322,6 +334,7 @@ public class Schema {
             }
         }
 
+        Map<Strategy, ETLContext> result = new LinkedHashMap<>();
         for (Map.Entry<Class, Class> entry : map.entrySet()) {
             ETLContext context = null;
             try {
@@ -330,12 +343,13 @@ public class Schema {
                     customizer.accept(context);
                 }
                 Strategy strategy = (Strategy) entry.getKey().getDeclaredConstructor().newInstance();
-                strategy.run(context);
+                result.put(strategy, context);
             } catch (Exception e) {
                 logger.error("Cannot extract {}", entry.getKey());
                 throw new SystemException(e);
             }
         }
+        return result;
     }
 
     private void analyze(Class cls, List<Class> list) {

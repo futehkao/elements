@@ -54,6 +54,9 @@ public class RestfulClient {
     private String encoding = StandardCharsets.UTF_8.name();
     private String trustStore;
     private String trustStoreFormat = JavaKeyStore.DEFAULT_FORMAT;
+    private char[] trustStorePassword;
+    private char[] privateKeyPassword;
+    private String TLSProtocol = "TLS";
     private boolean skipHostnameCheck = false;
     private boolean skipCertCheck = false;
     private SSLSocketFactory sslSocketFactory;
@@ -79,6 +82,11 @@ public class RestfulClient {
         this.exceptionMapper = exceptionMapper;
     }
 
+    public RestfulClient exceptionMapper(ExceptionMapper exceptionMapper) {
+        setExceptionMapper(exceptionMapper);
+        return this;
+    }
+
     public synchronized String getAddress() {
         return staticAddress;
     }
@@ -87,12 +95,22 @@ public class RestfulClient {
         this.staticAddress = path;
     }
 
+    public RestfulClient address(String path) {
+        setAddress(path);
+        return this;
+    }
+
     public String getEncoding() {
         return encoding;
     }
 
     public void setEncoding(String encoding) {
         this.encoding = encoding;
+    }
+
+    public RestfulClient encoding(String encoding) {
+        setEncoding(encoding);
+        return this;
     }
 
     public String getTrustStore() {
@@ -104,12 +122,35 @@ public class RestfulClient {
         this.trustStore = trustStore;
     }
 
+    public RestfulClient trustStore(String trustStore) {
+        setTrustStore(trustStore);
+        return this;
+    }
+
     public String getTrustStoreFormat() {
         return trustStoreFormat;
     }
 
     public void setTrustStoreFormat(String trustStoreFormat) {
         this.trustStoreFormat = trustStoreFormat;
+    }
+
+    public RestfulClient trustStoreFormat(String trustStoreFormat) {
+        setTrustStoreFormat(trustStoreFormat);
+        return this;
+    }
+
+    public char[] getTrustStorePassword() {
+        return trustStorePassword;
+    }
+
+    public void setTrustStorePassword(char[] trustStorePassword) {
+        this.trustStorePassword = trustStorePassword;
+    }
+
+    public RestfulClient trustStorePassword(char[] trustStorePassword) {
+        setTrustStorePassword(trustStorePassword);
+        return  this;
     }
 
     public boolean isSkipHostnameCheck() {
@@ -121,6 +162,11 @@ public class RestfulClient {
         this.skipHostnameCheck = skipHostnameCheck;
     }
 
+    public RestfulClient skipHostnameCheck(boolean skipHostnameCheck) {
+        setSkipHostnameCheck(skipHostnameCheck);
+        return this;
+    }
+
     public boolean isSkipCertCheck() {
         return skipCertCheck;
     }
@@ -128,6 +174,37 @@ public class RestfulClient {
     public void setSkipCertCheck(boolean skipCertCheck) {
         sslSocketFactory = null;
         this.skipCertCheck = skipCertCheck;
+    }
+
+    public RestfulClient skipCertCheck(boolean skipCertCheck) {
+        setSkipCertCheck(skipCertCheck);
+        return this;
+    }
+
+    public char[] getPrivateKeyPassword() {
+        return privateKeyPassword;
+    }
+
+    public void setPrivateKeyPassword(char[] privateKeyPassword) {
+        this.privateKeyPassword = privateKeyPassword;
+    }
+
+    public RestfulClient privateKeyPassword(char[] password) {
+        setPrivateKeyPassword(password);
+        return this;
+    }
+
+    public String getTLSProtocol() {
+        return TLSProtocol;
+    }
+
+    public void setTLSProtocol(String TLSProtocol) {
+        this.TLSProtocol = TLSProtocol;
+    }
+
+    public RestfulClient TLSProtocol(String TLSProtocol) {
+        setTLSProtocol(TLSProtocol);
+        return this;
     }
 
     public PrintWriter getPrinter() {
@@ -147,12 +224,22 @@ public class RestfulClient {
         this.printRawResponse = printRawResponse;
     }
 
+    public RestfulClient printRawResponse(boolean printRawResponse) {
+        setPrintRawResponse(printRawResponse);
+        return this;
+    }
+
     public int getConnectionTimeout() {
         return connectionTimeout;
     }
 
     public void setConnectionTimeout(int connectionTimeout) {
         this.connectionTimeout = connectionTimeout;
+    }
+
+    public RestfulClient connectionTimeout(int connectionTimeout) {
+        setConnectionTimeout(connectionTimeout);
+        return this;
     }
 
     public int getReadTimeout() {
@@ -163,12 +250,22 @@ public class RestfulClient {
         this.readTimeout = readTimeout;
     }
 
+    public RestfulClient readTimeout(int readTimeout) {
+        setReadTimeout(readTimeout);
+        return this;
+    }
+
     public String getProxyHost() {
         return proxyHost;
     }
 
     public void setProxyHost(String proxyHost) {
         this.proxyHost = proxyHost;
+    }
+
+    public RestfulClient proxyHost(String proxyHost) {
+        setProxyHost(proxyHost);
+        return this;
     }
 
     public int getProxyPort() {
@@ -179,12 +276,22 @@ public class RestfulClient {
         this.proxyPort = proxyPort;
     }
 
+    public RestfulClient proxyPort(int proxyPort) {
+        setProxyPort(proxyPort);
+        return this;
+    }
+
     public Marshaller getMarshaller() {
         return marshaller;
     }
 
     public void setMarshaller(Marshaller marshaller) {
         this.marshaller = marshaller;
+    }
+
+    public RestfulClient marshaller(Marshaller marshaller) {
+        setMarshaller(marshaller);
+        return this;
     }
 
     @SuppressWarnings("squid:S134")
@@ -532,18 +639,28 @@ public class RestfulClient {
         if (sslSocketFactory != null)
             return sslSocketFactory;
         TrustManager[] trustManagers = null;
+        KeyManager[] keyManagers = null;
         if (skipCertCheck) {
             trustManagers = new TrustManager[] { new AcceptAllTrustManager()};
         } else {
             try {
                 if (trustStore != null) {
-                    JavaKeyStore javaKeyStore = new JavaKeyStore(trustStore, null, trustStoreFormat);
-                    javaKeyStore.init(null);
+                    JavaKeyStore javaKeyStore = new JavaKeyStore(trustStore, trustStorePassword, trustStoreFormat);
+                    javaKeyStore.init(privateKeyPassword);
                     trustManagers = javaKeyStore.getTrustManagers();
+                    keyManagers = javaKeyStore.getKeyManagers();
+                    if (privateKeyPassword != null) {
+                        for (int i = 0 ; i < privateKeyPassword.length; i++)
+                            privateKeyPassword[i] = 0;
+                        privateKeyPassword = null;
+                    }
                 } else {
-                    TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                    factory.init((KeyStore)null);
-                    trustManagers = factory.getTrustManagers();
+                    TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                    trustManagerFactory.init((KeyStore)null);
+                    trustManagers = trustManagerFactory.getTrustManagers();
+                    KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                    keyManagerFactory.init(null, null);
+                    keyManagers = keyManagerFactory.getKeyManagers();
                 }
             } catch (Exception ex) {
                 throw logger.systemException(ex);
@@ -552,13 +669,19 @@ public class RestfulClient {
 
         SSLContext ctx = null;
         try {
-            ctx = SSLContext.getInstance("TLS");
-            ctx.init(null, trustManagers, null);
+            ctx = SSLContext.getInstance(getTLSProtocol());
+            ctx.init(keyManagers, trustManagers, null);
             sslSocketFactory = ctx.getSocketFactory();
             return sslSocketFactory;
         } catch (Exception e) {
             throw logger.systemException(e);
         }
+    }
+
+
+    // you can always explicitly set the SSLSocketFactory if you don't like how RestfulClient creates a SSLSocketFactory
+    public void setSSLSocketFactory(SSLSocketFactory sslSocketFactory) {
+        this.sslSocketFactory = sslSocketFactory;
     }
 
     public class AcceptAllTrustManager implements X509TrustManager {

@@ -44,7 +44,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
      */
     @Override
     public List<S> extract(PartitionOrderByContext context) {
-        Map<Comparable, List<S>> results = new HashMap<>();
+        Map<Comparable, List<S>> results = new HashMap<>((int)(context.getPartitions().size() * 1.4 + 16));
         Class<S> sourceClass = context.getSourceClass();
         PreparedStatement pstmt = context.getPreparedStatements().computeIfAbsent("extract",
                 key -> context.getSession().prepare(context.getExtractionQuery()));

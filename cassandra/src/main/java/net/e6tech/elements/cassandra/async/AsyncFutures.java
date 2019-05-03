@@ -19,9 +19,11 @@ package net.e6tech.elements.cassandra.async;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -29,12 +31,10 @@ public class AsyncFutures<T, D> {
     static Logger logger = Logger.getLogger();
     protected Async async;
     protected List<ListenableFuture<T>> futures;
-    protected Map<ListenableFuture<T>, D> futuresData;
 
-    AsyncFutures(Async async, List<ListenableFuture<T>> futures, Map<ListenableFuture<T>, D> futuresData) {
+    AsyncFutures(Async async, List<ListenableFuture<T>> futures) {
         this.async = async;
         this.futures = futures;
-        this.futuresData = futuresData;
     }
 
     public Async inCompletionOrder() {
@@ -54,7 +54,7 @@ public class AsyncFutures<T, D> {
                 if (consumer != null && value != null)
                     consumer.accept(value);
             } catch (Exception e) {
-                logger.warn(e.getMessage(), e);
+                throw new SystemException(e);
             }
         }
     }
@@ -69,13 +69,14 @@ public class AsyncFutures<T, D> {
     }
 
     public Async inExecutionOrder(BiConsumer<D, T> consumer) {
+        Map<ListenableFuture<T>, D> futuresData = (Map) async.futuresData;
         for (ListenableFuture<T> future : futures) {
             try {
                 T value = future.get();
                 if (consumer != null && value != null)
                     consumer.accept(futuresData.get(future), value);
             } catch (Exception e) {
-                logger.warn(e.getMessage(), e);
+                throw new SystemException(e);
             }
         }
         return async;

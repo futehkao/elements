@@ -22,15 +22,11 @@ import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Session;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Provision;
 
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -44,8 +40,8 @@ public class Async {
             .build();
 
     private PreparedStatement preparedStatement;
-    private List<ListenableFuture> futures = Lists.newArrayList();
-    private Map<ListenableFuture, Object> futuresData = new IdentityHashMap<>();
+    private List<ListenableFuture> futures = new LinkedList<>();
+    Map<ListenableFuture, Object> futuresData = new IdentityHashMap<>(512);
     private Session session;
     private AsyncResultSet result;
     private Provision provision;
@@ -57,7 +53,7 @@ public class Async {
     }
 
     public Async() {
-        result = new AsyncResultSet(this, futures, futuresData);
+        result = new AsyncResultSet(this, futures);
     }
 
     public Provision getProvision() {
@@ -96,8 +92,8 @@ public class Async {
     public <T, D> AsyncFutures<T, D> acceptAll(AsyncFutures<T, D> result) {
         for (ListenableFuture<T> future : result.futures) {
             futures.add(future);
-            if (result.futuresData.containsKey(future))
-                futuresData.put(future, result.futuresData.get(future));
+            if (result.async.futuresData.containsKey(future))
+                futuresData.put(future, result.async.futuresData.get(future));
         }
         return result;
     }
@@ -109,11 +105,20 @@ public class Async {
         return result;
     }
 
-    public <T, D> AsyncFutures<T, D> accept(Iterable<D> iterable, Function<D, ListenableFuture<T>> function) {
-        for (D t : iterable) {
+    public <T, D> AsyncFutures<T, D> accept(Collection<D> collection, Function<D, ListenableFuture<T>> function) {
+        resizeFuturesData(collection.size());
+        for (D t : collection) {
             accept(t, function.apply(t));
         }
         return result;
+    }
+
+    private void resizeFuturesData(int size) {
+        int currentSize = futuresData.size();
+        int totalSize = size + currentSize;
+        Map<ListenableFuture, Object> tmp = new IdentityHashMap<>(Math.max((int) (totalSize/.75f) + 1, 16));
+        tmp.putAll(futuresData);
+        futuresData = tmp;
     }
 
     public AsyncResultSet<?> execute(Consumer<BoundStatement> consumer) {
@@ -130,18 +135,20 @@ public class Async {
         return result;
     }
 
-    public <D> AsyncResultSet<D> execute(Iterable<D> iterable, BiConsumer<D, BoundStatement> biConsumer) {
-        for (D t : iterable) {
+    public <D> AsyncResultSet<D> execute(Collection<D> collection, BiConsumer<D, BoundStatement> biConsumer) {
+        resizeFuturesData(collection.size());
+        for (D t : collection) {
             execute(t, boundStatement -> biConsumer.accept(t, boundStatement));
         }
         return result;
     }
 
     public <D> AsyncResultSet<D> execute(D[] array, BiConsumer<D, BoundStatement> biConsumer) {
+        resizeFuturesData(array.length);
         for (D t : array) {
             execute(t, boundStatement -> biConsumer.accept(t, boundStatement));
         }
-        return new AsyncResultSet(this, futures, futuresData);
+        return result;
     }
 
     public Async inCompletionOrder() {

@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class Catalyst<Re extends Reactor> {
@@ -107,6 +108,16 @@ public class Catalyst<Re extends Reactor> {
         for (Runnable runnable : runnables)
             dataSet.add(reactor -> {
                 runnable.run();
+                return Collections.EMPTY_LIST.stream();
+            });
+        transform(new Series<>(), dataSet);
+    }
+
+    public void run(Consumer<Re> ... consumers) {
+        RemoteDataSet<?> dataSet = new RemoteDataSet<>();
+        for (Consumer consumer : consumers)
+            dataSet.add(reactor -> {
+                consumer.accept(reactor);
                 return Collections.EMPTY_LIST.stream();
             });
         transform(new Series<>(), dataSet);

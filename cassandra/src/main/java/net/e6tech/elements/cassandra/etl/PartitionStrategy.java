@@ -25,6 +25,7 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.TextBuilder;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PartitionStrategy<S extends Partition, C extends PartitionContext> implements BatchStrategy<S, C> {
 
@@ -47,7 +48,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         String partitionKey = context.getInspector().getPartitionKeyColumn(0);
         String table = context.tableName();
 
-        Map<Comparable, Long> map = new HashMap<>();
+        AtomicReference<Map<Comparable, Long>> ref = new AtomicReference<>(new HashMap<>());
         List<Comparable> partitions = new ArrayList<>();
         context.open().accept(Resources.class, res -> {
             String query = TextBuilder.using(
@@ -56,12 +57,16 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                     .build("pk", partitionKey, "table", table,
                             "start", lastUpdate.getLastUpdate(), "end", end);
             ResultSet rs = res.getInstance(Session.class).execute(query);
-            for (Row row : rs.all()) {
+            List<Row> rows = rs.all();
+            ref.set(new HashMap<>((int)(rows.size() * 1.4 + 16)));
+            Map<Comparable, Long> map = ref.get();
+            for (Row row : rows) {
                 Comparable pk = (Comparable) row.get(0, context.getPartitionKeyType());
                 map.put(pk, row.getLong(1));
                 partitions.add(pk);
             }
         });
+        Map<Comparable, Long> map = ref.get();
         Collections.sort(partitions);
         Map<Comparable, Long> result = new LinkedHashMap<>();
         for (Comparable partition : partitions) {

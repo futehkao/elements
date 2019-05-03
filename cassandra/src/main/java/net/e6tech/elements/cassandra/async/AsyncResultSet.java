@@ -32,8 +32,8 @@ import java.util.function.Consumer;
 public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
     static Logger logger = Logger.getLogger();
 
-    AsyncResultSet(Async async, List<ResultSetFuture> futures, Map<ResultSetFuture, Object> futuresData) {
-        super(async, (List) futures, (Map) futuresData);
+    AsyncResultSet(Async async, List<ResultSetFuture> futures) {
+        super(async, (List) futures);
     }
 
     public Async inCompletionOrderRows(Consumer<Row> consumer) {
@@ -60,6 +60,7 @@ public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
     }
 
     public Async inExecutionRows(BiConsumer<Row, D> consumer) {
+        Map<ListenableFuture<ResultSet>, D> futuresData = (Map) async.futuresData;
         for (ListenableFuture<ResultSet> future : futures) {
             try {
                 for (Row row : future.get()) {

@@ -29,7 +29,9 @@ import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
+import net.e6tech.elements.common.util.SystemException;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -39,7 +41,7 @@ public class ETLContext {
     public static final long DAY = 24 * 60 * 60 * 1000L;
     public static final long HOUR = 60 * 60 * 1000L;
     public static final long MINUTE = 60 * 1000L;
-    public static final long SECOND = 60 * 1000L;
+    public static final long SECOND = 1000L;
     public static final long MONTH = DAY * 30;
     public static final long TIME_LAG = 5 * 60 * 1000L;
     public static final int BATCH_SIZE = 1000;
@@ -238,7 +240,11 @@ public class ETLContext {
         lookupLastUpdate();
 
         if (lastUpdate == null) {
-            lastUpdate = new LastUpdate();
+            try {
+                lastUpdate = getProvision().getInstance(SessionProvider.class).getLastUpdateClass().getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
             lastUpdate.setExtractor(name);
             if (extractAll) {
                 // UUID

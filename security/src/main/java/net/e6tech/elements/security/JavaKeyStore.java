@@ -26,10 +26,7 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.*;
 import javax.security.auth.x500.X500Principal;
 import java.io.*;
 import java.math.BigInteger;
@@ -176,6 +173,17 @@ public class JavaKeyStore {
             return trustManagersWithSystem;
         }
         return trustManagers;
+    }
+
+    /**
+     *
+     * @param protocol for example "TLSv1.2"
+     * @return SSLSocketFactory
+     */
+    public SSLSocketFactory createSocketFactory(String protocol) throws GeneralSecurityException {
+        SSLContext ctx = SSLContext.getInstance(protocol);
+        ctx.init(getKeyManagers(), getTrustManagers(), null);
+        return ctx.getSocketFactory();
     }
 
     public Key getKey(String alias, char[] password) throws GeneralSecurityException {
