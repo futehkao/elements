@@ -99,7 +99,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         logger.info("Extracting Class {} to {}", context.getSourceClass(), getClass());
         context.reset();
 
-        List<Comparable> concurrent = new ArrayList<>();
+        List<Comparable> concurrent = new LinkedList<>();
         while (partitions.size() > 0) {
             LastUpdate lastUpdate = context.getLastUpdate();
             concurrent.clear();

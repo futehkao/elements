@@ -44,7 +44,7 @@ public class ETLContext {
     public static final long SECOND = 1000L;
     public static final long MONTH = DAY * 30;
     public static final long TIME_LAG = 5 * 60 * 1000L;
-    public static final int BATCH_SIZE = 1000;
+    public static final int BATCH_SIZE = 2000;
 
     private Provision provision;
     private int batchSize = BATCH_SIZE;

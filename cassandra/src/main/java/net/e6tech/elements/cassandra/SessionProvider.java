@@ -157,7 +157,7 @@ public class SessionProvider implements ResourceProvider, Initializable {
         String ks = keyspaceIn;
         if (ks == null)
             ks = keyspace;
-        return sessions.computeIfAbsent(ks, this::buildSession);
+        return buildSession(ks);
     }
 
     public Sibyl getSibyl() {

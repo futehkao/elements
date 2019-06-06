@@ -18,6 +18,7 @@ package net.e6tech.elements.security.hsm.atalla.simulator;
 
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.security.Hex;
+import net.e6tech.elements.security.hsm.Simulator;
 import net.e6tech.elements.security.hsm.atalla.Message;
 
 import javax.crypto.Cipher;
@@ -39,7 +40,7 @@ import java.util.concurrent.Executors;
  * Created by futeh.
  */
 @SuppressWarnings({"squid:S3008", "squid:S2278"})
-public class AtallaSimulator {
+public class AtallaSimulator extends Simulator {
 
     static String MASTER_KEY = "2ABC3DEF4567018998107645FED3CBA20123456789ABCDEF";
 
@@ -57,11 +58,7 @@ public class AtallaSimulator {
 
     static Logger logger = Logger.getLogger();
 
-    private ExecutorService threadPool;
-    private ServerSocket serverSocket;
-    private int port = 7000;
     private byte[] masterKey = Hex.toBytes(MASTER_KEY); // triple des is 24 bytes,
-    private boolean stopped = true;
     protected Map<String, String> keys = new LinkedHashMap<>();
 
     public AtallaSimulator() throws GeneralSecurityException {
@@ -80,14 +77,7 @@ public class AtallaSimulator {
                 }
             }
         }
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public void setPort(int port) {
-        this.port = port;
+        setPort(7000);
     }
 
     public String getMasterKey() {
@@ -155,63 +145,18 @@ public class AtallaSimulator {
         return asAKB(header, plainKey);
     }
 
-    public boolean isStopped() {
-        return stopped;
-    }
-
-    public void start() {
-        if (threadPool == null) {
-            threadPool = Executors.newCachedThreadPool(runnable -> {
-                Thread thread = new Thread(null, runnable, "AtallaSimulator");
-                thread.setName("AtallaSimulator-" + thread.getId());
-                thread.setDaemon(true);
-                return thread;
-            });
-        }
-        Thread thread = new Thread(this::startServer);
-        thread.start();
-    }
-
-    @SuppressWarnings({"squid:S134", "squid:S1141", "squid:S2589", "squid:S2189"})
-    protected void startServer() {
-        try {
-            serverSocket = new ServerSocket(port);
-            stopped = false;
-            while (!stopped) {
-                final Socket socket = serverSocket.accept();
-                threadPool.execute(()-> {
-                    try {
-                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                             PrintWriter writer =  new PrintWriter(new OutputStreamWriter(socket.getOutputStream()))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                line = line.trim();
-                                Command request = Command.createInstance(line, this);
-                                Message response = request.process();
-                                writer.println(response);
-                                writer.flush();
-                            }
-                            logger.info("Atalla client exited");
-                        }
-                    } catch (Exception e) {
-                        logger.trace(e.getMessage(), e);
-                    }
-                });
+    protected void process(InputStream inputStream, OutputStream outputStream) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+             PrintWriter writer =  new PrintWriter(new OutputStreamWriter(outputStream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                Command request = Command.createInstance(line, this);
+                Message response = request.process();
+                writer.println(response);
+                writer.flush();
             }
-        } catch (Exception th) {
-            throw logger.systemException(th);
-        }
-    }
-
-    public void stop() {
-        if (serverSocket != null) {
-            try {
-                serverSocket.close();
-            } catch (IOException e) {
-                Logger.suppress(e);
-            } finally {
-                stopped = true;
-            }
+            logger.info(getClass().getSimpleName() + " client exited");
         }
     }
 
@@ -232,5 +177,7 @@ public class AtallaSimulator {
         System.out.println("Key: " + "9E15204313F7318A CB79B90BD986AD29");
         System.out.println("Check Digits: " + akb.getCheckDigits());
         System.out.println();
+
+        simulator.start();
     }
 }

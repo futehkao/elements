@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,9 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.restful;
+package net.e6tech.elements.common.resources;
 
-
-@SuppressWarnings("squid:S00112")
-public interface Marshaller<R> {
-
-    String getContentType();
-
-    String getAccept();
-
-    String prettyPrintRequest(Object data) throws Exception;
-
-    String encodeRequest(Object data) throws Exception;
-
-    Object prettyPrintResponse(String response) throws Exception;
-
-    void errorResponseClass(Class<R> errorResponseClass);
-
-    R readErrorResponse(String errorResponse) throws Exception;
+@FunctionalInterface
+public interface Instantiated {
+    void instantiated(Resources resources);
 }

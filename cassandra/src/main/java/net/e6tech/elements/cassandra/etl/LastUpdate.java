@@ -38,8 +38,8 @@ public class LastUpdate {
         return lastUpdate;
     }
 
-    public void setLastUpdate(String lastUpdateTime) {
-        this.lastUpdate = lastUpdateTime;
+    public void setLastUpdate(String lastUpdate) {
+        this.lastUpdate = lastUpdate;
     }
 
     public String getDataType() {

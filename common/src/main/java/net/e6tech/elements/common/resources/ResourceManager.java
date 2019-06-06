@@ -463,6 +463,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public <T> T registerBean(String name, Object instance) {
+        return addBean(name, createBean(instance), false);
+    }
+
+    private Object createBean(Object instance) {
         if (instance == null)
             throw new NullPointerException("instance is null");
         Object obj = instance;
@@ -471,11 +475,15 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         } else {
             inject(obj);
         }
-        return addBean(name, obj);
+        return obj;
     }
 
     protected <T> T addBean(String name, Object instance) {
-        if (getScripting().getVariables().get(name) != null) {
+        return addBean(name, instance, false);
+    }
+
+    protected <T> T addBean(String name, Object instance, boolean overwrite) {
+        if (!overwrite &&  getScripting().getVariables().get(name) != null) {
             throw logger.systemException("bean with name=" + name + " already registered");
         }
 
@@ -487,15 +495,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         }
 
         getScripting().put(name, instance);
-
         listeners.forEach(l -> l.beanAdded(name, instance));
-
         return (T) instance;
     }
 
     public void unregisterBean(String name) {
         Object instance = getScripting().remove(name);
-        listeners.forEach(l -> l.beanRemoved(name, instance));
+        if (instance != null)
+            listeners.forEach(l -> l.beanRemoved(name, instance));
     }
 
     @Override

@@ -194,6 +194,9 @@ public class Atom implements Map<String, Object> {
             return;
         }
 
+        if (obj instanceof Instantiated)
+            ((Instantiated) obj).instantiated(resources);
+
         if (obj != null)
             boundInstances.put(prefix, obj); // needed here because annotate may execute a script that requires the instance.
         // when a config string begin with ^, it is turned into a closure.  The expression is
@@ -538,6 +541,52 @@ public class Atom implements Map<String, Object> {
         }
     }
 
+    Object putResourceProvider(String key, Class cls) {
+        Object instance = null;
+        try {
+            if (resourceManager.getBean(key) != null && !key.startsWith("_")) {
+                instance = resourceManager.getBean(key);
+                if (!cls.isAssignableFrom(instance.getClass())) {
+                    throw new IllegalArgumentException("key=" + key + " has already been registered with ResourceManager.");
+                }
+            } else {
+                instance = cls.newInstance();
+                resourceManager.addResourceProvider((ResourceProvider) instance);
+                if (!key.startsWith("_")) {
+                    resourceManager.addBean(key, instance);
+                }
+            }
+        } catch (Exception e) {
+            throw logger.systemException(e);
+        }
+        return instance;
+    }
+
+    Object putClass(String key, Class cls) {
+        // creating an instance from Class
+        Object instance = null;
+        try {
+            if (resourceManager.getBean(key) != null && !key.startsWith("_")) {
+                instance = resourceManager.getBean(key);
+                if (!cls.isAssignableFrom(instance.getClass())) {
+                    throw new IllegalArgumentException("key=" + key + " has already been registered with ResourceManager.");
+                }
+            } else {
+                instance = cls.newInstance();
+            }
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw logger.systemException(e);
+        }
+
+        registerBean(key, instance);
+
+        if (instance == null) {
+            throw new SystemException("Cannot instantiate " + cls);
+        }
+        resources.rebind(cls, instance);
+        return instance;
+    }
+
     @Override
     @SuppressWarnings({"squid:S1141", "squid:S134", "squid:MethodCyclomaticComplexity"})
     public Object put(String key, Object value) {
@@ -560,45 +609,10 @@ public class Atom implements Map<String, Object> {
                     }
                     duplicate = true;
                 } else if (ResourceProvider.class.isAssignableFrom((Class) value)) {
-                    Class cls = (Class) value;
-                    try {
-                        if (resourceManager.getBean(key) != null && !key.startsWith("_")) {
-                            instance = resourceManager.getBean(key);
-                            if (!cls.isAssignableFrom(instance.getClass())) {
-                                throw new IllegalArgumentException("key=" + key + " has already been registered with ResourceManager.");
-                            }
-                        } else {
-                            instance = cls.newInstance();
-                            resourceManager.addResourceProvider((ResourceProvider) instance);
-                            if (!key.startsWith("_")) {
-                                resourceManager.addBean(key, instance);
-                            }
-                        }
-                    } catch (Exception e) {
-                        throw logger.systemException(e);
-                    }
+                    instance = putResourceProvider(key, (Class) value);
                 } else {
                     // creating an instance from Class
-                    Class cls = (Class) value;
-                    try {
-                        if (resourceManager.getBean(key) != null && !key.startsWith("_")) {
-                            instance = resourceManager.getBean(key);
-                            if (!cls.isAssignableFrom(instance.getClass())) {
-                                throw new IllegalArgumentException("key=" + key + " has already been registered with ResourceManager.");
-                            }
-                        } else {
-                            instance = cls.newInstance();
-                        }
-                    } catch (InstantiationException | IllegalAccessException e) {
-                        throw logger.systemException(e);
-                    }
-
-                    registerBean(key, instance);
-
-                    if (instance == null) {
-                        throw new SystemException("Cannot instantiate " + value);
-                    }
-                    resources.rebind(cls, instance);
+                    instance = putClass(key, (Class) value);
                 }
                 configure(instance, key);
             } else if (value instanceof ResourceProvider) {

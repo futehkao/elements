@@ -18,6 +18,7 @@ package net.e6tech.elements.common.util.concurrent;
 
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.function.FunctionWithException;
 
@@ -218,6 +219,7 @@ public abstract class Balancer<T> {
     }
 
     protected boolean shouldRecover(Exception exception) {
-        return exception instanceof IOException;
+        Throwable throwable = ExceptionMapper.unwrap(exception);
+        return throwable instanceof IOException;
     }
 }

@@ -28,6 +28,7 @@ import net.e6tech.elements.common.util.file.FileUtil;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Paths;
@@ -111,6 +112,19 @@ public class PluginManager {
                 }
                 type = type.getSuperclass();
             }
+            if (lookup == null && !type.isInterface()
+                    && !Modifier.isAbstract(type.getModifiers())
+                    && Modifier.isPublic(type.getModifiers())) {
+                try {
+                    // test for existence of zero argument constructor
+                    type.getDeclaredConstructor();
+                    lookup = type;
+                    defaultPlugins.put(type, lookup);
+                } catch (NoSuchMethodException e) {
+                    // ok
+                }
+            }
+
             if (lookup == null)
                 defaultPlugins.put(type, NULL_OBJECT);
         }

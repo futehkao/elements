@@ -24,8 +24,17 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-public class JsonMarshaller implements Marshaller {
+public class JsonMarshaller<R> implements Marshaller<R> {
     public static final ObjectMapper mapper = ObjectMapperFactory.newInstance();
+
+    private Class<R> errorResponseClass ;
+
+    public JsonMarshaller() {
+    }
+
+    public JsonMarshaller(Class<R> errorResponseClass) {
+        this.errorResponseClass = errorResponseClass;
+    }
 
     @Override
     public String getContentType() {
@@ -73,8 +82,12 @@ public class JsonMarshaller implements Marshaller {
         return "";
     }
 
+    public void errorResponseClass(Class errorResponseClass) {
+        this.errorResponseClass = errorResponseClass;
+    }
+
     @Override
-    public ErrorResponse readErrorResponse(String errorResponse) throws Exception {
-        return mapper.readValue(errorResponse, ErrorResponse.class);
+    public R readErrorResponse(String errorResponse) throws Exception {
+        return mapper.readValue(errorResponse, errorResponseClass);
     }
 }

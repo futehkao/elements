@@ -66,7 +66,7 @@ public class RestfulClient {
     private boolean printRawResponse = false;
     private String proxyHost;
     private int proxyPort = -1;
-    private Marshaller marshaller = new JsonMarshaller();
+    private Marshaller marshaller = new JsonMarshaller<>(ErrorResponse.class);
 
     public RestfulClient() {}
 
@@ -78,8 +78,12 @@ public class RestfulClient {
         return exceptionMapper;
     }
 
-    public void setExceptionMapper(ExceptionMapper exceptionMapper) {
+    public <R> void setExceptionMapper(ExceptionMapper<R> exceptionMapper) {
         this.exceptionMapper = exceptionMapper;
+        if (exceptionMapper != null && marshaller != null) {
+            Class<R> errorResponseClass = exceptionMapper.errorResponseClass();
+            marshaller.errorResponseClass(errorResponseClass);
+        }
     }
 
     public RestfulClient exceptionMapper(ExceptionMapper exceptionMapper) {
@@ -289,8 +293,12 @@ public class RestfulClient {
         this.marshaller = marshaller;
     }
 
-    public RestfulClient marshaller(Marshaller marshaller) {
+    public <R> RestfulClient marshaller(Marshaller<R> marshaller) {
         setMarshaller(marshaller);
+        if (exceptionMapper != null && marshaller != null) {
+            Class<R> errorResponseClass = exceptionMapper.errorResponseClass();
+            marshaller.errorResponseClass(errorResponseClass);
+        }
         return this;
     }
 
@@ -499,7 +507,7 @@ public class RestfulClient {
                 String result = ex.getMessage();
                 if (result != null && exceptionMapper != null) {
                     try {
-                        ErrorResponse error = marshaller.readErrorResponse(result);
+                        Object error = marshaller.readErrorResponse(result);
                         if (error != null) {
                             mappedThrowable = exceptionMapper.fromResponse(error);
                         }

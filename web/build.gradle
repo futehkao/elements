@@ -18,7 +18,7 @@ dependencies {
     compile project(':security')
     compile project(':network')
 
-    compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.9.3'
+    compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.9.8'
     compile 'org.eclipse.jetty:jetty-webapp:9.4.8.v20171121'
     compile 'org.eclipse.jetty:jetty-continuation:9.4.8.v20171121'
     compile 'org.eclipse.jetty:jetty-http:9.4.8.v20171121'

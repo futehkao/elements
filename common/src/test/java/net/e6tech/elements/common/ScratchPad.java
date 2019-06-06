@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManagerFactory;
+import javax.xml.bind.DatatypeConverter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -232,6 +233,18 @@ public class ScratchPad {
         KeyManagerFactory factory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         factory.init(null, null);
         KeyManager[] managers = factory.getKeyManagers();
+    }
+
+    @Test
+    void bcd() {
+        byte[] bytes = new byte[] { (byte) 0x99, 0x34};
+        StringBuilder builder = new StringBuilder();
+        for (byte b : bytes) {
+            builder.append((b & 0x00f0) >>> 4)
+                    .append(b & 0x000f);
+        }
+        System.out.println(builder.toString());
+        System.out.println(DatatypeConverter.printHexBinary(bytes));
     }
 
 }

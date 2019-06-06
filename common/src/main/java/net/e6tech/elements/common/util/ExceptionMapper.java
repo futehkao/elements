@@ -5,7 +5,6 @@ import java.lang.reflect.InvocationTargetException;
 /**
  * Created by futeh.
  */
-@FunctionalInterface
 public interface ExceptionMapper<R> {
 
     @SuppressWarnings("squid:S135")
@@ -35,6 +34,8 @@ public interface ExceptionMapper<R> {
 
         return exception;
     }
+
+    Class<R> errorResponseClass();
 
     R toResponse(Throwable exception);
 
