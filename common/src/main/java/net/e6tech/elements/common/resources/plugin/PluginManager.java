@@ -101,7 +101,8 @@ public class PluginManager {
             return Optional.empty();
 
         if (lookup == null) {
-            while (type != null && !type.equals(Object.class)) {
+            Class t = type;
+            while (t != null && !t.equals(Object.class)) {
                 try {
                     Field field = type.getField(DEFAULT_PLUGIN);
                     lookup = field.get(null);
@@ -110,11 +111,12 @@ public class PluginManager {
                 } catch (NoSuchFieldException | IllegalAccessException e1) {
                     Logger.suppress(e1);
                 }
-                type = type.getSuperclass();
+                t = t.getSuperclass();
             }
             if (lookup == null && !type.isInterface()
                     && !Modifier.isAbstract(type.getModifiers())
-                    && Modifier.isPublic(type.getModifiers())) {
+                    && Modifier.isPublic(type.getModifiers())
+                    && AutoPlugin.class.isAssignableFrom(type)) {
                 try {
                     // test for existence of zero argument constructor
                     type.getDeclaredConstructor();
