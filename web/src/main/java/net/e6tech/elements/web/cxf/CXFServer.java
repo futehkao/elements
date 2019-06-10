@@ -24,41 +24,32 @@ import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.Startable;
 import net.e6tech.elements.common.util.ExceptionMapper;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
 import net.e6tech.elements.jmx.JMXService;
 import net.e6tech.elements.jmx.stat.Measurement;
 import net.e6tech.elements.security.JavaKeyStore;
 import net.e6tech.elements.security.SelfSignedCert;
 import net.e6tech.elements.web.JaxExceptionHandler;
-import org.apache.cxf.configuration.jsse.TLSServerParameters;
-import org.apache.cxf.configuration.security.ClientAuthentication;
-import org.apache.cxf.endpoint.Server;
 import org.apache.cxf.message.Message;
-import org.apache.cxf.transport.Destination;
 import org.apache.cxf.transport.http.AbstractHTTPDestination;
-import org.apache.cxf.transport.http_jetty.JettyHTTPDestination;
-import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngine;
-import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngineFactory;
-import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import javax.annotation.Nonnull;
 import javax.management.JMException;
 import javax.management.ObjectInstance;
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.TrustManager;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by futeh.
@@ -69,22 +60,26 @@ public class CXFServer implements Initializable, Startable {
     private static final Logger logger = Logger.getLogger();
     private Provision provision;
     private Interceptor interceptor;
-    private List<Server> servers = new ArrayList<>();
-    private List<URL> urls = new ArrayList<>();
+    private List<URL> urls = new LinkedList<>();
     private String keyStoreFile;
     private String keyStoreFormat = JavaKeyStore.DEFAULT_FORMAT;
     private KeyStore keyStore;
     private char[] keyStorePassword;
     private char[] keyManagerPassword;
+    private String clientAuth;
     private SelfSignedCert selfSignedCert;
-    private ExecutorService executor;
-    private QueuedThreadPool queuedThreadPool;
     private boolean initialized = false;
     private boolean started = false;
     private boolean measurement = false;
     private Observer headerObserver;
     private ExceptionMapper exceptionMapper;
     private Map<String, String> responseHeaders = new LinkedHashMap<>();
+    private ServerEngine serverEngine;  // e.g. Jetty vs Tomcat;
+    private Class<? extends ServerEngine> serverEngineClass;
+    private List<ServerController> controllers = new LinkedList<>();
+
+    public CXFServer() {
+    }
 
     public void setAddresses(List<String> addresses) throws MalformedURLException {
         for (String address : addresses) {
@@ -111,7 +106,7 @@ public class CXFServer implements Initializable, Startable {
         this.interceptor = interceptor;
     }
 
-    protected List<URL> getURLs() {
+    public List<URL> getURLs() {
         return urls;
     }
 
@@ -155,30 +150,20 @@ public class CXFServer implements Initializable, Startable {
         this.keyManagerPassword = keyManagerPassword;
     }
 
+    public String getClientAuth() {
+        return clientAuth;
+    }
+
+    public void setClientAuth(String clientAuth) {
+        this.clientAuth = clientAuth;
+    }
+
     public SelfSignedCert getSelfSignedCert() {
         return selfSignedCert;
     }
 
     public void setSelfSignedCert(SelfSignedCert selfSignedCert) {
         this.selfSignedCert = selfSignedCert;
-    }
-
-    public ExecutorService getThreadPool() {
-        return executor;
-    }
-
-    @Inject(optional = true)
-    public void setThreadPool(ExecutorService executor) {
-        this.executor = executor;
-    }
-
-    public QueuedThreadPool getQueuedThreadPool() {
-        return queuedThreadPool;
-    }
-
-    @Inject(optional = true)
-    public void setQueuedThreadPool(QueuedThreadPool queuedThreadPool) {
-        this.queuedThreadPool = queuedThreadPool;
     }
 
     public boolean isMeasurement() {
@@ -215,90 +200,36 @@ public class CXFServer implements Initializable, Startable {
         this.responseHeaders = responseHeaders;
     }
 
-    protected void registerServer(Server server) {
-        if (!servers.contains(server))
-            servers.add(server);
+    public Class<? extends ServerEngine> getServerEngineClass() {
+        return serverEngineClass;
     }
 
-    /* see http://aruld.info/programming-ssl-for-jetty-based-cxf-services/
-     on how to setup TLS for CXF server.  The article also includes an example
-     for setting up client TLS.
-     We can use filters to control cipher suites<br>
-        <code>FiltersType filter = new FiltersType();
-        filter.getInclude().add(".*_EXPORT_.*");
-        filter.getInclude().add(".*_EXPORT1024_.*");
-        filter.getInclude().add(".*_WITH_DES_.*");
-        filter.getInclude().add(".*_WITH_NULL_.*");
-        filter.getExclude().add(".*_DH_anon_.*");
-        tlsParams.setCipherSuitesFilter(filter);
-        </code>
-     */
-    @SuppressWarnings({"squid:S3776", "squid:MethodCyclomaticComplexity", "squid:CommentedOutCodeLine"})
-    protected void initKeyStore() throws GeneralSecurityException, IOException {
-        if (keyStoreFile == null && selfSignedCert == null && keyStore == null)
-            return;
-        KeyManager[] keyManagers ;
-        TrustManager[] trustManagers;
-        if (keyStore != null || keyStoreFile != null) {
-            JavaKeyStore jceKeyStore;
-            if (keyStore != null) {
-                jceKeyStore = new JavaKeyStore(keyStore);
-            } else {
-                jceKeyStore = new JavaKeyStore(keyStoreFile, keyStorePassword, keyStoreFormat);
-            }
-            if (keyManagerPassword == null)
-                keyManagerPassword = keyStorePassword;
-            jceKeyStore.init(keyManagerPassword);
-            keyManagers = jceKeyStore.getKeyManagers();
-            trustManagers = jceKeyStore.getTrustManagers();
-        } else { // selfSignedCert
-            keyManagers = selfSignedCert.getKeyManagers();
-            trustManagers = selfSignedCert.getTrustManagers();
-        }
-        TLSServerParameters tlsParams = new TLSServerParameters();
-        tlsParams.setKeyManagers(keyManagers);
-        tlsParams.setTrustManagers(trustManagers);
+    public void setServerEngineClass(Class<? extends ServerEngine> serverEngineClass) {
+        this.serverEngineClass = serverEngineClass;
+    }
 
-        ClientAuthentication ca = new ClientAuthentication();
-        ca.setRequired(false);
-        ca.setWant(false);
-        tlsParams.setClientAuthentication(ca);
-
-        JettyHTTPServerEngineFactory factory = new JettyHTTPServerEngineFactory();
-        for (URL url : urls) {
-            if ("https".equals(url.getProtocol())) {
-                JettyHTTPServerEngine engine = factory.retrieveJettyHTTPServerEngine(url.getPort());
-                TLSServerParameters existingParams = (engine == null) ? null : engine.getTlsServerParameters();
-                if (existingParams != null) {
-                    // key managers
-                    Set<KeyManager> keyManagerSet = new LinkedHashSet<>();
-                    if (existingParams.getKeyManagers() != null) {
-                        Collections.addAll(keyManagerSet, existingParams.getKeyManagers());
-                    }
-
-                    if (keyManagers != null)
-                        Collections.addAll(keyManagerSet, keyManagers);
-
-                    // trust manager
-                    Set<TrustManager> trustManagerSet = new LinkedHashSet<>();
-                    if (existingParams.getTrustManagers() != null) {
-                        Collections.addAll(trustManagerSet, existingParams.getTrustManagers());
-                    }
-
-                    if (trustManagers != null)
-                        Collections.addAll(trustManagerSet, trustManagers);
-
-                    existingParams.setKeyManagers(keyManagerSet.toArray(new KeyManager[0]));
-                    existingParams.setTrustManagers(trustManagerSet.toArray(new TrustManager[0]));
-                } else {
-                    factory.setTLSServerParametersForPort(url.getPort(), tlsParams);
-                }
-            }
-        }
+    protected void addController(ServerController controller) {
+        if (!controllers.contains(controller))
+            controllers.add(controller);
     }
 
     public void initialize(Resources resources){
         initialized = true;
+        if (serverEngine == null) {
+            try {
+                Class<? extends ServerEngine> cls = (serverEngineClass != null) ? serverEngineClass :
+                        (Class) getClass().getClassLoader().loadClass("net.e6tech.elements.web.cxf.jetty.JettyEngine");
+                serverEngine = cls
+                        .getConstructor()
+                        .newInstance();
+            } catch (Exception ex) {
+                throw new SystemException(ex);
+            }
+        }
+
+        if (resources != null) {
+            resources.inject(serverEngine);
+        }
     }
 
     public boolean isStarted() {
@@ -323,24 +254,12 @@ public class CXFServer implements Initializable, Startable {
             return;
         started = true;
 
-        if (queuedThreadPool != null) {
-            for (Server server : servers) {
-                Destination dest = server.getDestination();
-                if (dest instanceof JettyHTTPDestination) {
-                    JettyHTTPDestination jetty = (JettyHTTPDestination) dest;
-                    if (jetty.getEngine() instanceof JettyHTTPServerEngine) {
-                        ((JettyHTTPServerEngine) jetty.getEngine()).setThreadPool(queuedThreadPool);
-                    }
-                }
-            }
-        }
-        for (Server server : servers )
-            server.start();
+        for (ServerController controller : controllers )
+            serverEngine.start(this, controller);
     }
 
     public void stop() {
-        for (Server server : servers )
-            server.stop();
+        serverEngine.stop();
         started = false;
     }
 
@@ -437,7 +356,6 @@ public class CXFServer implements Initializable, Startable {
                     }
                 }
             }
-
             idx++;
         }
         if (builder != null) {

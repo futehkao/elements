@@ -24,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.NotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
@@ -53,7 +54,7 @@ public class JaxRSServerTest {
 
         try {
             reply = api.sayHi("Mr. Jones");
-        } catch (NotFoundException ex) {
+        } catch (Exception ex) {
             System.out.println("caught expected exception: " + ex);
         }
 

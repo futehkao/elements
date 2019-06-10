@@ -43,6 +43,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,7 +68,7 @@ public class JaxRSServer extends CXFServer {
     private static final String NAME = "name";
     private static final String PROTOTYPE = "prototype";
     private static final Logger messageLogger = Logger.getLogger(JaxRSServer.class.getName() + ".message");
-    private static final Map<Integer, ServerFactorBeanEntry> entries = new ConcurrentHashMap<>();
+    private static final Map<Integer, JaxRSServerController> entries = new ConcurrentHashMap<>();
     private static Logger logger = Logger.getLogger();
 
     private List<Map<String, Object>> resources = new ArrayList<>();
@@ -76,7 +77,6 @@ public class JaxRSServer extends CXFServer {
     private SecurityAnnotationEngine securityAnnotationEngine;
     private Configuration.Resolver resolver;
     private ClassLoader classLoader;
-
     private LogEventSender logEventSender;
 
     public static Logger getLogger() {
@@ -158,18 +158,18 @@ public class JaxRSServer extends CXFServer {
             );
         }
 
-        List<ServerFactorBeanEntry> entryList = new ArrayList<>();
+        List<JaxRSServerController> entryList = new ArrayList<>();
         synchronized (entries) {
             for (URL url : getURLs()) {
-                ServerFactorBeanEntry entry = entries.computeIfAbsent(url.getPort(), port -> new ServerFactorBeanEntry(url, new JAXRSServerFactoryBean()));
-                if (!entry.getURL().equals(url)) {
+                JaxRSServerController controller = entries.computeIfAbsent(url.getPort(), port -> new JaxRSServerController(url, new JAXRSServerFactoryBean()));
+                if (!controller.getURL().equals(url)) {
                     throw new SystemException("Cannot register " + url.toExternalForm() + ".  Already a service at " + url.toExternalForm());
                 }
 
-                JAXRSServerFactoryBean bean = entry.getFactoryBean();
+                JAXRSServerFactoryBean bean = controller.getFactory();
                 bean.setAddress(url.toExternalForm());
-                entries.put(url.getPort(), entry);
-                entryList.add(entry);
+                entries.put(url.getPort(), controller);
+                entryList.add(controller);
             }
         }
 
@@ -240,8 +240,8 @@ public class JaxRSServer extends CXFServer {
                 resourceProvider = new InstanceResourceProvider(this, resourceClass, prototype, module, getProvision(), hObserver);
             }
 
-            for (ServerFactorBeanEntry entry : entryList)
-                entry.getFactoryBean().setResourceProvider(resourceClass, resourceProvider);
+            for (JaxRSServerController entry : entryList)
+                entry.getFactory().setResourceProvider(resourceClass, resourceProvider);
 
             if (resourceName != null && prototype != null)
                 instances.put(resourceName, prototype);
@@ -252,8 +252,8 @@ public class JaxRSServer extends CXFServer {
         if (securityAnnotationEngine != null)
             securityAnnotationEngine.logMethodMap();
 
-        for (ServerFactorBeanEntry entry : entryList)
-            entry.addResourceClasses(resourceClasses);
+        for (JaxRSServerController controller : entryList)
+            controller.addResourceClasses(resourceClasses);
 
         super.initialize(res);
     }
@@ -273,24 +273,22 @@ public class JaxRSServer extends CXFServer {
         if (isStarted())
             return;
 
-        try {
-            initKeyStore();
-        } catch (Exception th) {
-            throw new SystemException(th);
-        }
-
-        List<JAXRSServerFactoryBean> beans = new ArrayList<>();
+        // create a list of JAXRSServerFactoryBean
+        List<JAXRSServerFactoryBean> beans = new LinkedList<>();
+        List<ServerController> controllers = new LinkedList<>();
         synchronized (entries) {
             for (URL url : getURLs()) {
-                ServerFactorBeanEntry entry = entries.get(url.getPort());
-                if (entry != null) {
-                    beans.add(entry.getFactoryBean());
-                    entry.getFactoryBean().setResourceClasses(entry.getResourceClasses());
+                JaxRSServerController controller = entries.get(url.getPort());
+                if (controller != null) {
+                    beans.add(controller.getFactory());
+                    controller.getFactory().setResourceClasses(controller.getResourceClasses());
                     entries.remove(url.getPort());
+                    controllers.add(controller);
                 }
             }
         }
 
+        // use Jackson as the provider
         for (JAXRSServerFactoryBean bean: beans)
             bean.getBus().setProperty("skip.default.json.provider.registration", true);
 
@@ -304,6 +302,7 @@ public class JaxRSServer extends CXFServer {
         for (JAXRSServerFactoryBean bean: beans)
             bean.setProvider(jackson);
 
+        // setup Cors
         if (isCorsFilter()) {
             logger.info("enabling CORS filter");
             CrossOriginResourceSharingFilter cf = new CrossOriginResourceSharingFilter();
@@ -311,6 +310,7 @@ public class JaxRSServer extends CXFServer {
                 bean.setProvider(cf);
         }
 
+        // logging
         LoggingFeature feature = new LoggingFeature();
         DefaultLogEventSender sender = new DefaultLogEventSender();
         feature.setInSender(sender);
@@ -319,18 +319,19 @@ public class JaxRSServer extends CXFServer {
             bean.getFeatures().add(feature);
         }
 
+        // setup exception mapper
         for (JAXRSServerFactoryBean bean: beans)
             bean.setProvider(new InternalExceptionMapper(getExceptionMapper()));
+
         for (JAXRSServerFactoryBean bean: beans)
             logger.info("Starting Restful at address {} {} ", bean.getAddress(), bean.getResourceClasses());
-        for (JAXRSServerFactoryBean bean: beans) {
-            try {
-                bean.setStart(false);
-                registerServer(bean.create());
-            } catch (Exception ex) {
-                throw new SystemException("Cannot start RESTful service at " + bean.getAddress(), ex);
-            }
+
+        // add controller
+        for (ServerController controller: controllers) {
+            addController(controller);
         }
+
+        // start servers
         super.start();
     }
 
@@ -346,33 +347,6 @@ public class JaxRSServer extends CXFServer {
 
         private String getLogMessage(LogEvent event) {
             return LogMessageFormatter.format(event);
-        }
-    }
-
-    private static class ServerFactorBeanEntry {
-        JAXRSServerFactoryBean bean;
-        URL url;
-        List<Class<?>> resourceClasses = new ArrayList<>();
-
-        ServerFactorBeanEntry(URL url, JAXRSServerFactoryBean bean) {
-            this.url = url;
-            this.bean = bean;
-        }
-
-        synchronized URL getURL() {
-            return url;
-        }
-
-        JAXRSServerFactoryBean getFactoryBean() {
-            return bean;
-        }
-
-        synchronized void addResourceClasses(List<Class<?>> list) {
-            resourceClasses.addAll(list);
-        }
-
-        List<Class<?>> getResourceClasses() {
-            return resourceClasses;
         }
     }
 

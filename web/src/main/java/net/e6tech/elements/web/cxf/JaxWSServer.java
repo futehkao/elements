@@ -44,14 +44,7 @@ public class JaxWSServer extends CXFServer {
             svrFactory.setServiceBean(implementor);
             svrFactory.getInInterceptors().add(new LoggingInInterceptor());
             svrFactory.getOutInterceptors().add(new LoggingOutInterceptor());
-            svrFactory.setStart(false);
-            registerServer(svrFactory.create());
-        }
-
-        try {
-            initKeyStore();
-        } catch (Exception th) {
-            throw new SystemException(th);
+            addController(new ServerController<>(url, svrFactory));
         }
 
         super.initialize(resources);

@@ -1,6 +1,5 @@
-import net.e6tech.elements.web.cxf.JaxRSServer
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +14,14 @@ import net.e6tech.elements.web.cxf.JaxRSServer
  * limitations under the License.
  */
 
-atom("helloworld") {
-    configuration =  """
-    # _helloworld.serverEngineClass: net.e6tech.elements.web.cxf.tomcat.TomcatEngine
-    _helloworld.addresses:
-        - "http://0.0.0.0:9000/restful/"
-    _helloworld.resources:
-        - class: "net.e6tech.elements.web.cxf.HelloWorldRS"
-          bindHeaderObserver: false
- """
+package net.e6tech.elements.web.cxf;
 
-    _helloworld = JaxRSServer
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+
+public abstract class ServerEngine {
+
+    public abstract void start(CXFServer cxfServer, ServerController<?> controller);
+
+    public abstract void stop();
 }
