@@ -20,6 +20,7 @@ import groovy.lang.GString;
 import groovy.lang.GroovyObjectSupport;
 import groovy.lang.Script;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 
 import javax.script.ScriptException;
 import java.io.IOException;
@@ -129,5 +130,21 @@ public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends 
     public String getenv(String envName, String defaultVal) {
         String value = System.getenv(envName);
         return (value != null) ? value : defaultVal;
+    }
+
+    public Class loadClass(String className) {
+        try {
+            return getShell().getClass().getClassLoader().loadClass(className);
+        } catch (ClassNotFoundException e) {
+            throw new SystemException(e);
+        }
+    }
+
+    public Class loadClass(ClassLoader classLoader, String className) {
+        try {
+            return classLoader.loadClass(className);
+        } catch (ClassNotFoundException e) {
+            throw new SystemException(e);
+        }
     }
 }

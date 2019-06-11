@@ -22,6 +22,7 @@ import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.logging.TimedLogger;
 import net.e6tech.elements.common.notification.NotificationCenter;
+import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.script.AbstractScriptShell;
@@ -157,6 +158,11 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public void removeListener(ResourceManagerListener listener) {
         listeners.remove(listener);
+    }
+
+    public void onShutdown(String description, NotificationListener<ShutdownNotification> listener) {
+        getNotificationCenter()
+                .addNotificationListener(ShutdownNotification.class, NotificationListener.wrap(description, listener));
     }
 
     public PluginManager getPluginManager() {

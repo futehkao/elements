@@ -23,5 +23,5 @@ public abstract class ServerEngine {
 
     public abstract void start(CXFServer cxfServer, ServerController<?> controller);
 
-    public abstract void stop();
+    public abstract void stop(CXFServer cxfServer);
 }

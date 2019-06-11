@@ -19,6 +19,7 @@ package net.e6tech.elements.security;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
 import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 
 /**
  * Created by futeh.
@@ -30,12 +31,18 @@ public class SelfSignedCert {
     private int expiration = 3; // 3 years
     private JavaKeyStore javaKeyStore;
     private String format = JavaKeyStore.DEFAULT_FORMAT;
+    private char[] password = Password.generateRandomPassword(9, 15);
 
     public void init() throws GeneralSecurityException {
-        char[] password = Password.generateRandomPassword(9, 15);
-        javaKeyStore = new JavaKeyStore();
+        if (password == null)
+            password = Password.generateRandomPassword(9, 15);
+        javaKeyStore = new JavaKeyStore(format);
         javaKeyStore.createSelfSignedCertificate(alias, dn, password, expiration);
         javaKeyStore.init(password);
+    }
+
+    public char[] getPassword() {
+        return password;
     }
 
     public void init(JavaKeyStore javaKeyStore) {
@@ -80,6 +87,10 @@ public class SelfSignedCert {
 
     public TrustManager[] getTrustManagers() {
         return javaKeyStore.getTrustManagers();
+    }
+
+    public KeyStore getKeyStore() {
+        return javaKeyStore.getKeyStore();
     }
 
 }

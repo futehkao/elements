@@ -50,6 +50,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Created by futeh.
@@ -66,6 +67,7 @@ public class CXFServer implements Initializable, Startable {
     private KeyStore keyStore;
     private char[] keyStorePassword;
     private char[] keyManagerPassword;
+    private String sslProtocol = "TLS";
     private String clientAuth;
     private SelfSignedCert selfSignedCert;
     private boolean initialized = false;
@@ -76,6 +78,7 @@ public class CXFServer implements Initializable, Startable {
     private Map<String, String> responseHeaders = new LinkedHashMap<>();
     private ServerEngine serverEngine;  // e.g. Jetty vs Tomcat;
     private Class<? extends ServerEngine> serverEngineClass;
+    private Object serverEngineData;
     private List<ServerController> controllers = new LinkedList<>();
 
     public CXFServer() {
@@ -158,6 +161,14 @@ public class CXFServer implements Initializable, Startable {
         this.clientAuth = clientAuth;
     }
 
+    public String getSslProtocol() {
+        return sslProtocol;
+    }
+
+    public void setSslProtocol(String sslProtocol) {
+        this.sslProtocol = sslProtocol;
+    }
+
     public SelfSignedCert getSelfSignedCert() {
         return selfSignedCert;
     }
@@ -200,6 +211,14 @@ public class CXFServer implements Initializable, Startable {
         this.responseHeaders = responseHeaders;
     }
 
+    public ServerEngine getServerEngine() {
+        return serverEngine;
+    }
+
+    public void setServerEngine(ServerEngine serverEngine) {
+        this.serverEngine = serverEngine;
+    }
+
     public Class<? extends ServerEngine> getServerEngineClass() {
         return serverEngineClass;
     }
@@ -208,6 +227,21 @@ public class CXFServer implements Initializable, Startable {
         this.serverEngineClass = serverEngineClass;
     }
 
+    public <T> T getServerEngineData() {
+        return (T) serverEngineData;
+    }
+
+    public <T> void setServerEngineData(T serverEngineData) {
+        this.serverEngineData = serverEngineData;
+    }
+
+    public <T> T computeServerEngineData(Supplier<T> supplier) {
+        if (serverEngineData == null)
+            setServerEngineData(supplier.get());
+        return (T) serverEngineData;
+    }
+
+
     protected void addController(ServerController controller) {
         if (!controllers.contains(controller))
             controllers.add(controller);
@@ -215,6 +249,9 @@ public class CXFServer implements Initializable, Startable {
 
     public void initialize(Resources resources){
         initialized = true;
+        if (resources != null) {
+            resources.getResourceManager().onShutdown("CXFServer " + getURLs(), notification -> stop());
+        }
         if (serverEngine == null) {
             try {
                 Class<? extends ServerEngine> cls = (serverEngineClass != null) ? serverEngineClass :
@@ -259,7 +296,7 @@ public class CXFServer implements Initializable, Startable {
     }
 
     public void stop() {
-        serverEngine.stop();
+        serverEngine.stop(this);
         started = false;
     }
 

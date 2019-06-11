@@ -126,6 +126,10 @@ public class RestfulProxy {
         return lastResponse;
     }
 
+    public RestfulClient getClient() {
+        return client;
+    }
+
     private static class InvocationHandler implements InterceptorHandler {
         private RestfulProxy proxy;
         private String context;

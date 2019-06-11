@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.common.launch;
 
+import net.e6tech.elements.common.notification.NotificationListener;
+import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.*;
 
 import java.util.*;
@@ -176,6 +178,7 @@ public class LaunchController implements LaunchListener {
         listeners.forEach(listener -> listener.created(resourceManager));
         try {
             resourceManager.load(file);
+            resourceManager.onShutdown("LaunchController " + getLaunchScript(), notification -> provisions.remove(getLaunchScript()));
         } catch (Exception e) {
             e.printStackTrace(); // we cannot use Logger yet
             System.exit(1);

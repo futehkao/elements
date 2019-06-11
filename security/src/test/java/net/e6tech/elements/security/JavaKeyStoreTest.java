@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 
 /**
  * Created by futeh.
@@ -29,17 +30,14 @@ import java.io.ByteArrayOutputStream;
 public class JavaKeyStoreTest {
 
     @Test
-    public void basic() throws Exception {
+    public void selfsigned() throws Exception {
         char[] password = "password".toCharArray();
-        char[] password2 = "password2".toCharArray();
-        JavaKeyStore javaKeyStore = new JavaKeyStore();
+        JavaKeyStore javaKeyStore = new JavaKeyStore(JavaKeyStore.JKS_FORMAT);
         javaKeyStore.createSelfSignedCertificate("alias", "CN=www.nowhere.com,OU=IT,O=No Where,L=Austin,ST=Texas,C=US",
-                password, 3);
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
+                password, 100);
+        FileOutputStream output = new FileOutputStream("/tmp/selfsigned.jks");
         char[] filePassword = "password".toCharArray();
         javaKeyStore.save(output, filePassword);
-        byte[]  bytes = output.toByteArray();
-        System.out.println(bytes.length);
         javaKeyStore.init(password);
     }
 }

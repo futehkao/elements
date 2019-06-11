@@ -17,6 +17,7 @@
 package net.e6tech.elements.web.cxf.jetty;
 
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.JavaKeyStore;
 import net.e6tech.elements.security.SelfSignedCert;
@@ -42,10 +43,18 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.*;
 
+/**
+ * This class is design to start CXFServer using Jetty.
+ * It is designed to contain only configuration data but stateless
+ * in respect to the Jetty servers it has started so that it can be shared
+ * by more than one CXFServers.
+ * Therefore, Jetty servers are stored in CXFServer's serverEngineData
+ */
 public class JettyEngine extends ServerEngine {
 
+    private static Logger logger = Logger.getLogger();
+
     private QueuedThreadPool queuedThreadPool;
-    private List<Server> servers = new LinkedList<>();
 
     public QueuedThreadPool getQueuedThreadPool() {
         return queuedThreadPool;
@@ -57,7 +66,7 @@ public class JettyEngine extends ServerEngine {
     }
 
     public void start(CXFServer cxfServer, ServerController<?> controller) {
-
+        List<Server> servers = cxfServer.computeServerEngineData(LinkedList::new);
         try {
             initKeyStore(cxfServer);
         } catch (Exception th) {
@@ -87,12 +96,22 @@ public class JettyEngine extends ServerEngine {
                 }
             }
         }
+        cxfServer.setServerEngineData(servers);
         server.start();
     }
 
-    public void stop() {
-        for (Server server : servers)
-            server.stop();
+    public void stop(CXFServer cxfServer) {
+        List<Server> servers = cxfServer.computeServerEngineData(LinkedList::new);
+        Iterator<Server> iterator = servers.iterator();
+        while (iterator.hasNext()) {
+            Server server = iterator.next();
+            try {
+                server.stop();
+                iterator.remove();
+            } catch (Exception ex) {
+                logger.warn("Cannot stop Jetty " + server.getDestination().getAddress().getAddress().getValue());
+            }
+        }
     }
 
     /* see http://aruld.info/programming-ssl-for-jetty-based-cxf-services/

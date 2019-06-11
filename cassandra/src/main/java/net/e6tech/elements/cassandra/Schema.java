@@ -295,18 +295,19 @@ public class Schema {
     }
 
     public void extract(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
-        Map<Strategy, ETLContext> map = scan(packageName, recursive, customizer);
-        for (Map.Entry<Strategy, ETLContext> entry : map.entrySet()) {
+        Map<Class<Strategy>, ETLContext> map = scan(packageName, recursive, customizer);
+        for (Map.Entry<Class<Strategy>, ETLContext> entry : map.entrySet()) {
             try {
-                entry.getKey().run(entry.getValue());
+                Strategy strategy = entry.getKey().getDeclaredConstructor().newInstance();
+                strategy.run(entry.getValue());
             } catch (Exception e) {
-                logger.error("Cannot extract {}", entry.getKey().getClass());
+                logger.error("Cannot extract {}", entry.getKey());
                 throw new SystemException(e);
             }
         }
     }
 
-    public Map<Strategy, ETLContext> scan(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
+    public Map<Class<Strategy>, ETLContext> scan(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
         PackageScanner scanner = new PackageScanner();
         List<Class> classList = new ArrayList<>();
         Class[] classes = recursive ? scanner.getTopLevelClassesRecursive(Strategy.class.getClassLoader(), packageName)
@@ -334,7 +335,7 @@ public class Schema {
             }
         }
 
-        Map<Strategy, ETLContext> result = new LinkedHashMap<>();
+        Map<Class<Strategy>, ETLContext> result = new LinkedHashMap<>();
         for (Map.Entry<Class, Class> entry : map.entrySet()) {
             ETLContext context = null;
             try {
@@ -342,8 +343,7 @@ public class Schema {
                 if (customizer != null) {
                     customizer.accept(context);
                 }
-                Strategy strategy = (Strategy) entry.getKey().getDeclaredConstructor().newInstance();
-                result.put(strategy, context);
+                result.put(entry.getKey(), context);
             } catch (Exception e) {
                 logger.error("Cannot extract {}", entry.getKey());
                 throw new SystemException(e);

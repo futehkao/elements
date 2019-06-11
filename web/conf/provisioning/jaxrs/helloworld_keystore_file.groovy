@@ -1,6 +1,5 @@
-import net.e6tech.elements.web.cxf.JaxRSServer
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +14,21 @@ import net.e6tech.elements.web.cxf.JaxRSServer
  * limitations under the License.
  */
 
-atom("helloworld") {
+import net.e6tech.elements.web.cxf.JaxRSServer
+
+atom("helloworld_keystore_file") {
     configuration =  """
-    # _helloworld.serverEngineClass: net.e6tech.elements.web.cxf.tomcat.TomcatEngine
+    _helloworld:
+        serverEngineClass: $serverEngineClass
+        keyStorePassword: password
+        keyManagerPassword: password
+        keyStoreFile: $__dir/../../selfsigned.jks
+        keyStoreFormat: JKS
     _helloworld.addresses:
-        - "http://0.0.0.0:9000/restful/"
+        - "https://0.0.0.0:9000/restful/"
     _helloworld.resources:
         - class: "net.e6tech.elements.web.cxf.HelloWorldRS"
           bindHeaderObserver: false
  """
-
     _helloworld = JaxRSServer
 }
