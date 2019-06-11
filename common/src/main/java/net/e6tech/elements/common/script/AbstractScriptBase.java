@@ -133,11 +133,7 @@ public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends 
     }
 
     public Class loadClass(String className) {
-        try {
-            return getShell().getClass().getClassLoader().loadClass(className);
-        } catch (ClassNotFoundException e) {
-            throw new SystemException(e);
-        }
+        return loadClass(getShell().getClass().getClassLoader(), className);
     }
 
     public Class loadClass(ClassLoader classLoader, String className) {

@@ -107,6 +107,10 @@ public class JettyEngine extends ServerEngine {
             Server server = iterator.next();
             try {
                 server.stop();
+                server.destroy();
+                JettyHTTPDestination jettyDest = (JettyHTTPDestination) server.getDestination();
+                JettyHTTPServerEngine jettyEngine = (JettyHTTPServerEngine) jettyDest.getEngine();
+                jettyEngine.shutdown();
                 iterator.remove();
             } catch (Exception ex) {
                 logger.warn("Cannot stop Jetty " + server.getDestination().getAddress().getAddress().getValue());
@@ -200,7 +204,9 @@ public class JettyEngine extends ServerEngine {
                         clientAuthentication.setWant(true);
                     } else if ("false".equalsIgnoreCase(value) ||
                             "no".equalsIgnoreCase(value) ||
-                            "none".equalsIgnoreCase(value)) {
+                            "none".equalsIgnoreCase(value) ||
+                            value == null) {
+                        // do nothing
                     } else {
                         // Could be a typo. Don't default to NONE since that is not
                         // secure. Force user to fix config. Could default to REQUIRED

@@ -50,6 +50,7 @@ public class TomcatEngine extends ServerEngine {
     private int maxThreads = 250;
     private int minSpareThreads = 10;
     private int maxConnections = 10000;
+    private String baseDir;
 
     public int getMaxThreads() {
         return maxThreads;
@@ -75,6 +76,14 @@ public class TomcatEngine extends ServerEngine {
         this.maxConnections = maxConnections;
     }
 
+    public String getBaseDir() {
+        return baseDir;
+    }
+
+    public void setBaseDir(String baseDir) {
+        this.baseDir = baseDir;
+    }
+
     @Override
     public void start(CXFServer cxfServer, ServerController<?> controller) {
         List<Tomcat> tomcats = cxfServer.computeServerEngineData(LinkedList::new);
@@ -87,6 +96,10 @@ public class TomcatEngine extends ServerEngine {
             context = context.substring(0, context.length() - 1);
         Context ctx = tomcat.addContext(context, null);
         tomcat.addServlet(context, "jaxrs", servlet);
+
+        if (baseDir != null) {
+            tomcat.setBaseDir(baseDir + "." + controller.getURL().getPort());
+        }
         ctx.addServletMappingDecoded("/*", "jaxrs");
 
         try {

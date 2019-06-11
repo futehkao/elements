@@ -76,13 +76,10 @@ public class CXFServer implements Initializable, Startable {
     private Observer headerObserver;
     private ExceptionMapper exceptionMapper;
     private Map<String, String> responseHeaders = new LinkedHashMap<>();
-    private ServerEngine serverEngine;  // e.g. Jetty vs Tomcat;
+    private ServerEngine serverEngine;  // for example Jetty vs Tomcat
     private Class<? extends ServerEngine> serverEngineClass;
     private Object serverEngineData;
     private List<ServerController> controllers = new LinkedList<>();
-
-    public CXFServer() {
-    }
 
     public void setAddresses(List<String> addresses) throws MalformedURLException {
         for (String address : addresses) {
@@ -181,11 +178,11 @@ public class CXFServer implements Initializable, Startable {
         return measurement;
     }
 
-    @Inject(optional = true)
     public Observer getHeaderObserver() {
         return headerObserver;
     }
 
+    @Inject(optional = true)
     public void setHeaderObserver(Observer headerObserver) {
         this.headerObserver = headerObserver;
     }
@@ -215,6 +212,7 @@ public class CXFServer implements Initializable, Startable {
         return serverEngine;
     }
 
+    @Inject(optional = true)
     public void setServerEngine(ServerEngine serverEngine) {
         this.serverEngine = serverEngine;
     }

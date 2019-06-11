@@ -122,24 +122,32 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
 
     public Atom prototype(String name, Closure closure) {
         Consumer<Atom> consumer = atomConsumer(closure);
-        return getShell().createAtom(name, consumer, null, true);
+        Atom atom = getShell().createAtom(name, consumer, null, true);
+        atom.setScriptLoader(closure.getClass().getClassLoader());
+        return atom;
     }
 
     public Atom prototype(String name,  String prototypePath, Closure closure) {
         Atom prototype = (Atom) getShell().exec(prototypePath);
         Consumer<Atom> consumer = atomConsumer(closure);
-        return getShell().createAtom(name, consumer, prototype, true);
+        Atom atom = getShell().createAtom(name, consumer, prototype, true);
+        atom.setScriptLoader(closure.getClass().getClassLoader());
+        return atom;
     }
 
     public Atom atom(String name, Closure closure) {
         Consumer<Atom> consumer = atomConsumer(closure);
-        return getShell().createAtom(name, consumer, null, false);
+        Atom atom = getShell().createAtom(name, consumer, null, false);
+        atom.setScriptLoader(closure.getClass().getClassLoader());
+        return atom;
     }
 
     public Atom atom(String name, String prototypePath,  Closure closure) {
         Atom prototype = (Atom) getShell().exec(prototypePath);
         Consumer<Atom> consumer = atomConsumer(closure);
-        return getShell().createAtom(name, consumer, prototype, false);
+        Atom atom = getShell().createAtom(name, consumer, prototype, false);
+        atom.setScriptLoader(closure.getClass().getClassLoader());
+        return atom;
     }
 
     public Bootstrap boot(Object bootScript, Object ... components) {
@@ -149,6 +157,7 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
 
     private Consumer<Atom> atomConsumer(Closure closure) {
         return atom -> {
+            atom.setScriptLoader(closure.getClass().getClassLoader());
             final Closure clonedClosure = closure.rehydrate(atom, closure.getOwner(), closure.getOwner());
             clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
             clonedClosure.call(atom);

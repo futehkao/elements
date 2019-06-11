@@ -19,8 +19,9 @@ import net.e6tech.elements.security.JavaKeyStore
 
 atom("helloworld_keystore") {
     configuration =  """
+    _serverEngine:
+        baseDir: $__dir/../../../web/tomcat
     _helloworld:
-        serverEngineClass: $serverEngineClass
         keyStorePassword: password
         keyManagerPassword: password
         keyStore: ^_keystore.keyStore
@@ -31,6 +32,7 @@ atom("helloworld_keystore") {
         - class: "net.e6tech.elements.web.cxf.HelloWorldRS"
           bindHeaderObserver: false
  """
+    _serverEngine = serverEngineClass
     _keystore = new JavaKeyStore("$__dir/../../selfsigned.jks".toString(), 'password'.toCharArray(), 'JKS')
     _helloworld = JaxRSServer
 

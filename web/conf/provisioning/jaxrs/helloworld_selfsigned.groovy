@@ -19,6 +19,8 @@ import net.e6tech.elements.security.SelfSignedCert
 
 atom("helloworld_selfsigned") {
     configuration =  """
+    _serverEngine:
+        baseDir: $__dir/../../../web/tomcat
     _helloworld:
         serverEngineClass: $serverEngineClass
         keyStorePassword: password
@@ -31,6 +33,7 @@ atom("helloworld_selfsigned") {
         - class: "net.e6tech.elements.web.cxf.HelloWorldRS"
           bindHeaderObserver: false
  """
+    _serverEngine = serverEngineClass
     _selfSignedCert = SelfSignedCert
     _selfSignedCert.init()
     _helloworld = JaxRSServer

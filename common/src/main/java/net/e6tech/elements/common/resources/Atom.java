@@ -58,6 +58,7 @@ public class Atom implements Map<String, Object> {
     private BeanLifecycle beanLifecycle;
     private boolean prototype = false;
     private Configuration.Resolver resolver = this::resolve;
+    private ClassLoader scriptLoader;
 
     Atom(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
@@ -68,6 +69,7 @@ public class Atom implements Map<String, Object> {
         // Since ResourceProviders are not open, no need to commit or abort resources.
         resources = resourceManager.newResources();
         resources.bind(Configuration.Resolver.class, resolver);
+        resources.bind(Atom.class, this);
         BiConsumer<String, Object> put = (key, value) -> boundInstances.put(key, value);
         directives.put(CONFIGURATION, (key, value) -> {
             if (value != null) {
@@ -143,6 +145,14 @@ public class Atom implements Map<String, Object> {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public ClassLoader getScriptLoader() {
+        return scriptLoader;
+    }
+
+    public void setScriptLoader(ClassLoader scriptLoader) {
+        this.scriptLoader = scriptLoader;
     }
 
     public void bindInitialContext(String key, Object value) {
@@ -587,6 +597,22 @@ public class Atom implements Map<String, Object> {
         return instance;
     }
 
+    private Class loadClass(String className) {
+        Class cls = null;
+        try {
+            cls = getClass().getClassLoader().loadClass(className);
+        } catch (ClassNotFoundException ex) {
+            // OK, just testing if the string represent a
+        }
+        try {
+            if (cls == null && scriptLoader != null)
+                cls = scriptLoader.loadClass(className);
+        } catch (ClassNotFoundException ex) {
+            // OK, just testing if the string represent a
+        }
+        return cls;
+    }
+
     @Override
     @SuppressWarnings({"squid:S1141", "squid:S134", "squid:MethodCyclomaticComplexity"})
     public Object put(String key, Object value) {
@@ -596,6 +622,13 @@ public class Atom implements Map<String, Object> {
         try {
             if (value == null) {
                 throw new IllegalArgumentException("value for key=" + key + " is null!  This happens because you did not import the class.");
+            }
+
+            if (value instanceof String) {
+                String str = (String) value;
+                Class cls = loadClass(str);
+                if (cls != null)
+                    value = cls;
             }
 
             if (value instanceof Class) {

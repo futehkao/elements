@@ -52,9 +52,9 @@ public class JaxRSServerTest {
         proxy.setPrinter(new PrintWriter(System.out, true));
         HelloWorldRS api = proxy.newProxy(HelloWorldRS.class);
         String reply = api.sayHi("Mr. Jones");
-        JaxRSServer server = (JaxRSServer) provision.getComponentResource("helloworld", "_helloworld");
+        JaxRSServer server = provision.getComponentResource("helloworld", "_helloworld");
         server.stop();
-        JaxRSServer server2 = (JaxRSServer) provision.getComponentResource("helloworld2", "_helloworld");
+        JaxRSServer server2 = provision.getComponentResource("helloworld2", "_helloworld");
         server2.stop();
 
         try {

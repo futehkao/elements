@@ -22,6 +22,7 @@ engine = loadClass(serverEngineClass).newInstance()
 try {
     engine.maxThreads = 200
     engine.minSpareThreads = 20
+    engine.baseDir = "$__dir/../../../web/tomcat"
 } catch (Exception ex) {
     // ignore because Jetty Engine does have such attributes
 }

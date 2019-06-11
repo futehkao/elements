@@ -16,9 +16,9 @@
 
 package net.e6tech.elements.web.cxf;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
+import net.e6tech.elements.common.resources.BindClass;
 
+@BindClass(ServerEngine.class)
 public abstract class ServerEngine {
 
     public abstract void start(CXFServer cxfServer, ServerController<?> controller);

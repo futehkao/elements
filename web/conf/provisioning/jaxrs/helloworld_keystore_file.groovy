@@ -18,8 +18,9 @@ import net.e6tech.elements.web.cxf.JaxRSServer
 
 atom("helloworld_keystore_file") {
     configuration =  """
+    _serverEngine:
+        baseDir: $__dir/../../../web/tomcat
     _helloworld:
-        serverEngineClass: $serverEngineClass
         keyStorePassword: password
         keyManagerPassword: password
         keyStoreFile: $__dir/../../selfsigned.jks
@@ -30,5 +31,6 @@ atom("helloworld_keystore_file") {
         - class: "net.e6tech.elements.web.cxf.HelloWorldRS"
           bindHeaderObserver: false
  """
+    _serverEngine = serverEngineClass
     _helloworld = JaxRSServer
 }
