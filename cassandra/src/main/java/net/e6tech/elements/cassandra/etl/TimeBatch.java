@@ -40,6 +40,7 @@ public class TimeBatch extends ETLContext {
         this.end = end;
     }
 
+    @Override
     public TimeUnit getTimeUnit() {
         return TimeUnit.MILLISECONDS;
     }

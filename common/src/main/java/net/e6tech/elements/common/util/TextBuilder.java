@@ -18,6 +18,7 @@ package net.e6tech.elements.common.util;
 
 import java.util.Map;
 
+@SuppressWarnings("squid:S00107")
 public class TextBuilder {
 
     private TextSubstitution textSubstitution;

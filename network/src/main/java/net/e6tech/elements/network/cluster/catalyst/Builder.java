@@ -18,13 +18,11 @@ package net.e6tech.elements.network.cluster.catalyst;
 
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
-import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
 import net.e6tech.elements.network.cluster.catalyst.scalar.Scalar;
 import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 import net.e6tech.elements.network.cluster.catalyst.transform.Transform;
 
-import java.util.Collections;
-
+@SuppressWarnings("squid:S00119")
 public class Builder<Re extends Reactor, T, R> {
     private Catalyst<Re> catalyst;
     private DataSet<T> dataSet;

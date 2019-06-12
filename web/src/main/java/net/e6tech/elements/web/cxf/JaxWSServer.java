@@ -17,7 +17,6 @@ package net.e6tech.elements.web.cxf;
 
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Resources;
-import net.e6tech.elements.common.util.SystemException;
 import org.apache.cxf.ext.logging.LoggingInInterceptor;
 import org.apache.cxf.ext.logging.LoggingOutInterceptor;
 import org.apache.cxf.jaxws.JaxWsServerFactoryBean;

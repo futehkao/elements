@@ -76,7 +76,7 @@ public abstract class Simulator {
                 threadPool.execute(()-> {
                     try {
                         process(socket.getInputStream(), socket.getOutputStream());
-                        logger.info(getClass().getSimpleName() + " client exited");
+                        logger.info("{} client exited", getClass().getSimpleName());
                     } catch (Exception e) {
                         logger.trace(e.getMessage(), e);
                     }

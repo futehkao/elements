@@ -39,8 +39,8 @@ public class ClearText implements Serializable {
     public static final String PUBLIC_KEY_MOD = "public-key-mod";
     public static final String PUBLIC_KEY_EXP= "public-key-exp";
 
-    Properties properties = new Properties();
-    Properties protectedProperties = new Properties();
+    private Properties properties = new Properties();
+    private Properties protectedProperties = new Properties();
     byte[] bytes;
 
     public Properties getProperties() {

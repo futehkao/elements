@@ -18,6 +18,7 @@ package net.e6tech.sample.web.cxf;
 
 import javax.annotation.security.RolesAllowed;
 
+@SuppressWarnings("all")
 public abstract class HelloWorldRoles {
 
     @RolesAllowed({"role1", "role2"})

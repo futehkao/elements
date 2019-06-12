@@ -21,10 +21,10 @@ import net.e6tech.elements.network.cluster.catalyst.Reactor;
 import java.io.Serializable;
 import java.util.Collection;
 
+@SuppressWarnings("squid:S00119")
 public class Reduce<Re extends Reactor, T, R> extends Scalar<Re, T, R, R> {
 
     private static final long serialVersionUID = 2541978434272522759L;
-    private transient ReduceOp<R> reduceOp;
 
     public Reduce() {
     }

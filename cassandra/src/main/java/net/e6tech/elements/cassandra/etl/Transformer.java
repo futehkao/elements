@@ -130,6 +130,7 @@ public class Transformer<T, E> {
         });
     }
 
+    @SuppressWarnings("squid:S3776")
     public Transformer<T, E> forEachCreateIfNotExist(BiConsumer<E, T> consumer) {
         Inspector extractedInspector = null;
         for (Pair<PrimaryKey, E> e : entries()) {

@@ -32,20 +32,15 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
     private static Map<String, ThreadPool> rateLimitedThreadPools = new HashMap<>();
     private static Map<String, ThreadPool> fixedThreadPools = new HashMap<>();
 
-    private ThreadGroup threadGroup;
     private String name;
     private boolean daemon = true;
     private ExecutorService executorService;
 
-    protected ThreadPool(ThreadGroup threadGroup, String name, Function<ThreadFactory, ExecutorService> newPool) {
-        this.threadGroup = threadGroup;
+    protected ThreadPool(String name, Function<ThreadFactory, ExecutorService> newPool) {
         this.name = name;
         this.executorService = newPool.apply(this);
     }
 
-    protected ThreadPool(String name, Function<ThreadFactory, ExecutorService> newPool) {
-        this(Thread.currentThread().getThreadGroup(), name, newPool);
-    }
 
     /**
      * Return a thread pool that supports unlimited number of threads.  It will create threads as needed.
@@ -91,11 +86,6 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
         return this;
     }
 
-    public ThreadPool threadGroup(ThreadGroup threadGroup) {
-        this.threadGroup = threadGroup;
-        return this;
-    }
-
     public ThreadPool rejectedExecutionHandler(RejectedExecutionHandler handler) {
         if (handler == null)
             throw new NullPointerException();
@@ -115,7 +105,7 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
 
     @Override
     public Thread newThread(Runnable runnable) {
-        Thread thread = new Thread(threadGroup, runnable, "Broadcast");
+        Thread thread = new Thread(runnable, "Broadcast");
         thread.setName(name + "-" + thread.getId());
         thread.setDaemon(daemon);
         return thread;

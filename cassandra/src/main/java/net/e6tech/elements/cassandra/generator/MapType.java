@@ -32,6 +32,7 @@ public class MapType extends DataType {
         valueType.setFrozen(typeDescriptor.isFrozenValue());
     }
 
+    @Override
     public String getTypeString() {
         return "map<" + keyType.getTypeString() + ", " + valueType.getTypeString() + ">";
     }

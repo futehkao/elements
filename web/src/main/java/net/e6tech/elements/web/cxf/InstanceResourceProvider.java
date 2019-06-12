@@ -96,6 +96,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
         }
 
         @Override
+        @SuppressWarnings("squid:S3776")
         public Object invoke(CallFrame frame) throws Throwable {
             boolean abort = false;
             Object result = null;

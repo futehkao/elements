@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.security.hsm.thales;
 
+@SuppressWarnings("squid:S00101")
 public class ChangePIN_IBM extends Command {
     private String keyType = "001";  // ZPK
     private String pinBlockKey;

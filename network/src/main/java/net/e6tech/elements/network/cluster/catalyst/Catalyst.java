@@ -31,6 +31,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+@SuppressWarnings({"squid:S00119", "squid:S1700"})
 public class Catalyst<Re extends Reactor> {
     private Registry registry;
     private long waitTime = 20000L;
@@ -60,7 +61,7 @@ public class Catalyst<Re extends Reactor> {
     }
 
     public <T> Builder<Re, T, T> builder(DataSet<T> dataSet) {
-        return new Builder<Re, T, T>(this, dataSet);
+        return new Builder<>(this, dataSet);
     }
 
     public <T> Builder<Re, T, T> builder(Series<Re, T, T> series, DataSet<T> dataSet) {
@@ -103,6 +104,7 @@ public class Catalyst<Re extends Reactor> {
         return result;
     }
 
+    @SuppressWarnings("squid:S1596")
     public void run(Runnable ... runnables) {
         RemoteDataSet<?> dataSet = new RemoteDataSet<>();
         for (Runnable runnable : runnables)
@@ -113,6 +115,7 @@ public class Catalyst<Re extends Reactor> {
         transform(new Series<>(), dataSet);
     }
 
+    @SuppressWarnings("squid:S1596")
     public void run(Consumer<Re> ... consumers) {
         RemoteDataSet<?> dataSet = new RemoteDataSet<>();
         for (Consumer consumer : consumers)
@@ -125,7 +128,7 @@ public class Catalyst<Re extends Reactor> {
 
     public <T, R> Collection<R> transform(Series<Re, T, R> series, DataSet<T> dataSet) {
         List<Work<T, Collection<R>>> workLoad =
-                prepareWork(dataSet, segments -> series.allocate(segments));
+                prepareWork(dataSet, series::allocate);
         for (Work<T, Collection<R>> work: workLoad) {
             work.start();
         }

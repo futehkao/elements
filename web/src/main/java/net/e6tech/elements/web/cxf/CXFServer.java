@@ -252,11 +252,9 @@ public class CXFServer implements Initializable, Startable {
         }
         if (serverEngine == null) {
             try {
-                Class<? extends ServerEngine> cls = (serverEngineClass != null) ? serverEngineClass :
-                        (Class) getClass().getClassLoader().loadClass("net.e6tech.elements.web.cxf.jetty.JettyEngine");
-                serverEngine = cls
-                        .getConstructor()
-                        .newInstance();
+                Class cls = (serverEngineClass != null) ? serverEngineClass :
+                         getClass().getClassLoader().loadClass("net.e6tech.elements.web.cxf.jetty.JettyEngine");
+                serverEngine = (ServerEngine) cls.getConstructor().newInstance();
             } catch (Exception ex) {
                 throw new SystemException(ex);
             }

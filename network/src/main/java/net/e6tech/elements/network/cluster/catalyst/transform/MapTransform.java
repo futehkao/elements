@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 /**
  * Transform each member of type R of a Stream into a Stream of type T.
  */
+@SuppressWarnings("squid:S00119")
 public class MapTransform<Re extends Reactor, T, R> implements Transform<Re, T, R> {
     private Mapping<Re, T, R> mapping;
 

@@ -43,7 +43,7 @@ import java.util.List;
  * by more than one CXFServers.
  * Therefore, Tomcat servers are stored in CXFServer's serverEngineData
  */
-public class TomcatEngine extends ServerEngine {
+public class TomcatEngine implements ServerEngine {
 
     private static Logger logger = Logger.getLogger();
 
@@ -132,11 +132,12 @@ public class TomcatEngine extends ServerEngine {
                         builder.append(" " +((Context) container).getPath());
                     }
                 }
-                logger.warn("Cannot stop Tomcat" + builder.toString());
+                logger.warn("Cannot stop Tomcat{}", builder);
             }
         }
     }
 
+    @SuppressWarnings("squid:S3776")
     protected Connector createConnector(CXFServer cxfServer, URL url) {
         Connector connector = new Connector("HTTP/1.1");
         connector.setPort(url.getPort());

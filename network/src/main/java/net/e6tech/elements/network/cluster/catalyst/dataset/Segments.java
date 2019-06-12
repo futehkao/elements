@@ -20,6 +20,7 @@ import net.e6tech.elements.network.cluster.catalyst.Catalyst;
 
 import java.util.*;
 
+@SuppressWarnings("squid:S1700")
 public class Segments<E> {
 
     private Map<DataSet, Segments> dependents = new HashMap<>();

@@ -68,7 +68,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
 
     public static Map<String, List<String>> defineEnvironments(String str) {
         Yaml yaml = new Yaml(new YamlConstructor());
-        return (Map<String, List<String>>) yaml.load(str);
+        return yaml.load(str);
     }
 
     @Override
@@ -182,7 +182,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
             if (value.contains(BEGIN)) {
                 Yaml yaml = newYaml();
                 value = parse(value, false);
-                Map<String, Object> map = (Map<String, Object>) yaml.load( key + ": " + value);
+                Map<String, Object> map = yaml.load( key + ": " + value);
                 put(key, map.get(key));
                 return (T) map.get(key);
             } else {
@@ -600,7 +600,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
 
         private class BigDecimalConstructor extends AbstractConstruct {
             public Object construct(Node node) {
-                String value = constructScalar((ScalarNode) node).toString().replaceAll("_", "");
+                String value = constructScalar((ScalarNode) node).replaceAll("_", "");
                 int sign = +1;
                 char first = value.charAt(0);
                 if (first == '-') {
@@ -619,7 +619,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
 
         private class LongConstructor extends AbstractConstruct {
             public Object construct(Node node) {
-                String value = constructScalar((ScalarNode) node).toString().replaceAll("_", "");
+                String value = constructScalar((ScalarNode) node).replaceAll("_", "");
                 return new Long(value);
 
             }

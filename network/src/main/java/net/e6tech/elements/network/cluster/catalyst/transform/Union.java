@@ -25,6 +25,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@SuppressWarnings("squid:S00119")
 public class Union<Re extends Reactor, T> implements Transform<Re, T, T> {
 
     private transient DataSet<T> dataSet;

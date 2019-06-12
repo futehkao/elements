@@ -35,6 +35,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SuppressWarnings("all")
 public class CatalystTest {
     Registry registry;
     SimpleCatalyst catalyst;

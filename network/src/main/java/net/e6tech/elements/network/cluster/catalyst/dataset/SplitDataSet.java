@@ -57,7 +57,7 @@ public class SplitDataSet <E> implements DataSet<E> {
     }
 
     public SplitDataSet<E> addAll(Collection<Collection<E>> segments) {
-        if (this.segments.size() == 0)
+        if (this.segments.isEmpty())
             this.segments = new ArrayList<>(segments.size());
         for (Collection<E> c : segments) {
             add(c);

@@ -65,9 +65,10 @@ public interface Module {
             Class<?> c = cls;
             Class prev = cls;
             Class bindClass = cls;
-            List<Type> list = new ArrayList<>();
+            Set<Type> list = new LinkedHashSet<>();
             list.add(cls);
             boolean found = false;
+            // try to find BindClass annotation from class hierarchy
             while (c != null && !c.equals(Object.class)) {
                 BindClass bind = c.getAnnotation(BindClass.class);
                 if (bind != null) {
@@ -75,13 +76,17 @@ public interface Module {
                         found = true;
                         list.add(prev.getGenericSuperclass());
                     } else {
-                        bindClass = bind.value();
+                        if (bind.value().equals(void.class))
+                            bindClass = c;
+                        else
+                            bindClass = bind.value();
                     }
                     break;
                 }
                 prev = c;
                 c = c.getSuperclass();
             }
+
             if (!found) {
                 if (bindClass.getGenericSuperclass() instanceof ParameterizedType
                         && bindClass.getTypeParameters().length == 0) {
@@ -91,6 +96,17 @@ public interface Module {
                 } else {
                     if (!bindClass.equals(cls))
                         list.add(bindClass);
+                }
+            }
+
+            // try to find using interfaces
+            for (Class i : cls.getInterfaces()) {
+                BindClass bind = (BindClass) i.getAnnotation(BindClass.class);
+                if (bind != null) {
+                    if (bind.value().equals(void.class))
+                        list.add(i);
+                    else
+                        list.add(bind.value());
                 }
             }
 

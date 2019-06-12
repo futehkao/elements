@@ -23,7 +23,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+@SuppressWarnings("squid:S3776")
 public class Interfaces {
+
+    private Interfaces() {
+    }
 
     public static Type getGenericType(Class cls, Class intf, int n) {
         TypeInfo head = getGenericType(cls, intf);
@@ -64,6 +68,7 @@ public class Interfaces {
         return head;
     }
 
+    @SuppressWarnings("squid:S135")
     private static void tracePath(Class start, Class end, List<ParameterizedType> list) {
         for (Type type : start.getGenericInterfaces()) {
             if (!(type instanceof ParameterizedType))

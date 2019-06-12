@@ -32,7 +32,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
     @Override
     public int load(C context, List<S> source) {
         if (context.getLoadDelegate() != null) {
-            return context.getLoadDelegate().apply(source);
+            return context.getLoadDelegate().applyAsInt(source);
         }
         return 0;
     }

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
+@SuppressWarnings("squid:S00119")
 public class Intersection<Re extends Reactor, T> implements Transform<Re, T, T> {
 
     private Set<T> dataSet;

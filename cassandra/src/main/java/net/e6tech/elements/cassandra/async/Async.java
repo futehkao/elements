@@ -121,7 +121,7 @@ public class Async {
         futuresData = tmp;
     }
 
-    public AsyncResultSet<?> execute(Consumer<BoundStatement> consumer) {
+    public AsyncResultSet execute(Consumer<BoundStatement> consumer) {
         return execute(null, consumer);
     }
 

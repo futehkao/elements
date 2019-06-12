@@ -66,6 +66,7 @@ class RegistryEntryActor extends AbstractActor {
     }
 
     @Override
+    @SuppressWarnings("squid:S3776")
     public AbstractActor.Receive createReceive() {
         return receiveBuilder()
                 .match(ClusterEvent.MemberUp.class, member -> register(member.member()))

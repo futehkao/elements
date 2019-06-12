@@ -49,7 +49,7 @@ public interface TimeBatchStrategy<S> extends BatchStrategy<S, TimeBatch> {
             throw new IllegalStateException("sourceClass not set in context");
         context.initialize();
         LastUpdate lastUpdate = context.getLastUpdate();
-        long lastImport = new Long(lastUpdate.getLastUpdate());
+        long lastImport = Long.parseLong(lastUpdate.getLastUpdate());
 
         long start = System.currentTimeMillis();
         context.setEnd(start - context.getTimeLag());

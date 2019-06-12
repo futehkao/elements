@@ -27,13 +27,9 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.security.GeneralSecurityException;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 
 /**
@@ -156,7 +152,7 @@ public class AtallaSimulator extends Simulator {
                 writer.println(response);
                 writer.flush();
             }
-            logger.info(getClass().getSimpleName() + " client exited");
+            logger.info("{} client exited", getClass().getSimpleName());
         }
     }
 

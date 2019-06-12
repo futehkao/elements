@@ -34,6 +34,7 @@ public class PartitionOrderByContext extends PartitionContext {
                         "ck", clusteringKeyColumn, "batchSize", getBatchSize());
     }
 
+    @Override
     public PartitionOrderByStrategy createStrategy() {
         return new PartitionOrderByStrategy();
     }
@@ -60,12 +61,14 @@ public class PartitionOrderByContext extends PartitionContext {
         endIds.put(partition, id);
     }
 
+    @Override
     public void reset() {
         super.reset();
         startIds.clear();
         endIds.clear();
     }
 
+    @Override
     public PartitionOrderByContext run(Class<? extends PartitionStrategy> cls ) {
         if (PartitionOrderByStrategy.class.isAssignableFrom(cls)) {
             try {

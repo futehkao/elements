@@ -155,6 +155,7 @@ public abstract class Codec<T> extends TypeCodec<T> {
         return descriptors;
     }
 
+    @SuppressWarnings("squid:S3776")
     public static class MappingDescriptor implements TypeDescriptor {
         private String columnName;
         private PropertyDescriptor descriptor;
@@ -175,18 +176,15 @@ public abstract class Codec<T> extends TypeCodec<T> {
                     parameterizedType = (ParameterizedType) genericType;
                 }
                 if (List.class.isAssignableFrom(pType)) {
-                    deserialize = (udt, o) -> {
+                    deserialize = (udt, o) ->
                         set(o, udt.getList(this.columnName, (Class) parameterizedType.getActualTypeArguments()[0]));
-                    };
                 } else if (Set.class.isAssignableFrom(pType)) {
-                    serialize = (udt, o) -> {
+                    serialize = (udt, o) ->
                         udt.setSet(this.columnName, get(o));
-                    };
                 } else if (Map.class.isAssignableFrom(pType)) {
-                    deserialize = (udt, o) -> {
+                    deserialize = (udt, o) ->
                         set(o, udt.getMap(this.columnName, (Class) parameterizedType.getActualTypeArguments()[0],
                                 (Class) parameterizedType.getActualTypeArguments()[1]));
-                    };
                 } else if (Enum.class.isAssignableFrom(pType)) {
                     deserialize = (udt, o) -> {
                         String str = udt.getString(this.columnName);
@@ -208,26 +206,22 @@ public abstract class Codec<T> extends TypeCodec<T> {
                         }
                     };
                 } else {
-                    deserialize = (udt, o) -> {
+                    deserialize = (udt, o) ->
                         set(o, udt.get(this.columnName, descriptor.getPropertyType()));
-                    };
                 }
             }
 
             if (descriptor.getWriteMethod() != null) {
                 Class pType = descriptor.getWriteMethod().getParameterTypes()[0];
                 if (List.class.isAssignableFrom(pType)) {
-                    serialize = (udt, o) -> {
+                    serialize = (udt, o) ->
                         udt.setList(this.columnName, get(o));
-                    };
                 } else if (Set.class.isAssignableFrom(pType)) {
-                    serialize = (udt, o) -> {
+                    serialize = (udt, o) ->
                         udt.setSet(this.columnName, get(o));
-                    };
                 } else if (Map.class.isAssignableFrom(pType)) {
-                    serialize = (udt, o) -> {
+                    serialize = (udt, o) ->
                         udt.setMap(this.columnName, get(o));
-                    };
                 } else if (Enum.class.isAssignableFrom(pType)) {
                     serialize = (udt, o) -> {
                         Enum e = get(o);
@@ -244,9 +238,8 @@ public abstract class Codec<T> extends TypeCodec<T> {
                         }
                     };
                 } else {
-                    serialize = (udt, o) -> {
+                    serialize = (udt, o) ->
                         udt.set(this.columnName, get(o), descriptor.getPropertyType());
-                    };
                 }
             }
         }

@@ -144,7 +144,7 @@ public class JaxRSServer extends CXFServer {
     }
 
     @Override
-    @SuppressWarnings({"unchecked", "squid:S2112"})
+    @SuppressWarnings({"unchecked", "squid:S2112", "squid:S1125"})
     public void initialize(Resources res) {
         if (getURLs().isEmpty()) {
             throw new IllegalStateException("address not set");

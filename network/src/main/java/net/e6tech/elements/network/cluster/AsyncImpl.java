@@ -59,12 +59,14 @@ public class AsyncImpl<U> implements ClusterAsync<U> {
         this.timeout = timeout;
     }
 
+    @SuppressWarnings("squid:S2259")
     public <R> CompletionStage<R> apply(Function<U, R> function) {
         completionStage = null;
         function.apply(proxy);
         return completionStage.thenApply(response -> (R) response.getValue());
     }
 
+    @SuppressWarnings("squid:S2259")
     public CompletionStage<Void> accept(Consumer<U> consumer) {
         completionStage = null;
         consumer.accept(proxy);

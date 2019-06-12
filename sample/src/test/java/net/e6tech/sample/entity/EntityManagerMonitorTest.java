@@ -27,6 +27,7 @@ import org.mariadb.jdbc.MariaDbConnection;
 import javax.persistence.EntityManager;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@SuppressWarnings("all")
 public class EntityManagerMonitorTest extends BaseCase {
     private Employee employee;
     private Department department;

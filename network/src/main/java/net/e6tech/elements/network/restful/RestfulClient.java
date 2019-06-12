@@ -43,7 +43,7 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 /**
  * Created by futeh.
  */
-@SuppressWarnings("squid:S3776")
+@SuppressWarnings({"squid:S3776", "squid:S00117", "squid:S00116", "squid:S00100"})
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();
@@ -408,6 +408,7 @@ public class RestfulClient {
         return fullPath ;
     }
 
+    @SuppressWarnings("squid:S3510")
     HttpURLConnection open(String dest, String context, Param ... params) throws IOException {
         String fullPath = constructPath(dest, context, params);
         URL url = null;
@@ -692,6 +693,7 @@ public class RestfulClient {
         this.sslSocketFactory = sslSocketFactory;
     }
 
+    @SuppressWarnings("squid:S4424")
     public class AcceptAllTrustManager implements X509TrustManager {
 
         public void checkClientTrusted(X509Certificate[] chain, String authType) {

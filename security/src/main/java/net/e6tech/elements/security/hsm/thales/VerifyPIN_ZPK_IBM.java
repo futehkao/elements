@@ -18,6 +18,7 @@ package net.e6tech.elements.security.hsm.thales;
 
 import net.e6tech.elements.common.util.StringUtil;
 
+@SuppressWarnings("squid:S00101")
 public class VerifyPIN_ZPK_IBM extends Command {
     private String zpk;                     // encrypted by LMK 06-07, this is the KPE
     private String pvk;                     // encrypted by LMK 14-15, equivalent to KPV

@@ -33,6 +33,7 @@ import java.util.logging.Logger;
 /**
  * Subclassed from HikariDataSource to support connectionInitStatments.
  */
+@SuppressWarnings("squid:S3077")
 public class ElementsHikariDataSource extends HikariDataSource  {
 
     private List<String> connectionInitStatements = new ArrayList<>();

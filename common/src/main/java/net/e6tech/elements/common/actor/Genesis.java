@@ -139,6 +139,7 @@ public class Genesis implements Initializable {
             Await.ready(system.terminate(), Duration.create(30, TimeUnit.SECONDS));
         } catch (TimeoutException | InterruptedException e) {
             Logger.suppress(e);
+            Thread.currentThread().interrupt();
         }
     }
 

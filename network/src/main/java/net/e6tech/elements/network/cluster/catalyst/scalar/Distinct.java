@@ -25,15 +25,17 @@ import java.util.HashSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
+@SuppressWarnings("squid:S00119")
 public class Distinct<Re extends Reactor, T, R> extends Series<Re, T, R> {
 
     private static final long serialVersionUID = 3951801632368827650L;
 
+    @Override
     protected Collection<R> collect(Stream<R> stream) {
         return stream.collect(Collectors.toSet());
     }
 
+    @Override
     public Gatherer<R> gatherer() {
         return new Gatherer<>(new HashSet<>());
     }

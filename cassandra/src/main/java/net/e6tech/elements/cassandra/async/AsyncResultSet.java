@@ -75,9 +75,7 @@ public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
 
     public Async andThen(Async async, BiConsumer<Row, BoundStatement> biConsumer) {
         async.reset();
-        inCompletionOrderRows(row -> {
-            async.execute(bound -> biConsumer.accept(row, bound));
-        });
+        inCompletionOrderRows(row -> async.execute(bound -> biConsumer.accept(row, bound)));
         return async;
     }
 }

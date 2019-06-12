@@ -31,11 +31,9 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.SystemException;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 
 public class ETLContext {
     public static final long DAY = 24 * 60 * 60 * 1000L;
@@ -158,6 +156,7 @@ public class ETLContext {
     }
 
     public void reset() {
+        // to be overridden by subclass
     }
 
     public TimeUnit getTimeUnit() {
@@ -274,6 +273,7 @@ public class ETLContext {
         return cutoffOrUpdate(true);
     }
 
+    @SuppressWarnings("squid:S3776")
     private Comparable cutoffOrUpdate(boolean cutoff) {
         if (TimeUnit.DAYS.equals(getTimeUnit()))
             return (startTime - timeLag)/ DAY;

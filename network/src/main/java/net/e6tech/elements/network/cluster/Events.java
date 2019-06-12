@@ -170,13 +170,14 @@ public class Events {
             out.writeInt(payload.length);
             out.write(payload);
         }
+
+        @SuppressWarnings("squid:S2674")
         public void read (Kryo kryo, Input in) {
-            CompressionSerializer serializer = new CompressionSerializer();
             int size = in.readInt();
             byte[] buffer = new byte[size];
             in.read(buffer);
             try {
-                arguments = serializer.fromBytes(buffer);
+                arguments = CompressionSerializer.fromBytes(buffer);
             } catch (Exception e) {
                 throw new SystemException(e);
             }
@@ -192,11 +193,10 @@ public class Events {
 
         private void readObject(java.io.ObjectInputStream in)
                 throws IOException, ClassNotFoundException {
-            CompressionSerializer serializer = new CompressionSerializer();
             int size = in.readInt();
             byte[] buffer = new byte[size];
             in.readFully(buffer);
-            arguments = serializer.fromBytes(buffer);
+            arguments = CompressionSerializer.fromBytes(buffer);
         }
 
         public String path() {

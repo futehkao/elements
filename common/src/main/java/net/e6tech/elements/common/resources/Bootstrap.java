@@ -744,22 +744,15 @@ public class Bootstrap extends GroovyObjectSupport {
         logger.info("Starting server shutdown listening thread");
         logger.info(LINE_SEPARATOR);
         Thread thread = new Thread(() -> {
-            try {
-                ServerSocket serverSocket = new ServerSocket(shutdownPort, 0, InetAddress.getLoopbackAddress());
+            try (ServerSocket serverSocket = new ServerSocket(shutdownPort, 0, InetAddress.getLoopbackAddress())) {
                 while (true) {
-                    Terminal terminal = null;
-                    try {
-                        terminal = new Terminal(serverSocket);
-                    } catch (IOException e) {
-                        break;
-                    }
+                    Terminal terminal = new Terminal(serverSocket);
                     if (terminal.readLine("").equals("shutdown")) {
                         logger.info("Received shutdown request.  Shutting down ... ");
                         resourceManager.shutdown();
                         System.exit(0);
                     }
                 }
-                serverSocket.close();
             } catch (IOException ex) {
                 logger.warn("Unable to start shutdown listener", ex);
             }

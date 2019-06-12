@@ -20,6 +20,7 @@ import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
 
 @Table(name = "last_update")
+@SuppressWarnings("squid:S1700")
 public class LastUpdate {
     @PartitionKey
     private String extractor;

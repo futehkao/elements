@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SuppressWarnings("all")
 public class BalancerTest {
 
     volatile int success = 0;

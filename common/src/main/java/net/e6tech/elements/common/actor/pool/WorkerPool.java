@@ -140,6 +140,7 @@ public class WorkerPool extends AbstractActor {
     }
 
     // this is for reducing the number of idle workers
+    @SuppressWarnings("squid:S1172")
     private void cleanup(Events.Cleanup event) {
         if (idleWorkers.size() > initialCapacity) {
             Iterator<ActorRef> iterator = idleWorkers.iterator();

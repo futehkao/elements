@@ -21,7 +21,7 @@ import org.slf4j.Marker;
 /**
  * Created by futeh.
  */
-@SuppressWarnings("squid:S3878")
+@SuppressWarnings({"squid:S3878", "squid:S2629"})
 public class NullLogger implements org.slf4j.Logger {
     private static final Object[] EMPTY_ARGS = new Object[0];
 

@@ -18,10 +18,10 @@ package net.e6tech.elements.web.cxf;
 
 import net.e6tech.elements.common.resources.BindClass;
 
-@BindClass(ServerEngine.class)
-public abstract class ServerEngine {
+@BindClass
+public interface ServerEngine {
 
-    public abstract void start(CXFServer cxfServer, ServerController<?> controller);
+    void start(CXFServer cxfServer, ServerController<?> controller);
 
-    public abstract void stop(CXFServer cxfServer);
+    void stop(CXFServer cxfServer);
 }

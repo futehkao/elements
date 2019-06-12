@@ -119,6 +119,7 @@ public abstract class Balancer<T> {
         }
     }
 
+    @SuppressWarnings("squid:S899")
     private void recovering() {
         while (!stopped) {
             T service = null;
@@ -161,7 +162,7 @@ public abstract class Balancer<T> {
         }
     }
 
-    @SuppressWarnings({"squid:S3776", "squid:S899"})
+    @SuppressWarnings({"squid:S3776", "squid:S899", "squid:S1193"})
     public <R> R execute(FunctionWithException<T, R, Exception> submit) throws IOException {
         while (true) {  // the while loop is for in case of IOException
             T service;

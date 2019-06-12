@@ -24,6 +24,7 @@ import java.util.Base64;
 import java.util.Random;
 
 public class Password {
+    private static Random random = new Random();
     // The higher the number of iterations the more
     // expensive computing the hash is for us and
     // also for an attacker.
@@ -45,7 +46,6 @@ public class Password {
         builder.append("!@#$%^&*-_+=~|<>");
         String charSet = builder.toString();
 
-        Random random = new Random();
         int len = min + random.nextInt(max - min);
         char[] password = new char[len];
         for (int i = 0; i < password.length; i++) {

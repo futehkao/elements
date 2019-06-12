@@ -19,15 +19,21 @@ package net.e6tech.elements.common.resources;
 @FunctionalInterface
 public interface BootstrapSystemPropertiesListener extends BootstrapListener {
 
+    @Override
     default void beginEnv(Bootstrap bootstrap) {}
 
+    @Override
     default void endEnv(Bootstrap bootstrap) {}
 
+    @Override
     default void beginSystemProperties(Bootstrap bootstrap) {}
 
+    @Override
     void endSystemProperties(Bootstrap bootstrap);
 
+    @Override
     default void beginBoot(Bootstrap bootstrap) {}
 
+    @Override
     default void endBoot(Bootstrap bootstrap) {}
 }

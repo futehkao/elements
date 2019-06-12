@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@SuppressWarnings("squid:S1192")
 public class Generator {
 
     private Map<String, Class> dataNames = new HashMap<>();

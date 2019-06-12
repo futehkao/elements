@@ -20,6 +20,7 @@ import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
 import java.util.Comparator;
 
+@SuppressWarnings("squid:S00119")
 public class Min<Re extends Reactor, T, R extends Comparable> extends Scalar<Re, T, R,R> {
 
     public Min() {

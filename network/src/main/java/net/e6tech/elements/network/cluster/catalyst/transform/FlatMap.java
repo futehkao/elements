@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 /**
  * Transform a Stream R directly to Stream T
  */
+@SuppressWarnings("squid:S00119")
 public class FlatMap<Re extends Reactor, T, R> implements Transform<Re, T, R> {
 
     private Mapping<Re, Stream<T>, Stream<R>> mapping;

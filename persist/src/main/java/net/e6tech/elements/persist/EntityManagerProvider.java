@@ -223,6 +223,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             monitorQueue.offer(monitor);
     }
 
+    @SuppressWarnings({"squid:S3776", "squid:S1181", "squid:S1141"})
     private void startMonitoring() {
         // starting a thread to monitor
         if (threadPool == null) {

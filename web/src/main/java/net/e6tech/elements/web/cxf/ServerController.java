@@ -20,6 +20,7 @@ import org.apache.cxf.endpoint.AbstractEndpointFactory;
 
 import java.net.URL;
 
+@SuppressWarnings("squid:S2112")
 public class ServerController<T extends AbstractEndpointFactory> {
     protected T factory;
     protected URL url;
@@ -42,6 +43,7 @@ public class ServerController<T extends AbstractEndpointFactory> {
         return url.hashCode();
     }
 
+    @Override
     public boolean equals(Object object) {
         if (!(object instanceof ServerController)) {
             return false;

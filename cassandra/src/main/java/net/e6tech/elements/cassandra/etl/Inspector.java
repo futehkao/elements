@@ -219,9 +219,9 @@ public class Inspector {
     }
 
     private Descriptor fieldDescriptor(int position, Field field, List<Descriptor> list, Map<String, Descriptor> map) {
-        Generator generator = getGenerator();
+        Generator gen = getGenerator();
         Column column = field.getAnnotation(Column.class);
-        Descriptor descriptor = new Descriptor(position, generator.getColumnName(column, field), field.getName());
+        Descriptor descriptor = new Descriptor(position, gen.getColumnName(column, field), field.getName());
         descriptor.field = field;
         field.setAccessible(true);
         map.put(field.getName(), descriptor);
@@ -235,24 +235,26 @@ public class Inspector {
         if (desc.getReadMethod() != null) {
             m = desc.getReadMethod();
         }
-        Generator generator = getGenerator();
+        if (m == null)
+            throw new IllegalArgumentException("Property " + desc.getName() + " does not have a get method");
+        Generator gen = getGenerator();
         Column column = m.getAnnotation(Column.class);
-        Descriptor descriptor = new Descriptor(position, generator.getColumnName(column, m), desc.getName());
+        Descriptor descriptor = new Descriptor(position, gen.getColumnName(column, m), desc.getName());
         map.put(desc.getName(), descriptor);
         map.put(descriptor.columnName, descriptor);
         list.add(descriptor);
         return descriptor;
     }
 
+    @SuppressWarnings({"squid:S3776", "squid:S135"})
     public void initialize() {
         if (initialized)
             return;
         initialized = true;
         Map<String, Descriptor> propertyMap = new HashMap<>();
         Map<String, Descriptor> chkMap = new HashMap<>();
-        Map<String, Descriptor> saveMap = new HashMap<>();
 
-        Generator generator = getGenerator();
+        Generator gen = getGenerator();
         Class cls = getSourceClass();
         while (cls != null && cls != Object.class) {
             Field[] fields = cls.getDeclaredFields();
@@ -296,7 +298,7 @@ public class Inspector {
 
                     Column column = m.getAnnotation(Column.class);
                     Descriptor descriptor = propertyMap.get(desc.getName());
-                    String columnName = generator.getColumnName(column, m);
+                    String columnName = gen.getColumnName(column, m);
                     if (descriptor == null) {
                         descriptor = propertyMap.get(columnName);
                     }

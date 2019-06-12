@@ -16,8 +16,6 @@
 
 package net.e6tech.elements.security.hsm.thales;
 
-import java.nio.ByteBuffer;
-
 public class Response extends Command {
     private String errorCode;
 

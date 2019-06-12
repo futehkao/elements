@@ -18,6 +18,7 @@ package net.e6tech.elements.network.cluster.catalyst.scalar;
 
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
+@SuppressWarnings("squid:S00119")
 public class Count<Re extends Reactor, T, R> extends Scalar<Re, T, R, Integer> {
 
     public Count() {

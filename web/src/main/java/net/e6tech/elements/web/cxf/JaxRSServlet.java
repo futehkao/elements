@@ -24,7 +24,7 @@ import javax.servlet.ServletException;
 
 public class JaxRSServlet extends CXFNonSpringServlet {
 
-    private JAXRSServerFactoryBean bean;
+    private final JAXRSServerFactoryBean bean;
 
     public JaxRSServlet(JAXRSServerFactoryBean bean) {
         this.bean = bean;

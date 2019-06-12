@@ -19,6 +19,7 @@ package net.e6tech.elements.common.util;
 import java.util.HashMap;
 import java.util.Map;
 
+@SuppressWarnings("squid:S00107")
 public class MapBuilder<K,V> {
 
     private Map<K, V> map = new HashMap<>();

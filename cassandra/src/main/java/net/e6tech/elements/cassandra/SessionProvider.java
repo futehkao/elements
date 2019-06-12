@@ -262,35 +262,42 @@ public class SessionProvider implements ResourceProvider, Initializable {
 
     @Override
     public void onOpen(Resources resources) {
+        //
     }
 
     @Override
     public void afterOpen(Resources resources) {
+        //
     }
 
     @Override
     public void onCommit(Resources resources) {
+        //
     }
 
     @Override
     public void afterCommit(Resources resources) {
+        //
     }
 
     @Override
     public void afterAbort(Resources resources) {
-
+        //
     }
 
     @Override
     public void onAbort(Resources resources) {
+        //
     }
 
     @Override
     public void onClosed(Resources resources) {
+        //
     }
 
     @Override
     public void onShutdown() {
+        //
     }
 
     @Override

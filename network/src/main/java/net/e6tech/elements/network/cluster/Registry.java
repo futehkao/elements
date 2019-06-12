@@ -19,12 +19,10 @@ package net.e6tech.elements.network.cluster;
 import akka.actor.*;
 import akka.pattern.Patterns;
 import net.e6tech.elements.common.actor.pool.WorkerPool;
-import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -134,8 +132,8 @@ public class Registry {
                     || "toString".equals(methodName) && method.getParameterCount() == 0) {
                 // ignored
             } else {
-                String path = fullyQualify(qualifier, interfaceClass, method);
-                return routes(path);
+                String p = fullyQualify(qualifier, interfaceClass, method);
+                return routes(p);
             }
         }
         return Collections.emptyList();

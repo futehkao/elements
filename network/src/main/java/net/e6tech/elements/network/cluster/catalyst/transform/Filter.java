@@ -21,6 +21,7 @@ import net.e6tech.elements.network.cluster.catalyst.Reactor;
 
 import java.util.stream.Stream;
 
+@SuppressWarnings("squid:S00119")
 public class Filter<Re extends Reactor, T> implements Transform<Re, T, T> {
     private static final long serialVersionUID = -8421079688575649162L;
     Mapping<Re, T, Boolean> mapping;

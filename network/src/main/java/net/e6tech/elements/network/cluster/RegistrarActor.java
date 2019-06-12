@@ -40,6 +40,7 @@ class RegistrarActor extends AbstractActor {
         this.workerPool = workerPool;
     }
 
+    @SuppressWarnings("squid:S3776")
     @Override
     public Receive createReceive() {
         return receiveBuilder()

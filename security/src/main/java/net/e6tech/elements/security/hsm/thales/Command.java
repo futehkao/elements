@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+@SuppressWarnings("squid:S1700")
 public abstract class Command {
     private static final byte[] EMPTY_BYTES = new byte[0];
     private static Map<String, Class<? extends Command>> commandClass = new HashMap<>();
@@ -351,6 +352,7 @@ public abstract class Command {
         return buffer;
     }
 
+    @SuppressWarnings("squid:S135")
     protected Command decode(byte[] bytes) {
         int envelopeOffset = enveloped ? 1 : 0;
         int offset = envelopeOffset; // first byte is stx
@@ -370,7 +372,7 @@ public abstract class Command {
 
         // body
         byte[] body = Arrays.copyOfRange(bytes, offset, offset + length - headerLength - 2);  // the 2 comes from command length
-        offset += length - headerLength - 2;
+        // at this point offset should add length - headerLength - 2
 
         int trailerIndex = body.length;
         for (int i = body.length - 1; i >= 0; i--) {

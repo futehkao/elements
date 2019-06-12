@@ -53,6 +53,8 @@ public class AbstractGenerator {
     }
 
     protected LinkedList<Class> analyze(Class entityClass) {
+        if (entityClass == null)
+            return new LinkedList<>();
         Class tmp = entityClass;
         LinkedList<Class> classHierarchy = new LinkedList<>();
         while (tmp != null && tmp != Object.class) {

@@ -50,7 +50,7 @@ import java.util.*;
  * by more than one CXFServers.
  * Therefore, Jetty servers are stored in CXFServer's serverEngineData
  */
-public class JettyEngine extends ServerEngine {
+public class JettyEngine implements ServerEngine {
 
     private static Logger logger = Logger.getLogger();
 
@@ -113,7 +113,7 @@ public class JettyEngine extends ServerEngine {
                 jettyEngine.shutdown();
                 iterator.remove();
             } catch (Exception ex) {
-                logger.warn("Cannot stop Jetty " + server.getDestination().getAddress().getAddress().getValue());
+                logger.warn("Cannot stop Jetty {}", server.getDestination().getAddress().getAddress().getValue());
             }
         }
     }

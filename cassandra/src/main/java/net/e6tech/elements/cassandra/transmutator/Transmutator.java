@@ -69,6 +69,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
                 .inCompletionOrder();
     }
 
+    @SuppressWarnings("squid:S3776")
     protected void analyze() {
         descriptors.clear();
         Class cls = getClass();

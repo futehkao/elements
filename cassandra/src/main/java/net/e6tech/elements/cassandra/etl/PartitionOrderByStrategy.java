@@ -98,7 +98,8 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
         batchResults = extract(context);
         processedCount += load(context, batchResults);
 
-        logger.info("Processed {} instance of {}", processedCount, context.extractor());
+        if (logger.isInfoEnabled())
+            logger.info("Processed {} instance of {}", processedCount, context.extractor());
         return processedCount;
     }
 }

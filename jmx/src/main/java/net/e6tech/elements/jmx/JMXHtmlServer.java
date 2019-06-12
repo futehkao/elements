@@ -73,7 +73,7 @@ public class JMXHtmlServer extends HtmlAdaptorServer {
             Field field = HtmlAdaptorServer.class.getDeclaredField("sockListen");
             field.setAccessible(true);
             field.set(this, serverSocket);
-            myLogger.info("doBind: Bound to [Address="+serverSocket.getInetAddress()+", Port="+serverSocket.getLocalPort()+"]");
+            myLogger.info("doBind: Bound to [Address={}, Port={}]", serverSocket.getInetAddress(), serverSocket.getLocalPort());
         } catch (SocketException e) {
             if (e.getMessage().equals(INTERRUPT_SYS_CALL_MSG))
                 throw new InterruptedException(e.toString()) ;

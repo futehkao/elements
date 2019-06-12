@@ -39,14 +39,12 @@ import java.util.stream.Stream;
  * @param <T> Input type
  * @param <R> Output type
  */
+@SuppressWarnings({"squid:S00119",  "squid:S2975"})
 public class Series<Re extends Reactor, T, R> implements Serializable, Cloneable, Function<Re, Collection<R>> {
     private static final long serialVersionUID = 5420350641543073437L;
 
     protected Segment<T> segment;
     protected List<Transform> transforms = new ArrayList<>();
-
-    public Series() {
-    }
 
     public static <Re extends Reactor, I, O> Series<Re, I, O> from(Transform<Re, I, O> transform) {
         Series<Re, I, I> t  = new Series<>();

@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 public class Invoker implements Serializable {
     private static final long serialVersionUID = -7148919144897051958L;
 
+    @SuppressWarnings("squid:S1172")
     public Object invoke(Actor actor, Object target, Method method, Object[] arguments) {
         try {
             return method.invoke(target, arguments);

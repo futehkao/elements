@@ -36,15 +36,17 @@ public class CodecGenerator extends AbstractGenerator {
                 type = descriptor.getPropertyDescriptor().getWriteMethod().getGenericParameterTypes()[0];
             }
             if (type == null)
-                continue;;
+                continue;
             columnGenerators.add(new ColumnGenerator(generator, type, descriptor));
         }
     }
 
+    @Override
     public String getTableName() {
         return userType;
     }
 
+    @Override
     public String getTableKeyspace() {
         return "";
     }

@@ -191,7 +191,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return properties;
     }
 
-    public String getName() {
+    public synchronized String getName() {
         return name;
     }
 
@@ -605,7 +605,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
                 logger.info("Loaded atoms:");
                 for (String msg : atomString)
                     logger.info(msg);
-                logger.info(new String(line) + "\n");
+                logger.info("{}\n", new String(line));
             }
         }
     }

@@ -29,6 +29,7 @@ import java.util.stream.Stream;
  * @param <T> input stream type
  * @param <R> output stream type
  */
+@SuppressWarnings("squid:S00119")
 public interface Transform<Re extends Reactor, T, R> extends Serializable {
 
     Stream<R> transform(Re reactor, Stream<T> stream);

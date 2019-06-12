@@ -22,6 +22,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("squid:S2160") // relies on super's equals and hashCode
 public class JaxRSServerController extends ServerController<JAXRSServerFactoryBean> {
 
     private List<Class<?>> resourceClasses = new ArrayList<>();

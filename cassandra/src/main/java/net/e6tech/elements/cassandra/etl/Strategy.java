@@ -18,6 +18,7 @@ package net.e6tech.elements.cassandra.etl;
 
 import net.e6tech.elements.common.logging.Logger;
 
+@SuppressWarnings("squid:S1214")
 public interface Strategy<C extends ETLContext> {
     Logger logger = Logger.getLogger();
 

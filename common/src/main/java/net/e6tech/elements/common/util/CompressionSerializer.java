@@ -32,6 +32,7 @@ public class CompressionSerializer {
         this.compressionLevel = level;
     }
 
+    @SuppressWarnings({"squid:S1171", "squid:S3599"})
     public byte[] toBytes(Object obj) throws IOException {
         if (obj != null) {
             try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -46,7 +47,7 @@ public class CompressionSerializer {
                 return bos.toByteArray();
             }
         } else {
-            return null;
+            return new byte[0];
         }
     }
 

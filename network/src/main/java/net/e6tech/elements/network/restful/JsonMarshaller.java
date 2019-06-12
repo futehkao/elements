@@ -18,7 +18,6 @@ package net.e6tech.elements.network.restful;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.e6tech.elements.common.serialization.ObjectMapperFactory;
-import net.e6tech.elements.common.util.ErrorResponse;
 
 import java.math.BigDecimal;
 import java.util.List;

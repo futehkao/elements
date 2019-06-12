@@ -16,9 +16,10 @@
 
 package net.e6tech.elements.common.launch;
 
-import net.e6tech.elements.common.notification.NotificationListener;
-import net.e6tech.elements.common.notification.ShutdownNotification;
-import net.e6tech.elements.common.resources.*;
+import net.e6tech.elements.common.resources.OnShutdown;
+import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.resources.ResourceManager;
+import net.e6tech.elements.common.resources.ResourceProvider;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -169,6 +170,7 @@ public class LaunchController implements LaunchListener {
         return resourceManager;
     }
 
+    @SuppressWarnings({"squid:S2274", "squid:CommentedOutCodeLine", "squid:S106", "squid:S1148"})
     public void launch(List<LaunchListener> listeners ) {
         String file = getLaunchScript();
         if (file == null)

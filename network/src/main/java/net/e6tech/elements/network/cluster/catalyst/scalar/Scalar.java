@@ -25,6 +25,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.function.Function;
 
+@SuppressWarnings({"squid:S00119", "squid:S2975"})
 public class Scalar<Re extends Reactor, T, R, U> implements Cloneable, Function<Re, U>, Serializable {
     private static final long serialVersionUID = 1676649613567136786L;
     private Series<Re, T, R> series;

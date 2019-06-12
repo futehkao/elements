@@ -94,7 +94,7 @@ public class PluginManager {
         return classLoader;
     }
 
-    @SuppressWarnings("squid:S3824")
+    @SuppressWarnings({"squid:S3824", "squid:S3776"})
     protected Optional getDefaultPlugin(Class type) {
         Object lookup = defaultPlugins.get(type);
         if (lookup == NULL_OBJECT)
@@ -113,7 +113,9 @@ public class PluginManager {
                 }
                 t = t.getSuperclass();
             }
-            if (lookup == null && !type.isInterface()
+            if (lookup == null
+                    && type != null
+                    && !type.isInterface()
                     && !Modifier.isAbstract(type.getModifiers())
                     && Modifier.isPublic(type.getModifiers())
                     && AutoPlugin.class.isAssignableFrom(type)) {

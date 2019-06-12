@@ -28,6 +28,7 @@ public class ListType extends DataType {
         componentType = DataType.create(generator, pType.getActualTypeArguments()[0], typeDescriptor);
     }
 
+    @Override
     public String getTypeString() {
         return "list<" + componentType.getTypeString() + ">";
     }

@@ -19,15 +19,21 @@ package net.e6tech.elements.common.resources;
 @FunctionalInterface
 public interface BootstrapEndEnv extends BootstrapListener {
 
+    @Override
     default void beginEnv(Bootstrap bootstrap) {}
 
+    @Override
     void endEnv(Bootstrap bootstrap);
 
+    @Override
     default void beginSystemProperties(Bootstrap bootstrap) {}
 
+    @Override
     default void endSystemProperties(Bootstrap bootstrap) {}
 
+    @Override
     default void beginBoot(Bootstrap bootstrap) {}
 
+    @Override
     default void endBoot(Bootstrap bootstrap) {}
 }

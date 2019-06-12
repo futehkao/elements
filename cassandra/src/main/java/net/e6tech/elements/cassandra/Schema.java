@@ -46,6 +46,7 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
+@SuppressWarnings({"squid:S00115", "squid:S3776"})
 public class Schema {
 
     private static Cache<String, List<String>> scriptCache = CacheBuilder.newBuilder()
@@ -82,15 +83,16 @@ public class Schema {
             String cql = getProvider(resources).getGenerator().createCodecs(keyspace, userType, codec);
             try {
                 getProvider(resources).getSession(keyspace).execute(cql);
-                logger.info("Created UDT type " + userType + " for class " + codec);
+                logger.info("Created UDT type {} for class {}", userType, codec);
             } catch (SyntaxError ex) {
-                logger.info("Syntax error in creating table for " + codec);
+                logger.info("Syntax error in creating table for {}", codec);
                 logger.info(cql);
                 throw ex;
             }
         });
     }
 
+    @SuppressWarnings("squid:S3878")
     public void registerCodecs(String keyspace, String packageName, Class ... order) {
         try {
             provision.suppressLogging();
@@ -130,7 +132,7 @@ public class Schema {
                             createCodecs(keySpaceIn, userType, (Class) codecClass);
                         provider.registerCodec(keySpaceIn, userType, codecClass);
                     } catch (SyntaxError e) {
-                        logger.warn("Cannot register codec for class " + codecClass.getName());
+                        logger.warn("Cannot register codec for class {}", codecClass.getName());
                     }
                 }
             });
@@ -206,7 +208,7 @@ public class Schema {
                 try {
                     getProvider(resources).getSession(keyspace).execute(cql);
                 } catch (Exception ex) {
-                    logger.info("Syntax error in creating table for " + cls);
+                    logger.info("Syntax error in creating table for {}", cls);
                     logger.info(cql);
                     throw ex;
                 }
@@ -218,7 +220,7 @@ public class Schema {
                     try {
                         getProvider(resources).getSession(keyspace).execute(cql);
                     } catch (Exception ex) {
-                        logger.info("Syntax error in creating index for " + cls);
+                        logger.info("Syntax error in creating index for {}", cls);
                         logger.info(cql);
                         throw ex;
                     }
@@ -277,7 +279,7 @@ public class Schema {
                 }
             });
         } catch (ExecutionException e) {
-            logger.error("Cannot retrieve script " + cls.getSimpleName() + postfix + ".cql");
+            logger.error("Cannot retrieve script {}{}.cql ", cls.getSimpleName(), postfix);
             throw new SystemException(e);
         }
     }

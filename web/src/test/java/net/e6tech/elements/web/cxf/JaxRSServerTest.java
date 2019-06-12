@@ -44,6 +44,9 @@ public class JaxRSServerTest {
         new LaunchController().launchScript("conf/provisioning/jaxrs/helloworld.groovy")
                 .property("serverEngineClass", input)
                 .inject(this).launch();
+
+        JaxRSServer server = provision.getComponentResource("helloworld", "_helloworld");
+        assertEquals(server.getServerEngine().getClass().getName(), input);
         runHello("http://localhost:" + 9000 + "/restful");
         runHello("http://localhost:" + 9001 + "/restful");
         runHello("http://localhost:" + 9002 + "/restful");

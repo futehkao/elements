@@ -28,6 +28,7 @@ public class SetType extends DataType {
         componentType = DataType.create(generator, pType.getActualTypeArguments()[0], typeDescriptor);
     }
 
+    @Override
     public String getTypeString() {
         return "set<" + componentType.getTypeString() + ">";
     }

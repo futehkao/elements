@@ -30,10 +30,10 @@ import java.util.*;
 
 public class IndexGenerator extends AbstractGenerator{
     private Map<String, Checkpoint> implicitIndexes = new LinkedHashMap<>();
-    private Map<String, String> implicitIndexes2 = new LinkedHashMap<>();
     private Set<String> partitionKeys = new HashSet<>();
     private Map<String, Index> indexes = new LinkedHashMap<>();
 
+    @SuppressWarnings({"squid:CommentedOutCodeLine", "squid:S3626", "squid:S3776", "squid:S135"})
     IndexGenerator(Generator generator, Class entityClass) throws IntrospectionException {
         super(generator);
         LinkedList<Class> classHierarchy = analyze(entityClass);
@@ -81,6 +81,8 @@ public class IndexGenerator extends AbstractGenerator{
             if (desc.getReadMethod() != null)
                 method = desc.getReadMethod();
 
+            if (method == null)
+                throw new IllegalArgumentException("Entity class does not have a get method for property " + desc.getName());
             Column column = method.getAnnotation(Column.class);
             if (method != null && !method.getName().equals("getClass")) {
                 Transient trans = method.getAnnotation(Transient.class);
