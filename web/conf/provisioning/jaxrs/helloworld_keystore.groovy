@@ -20,6 +20,7 @@ import net.e6tech.elements.security.JavaKeyStore
 atom("helloworld_keystore") {
     configuration =  """
     _serverEngine:
+        maxThreads: 100
         baseDir: $__dir/../../../web/tomcat
     _helloworld:
         keyStorePassword: password

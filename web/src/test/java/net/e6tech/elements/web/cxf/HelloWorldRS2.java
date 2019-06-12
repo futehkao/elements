@@ -14,18 +14,23 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.reflection;
+package net.e6tech.elements.web.cxf;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
 
-import static java.lang.annotation.ElementType.METHOD;
+@Path("/v1/hello2")
+public class HelloWorldRS2 {
 
-/**
- * Created by futeh.
- */
-@Target({ METHOD })
-@Retention(RetentionPolicy.RUNTIME)
-public @interface DoNotCopy {
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    public String sayHi( @QueryParam("text") String text) {
+        return "Hello2 " + text;
+    }
+
+    @PUT
+    @Produces({MediaType.APPLICATION_JSON})
+    public void putMethod(@QueryParam("ext") String text, PutData data) {
+        System.out.println(text + " " + data);
+    }
 }

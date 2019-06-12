@@ -100,6 +100,10 @@ public class TomcatEngine extends ServerEngine {
         if (baseDir != null) {
             tomcat.setBaseDir(baseDir + "." + controller.getURL().getPort());
         }
+
+        // host name port and context, e.g, http://0.0.0.0:8080/restful are controlled by Tomcat.
+        // JaxRSServer sets the addresse to "/" so that servlet mapping needs to
+        // map "/*" to jaxrs.
         ctx.addServletMappingDecoded("/*", "jaxrs");
 
         try {

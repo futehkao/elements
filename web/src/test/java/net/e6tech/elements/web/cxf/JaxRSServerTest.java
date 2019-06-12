@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.PrintWriter;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Created by futeh.
  */
@@ -44,6 +47,7 @@ public class JaxRSServerTest {
         runHello("http://localhost:" + 9000 + "/restful");
         runHello("http://localhost:" + 9001 + "/restful");
         runHello("http://localhost:" + 9002 + "/restful");
+        runHello2();
         provision.getResourceManager().shutdown();
     }
 
@@ -71,6 +75,14 @@ public class JaxRSServerTest {
         data.setIntValue(10);
         data.setStringValue("Hello");
         api.putMethod("Test" , data);
+    }
+
+    protected void runHello2() {
+        RestfulProxy proxy = new RestfulProxy("http://localhost:" + 9000 + "/restful");
+        proxy.setPrinter(new PrintWriter(System.out, true));
+        HelloWorldRS2 api = proxy.newProxy(HelloWorldRS2.class);
+        String reply = api.sayHi("Mr. Jones");
+        assertEquals(reply, "Hello2 Mr. Jones");
     }
 
     @ParameterizedTest

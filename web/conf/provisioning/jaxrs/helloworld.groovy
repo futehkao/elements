@@ -24,7 +24,7 @@ try {
     engine.minSpareThreads = 20
     engine.baseDir = "$__dir/../../../web/tomcat"
 } catch (Exception ex) {
-    // ignore because Jetty Engine does have such attributes
+    // ignore because Jetty Engine does not have such attributes
 }
 
 atom("helloworld") {
@@ -40,13 +40,26 @@ atom("helloworld") {
     _helloworld = JaxRSServer
 }
 
-atom("helloworld2") {
+atom("helloworld1") {
     configuration =  """
     _helloworld.serverEngine: ^engine
     _helloworld.addresses:
         - "http://0.0.0.0:9002/restful/"
     _helloworld.resources:
         - class: "net.e6tech.elements.web.cxf.HelloWorldRS"
+          bindHeaderObserver: false
+ """
+    _helloworld = JaxRSServer
+}
+
+// share same port as helloworld but add another service HelloWorldRS2
+atom("helloworld2") {
+    configuration =  """
+    _helloworld.serverEngine: ^engine
+    _helloworld.addresses:
+        - "http://0.0.0.0:9000/restful/"
+    _helloworld.resources:
+        - class: "net.e6tech.elements.web.cxf.HelloWorldRS2"
           bindHeaderObserver: false
  """
     _helloworld = JaxRSServer
