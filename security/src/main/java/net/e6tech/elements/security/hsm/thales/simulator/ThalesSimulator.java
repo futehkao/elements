@@ -26,7 +26,6 @@ public class ThalesSimulator extends Simulator {
 
     static Logger logger = Logger.getLogger();
 
-    private int lengthBytes = 2;
     private int headerLength = 4; // default is 4 bytes
     private boolean enveloped = false;  // assumes the payload is bracketed by STX and ETX
 
@@ -35,11 +34,11 @@ public class ThalesSimulator extends Simulator {
     }
 
     protected void process(InputStream inputStream, OutputStream outputStream) throws IOException {
-        byte[] length = new byte[lengthBytes];
-        while (true) {
-            try (BufferedInputStream in = new BufferedInputStream(inputStream);
-                 BufferedOutputStream out = new BufferedOutputStream(outputStream)) {
+        byte[] length = new byte[Command.LENGTH_BYTES];
 
+        try (BufferedInputStream in = new BufferedInputStream(inputStream);
+             BufferedOutputStream out = new BufferedOutputStream(outputStream);) {
+            while (true) {
                 int envelopeSize = 0;
                 int envelopeOffset = 0;
                 int stx = 0x02;
@@ -52,30 +51,22 @@ public class ThalesSimulator extends Simulator {
                 // read length
                 read(in, length, 0);
 
-                int len = bcd(length);
-                byte[] buffer = new byte[len + envelopeSize + lengthBytes];
-                read(in, buffer, envelopeOffset + lengthBytes);
+                short len = Command.decodeLength(length);
+                byte[] buffer = new byte[len + envelopeSize + Command.LENGTH_BYTES];
+                read(in, buffer, envelopeOffset + Command.LENGTH_BYTES);
 
                 if (enveloped)
                     buffer[0] = (byte) stx;
 
-                for (int i = 0; i < lengthBytes; i++) {
+                for (int i = 0; i < Command.LENGTH_BYTES; i++) {
                     buffer[i + envelopeOffset] = length[i];
                 }
 
-                Command cmd = Command.fromBytes(buffer, lengthBytes, headerLength);
+                Command cmd = Command.fromBytes(buffer, headerLength);
                 CommandProcessor processor = CommandProcessor.forCommand(cmd);
+
             }
         }
-    }
-
-    protected int bcd(byte[] bytes) {
-        StringBuilder builder = new StringBuilder();
-        for (byte b : bytes) {
-            builder.append((b & 0x00f0) >>> 4)
-                    .append(b & 0x000f);
-        }
-        return Integer.parseInt(builder.toString());
     }
 
     protected void read(InputStream in, byte[] buffer, int offset) throws IOException {

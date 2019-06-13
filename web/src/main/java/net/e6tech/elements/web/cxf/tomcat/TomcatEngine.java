@@ -89,6 +89,7 @@ public class TomcatEngine implements ServerEngine {
         List<Tomcat> tomcats = cxfServer.computeServerEngineData(LinkedList::new);
         Tomcat tomcat = new Tomcat();
         tomcats.add(tomcat);
+        tomcat.setHostname(controller.getURL().getHost());
 
         JaxRSServlet servlet = new JaxRSServlet((JAXRSServerFactoryBean) controller.getFactory());
         String context = controller.getURL().getPath();

@@ -44,4 +44,19 @@ public class CommandTest {
         assertEquals(c2.getCommand(), command.getCommand());
         assertEquals(c2.getTrailer(), command.getTrailer());
     }
+
+    @Test
+    void echo() {
+        Echo echo = new Echo();
+        StringBuilder builder = new StringBuilder();
+        while (builder.length() < 200)
+            builder.append("Hello World! ");
+        echo.setData(builder.toString());
+        byte[] encoded = echo.encode();
+
+        Echo echo2 = new Echo();
+        echo2.decode(encoded);
+
+        assertEquals(echo.getData(), echo2.getData());
+    }
 }

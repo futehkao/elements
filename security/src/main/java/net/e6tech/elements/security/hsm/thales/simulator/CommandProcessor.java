@@ -29,7 +29,7 @@ public class CommandProcessor<T extends Command> {
     private static Map<Class<? extends Command>, Class<? extends CommandProcessor>> processors = new HashMap<>();
 
     static {
-        processors.put(Echo.class, CommandProcessor.class);
+        processors.put(Echo.class, CommandProcessor.class);  // this need to be a subclass of CommandProcessor
         processors.put(GenerateCVV.class, CommandProcessor.class);
     }
 

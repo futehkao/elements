@@ -16,5 +16,35 @@
 
 package net.e6tech.elements.security.hsm.thales;
 
+import net.e6tech.elements.common.util.StringUtil;
+
+import java.nio.charset.StandardCharsets;
+
 public class Echo extends Command {
+    private byte[] length;
+    private String data;
+
+    public String getData() {
+        return data;
+    }
+
+    public void setData(String data) {
+        this.data = data;
+    }
+
+    @Override
+    protected void packFields() {
+        int len = data.length();
+        String hex = Integer.toHexString(len);
+        length = StringUtil.padLeft(hex, 4, '0').getBytes(StandardCharsets.US_ASCII);
+        pack(length, data);
+    }
+
+    @Override
+    protected void unpackFields() {
+        length = unpackBytes(4);
+        String hex = new String(length, StandardCharsets.US_ASCII);
+        int len = Integer.parseInt(hex, 16);
+        data = unpackString(len);
+    }
 }

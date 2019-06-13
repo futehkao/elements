@@ -17,7 +17,6 @@
 package net.e6tech.elements.security.hsm.thales;
 
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.security.Hex;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -31,12 +30,14 @@ public abstract class Command {
     private static Map<String, Class<? extends Command>> commandClass = new HashMap<>();
     private static Map<Class<? extends Command>, String> classCommand = new HashMap<>();
     private static Map<String, Integer> keyTypes = new HashMap<>();
+    public static final int LENGTH_BYTES = 2;
 
     static {
         commandClass.put("B2", Echo.class);
         commandClass.put("CW", GenerateCVV.class);
         commandClass.put("EA", VerifyPIN_ZPK_IBM.class);
         commandClass.put("DU", ChangePIN_IBM.class);
+        commandClass.put("DU", EncryptPIN_IBM.class);
 
         for (Map.Entry<String, Class<? extends Command>> entry : commandClass.entrySet())
             classCommand.put(entry.getValue(), entry.getKey());
@@ -50,9 +51,8 @@ public abstract class Command {
         // we do not support atalla keyblock
     }
 
-    private int lengthBytes = 2;
-    private int headerLength = 4; // default is 4 bytes
 
+    private int headerLength = 4; // default is 4 bytes
     private String command;
     private String header = "0000";
     private String response;
@@ -63,16 +63,15 @@ public abstract class Command {
     private String lmkId;
     private boolean enveloped = false;
 
-    public static Command fromBytes(byte[] bytes, int lengthBytes, int headerLength) {
-        int offset = 1 + lengthBytes + headerLength; // first byte is stx
+    public static Command fromBytes(byte[] bytes, int headerLength) {
+        int offset = 1 + LENGTH_BYTES + headerLength; // first byte is stx
         // command
         byte[] commandBytes = Arrays.copyOfRange(bytes, offset, offset + 2);
         String command = new String(commandBytes, 0, 2, StandardCharsets.US_ASCII);
         Class<? extends Command> cls = commandClass.get(command);
         try {
             Command cmd = cls.getDeclaredConstructor().newInstance();
-            return cmd.lengthBytes(lengthBytes)
-                    .headerLength(headerLength)
+            return cmd.headerLength(headerLength)
                     .decode(bytes);
         } catch (Exception e) {
             throw new SystemException(e);
@@ -120,19 +119,6 @@ public abstract class Command {
 
     public void setHeader(String header) {
         this.header = header;
-    }
-
-    public Command lengthBytes(int size) {
-        this.lengthBytes = size;
-        return this;
-    }
-
-    public int getLengthBytes() {
-        return lengthBytes;
-    }
-
-    public void setLengthBytes(int lengthBytes) {
-        this.lengthBytes = lengthBytes;
     }
 
     public Command headerLength(int length) {
@@ -251,8 +237,8 @@ public abstract class Command {
         byte[] commandBytes = getCommand().getBytes(StandardCharsets.US_ASCII);
 
         byte[] headerBytes = header.getBytes(StandardCharsets.US_ASCII);
-        int payloadSize = headerBytes.length + commandBytes.length + bodyLength + trailerLength;
-        byte[] bytes = new byte[envelopeSize + lengthBytes + payloadSize];
+        short payloadSize = (short) (headerBytes.length + commandBytes.length + bodyLength + trailerLength);
+        byte[] bytes = new byte[envelopeSize + LENGTH_BYTES + payloadSize];
 
         int lcr = 0;
         if (enveloped) {
@@ -260,7 +246,7 @@ public abstract class Command {
             bytes[bytes.length - 1] = 0x03;
         }
 
-        byte[] len = encodeLength(payloadSize, lengthBytes);
+        byte[] len = encodeLength(payloadSize);
         int offset = envelopeOffset;
         System.arraycopy(len, 0, bytes, offset, len.length);  // encode length
         offset += len.length;
@@ -287,7 +273,7 @@ public abstract class Command {
         }
 
         if (enveloped) {
-            for (int i = lengthBytes + 1; i < bytes.length - 2 ; i++)
+            for (int i = LENGTH_BYTES + 1; i < bytes.length - 2 ; i++)
                 lcr = lcr ^ bytes[i];
             bytes[bytes.length - 2] = (byte) lcr;
         }
@@ -356,9 +342,9 @@ public abstract class Command {
     protected Command decode(byte[] bytes) {
         int envelopeOffset = enveloped ? 1 : 0;
         int offset = envelopeOffset; // first byte is stx
-        byte[] len = Arrays.copyOfRange(bytes, offset, offset + lengthBytes);
-        int length = decodeLength(len);
-        offset += lengthBytes;
+        byte[] len = Arrays.copyOfRange(bytes, offset, offset + LENGTH_BYTES);
+        short length = decodeLength(len);
+        offset += LENGTH_BYTES;
 
         // header
         byte[] headerByte = Arrays.copyOfRange(bytes, offset, offset + headerLength);
@@ -394,17 +380,12 @@ public abstract class Command {
         return this;
     }
 
-    private static byte[] encodeLength(int len, int lengthBytes) {
-        String length = Integer.toString(len);
-        int diff = lengthBytes * 2 - length.length();
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < diff; i++)
-            builder.append("0");
-        builder.append(length);
-        return Hex.toBytes(builder.toString());
+    public static byte[] encodeLength(short len) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(LENGTH_BYTES);
+        return byteBuffer.putShort(len).array();
     }
 
-    private static int decodeLength(byte[] bytes) {
-       return Integer.parseInt(Hex.toString(bytes));
+    public static short decodeLength(byte[] bytes) {
+       return ByteBuffer.wrap(bytes).getShort();
     }
 }
