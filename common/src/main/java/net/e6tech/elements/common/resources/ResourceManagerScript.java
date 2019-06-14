@@ -92,6 +92,22 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
         }
     }
 
+    public <T> T bind(T resource) {
+        return getShell().bind(resource);
+    }
+
+    public <T> T bind(Class<T> cls, T resource) {
+        return getShell().bind(cls, resource);
+    }
+
+    public <T> T rebind(T resource) {
+        return getShell().rebind(resource);
+    }
+
+    public <T> T rebind(Class<T> cls, T resource) {
+        return getShell().rebind(cls, resource);
+    }
+
     public void bindClass(Class a, Class b) {
         getShell().bindClass(a, b);
     }

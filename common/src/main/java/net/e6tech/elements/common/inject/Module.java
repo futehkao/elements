@@ -19,6 +19,7 @@ package net.e6tech.elements.common.inject;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.reflect.TypeToken;
 import net.e6tech.elements.common.resources.BindClass;
 import net.e6tech.elements.common.resources.BindProperties;
 import net.e6tech.elements.common.resources.Provision;
@@ -100,7 +101,7 @@ public interface Module {
             }
 
             // try to find using interfaces
-            for (Class i : cls.getInterfaces()) {
+            for (Class i : TypeToken.of(cls).getTypes().interfaces().rawTypes()) {
                 BindClass bind = (BindClass) i.getAnnotation(BindClass.class);
                 if (bind != null) {
                     if (bind.value().equals(void.class))

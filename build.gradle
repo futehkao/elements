@@ -45,8 +45,8 @@ subprojects {
     }
 
     task sourcesJar(type: Jar) {
-        baseName "elements-${project.name}"
-        classifier 'sources'
+        archiveBaseName.set "elements-${project.name}"
+        archiveClassifier.set 'sources'
         from sourceSets.main.allSource
     }
 

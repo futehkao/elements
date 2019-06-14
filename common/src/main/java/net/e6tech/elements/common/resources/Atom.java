@@ -109,18 +109,6 @@ public class Atom implements Map<String, Object> {
         // do not copy configuration
     }
 
-    /**
-     * Used by groovy scripts.
-     *
-     * @param cls      The class that identifies the binding object.
-     * @param resource the object to be bound to the {@code cls}
-     * @param <T>      type of resource
-     * @return return the resource object.  If resource is a Class, returns new instance of the class.
-     */
-    public <T> T bind(Class<T> cls, T resource) {
-        return resources.bind(cls, resource);
-    }
-
     public <T> T resourceManagerBind(Class<T> cls, T resource) {
         if (cls == null) {
             String classDesc = (resource == null) ? "" : " Expecting " + resource.getClass().getName() + " or its super class";
@@ -675,7 +663,7 @@ public class Atom implements Map<String, Object> {
                     instance = value;
                 }
             } else {
-                if (!resourceManager.getScripting().isRunnable(value)) {
+                if (!resourceManager.getScripting().isRunnable(value)) { // value is not a closure
                     instance = resources.rebind((Class) value.getClass(), value);
                     registerBean(key, instance);
                     configure(instance, key);

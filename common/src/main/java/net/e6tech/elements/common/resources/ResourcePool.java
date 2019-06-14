@@ -44,7 +44,15 @@ public interface ResourcePool {
 
     <T> T bind(Class<T> cls, T resource) ;  // 1
 
+    default <T> T bind(T resource) {
+        return bind((Class<T>) resource.getClass(), resource);
+    }
+
     <T> T rebind(Class<T> cls, T resource); // 1
+
+    default <T> T rebind(T resource) {
+        return rebind((Class<T>) resource.getClass(), resource);
+    }
 
     <T> T unbind(Class<T> cls); //1
 

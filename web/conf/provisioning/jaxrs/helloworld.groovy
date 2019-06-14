@@ -16,20 +16,18 @@
 
 import net.e6tech.elements.web.cxf.JaxRSServer
 
-
-engine = loadClass(serverEngineClass).newInstance()
-
-try {
-    engine.maxThreads = 200
-    engine.minSpareThreads = 20
-    engine.baseDir = "$__dir/../../../web/tomcat"
-} catch (Exception ex) {
-    // ignore because Jetty Engine does not have such attributes
+atom("serverEngine") {
+    configuration = """
+    engine:
+        maxThread: 200
+        baseDir: $__dir/../../../web/tomcat
+"""
+    engine = serverEngineClass
+    rebind engine
 }
 
 atom("helloworld") {
     configuration =  """
-    _helloworld.serverEngine: ^engine
     _helloworld.addresses:
         - "http://0.0.0.0:9000/restful/"
         - "http://0.0.0.0:9001/restful/"
@@ -42,7 +40,6 @@ atom("helloworld") {
 
 atom("helloworld1") {
     configuration =  """
-    _helloworld.serverEngine: ^engine
     _helloworld.addresses:
         - "http://0.0.0.0:9002/restful/"
     _helloworld.resources:
@@ -55,7 +52,6 @@ atom("helloworld1") {
 // share same port as helloworld but add another service HelloWorldRS2
 atom("helloworld2") {
     configuration =  """
-    _helloworld.serverEngine: ^engine
     _helloworld.addresses:
         - "http://0.0.0.0:9000/restful/"
     _helloworld.resources:

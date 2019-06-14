@@ -145,6 +145,7 @@ public class TomcatEngine implements ServerEngine {
         connector.setAttribute("maxThreads", maxThreads);  // default 200
         connector.setAttribute("maxConnections", maxConnections); // default 10000
         connector.setAttribute("minSpareThreads", minSpareThreads); // default 10
+        connector.setAttribute("address", url.getHost());
 
         if ("https".equals(url.getProtocol())) {
             connector.setSecure(true);
@@ -158,7 +159,7 @@ public class TomcatEngine implements ServerEngine {
                 throw new IllegalArgumentException("Missing keyStoreFile or keyStore");
 
             SSLHostConfig config = new SSLHostConfig();
-            config.setHostName(url.getHost());
+            config.setHostName(url.getHost()); // this needs to match defaultSSLHostConfigName attribute
 
             // only support keyStoreFile
             if (cxfServer.getKeyStoreFile() != null) {
