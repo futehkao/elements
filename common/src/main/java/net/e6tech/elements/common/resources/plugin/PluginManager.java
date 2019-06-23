@@ -65,6 +65,14 @@ public class PluginManager {
         return plugin;
     }
 
+    public Resources getResources() {
+        return resources;
+    }
+
+    public void setResources(Resources resources) {
+        this.resources = resources;
+    }
+
     public void loadPlugins(String[] directories) {
         for (String dir: directories) {
             String[] paths;
@@ -164,16 +172,10 @@ public class PluginManager {
 
         T plugin;
         if (lookup instanceof Class) {
-            try {
-                plugin = ((Class<T>) lookup).getDeclaredConstructor().newInstance();
-                plugin.initialize(pluginPath);
-                inject(plugin, args);
-            } catch (Exception e) {
-                throw new SystemException(e);
-            }
+            plugin = createInstance(pluginPath, (Class<T>) lookup, args);
         } else {
             if (lookup instanceof PluginFactory) {
-                plugin = ((PluginFactory) lookup).create(resources);
+                plugin = ((PluginFactory) lookup).create(this);
                 plugin.initialize(pluginPath);
                 inject(plugin, args);
             } else {
@@ -194,6 +196,18 @@ public class PluginManager {
         }
 
         return Optional.of(plugin);
+    }
+
+    public <T> T createInstance(PluginPath pluginPath, Class<T> cls, Object ... args) {
+        try {
+            T plugin = cls.getDeclaredConstructor().newInstance();
+            if (plugin instanceof Plugin)
+                ((Plugin)plugin).initialize(pluginPath);
+            inject(plugin, args);
+            return plugin;
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
     }
 
     @SuppressWarnings("squid:S3776")

@@ -17,6 +17,7 @@
 package net.e6tech.elements.common.resources.plugin;
 
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,12 +29,12 @@ public class PluginList<T> implements PluginFactory {
 
     private List list = new ArrayList<>();
     private PluginPath<T> pluginPath;
-    private Resources resources;
+    private PluginManager pluginManager;
 
     @Override
-    public PluginList<T> create(Resources resources) {
+    public PluginList<T> create(PluginManager resources) {
         PluginList<T> copy = new PluginList<>();
-        copy.resources = resources;
+        copy.pluginManager = resources;
         copy.list = list;
         return copy;
     }
@@ -43,21 +44,21 @@ public class PluginList<T> implements PluginFactory {
         pluginPath = path;
     }
 
-    protected void add(T singleton) {
+    public void add(T singleton) {
         list.add(singleton);
     }
 
-    protected void add(Class<? extends T> cls) {
+    public void add(Class<? extends T> cls) {
         list.add(cls);
     }
 
     public List<T> list() {
-        return resources.configurator().computeIfAbsent(pluginPath.path(),
+        return pluginManager.getResources().configurator().computeIfAbsent(pluginPath.path(),
                 key -> {
                     List<T> l = new ArrayList<>();
                     for (Object obj : list) {
                         if (obj instanceof Class) {
-                            l.add((T) resources.newInstance((Class) obj));
+                            l.add(pluginManager.createInstance(pluginPath, (Class<T>) obj));
                         } else {
                             l.add((T) obj);
                         }

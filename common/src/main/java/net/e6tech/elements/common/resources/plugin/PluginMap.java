@@ -28,12 +28,12 @@ public class PluginMap<K, V> implements PluginFactory {
 
     private Map<K, Object> map = new LinkedHashMap<>();
     private PluginPath pluginPath;
-    private Resources resources;
+    private PluginManager pluginManager;
 
     @Override
-    public PluginMap<K, V> create(Resources resources) {
+    public PluginMap<K, V> create(PluginManager pluginManager) {
         PluginMap<K, V> copy = new PluginMap<>();
-        copy.resources = resources;
+        copy.pluginManager = pluginManager;
         copy.map = map;
         return copy;
     }
@@ -52,13 +52,13 @@ public class PluginMap<K, V> implements PluginFactory {
     }
 
     public Map<K, V> map() {
-        return resources.configurator().computeIfAbsent(pluginPath.path(),
+        return pluginManager.getResources().configurator().computeIfAbsent(pluginPath.path(),
                 key -> {
                     Map<K, V> m = new LinkedHashMap<>();
                     for (Map.Entry<K, Object> entry : map.entrySet()) {
                         V value;
                         if (entry.getValue() instanceof Class) {
-                            value = (V) resources.newInstance((Class) entry.getValue());
+                            value = (V) pluginManager.getResources().newInstance((Class) entry.getValue());
                         } else {
                             value = (V) entry.getValue();
                         }
