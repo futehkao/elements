@@ -260,6 +260,10 @@ public class PluginManager {
         singleton.initialize(path);
     }
 
+    public synchronized <T extends Plugin> Object remove(PluginPath<T> path) {
+        return plugins.remove(path);
+    }
+
     public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, U singleton) {
         defaultPlugins.put(cls, singleton);
         resourceManager.inject(singleton, !singleton.isPrototype());

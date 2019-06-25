@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 
@@ -60,7 +61,19 @@ public class PluginList<T> implements PluginFactory {
                         if (obj instanceof Class) {
                             l.add(pluginManager.createInstance(pluginPath, (Class<T>) obj));
                         } else {
-                            l.add((T) obj);
+                            if (obj instanceof Plugin && ((Plugin) obj).isPrototype()) {
+                                try {
+                                    Plugin plugin = (Plugin) obj.getClass().getDeclaredConstructor().newInstance();
+                                    Reflection.copyInstance(plugin, obj);
+                                    plugin.initialize(pluginPath);
+                                    pluginManager.inject(plugin);
+                                    l.add((T) plugin);
+                                } catch (Exception e) {
+                                    throw new SystemException(e);
+                                }
+                            } else {
+                                l.add((T) obj);
+                            }
                         }
                     }
                     return l;

@@ -33,7 +33,7 @@ dependencies {
 uploadArchives.enabled = false
 
 mainClassName = '''net.e6tech.elements.common.launch.Launch \\
-launch="$APP_HOME"/conf/sample.provision.groovy \\
+launch="$APP_HOME"/conf/provisioning/sample/provsioning/sample.groovy \\
 home="$APP_HOME" \\
 end \\
 '''
