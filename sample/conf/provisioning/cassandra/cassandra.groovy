@@ -27,6 +27,8 @@ atom("cassandra_session") {
       maxConnections: ${cassandraMaxConnections}
       maxRequests: ${cassandraMaxRequests}
       lastUpdateClass: net.e6tech.elements.cassandra.etl.LastUpdate
+      createKeyspaceArguments:
+        replication: 1
 """
     _provider = SessionProvider
     _schema = Schema

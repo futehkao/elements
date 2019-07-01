@@ -41,5 +41,4 @@ public class TestTable {
     public void setName(String name) {
         this.name = name;
     }
-
 }

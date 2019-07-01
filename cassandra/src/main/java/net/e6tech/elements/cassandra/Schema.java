@@ -65,6 +65,7 @@ public class Schema {
 
     private Provision provision;
     private List<Map<String, String>> codecs = new ArrayList<>();
+    private boolean dropColumn = false;
 
     public List<Map<String, String>> getCodecs() {
         return codecs;
@@ -72,6 +73,14 @@ public class Schema {
 
     public void setCodecs(List<Map<String, String>> codecs) {
         this.codecs = codecs;
+    }
+
+    public boolean isDropColumn() {
+        return dropColumn;
+    }
+
+    public void setDropColumn(boolean dropColumn) {
+        this.dropColumn = dropColumn;
     }
 
     public SessionProvider getProvider(Resources resources) {
@@ -209,7 +218,7 @@ public class Schema {
                 String cql = generator.generate();
                 try {
                     provider.getSession(keyspace).execute(cql);
-                    generator.diff(provider.getSession(keyspace), provider.getTableMetadata(keyspace, generator.getTableName()));
+                    generator.diff(provider.getSession(keyspace), provider.getTableMetadata(keyspace, generator.getTableName()), isDropColumn());
                 } catch (Exception ex) {
                     logger.info("Syntax error in creating table for {}", cls);
                     logger.info(cql);

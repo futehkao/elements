@@ -24,6 +24,7 @@ import net.e6tech.elements.common.util.MapBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -45,5 +46,13 @@ public class CassandraTest {
         List<Long> ids = Arrays.asList(1L, 2L);
         List<TestTable> testTables = provision.getInstance(Sibyl.class).all(TestTable.class, "select * from test_table where id in :ids",
                 MapBuilder.of("ids", ids));
+
+        Sibyl s = provision.getInstance(Sibyl.class);
+        List<TestTable> list = new ArrayList<>();
+        TestTable test = new TestTable();
+        test.setId(2L);
+        test.setName("test");
+        list.add(test);
+        s.save(list, TestTable.class).inCompletionOrder();
     }
 }

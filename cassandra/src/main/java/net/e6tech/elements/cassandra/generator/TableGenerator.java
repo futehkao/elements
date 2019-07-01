@@ -145,7 +145,7 @@ public class TableGenerator extends AbstractGenerator {
         return builder.toString();
     }
 
-    public void diff(Session session, TableMetadata tableMetadata) {
+    public void diff(Session session, TableMetadata tableMetadata, boolean dropColumns) {
         List<ColumnMetadata> columns = tableMetadata.getColumns();
         Map<String, ColumnGenerator> toAdd = new LinkedHashMap<>();
         Map<String, ColumnMetadata> toRemove = new LinkedHashMap<>();
@@ -177,13 +177,15 @@ public class TableGenerator extends AbstractGenerator {
             builder.setLength(0);
         }
 
-        for (ColumnMetadata col : toRemove.values()) {
-            builder.append("ALTER TABLE ");
-            builder.append(fullyQualifiedTableName());
-            builder.append(" DROP ");
-            builder.append(col.getName());
-            session.execute(builder.toString());
-            builder.setLength(0);
+        if (dropColumns) {
+            for (ColumnMetadata col : toRemove.values()) {
+                builder.append("ALTER TABLE ");
+                builder.append(fullyQualifiedTableName());
+                builder.append(" DROP ");
+                builder.append(col.getName());
+                session.execute(builder.toString());
+                builder.setLength(0);
+            }
         }
     }
 }
