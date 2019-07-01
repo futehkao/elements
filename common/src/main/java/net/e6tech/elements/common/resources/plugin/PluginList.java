@@ -21,7 +21,9 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Created by futeh.
@@ -33,9 +35,9 @@ public class PluginList<T> implements PluginFactory {
     private PluginManager pluginManager;
 
     @Override
-    public PluginList<T> create(PluginManager resources) {
+    public PluginList<T> create(PluginManager pluginManager) {
         PluginList<T> copy = new PluginList<>();
-        copy.pluginManager = resources;
+        copy.pluginManager = pluginManager;
         copy.list = list;
         return copy;
     }
@@ -51,6 +53,15 @@ public class PluginList<T> implements PluginFactory {
 
     public void add(Class<? extends T> cls) {
         list.add(cls);
+    }
+
+    public void remove(Predicate predicate) {
+        Iterator iterator = list.iterator();
+        while (iterator.hasNext()) {
+            if (predicate.test(iterator.next())) {
+                iterator.remove();;
+            }
+        }
     }
 
     public List<T> list() {

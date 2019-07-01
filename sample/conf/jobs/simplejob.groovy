@@ -16,13 +16,11 @@
 
 import net.e6tech.sample.jobs.SimpleJob
 
-component("simpleJob") {
+atom("simpleJob") {
     configuration = """
-job.targetMethod: 'run'
-job.cronExpression: '0 0/5 * * * ?'
----
-env: dev
-job.cronExpression: '0 0/10 * * * ?'
+    job:
+        targetMethod: 'run'
+        cronExpression: '0 0/5 * * * ?'
 """
     job = jobServer.registerJob("simpleJob", SimpleJob)
 }

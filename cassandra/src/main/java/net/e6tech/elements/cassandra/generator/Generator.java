@@ -64,7 +64,7 @@ public class Generator {
         dataNames.put("blob", byte[].class);
     }
 
-    public String createTable(String keyspace, Class cls) {
+    public TableGenerator createTable(String keyspace, Class cls) {
         TableGenerator gen = null;
         try {
             gen = new TableGenerator(this, cls);
@@ -72,7 +72,7 @@ public class Generator {
         } catch (IntrospectionException e) {
             throw new SystemException(e);
         }
-        return gen.generate();
+        return gen;
     }
 
     public List<String> createIndexes(String keyspace, Class cls) {

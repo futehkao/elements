@@ -16,6 +16,9 @@
 
 package net.e6tech.elements.cassandra.generator;
 
+import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.mapping.annotations.ClusteringColumn;
 import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.PartitionKey;
@@ -33,7 +36,6 @@ import java.util.*;
 public class TableGenerator extends AbstractGenerator {
 
     private Map<String, ColumnGenerator> columnGenerators = new LinkedHashMap<>();
-    private Map<String, String> columnGenerators2 = new LinkedHashMap<>();
     private List<KeyColumn> clusterKeys = new ArrayList<>();
     private List<KeyColumn> partitionKeys = new ArrayList<>();
 
@@ -41,6 +43,8 @@ public class TableGenerator extends AbstractGenerator {
     TableGenerator(Generator generator, Class entityClass) throws IntrospectionException {
         super(generator);
         LinkedList<Class> classHierarchy = analyze(entityClass);
+        Map<String, String> columnGenerators2 = new LinkedHashMap<>();
+
 
         for (Class cls : classHierarchy) {
             Field[] fields = cls.getDeclaredFields();
@@ -139,5 +143,47 @@ public class TableGenerator extends AbstractGenerator {
         builder.append(")\n");
         builder.append(")");
         return builder.toString();
+    }
+
+    public void diff(Session session, TableMetadata tableMetadata) {
+        List<ColumnMetadata> columns = tableMetadata.getColumns();
+        Map<String, ColumnGenerator> toAdd = new LinkedHashMap<>();
+        Map<String, ColumnMetadata> toRemove = new LinkedHashMap<>();
+        for (ColumnGenerator gen : columnGenerators.values()) {
+            toAdd.put(gen.getTypeDescriptor().getColumnName().toLowerCase(), gen);
+        }
+        for (ColumnMetadata metadata : columns) {
+            toRemove.put(metadata.getName().toLowerCase(), metadata);
+        }
+
+        for (ColumnMetadata meta : columns) {
+            toAdd.remove(meta.getName().toLowerCase());
+        }
+
+        for (ColumnGenerator gen : columnGenerators.values()) {
+            toRemove.remove(gen.getTypeDescriptor().getColumnName().toLowerCase());
+        }
+
+        if (toAdd.isEmpty() && toRemove.isEmpty())
+            return;
+
+        StringBuilder builder = new StringBuilder();
+        for (ColumnGenerator col : toAdd.values()) {
+            builder.append("ALTER TABLE ");
+            builder.append(fullyQualifiedTableName());
+            builder.append(" ADD ");
+            builder.append(col.generate());
+            session.execute(builder.toString());
+            builder.setLength(0);
+        }
+
+        for (ColumnMetadata col : toRemove.values()) {
+            builder.append("ALTER TABLE ");
+            builder.append(fullyQualifiedTableName());
+            builder.append(" DROP ");
+            builder.append(col.getName());
+            session.execute(builder.toString());
+            builder.setLength(0);
+        }
     }
 }

@@ -16,7 +16,9 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -43,12 +45,16 @@ public class PluginMap<K, V> implements PluginFactory {
         pluginPath = path;
     }
 
-    protected void put(K key, V singleton) {
+    public void put(K key, V singleton) {
         map.put(key, singleton);
     }
 
-    protected void put(K key, Class<? extends V> cls) {
+    public void put(K key, Class<? extends V> cls) {
         map.put(key, cls);
+    }
+
+    public Object remove(K key) {
+        return map.remove(key);
     }
 
     public Map<K, V> map() {
@@ -56,11 +62,24 @@ public class PluginMap<K, V> implements PluginFactory {
                 key -> {
                     Map<K, V> m = new LinkedHashMap<>();
                     for (Map.Entry<K, Object> entry : map.entrySet()) {
+                        Object obj = entry.getValue();
                         V value;
-                        if (entry.getValue() instanceof Class) {
-                            value = (V) pluginManager.getResources().newInstance((Class) entry.getValue());
+                        if (obj instanceof Class) {
+                            value = (V) pluginManager.createInstance(pluginPath, (Class) obj);
                         } else {
-                            value = (V) entry.getValue();
+                            if (obj instanceof Plugin && ((Plugin) obj).isPrototype()) {
+                                try {
+                                    Plugin plugin = (Plugin) obj.getClass().getDeclaredConstructor().newInstance();
+                                    Reflection.copyInstance(plugin, obj);
+                                    plugin.initialize(pluginPath);
+                                    pluginManager.inject(plugin);
+                                    value = (V) plugin;
+                                } catch (Exception e) {
+                                    throw new SystemException(e);
+                                }
+                            } else {
+                                value = (V) obj;
+                            }
                         }
                         m.put(entry.getKey(), value);
                     }

@@ -26,6 +26,7 @@ import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.cassandra.etl.ETLContext;
 import net.e6tech.elements.cassandra.etl.Strategy;
 import net.e6tech.elements.cassandra.generator.Codec;
+import net.e6tech.elements.cassandra.generator.TableGenerator;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.PackageScanner;
@@ -76,7 +77,6 @@ public class Schema {
     public SessionProvider getProvider(Resources resources) {
         return resources.getInstance(SessionProvider.class);
     }
-
 
     public void createCodecs(String keyspace, String userType, Class<? extends Codec> codec) {
         provision.open().accept(Resources.class, resources -> {
@@ -203,10 +203,13 @@ public class Schema {
 
     public void createTables(String keyspace, Class ... classes) {
         provision.open().accept(Resources.class, resources -> {
+            SessionProvider provider = getProvider(resources);
             for (Class cls : classes) {
-                String cql = getProvider(resources).getGenerator().createTable(keyspace, cls);
+                TableGenerator generator = provider.getGenerator().createTable(keyspace, cls);
+                String cql = generator.generate();
                 try {
-                    getProvider(resources).getSession(keyspace).execute(cql);
+                    provider.getSession(keyspace).execute(cql);
+                    generator.diff(provider.getSession(keyspace), provider.getTableMetadata(keyspace, generator.getTableName()));
                 } catch (Exception ex) {
                     logger.info("Syntax error in creating table for {}", cls);
                     logger.info(cql);
@@ -215,7 +218,7 @@ public class Schema {
             }
 
             for (Class cls : classes) {
-                List<String> statements = getProvider(resources).getGenerator().createIndexes(keyspace, cls);
+                List<String> statements = provider.getGenerator().createIndexes(keyspace, cls);
                 for (String cql : statements) {
                     try {
                         getProvider(resources).getSession(keyspace).execute(cql);

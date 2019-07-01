@@ -154,10 +154,22 @@ public class SessionProvider implements ResourceProvider, Initializable {
     }
 
     public Session getSession(String keyspaceIn) {
+        return buildSession(getKeyspace(keyspaceIn));
+    }
+
+    public KeyspaceMetadata getKeyspaceMetadata(String keyspaceIn) {
+        return cluster.getMetadata().getKeyspace(getKeyspace(keyspaceIn));
+    }
+
+    public TableMetadata getTableMetadata(String keyspaceIn, String tableName) {
+        return cluster.getMetadata().getKeyspace(getKeyspace(keyspaceIn)).getTable(tableName);
+    }
+
+    protected String getKeyspace(String keyspaceIn) {
         String ks = keyspaceIn;
         if (ks == null)
             ks = keyspace;
-        return buildSession(ks);
+        return ks;
     }
 
     public Sibyl getSibyl() {

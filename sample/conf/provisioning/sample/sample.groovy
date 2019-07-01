@@ -17,8 +17,6 @@
 import net.e6tech.elements.jobs.JobServer
 
 
-registerBean('jobServer', JobServer)
-
 // setup boot profile: directory, init, main components, after etc.
 // For main components, only those listed in the boot components are executed.
 bootstrap.with {
@@ -33,7 +31,12 @@ bootstrap.with {
             variables: "$__dir/../../environment.groovy",
             cluster: "$__dir/../../cluster.groovy"
     ]
-    after = [{true}: "$__dir/../bootstrap/boot_final.groovy"]
+    after = [{ jobs || jobServer }: {
+                registerBean('jobServer', JobServer)
+             },
+             jobServer: [],
+             jobs: "$__dir/../../jobs/**",
+             {true}: "$__dir/../bootstrap/boot_final.groovy"]
     defaultEnvironmentFile = "$__dir/../../environment.groovy"
     // defaultSystemProperties = ...
 }
@@ -55,7 +58,7 @@ bootstrap
                    variables: true ]) // set variables component to true.  This has the effect of turning main component named variables.
         .preBoot({ println 'hello world'}) // runs an anonymous block
         .postBoot([{ println 'boot completed!'}])
-        .boot(null, 'cluster', 'trivial')
+        .boot(null, 'cluster', 'trivial', 'jobs')
         .after([persist: "$__dir/../../persist.groovy",
             notification: "$__dir/../../notification.groovy",
             concrete: "$__dir/../../prototype/concrete.groovy",
