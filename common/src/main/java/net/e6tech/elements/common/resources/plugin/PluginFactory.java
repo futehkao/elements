@@ -16,11 +16,9 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
-import net.e6tech.elements.common.resources.Resources;
-
 /**
  * Created by futeh.
  */
 public interface PluginFactory extends Plugin {
-    <T extends Plugin> T create(PluginManager resources);
+    <T extends Plugin> T create(PluginManager pluginManager);
 }

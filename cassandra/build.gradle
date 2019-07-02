@@ -18,7 +18,13 @@ limitations under the License.
 dependencies {
     compile project(':common')
 
-    compile 'com.datastax.cassandra:cassandra-driver-core:3.7.1'
+    compile 'org.ow2.asm:asm:7.1'
+    compile 'org.ow2.asm:asm-commons:7.1'
+    compile 'org.ow2.asm:asm-analysis:7.1'
+    compile 'org.ow2.asm:asm-util:7.1'
+    compile('com.datastax.cassandra:cassandra-driver-core:3.7.1') {
+        exclude group: 'org.ow2.asm'
+    }
     compile 'com.datastax.cassandra:cassandra-driver-mapping:3.7.1'
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"

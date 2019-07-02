@@ -21,13 +21,13 @@ dependencies {
     compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.9.8'
     
     // jetty
-    compile 'org.eclipse.jetty:jetty-webapp:9.4.8.v20171121'
-    compile 'org.eclipse.jetty:jetty-continuation:9.4.8.v20171121'
-    compile 'org.eclipse.jetty:jetty-http:9.4.8.v20171121'
-    compile 'org.eclipse.jetty:jetty-server:9.4.8.v20171121'
-    compile 'org.eclipse.jetty:jetty-util:9.4.8.v20171121'
-    compile 'org.eclipse.jetty:jetty-security:9.4.8.v20171121'
-    compile 'org.eclipse.jetty:jetty-io:9.4.8.v20171121'
+    compile 'org.eclipse.jetty:jetty-webapp:9.4.19.v20190610'
+    compile 'org.eclipse.jetty:jetty-continuation:9.4.19.v20190610'
+    compile 'org.eclipse.jetty:jetty-http:9.4.19.v20190610'
+    compile 'org.eclipse.jetty:jetty-server:9.4.19.v20190610'
+    compile 'org.eclipse.jetty:jetty-util:9.4.19.v20190610'
+    compile 'org.eclipse.jetty:jetty-security:9.4.19.v20190610'
+    compile 'org.eclipse.jetty:jetty-io:9.4.19.v20190610'
     
     // tomcat
     compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-core', version: '9.0.20'
@@ -35,17 +35,16 @@ dependencies {
     compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-logging-log4j', version: '9.0.0.M6'
 
     // compile 'javax.ws.rs:jsr311-api:1.1.1'
-    compile 'org.apache.cxf:cxf-rt-frontend-jaxws:3.2.6'
-    compile 'org.ow2.asm:asm:5.2'
-    compile 'org.apache.cxf:cxf-rt-frontend-jaxrs:3.2.6'
-    compile 'org.apache.cxf:cxf-rt-transports-local:3.2.6'
-    compile 'org.apache.cxf:cxf-rt-transports-http:3.2.6'
-    compile 'org.apache.cxf:cxf-rt-transports-http-hc:3.2.6'
-    compile 'org.apache.cxf:cxf-rt-transports-http-jetty:3.2.6'
-    compile 'org.apache.cxf:cxf-rt-rs-extension-providers:3.2.6'
-    compile 'org.apache.cxf:cxf-rt-rs-client:3.2.6'
-    compile 'org.apache.cxf:cxf-rt-rs-security-cors:3.2.6'
-    compile 'org.apache.cxf:cxf-rt-features-logging:3.2.6'
+    compile 'org.apache.cxf:cxf-rt-frontend-jaxws:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-frontend-jaxrs:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-transports-local:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-transports-http:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-transports-http-hc:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-transports-http-jetty:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-rs-extension-providers:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-rs-client:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-rs-security-cors:3.3.2'
+    compile 'org.apache.cxf:cxf-rt-features-logging:3.3.2'
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"

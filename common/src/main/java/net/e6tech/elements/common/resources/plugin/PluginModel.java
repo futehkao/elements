@@ -34,12 +34,20 @@ public interface PluginModel {
         getResources().getResourceManager().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pluginBaseClass), (Class) pluginClass);
     }
 
+    default <P extends Plugin> P unregisterPlugin(Class<P> pluginBaseClass) {
+        return (P) getResources().getResourceManager().getPluginManager().remove(PluginPath.of(getClass(), getName()).and(pluginBaseClass));
+    }
+
     default <P extends Plugin> void registerPlugin(Class pathClass, String pathAttribute, Class<P> pluginBaseClass, P plugin) {
         getResources().getResourceManager().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass), plugin);
     }
 
     default <P extends Plugin> void registerPlugin(Class pathClass, String pathAttribute, Class<P> pluginBaseClass, Class<? extends P> pluginClass) {
         getResources().getResourceManager().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass), (Class) pluginClass);
+    }
+
+    default <P extends Plugin> P unregisterPlugin(Class pathClass, String pathAttribute, Class<P> pluginBaseClass) {
+        return (P) getResources().getResourceManager().getPluginManager().remove(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass));
     }
 
     default <P extends Plugin> boolean isPluginRegistered(Class<P> pluginBaseClass) {

@@ -19,7 +19,7 @@ dependencies {
     compile 'com.betfair.net.java.opendmk:core:1.0-b02'
     compile 'com.betfair.net.java.opendmk:core-rmic:1.0-b02'
     compile 'com.betfair.net.java.opendmk:jmx-optional:1.0-b02'
-    compile 'com.j256.simplejmx:simplejmx:1.15'
+    compile 'com.j256.simplejmx:simplejmx:1.17'
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
