@@ -16,13 +16,13 @@ limitations under the License.
 
 dependencies {
     compile project(':persist')
-    compile ('org.hibernate:hibernate-core:5.4.3.Final') {
+    compile ("org.hibernate:hibernate-core:${hibernateVersion}") {
         exclude group: 'xml-apis'
     }
-    compile ('org.hibernate:hibernate-entitymanager:5.4.3.Final') {
+    compile ("org.hibernate:hibernate-entitymanager:${hibernateVersion}") {
         exclude group: 'xml-apis'
     }
-    compile ('org.hibernate:hibernate-jcache:5.4.3.Final') {
+    compile ("org.hibernate:hibernate-jcache:${hibernateVersion}") {
         exclude group: 'xml-apis'
     }
 

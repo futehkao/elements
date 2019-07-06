@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module external.linked.project.id=":web:main" external.linked.project.path="$MODULE_DIR$/../../../web" external.root.project.path="$MODULE_DIR$/../../.." external.system.id="GRADLE" external.system.module.group="net.e6tech" external.system.module.type="sourceSet" external.system.module.version="2.4.55" type="JAVA_MODULE" version="4">
+<module external.linked.project.id=":web:main" external.linked.project.path="$MODULE_DIR$/../../../web" external.root.project.path="$MODULE_DIR$/../../.." external.system.id="GRADLE" external.system.module.group="net.e6tech" external.system.module.type="sourceSet" external.system.module.version="2.4.56" type="JAVA_MODULE" version="4">
   <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
     <output url="file://$MODULE_DIR$/../../../web/out/production/classes" />
     <exclude-output />
@@ -14,7 +14,7 @@
     <orderEntry type="module" module-name="security_main" />
     <orderEntry type="module" module-name="jmx_main" />
     <orderEntry type="module" module-name="common_main" />
-    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.9.8" level="project" />
+    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.9.9" level="project" />
     <orderEntry type="library" name="Gradle: org.eclipse.jetty:jetty-webapp:9.4.19.v20190610" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.cxf:cxf-rt-transports-http-jetty:3.3.2" level="project" />
     <orderEntry type="library" name="Gradle: org.eclipse.jetty:jetty-continuation:9.4.19.v20190610" level="project" />
@@ -43,9 +43,9 @@
     <orderEntry type="library" name="Gradle: com.google.guava:guava:28.0-jre" level="project" />
     <orderEntry type="library" name="Gradle: com.google.code.findbugs:jsr305:3.0.2" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-web:2.12.0" level="project" />
+    <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-core:2.12.0" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-slf4j-impl:2.12.0" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-jul:2.12.0" level="project" />
-    <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-core:2.12.0" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-api:2.12.0" level="project" />
     <orderEntry type="library" name="Gradle: com.lmax:disruptor:3.4.2" level="project" />
     <orderEntry type="library" name="Gradle: org.ehcache:ehcache:3.7.1" level="project" />
@@ -53,7 +53,7 @@
     <orderEntry type="library" name="Gradle: org.slf4j:slf4j-api:1.7.26" level="project" />
     <orderEntry type="library" name="Gradle: javax.inject:javax.inject:1" level="project" />
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.module:jackson-module-jaxb-annotations:2.9.9" level="project" />
-    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:2.9.8" level="project" />
+    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:2.9.9" level="project" />
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-databind:2.9.9" level="project" />
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-core:2.9.9" level="project" />
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.9.9" level="project" />
@@ -147,8 +147,8 @@
     <orderEntry type="library" name="Gradle: com.sun.istack:istack-commons-tools:3.0.8" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.ant:ant:1.10.5" level="project" />
     <orderEntry type="library" name="Gradle: commons-cli:commons-cli:1.4" level="project" />
-    <orderEntry type="library" name="Gradle: info.picocli:picocli:3.9.5" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.apache.ant:ant-junit:1.9.13" level="project" />
+    <orderEntry type="library" name="Gradle: info.picocli:picocli:3.9.5" level="project" />
     <orderEntry type="library" name="Gradle: com.thoughtworks.qdox:qdox:1.12.1" level="project" />
     <orderEntry type="library" name="Gradle: jline:jline:2.14.6" level="project" />
     <orderEntry type="library" name="Gradle: junit:junit:4.12" level="project" />

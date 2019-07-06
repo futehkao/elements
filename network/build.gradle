@@ -17,20 +17,19 @@ dependencies {
     compile project(':common')
     compile project(':security')
     compile project(':jmx')
-    compile 'javax.ws.rs:javax.ws.rs-api:2.1.1'
-    // compile 'com.jcraft:jsch:0.1.+'
+    compile "javax.ws.rs:javax.ws.rs-api:${javaxWsRsApiVersion}"
 
-    compile (group: 'com.github.romix.akka', name: 'akka-kryo-serialization_2.12', version: '0.5.2') {
+    compile (group: 'com.github.romix.akka', name: 'akka-kryo-serialization_2.12', version: "${akkaKryoVersion}") {
         exclude group: 'org.ow2.asm'
     }
-    compile group: 'com.typesafe.akka', name: 'akka-cluster_2.12', version: '2.5.23'
-    compile 'org.ow2.asm:asm:7.1'
-    compile('com.typesafe.akka:akka-cluster-sharding_2.12:2.5.23') {
+    compile group: 'com.typesafe.akka', name: 'akka-cluster_2.12', version: "${akkaVersion}"
+    compile "org.ow2.asm:asm:${asmVersion}"
+    compile("com.typesafe.akka:akka-cluster-sharding_2.12:${akkaVersion}") {
         exclude group: 'org.ow2.asm'
     }
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
     testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
-    testCompile group: 'com.typesafe.akka', name: 'akka-testkit_2.12', version: '2.5.23'
+    testCompile group: 'com.typesafe.akka', name: 'akka-testkit_2.12', version: "${akkaVersion}"
 }

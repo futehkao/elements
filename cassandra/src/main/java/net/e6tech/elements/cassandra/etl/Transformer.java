@@ -26,6 +26,7 @@ import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
@@ -55,7 +56,6 @@ public class Transformer<T, E> {
         hasCheckpoint = tableInspector.getCheckpointColumn(0) != null;
     }
 
-
     public Transformer<T,E> transform(Stream<E> stream, BiConsumer<Transformer<T, E>, E> consumer) {
         stream.forEach(e -> consumer.accept(this, e));
         load();
@@ -63,9 +63,13 @@ public class Transformer<T, E> {
     }
 
     public Transformer<T,E> transform(E[] array, BiConsumer<Transformer<T, E>, E> consumer) {
+        List<CompletableFuture> asyncList = new LinkedList<>();
         for (E e : array) {
-            consumer.accept(this, e);
+            asyncList.add(CompletableFuture.runAsync(() ->  consumer.accept(this, e)));
         }
+        for (CompletableFuture future : asyncList)
+            future.join();
+        asyncList.clear();
         load();
         return this;
     }
@@ -133,6 +137,7 @@ public class Transformer<T, E> {
     @SuppressWarnings("squid:S3776")
     public Transformer<T, E> forEachCreateIfNotExist(BiConsumer<E, T> consumer) {
         Inspector extractedInspector = null;
+        List<CompletableFuture> asyncList = new LinkedList<>();
         for (Pair<PrimaryKey, E> e : entries()) {
             T t = computeIfAbsent(e.key());
             E extracted = e.value();
@@ -149,9 +154,14 @@ public class Transformer<T, E> {
                     duplicate = checkPoint != null && extractedPartitionKey.compareTo(checkPoint) <= 0;
                 }
             }
-            if (!duplicate)
-                consumer.accept(e.value(), t);
+            if (!duplicate) {
+                asyncList.add(CompletableFuture.runAsync(() -> consumer.accept(extracted, t)));
+            }
         }
+
+        for (CompletableFuture future : asyncList)
+            future.join();
+        asyncList.clear();
 
         // update checkpoints.
         for (Pair<PrimaryKey, E> e : entries()) {

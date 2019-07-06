@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module external.linked.project.id=":network:test" external.linked.project.path="$MODULE_DIR$/../../../network" external.root.project.path="$MODULE_DIR$/../../.." external.system.id="GRADLE" external.system.module.group="net.e6tech" external.system.module.type="sourceSet" external.system.module.version="2.4.55" type="JAVA_MODULE" version="4">
+<module external.linked.project.id=":network:test" external.linked.project.path="$MODULE_DIR$/../../../network" external.root.project.path="$MODULE_DIR$/../../.." external.system.id="GRADLE" external.system.module.group="net.e6tech" external.system.module.type="sourceSet" external.system.module.version="2.4.56" type="JAVA_MODULE" version="4">
   <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
     <output-test url="file://$MODULE_DIR$/../../../network/out/test/classes" />
     <exclude-output />
@@ -32,9 +32,9 @@
     <orderEntry type="library" name="Gradle: com.google.guava:guava:28.0-jre" level="project" />
     <orderEntry type="library" name="Gradle: com.google.code.findbugs:jsr305:3.0.2" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-web:2.12.0" level="project" />
+    <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-core:2.12.0" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-slf4j-impl:2.12.0" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-jul:2.12.0" level="project" />
-    <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-core:2.12.0" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-api:2.12.0" level="project" />
     <orderEntry type="library" name="Gradle: com.lmax:disruptor:3.4.2" level="project" />
     <orderEntry type="library" name="Gradle: org.ehcache:ehcache:3.7.1" level="project" />

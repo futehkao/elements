@@ -15,13 +15,13 @@ limitations under the License.
 */
 dependencies {
     compile project(':common')
-    compile 'org.bouncycastle:bcprov-jdk15on:1.62'
-    compile 'org.bouncycastle:bcpg-jdk15on:1.62'
-    compile 'org.bouncycastle:bcpkix-jdk15on:1.62'
-    compile 'org.bouncycastle:bcmail-jdk15on:1.62'
-    compile 'javax.xml.bind:jaxb-api:2.3.0'
-    compile 'com.sun.xml.bind:jaxb-core:2.3.0'
-    compile 'com.sun.xml.bind:jaxb-impl:2.3.0'
+    compile "org.bouncycastle:bcprov-jdk15on:${bouncycastleVersion}"
+    compile "org.bouncycastle:bcpg-jdk15on:${bouncycastleVersion}"
+    compile "org.bouncycastle:bcpkix-jdk15on:${bouncycastleVersion}"
+    compile "org.bouncycastle:bcmail-jdk15on:${bouncycastleVersion}"
+    compile "javax.xml.bind:jaxb-api:${jaxbVersion}"
+    compile "com.sun.xml.bind:jaxb-core:${jaxbVersion}"
+    compile "com.sun.xml.bind:jaxb-impl:${jaxbVersion}"
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"

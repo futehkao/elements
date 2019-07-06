@@ -90,6 +90,9 @@ public class TomcatEngine implements ServerEngine {
         Tomcat tomcat = new Tomcat();
         tomcats.add(tomcat);
         tomcat.setHostname(controller.getURL().getHost());
+        if (baseDir != null) {
+            tomcat.setBaseDir(baseDir + "." + controller.getURL().getPort());
+        }
 
         JaxRSServlet servlet = new JaxRSServlet((JAXRSServerFactoryBean) controller.getFactory());
         String context = controller.getURL().getPath();
@@ -97,10 +100,6 @@ public class TomcatEngine implements ServerEngine {
             context = context.substring(0, context.length() - 1);
         Context ctx = tomcat.addContext(context, null);
         tomcat.addServlet(context, "jaxrs", servlet);
-
-        if (baseDir != null) {
-            tomcat.setBaseDir(baseDir + "." + controller.getURL().getPort());
-        }
 
         // host name port and context, e.g, http://0.0.0.0:8080/restful are controlled by Tomcat.
         // JaxRSServer sets the addresse to "/" so that servlet mapping needs to
