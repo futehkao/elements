@@ -579,6 +579,15 @@ public class RestfulClient {
         if (code > 500)
             throw new ServiceUnavailableException();
 
+        if (status == null) {
+            switch (code) {
+                case 422:
+                    throw new BadRequestException(message);
+                default:
+                    throw new ServerErrorException(message, code);
+            }
+        }
+
         switch (status) {
             case OK:
             case CREATED:

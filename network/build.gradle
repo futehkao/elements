@@ -17,7 +17,7 @@ dependencies {
     compile project(':common')
     compile project(':security')
     compile project(':jmx')
-    compile "javax.ws.rs:javax.ws.rs-api:${javaxWsRsApiVersion}"
+    compile "jakarta.ws.rs:jakarta.ws.rs-api:${javaxWsRsApiVersion}"
 
     compile (group: 'com.github.romix.akka', name: 'akka-kryo-serialization_2.12', version: "${akkaKryoVersion}") {
         exclude group: 'org.ow2.asm'

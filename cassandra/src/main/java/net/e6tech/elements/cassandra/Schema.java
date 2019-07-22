@@ -34,7 +34,9 @@ import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.StringUtil;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.concurrent.ThreadPool;
 
+import javax.sound.sampled.Line;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Annotation;
@@ -45,6 +47,9 @@ import java.lang.reflect.TypeVariable;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
 @SuppressWarnings({"squid:S00115", "squid:S3776"})
@@ -66,6 +71,25 @@ public class Schema {
     private Provision provision;
     private List<Map<String, String>> codecs = new ArrayList<>();
     private boolean dropColumn = false;
+    private ExecutorService threadPool;
+    private int threadSize = 1;
+
+    public int getThreadSize() {
+        return threadSize;
+    }
+
+    public void setThreadSize(int threadSize) {
+        this.threadSize = threadSize;
+        if (threadPool != null) {
+            threadPool.shutdown();
+            threadPool = null;
+        }
+    }
+
+    public Schema threadSize(int threadSize) {
+        setThreadSize(threadSize);
+        return this;
+    }
 
     public List<Map<String, String>> getCodecs() {
         return codecs;
@@ -310,13 +334,33 @@ public class Schema {
 
     public void extract(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
         Map<Class<Strategy>, ETLContext> map = scan(packageName, recursive, customizer);
+        if (threadPool == null) {
+            threadPool = Executors.newFixedThreadPool(threadSize);
+        }
+        List<Future> futures = new LinkedList();
         for (Map.Entry<Class<Strategy>, ETLContext> entry : map.entrySet()) {
+            Future<?> future = threadPool.submit(() -> {
+                try {
+                    Strategy strategy = entry.getKey().getDeclaredConstructor().newInstance();
+                    strategy.run(entry.getValue());
+                } catch (Exception e) {
+                    logger.error("Cannot extract {}", entry.getKey());
+                    throw new SystemException(e);
+                }
+            });
+            futures.add(future);
+        }
+
+        for (Future future : futures) {
             try {
-                Strategy strategy = entry.getKey().getDeclaredConstructor().newInstance();
-                strategy.run(entry.getValue());
-            } catch (Exception e) {
-                logger.error("Cannot extract {}", entry.getKey());
-                throw new SystemException(e);
+                future.get();
+            } catch (InterruptedException e) {
+                // don't care
+            } catch (ExecutionException e) {
+                if (e.getCause() instanceof RuntimeException)
+                    throw (RuntimeException) e.getCause();
+                else
+                    throw new SystemException(e.getCause());
             }
         }
     }

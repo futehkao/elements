@@ -41,7 +41,6 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
         this.executorService = newPool.apply(this);
     }
 
-
     /**
      * Return a thread pool that supports unlimited number of threads.  It will create threads as needed.
      * The default keep alive time for a thread is 60 seconds.
@@ -118,7 +117,7 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
 
     @Override
     public List<Runnable> shutdownNow() {
-        return Collections.emptyList();
+        return executorService.shutdownNow();
     }
 
     @Override
