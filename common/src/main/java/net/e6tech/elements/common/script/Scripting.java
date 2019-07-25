@@ -21,6 +21,7 @@ import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.file.FileUtil;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.jsr223.GroovyScriptEngineImpl;
+import org.codehaus.groovy.runtime.InvokerHelper;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -32,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by futeh.
@@ -45,6 +47,7 @@ public class Scripting {
     public static final String __FILE = "__file";
     public static final String __LOAD_DIR = "__load_dir";
     public static final String __LOAD_FILE = "__load_file";
+    public static final String __SCRIPT = "__script";
     private static Logger logger = Logger.getLogger();
     private static final Set<String> reservedKeyWords = new HashSet<>();
 
@@ -76,6 +79,10 @@ public class Scripting {
         script.engine = new GroovyEngine(classLoader, properties, true);
 
         return script;
+    }
+
+    public boolean containsKey(String key) {
+        return engine.containsKey(key);
     }
 
     public void put(String key, Object val) {
@@ -345,11 +352,14 @@ public class Scripting {
         return ret;
     }
 
+    public ClassLoader getScriptLoader() {
+        return engine.getClassLoader();
+    }
+
     // This class encapsulates the differences between GroovyShell and GroovyScriptEngineImpl.
     private static class GroovyEngine {
         GroovyShell shell;
-        GroovyScriptEngineImpl scriptEngine;
-        ScriptContext scriptContext;
+        CompilerConfiguration compilerConfig;
 
         public GroovyEngine(ClassLoader classLoader, Properties properties, boolean useGroovyShell) {
             ClassLoader ctxLoader = classLoader;
@@ -358,7 +368,7 @@ public class Scripting {
             if (ctxLoader == null)
                 ctxLoader = Scripting.class.getClassLoader();
 
-            CompilerConfiguration compilerConfig = new CompilerConfiguration();
+            compilerConfig = new CompilerConfiguration();
             String scriptBaseClass = properties.getProperty(SCRIPT_BASE_CLASS);
             if (scriptBaseClass != null)
                 compilerConfig.setScriptBaseClass(scriptBaseClass);
@@ -367,36 +377,25 @@ public class Scripting {
                 loader.addClasspath(properties.getProperty(PATH));
             }
 
-            if (useGroovyShell) {
-                Binding binding = new Binding();
-                for (Map.Entry entry : properties.entrySet()) {
-                    binding.setVariable(entry.getKey().toString(), entry.getValue());
-                }
-                shell = new GroovyShell(loader, binding, compilerConfig);
-            } else {
-                scriptEngine = new GroovyScriptEngineImpl(loader);
-                scriptContext = new SimpleScriptContext();
-                for (Map.Entry entry : properties.entrySet()) {
-                    scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).put(entry.getKey().toString(), entry.getValue());
-                }
+            Binding binding = new Binding();
+            for (Map.Entry entry : properties.entrySet()) {
+                binding.setVariable(entry.getKey().toString(), entry.getValue());
             }
+            shell = new GroovyShell(loader, binding, compilerConfig);
+
+        }
+
+        public boolean containsKey(String key) {
+            return shell.getContext().getVariables().containsKey(key);
         }
 
         public void put(String key, Object val) {
-            if (shell != null) {
-                shell.setVariable(key, val);
-            } else {
-                scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).put(key, val);
-            }
+            shell.setVariable(key, val);
         }
 
         public Map<String, Object> getVariables() {
             Map<String, Object> binding;
-            if (shell != null) {
-                binding = shell.getContext().getVariables();
-            } else {
-                binding = scriptContext.getBindings(ScriptContext.ENGINE_SCOPE);
-            }
+            binding = shell.getContext().getVariables();
 
             Map<String, Object> variables = new LinkedHashMap<>();
             for (Map.Entry<String, Object> entry : binding.entrySet()) {
@@ -410,79 +409,82 @@ public class Scripting {
         }
 
         public Object get(String key) {
-            if (shell != null) {
-                if ("binding".equals(key))
-                    return shell.getContext();
-                return shell.getVariable(key);
-            } else {
-                if ("binding".equals(key))
-                    return scriptContext.getBindings(ScriptContext.ENGINE_SCOPE);
-                return scriptContext.getBindings(ScriptContext.ENGINE_SCOPE).get(key);
-            }
+            if ("binding".equals(key))
+                return shell.getContext();
+            return shell.getVariable(key);
         }
 
         public Object remove(String key) {
-            if (shell != null) {
-                return shell.getContext().getVariables().remove(key);
-            } else {
-                return scriptEngine.getBindings(ScriptContext.ENGINE_SCOPE).remove(key);
-            }
+            return shell.getContext().getVariables().remove(key);
         }
 
         public Properties getProperties() {
-            if (shell != null) {
-                Map<Object, Object> binding = shell.getContext().getVariables();
-                Properties properties = new Properties();
-                for (Map.Entry key : binding.entrySet()) {
-                    Object value = binding.get(key);
-                    if (value != null)
-                        properties.setProperty(key.toString(), value.toString());
-                }
-                return properties;
-            } else {
-                Bindings bindings = scriptContext.getBindings(ScriptContext.ENGINE_SCOPE);
-                Properties properties = new Properties();
-                for (Map.Entry<String, Object> entry : bindings.entrySet()) {
-                    if (entry.getValue() != null)
-                        properties.setProperty(entry.getKey(), entry.getValue().toString());
-                }
-                return properties;
+            Map<Object, Object> binding = shell.getContext().getVariables();
+            Properties properties = new Properties();
+            for (Map.Entry key : binding.entrySet()) {
+                Object value = binding.get(key);
+                if (value != null)
+                    properties.setProperty(key.toString(), value.toString());
             }
+            return properties;
+
         }
 
         public Object eval(File file) throws ScriptException {
+            Script previous = (Script) get(__SCRIPT);
             try {
-                if (shell != null) {
-                    return shell.evaluate(file);
-                } else {
-                    try (Reader reader = new BufferedReader(new FileReader(file))) {
-                        return scriptEngine.eval(reader, scriptContext);
-                    }
-                }
+                GroovyCodeSource codeSource = new GroovyCodeSource(file, compilerConfig.getSourceEncoding());
+                Script script = shell.parse(codeSource);
+                put(__SCRIPT, script);
+                return script.run();
             } catch (IOException ex) {
                 throw new ScriptException(ex);
+            } finally {
+                if (previous != null)
+                    put(__SCRIPT, previous);
+                else
+                    remove(__SCRIPT);
             }
         }
 
         public Object eval(Reader reader, String fileName) throws ScriptException {
-            if (shell != null) {
-                return shell.evaluate(reader, scriptName(fileName));
-            } else {
-                return scriptEngine.eval(reader, scriptContext);
+            Script previous = (Script) get(__SCRIPT);
+            Script script = null;
+            try {
+                script = shell.parse(reader, scriptName(fileName));
+                put(__SCRIPT, script);
+                return script.run();
+            } finally {
+                if (script != null) {
+                    InvokerHelper.removeClass(script.getClass());
+                }
+                if (previous != null)
+                    put(__SCRIPT, previous);
+                else
+                    remove(__SCRIPT);
             }
         }
 
-        public Object eval(String script) throws ScriptException {
-            if (shell != null) {
-                return shell.evaluate(script);
-            } else {
-                try {
-                    return scriptEngine.eval(script, scriptContext);
-                } catch (ScriptException e) {
-                    logger.error("Error eval {}", script);
-                    throw e;
-                }
+        public Object eval(String scriptText) throws ScriptException {
+            Script previous = (Script) get(__SCRIPT);
+            try {
+                Script script = shell.parse(scriptText);
+                put(__SCRIPT, script);
+                return script.run();
+            } finally {
+                if (previous != null)
+                    put(__SCRIPT, previous);
+                else
+                    remove(__SCRIPT);
             }
+        }
+
+        public ClassLoader getClassLoader() {
+            Script script = (Script) get(__SCRIPT);
+            if (script != null) {
+                return script.getMetaClass().getTheClass().getClassLoader();
+            }
+            return shell.getClassLoader();
         }
 
         private static String scriptName(String fileName) {

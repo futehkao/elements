@@ -25,6 +25,7 @@ import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Configuration;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.resources.ResourcesFactory;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 import org.apache.cxf.ext.logging.LoggingFeature;
@@ -76,6 +77,7 @@ public class JaxRSServer extends CXFServer {
     private Configuration.Resolver resolver;
     private ClassLoader classLoader;
     private LogEventSender logEventSender;
+    private ResourcesFactory resourcesFactory;
 
     public static Logger getLogger() {
         return logger;
@@ -141,6 +143,15 @@ public class JaxRSServer extends CXFServer {
 
     public void setClassLoader(ClassLoader classLoader) {
         this.classLoader = classLoader;
+    }
+
+    public ResourcesFactory getResourcesFactory() {
+        return resourcesFactory;
+    }
+
+    @Inject(optional = true)
+    public void setResourcesFactory(ResourcesFactory resourcesFactory) {
+        this.resourcesFactory = resourcesFactory;
     }
 
     @Override
@@ -229,7 +240,8 @@ public class JaxRSServer extends CXFServer {
                     getProvision().getResourceManager().registerBean(beanName, prototype);
             } else {
                 Module module = (res == null) ? null : res.getModule();
-                resourceProvider = new InstanceResourceProvider(this, resourceClass, prototype, module, getProvision(), hObserver);
+                ResourcesFactory factory = (resourcesFactory != null) ? resourcesFactory : getProvision().resourcesFactory();
+                resourceProvider = new InstanceResourceProvider(this, resourceClass, prototype, module, factory, hObserver);
             }
 
             for (JaxRSServerController entry : entryList)

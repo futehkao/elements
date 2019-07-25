@@ -16,11 +16,20 @@
 
 import net.e6tech.sample.prototype.*
 
-atom("concrete", "prototype.groovy") {
+atom("concrete")
+        .settings([_description : 'description',
+                    _name : 'dependent'])
+        .from("prototype.groovy")
+        .build {
     configuration = """
     _dependent.description: new description
     _owner.name: owner
 """
     _dependent = Dependent
     _owner = Owner
+    concrete_owner = _owner
+
+    preInit {
+        _dependent.preInit = _dependent.preInit + 1
+    }
 }

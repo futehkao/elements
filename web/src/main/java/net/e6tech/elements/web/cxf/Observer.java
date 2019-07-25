@@ -1,6 +1,8 @@
 package net.e6tech.elements.web.cxf;
 
 import net.e6tech.elements.common.resources.BindClass;
+import net.e6tech.elements.common.resources.ResourcesFactory;
+import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.SystemException;
 
 import javax.servlet.http.HttpServletRequest;
@@ -13,6 +15,10 @@ import java.lang.reflect.Method;
 @BindClass(Observer.class)
 public abstract class Observer implements Cloneable {
 
+    public UnitOfWork open(ResourcesFactory factory) {
+        return factory.open();
+    }
+
     public void beforeInvocation(HttpServletRequest request, HttpServletResponse response, Object instance, Method method, Object[] args) {
     }
 
@@ -20,7 +26,6 @@ public abstract class Observer implements Cloneable {
     }
 
     public void onException(Exception exception) {
-
     }
 
     @SuppressWarnings("squid:S2975")

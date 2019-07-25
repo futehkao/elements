@@ -54,6 +54,7 @@ atom("persist") {
 
     configuration = """
         entityManagerProvider.persistenceUnitName: sample
+        entityManagerProvider.name: sample-rw
         entityManagerProvider.transactionTimeout: ${entityManagerTxTimeout}
         entityManagerProvider.monitorTransaction: ${entityManagerMonitorTransaction}
         entityManagerProvider.longTransaction: ${entityManagerLongTransaction}

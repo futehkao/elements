@@ -493,9 +493,19 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             throw logger.systemException("bean with name=" + name + " already registered");
         }
 
+        String existingName = null;
         try {
-            Method method = instance.getClass().getMethod("setName", String.class);
-            method.invoke(instance, name);
+            Method method = instance.getClass().getMethod("getName");
+            existingName = (String) method.invoke(instance, name);
+        } catch (Exception ex) {
+            Logger.suppress(ex);
+        }
+
+        try {
+            if (existingName == null) {
+                Method method = instance.getClass().getMethod("setName", String.class);
+                method.invoke(instance, name);
+            }
         } catch (Exception ex) {
             Logger.suppress(ex);
         }

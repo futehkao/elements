@@ -19,8 +19,10 @@ import groovy.lang.Closure;
 import groovy.lang.MissingMethodException;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.script.AbstractScriptBase;
+import net.e6tech.elements.common.script.Scripting;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -136,34 +138,33 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
         return atom(null, closure);
     }
 
+    public AtomBuilder prototype(String name) {
+        return new AtomBuilder(name, true, getShell());
+    }
+
     public Atom prototype(String name, Closure closure) {
-        Consumer<Atom> consumer = atomConsumer(closure);
-        Atom atom = getShell().createAtom(name, consumer, null, true);
-        atom.setScriptLoader(closure.getClass().getClassLoader());
-        return atom;
+        return prototype(name)
+                .build(closure);
     }
 
     public Atom prototype(String name,  String prototypePath, Closure closure) {
-        Atom prototype = (Atom) getShell().exec(prototypePath);
-        Consumer<Atom> consumer = atomConsumer(closure);
-        Atom atom = getShell().createAtom(name, consumer, prototype, true);
-        atom.setScriptLoader(closure.getClass().getClassLoader());
-        return atom;
+        return prototype(name)
+                .from(prototypePath)
+                .build(closure);
+    }
+
+    public AtomBuilder atom(String name) {
+        return new AtomBuilder(name, false, getShell());
     }
 
     public Atom atom(String name, Closure closure) {
-        Consumer<Atom> consumer = atomConsumer(closure);
-        Atom atom = getShell().createAtom(name, consumer, null, false);
-        atom.setScriptLoader(closure.getClass().getClassLoader());
-        return atom;
+        return atom(name).build(closure);
     }
 
-    public Atom atom(String name, String prototypePath,  Closure closure) {
-        Atom prototype = (Atom) getShell().exec(prototypePath);
-        Consumer<Atom> consumer = atomConsumer(closure);
-        Atom atom = getShell().createAtom(name, consumer, prototype, false);
-        atom.setScriptLoader(closure.getClass().getClassLoader());
-        return atom;
+    public Atom atom(String name, String prototypePath, Closure closure) {
+        return atom(name)
+                .from(prototypePath)
+                .build(closure);
     }
 
     public Bootstrap boot(Object bootScript, Object ... components) {
@@ -171,23 +172,90 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
         return bootstrap;
     }
 
-    private Consumer<Atom> atomConsumer(Closure closure) {
-        return atom -> {
-            atom.setScriptLoader(closure.getClass().getClassLoader());
-            final Closure clonedClosure = closure.rehydrate(atom, closure.getOwner(), closure.getOwner());
-            clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
-            clonedClosure.call(atom);
-            // clonedClosure.setDelegate(null); DO NOT set to null.  run after needs it.
+    public static class AtomBuilder {
+        private Map<String, Object> settings;
+        private String name;
+        private Closure closure;
+        private ResourceManager resourceManager;
+        private String prototypePath;
+        private boolean prototype = false;
 
-            // the delegate, a Component, is still needed for runAfter.  Therefore
-            // set the closure delegate to null afterward using cleanup
-            getShell().addCleanup(() -> {
-                clonedClosure.setDelegate(null);
-                Object owner = clonedClosure.getOwner();
-                if (owner instanceof Closure) {
-                    ((Closure) owner).setDelegate(null);
+        public AtomBuilder(String name, boolean prototype, ResourceManager resourceManager) {
+            this.name = name;
+            this.prototype = prototype;
+            this.resourceManager = resourceManager;
+        }
+
+        public AtomBuilder settings(Map<String, Object> settings) {
+            this.settings = settings;
+            return this;
+        }
+
+        public AtomBuilder from(String prototypePath) {
+            this.prototypePath = prototypePath;
+            return this;
+        }
+
+        public AtomBuilder prototype(boolean p) {
+            prototype = p;
+            return this;
+        }
+
+        public Atom build(Closure closure) {
+            this.closure = closure;
+            return build();
+        }
+
+        public Atom build() {
+            Atom existing = resourceManager.getAtom(name);
+            if (existing != null)
+                return existing;
+
+            boolean hasPrevious = resourceManager.getScripting().containsKey(Atom.OVERRIDE_SETTINGS);
+            Map<String, Object> previous = (Map) resourceManager.getScripting().get(Atom.OVERRIDE_SETTINGS);
+            Atom prototypeAtom = null;
+            try {
+                if (settings != null) {
+                    resourceManager.getScripting().put(Atom.OVERRIDE_SETTINGS, settings);
                 }
-            });
-        };
+                prototypeAtom = (prototypePath != null) ? (Atom) resourceManager.exec(prototypePath) : null;
+            } finally {
+                if (hasPrevious) {
+                   resourceManager.getScripting().put(Atom.OVERRIDE_SETTINGS, previous);
+                } else if (settings != null){
+                    resourceManager.getScripting().remove(Atom.OVERRIDE_SETTINGS);
+                }
+            }
+            return resourceManager.createAtom(name, atomConsumer(), prototypeAtom, prototype);
+        }
+
+        private Consumer<Atom> atomConsumer() {
+            if (closure == null)
+                return atom -> {};
+            return atom -> {
+                if (closure != null)
+                    atom.setScriptLoader(closure.getClass().getClassLoader());
+                else
+                    atom.setScriptLoader(resourceManager.getScripting().getScriptLoader());
+
+                final Closure clonedClosure = closure.rehydrate(atom, closure.getOwner(), closure.getOwner());
+                clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
+                if (settings != null)
+                    atom.setDefaultSettings(settings);
+
+                clonedClosure.call(atom);
+                // clonedClosure.setDelegate(null); DO NOT set to null.  run after needs it.
+
+                // the delegate, a Component, is still needed for runAfter.  Therefore
+                // set the closure delegate to null afterward using cleanup
+                resourceManager.addCleanup(() -> {
+                    clonedClosure.setDelegate(null);
+                    Object owner = clonedClosure.getOwner();
+                    if (owner instanceof Closure) {
+                        ((Closure) owner).setDelegate(null);
+                    }
+                });
+            };
+        }
     }
 }

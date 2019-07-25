@@ -29,10 +29,16 @@ public class PrototypeTest extends BaseCase {
     @Test
     public void basic() {
         Owner owner = (Owner) provision.getResourceManager().getAtom("concrete").get("_owner");
-        assertTrue(owner.getName().equals("owner"));
+        assertTrue(owner.getName().equals("concrete_owner"));
         assertTrue(owner.getDependent().getName().equals("dependent"));
-        assertTrue(owner.getDependent().getDescription().equals("new description"));
+        assertEquals(owner.getDependent().getPreInit(), 2);
+        assertEquals(owner.getDependent().getPostInit(), 1);
+        assertEquals(owner.getDependent().getAfter(), 1);
+        assertEquals(owner.getDependent().getStarted(), 1);
+        assertEquals(owner.getDependent().getInitialized(), 1);
+        assertEquals(owner.getDependent().getLaunched(), 1);
+        assertEquals(owner.getDependent().getOther(), "default");
+
         assertTrue(provision.getResourceManager().getAtom("base") == null);
     }
-
 }

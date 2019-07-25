@@ -59,6 +59,7 @@ public class Job implements Initializable, Startable, LaunchListener {
     private Object target;
     private String targetMethod;
     private AtomicInteger running = new AtomicInteger(0);
+    private boolean started = false;
 
     public JobServer getJobServer() {
         return jobServer;
@@ -148,6 +149,8 @@ public class Job implements Initializable, Startable, LaunchListener {
     }
 
     public void start() {
+        if (started)
+            return;
         try {
             logger.info("Scheduled job={}", getName());
             init();
@@ -163,6 +166,7 @@ public class Job implements Initializable, Startable, LaunchListener {
                 }
             }
             scheduler.scheduleJob(jobDetail, trigger);
+            started = true;
         } catch (Exception ex) {
             throw new SystemException(ex);
         }

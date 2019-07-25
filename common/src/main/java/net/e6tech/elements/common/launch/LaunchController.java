@@ -65,6 +65,11 @@ public class LaunchController implements LaunchListener {
         return this;
     }
 
+    public LaunchController properties(Map<String, Object> map) {
+        properties.putAll(map);
+        return this;
+    }
+
     public void addProperties(Properties properties) {
         this.properties.putAll(properties);
     }
@@ -185,6 +190,7 @@ public class LaunchController implements LaunchListener {
             e.printStackTrace(); // we cannot use Logger yet
             System.exit(1);
         }
+
         latch.countDown();
 
         // if ShutdownNotification is detected, this code will call resourceManager.notifyAll in order

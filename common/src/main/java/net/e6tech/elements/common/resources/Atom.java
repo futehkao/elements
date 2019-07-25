@@ -24,6 +24,7 @@ import net.e6tech.elements.common.notification.Notification;
 import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.datastructure.Pair;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -37,6 +38,7 @@ import java.util.function.Consumer;
  */
 @SuppressWarnings({"squid:S1845", "squid:S3776"})
 public class Atom implements Map<String, Object> {
+    public static final String OVERRIDE_SETTINGS = "__atom_override_settings";
     private static Logger logger = Logger.getLogger();
     private static final String WAIT_FOR = "waitFor";
     private static final String PRE_INIT = "preInit";
@@ -52,6 +54,8 @@ public class Atom implements Map<String, Object> {
     private ResourceManager resourceManager;
     private Resources resources;
     private Map<String, Object> boundInstances = new LinkedHashMap<>();
+    private Map<String, Object> overrideSettings = new LinkedHashMap<>();
+    private Map<String, Object> defaultSettings = new LinkedHashMap<>();
     private Configuration configuration;
     private String name;
     private Map<String, BiConsumer<String, Object>> directives = new HashMap<>();
@@ -70,7 +74,26 @@ public class Atom implements Map<String, Object> {
         resources = resourceManager.newResources();
         resources.bind(Configuration.Resolver.class, resolver);
         resources.bind(Atom.class, this);
-        BiConsumer<String, Object> put = (key, value) -> boundInstances.put(key, value);
+        resourceManager.getVariable(OVERRIDE_SETTINGS).ifPresent(map -> {
+            overrideSettings = resourceManager.nullableVar(OVERRIDE_SETTINGS);
+        });
+
+        BiConsumer<String, Object> addClosure = (key, value) -> {
+            Object existing = boundInstances.get(key);
+            List<Closure> list;
+            if (existing instanceof List) {
+                list = (List<Closure>) existing;
+            } else {
+                list = new LinkedList<>();
+                boundInstances.put(key, list);
+            }
+            if (value instanceof Closure) {
+                Closure closure = (Closure) value;
+                list.add(closure);
+                closure.setResolveStrategy(Closure.DELEGATE_FIRST);
+                closure.setDelegate(this);
+            }
+        };
         directives.put(CONFIGURATION, (key, value) -> {
             if (value != null) {
                 configuration = new Configuration(resourceManager.getScripting().getProperties());
@@ -78,11 +101,11 @@ public class Atom implements Map<String, Object> {
                 resources.configurator.putAll(configuration);
             }
         });
-        directives.put(WAIT_FOR, (key, value) -> (new MyBeanListener()).invokeMethod(key, new Object[]{value}));
-        directives.put(PRE_INIT, put);
-        directives.put(POST_INIT, put);
-        directives.put(AFTER, (key, value) -> runAfter(value));
-        directives.put(LAUNCHED, (key, value) -> runLaunched(value));
+        // directives.put(WAIT_FOR, (key, value) -> (new MyBeanListener()).invokeMethod(key, new Object[]{value}));
+        directives.put(PRE_INIT, addClosure);
+        directives.put(POST_INIT, addClosure);
+        directives.put(AFTER, addClosure);
+        directives.put(LAUNCHED, addClosure);
         directives.put(EXEC, (key, value) -> {
             try {
                 if (value instanceof String) {
@@ -133,6 +156,22 @@ public class Atom implements Map<String, Object> {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Map<String, Object> getOverrideSettings() {
+        return overrideSettings;
+    }
+
+    public void setOverrideSettings(Map<String, Object> overrideSettings) {
+        this.overrideSettings = overrideSettings;
+    }
+
+    public Map<String, Object> getDefaultSettings() {
+        return defaultSettings;
+    }
+
+    public void setDefaultSettings(Map<String, Object> defaultSettings) {
+        this.defaultSettings = defaultSettings;
     }
 
     public ClassLoader getScriptLoader() {
@@ -214,17 +253,21 @@ public class Atom implements Map<String, Object> {
 
     @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity"})
     public Atom build() {
+        if (isPrototype())
+            return this;
+
         long start = System.currentTimeMillis();
         resources.onOpen();
-
         boundInstances.values().forEach(resources::inject);
 
-        if (get(PRE_INIT) != null) {
-            Object obj = get(PRE_INIT);
-            // obj should be a closure
-            resourceManager.runNow(this, obj);
-        }
+        // install waiting, after and launched logic
+        runWaitFor(boundInstances.get(WAIT_FOR));
+        runAfter(boundInstances.get(AFTER));
+        runLaunched(boundInstances.get(LAUNCHED));
 
+        run(boundInstances.get(PRE_INIT));
+
+        // call initialized for beans that implment Initializable
         for (Map.Entry<String, Object> entry : boundInstances.entrySet()) {
             Object value = entry.getValue();
             if (value instanceof Initializable && !beanLifecycle.isBeanInitialized(value)) {
@@ -235,11 +278,7 @@ public class Atom implements Map<String, Object> {
             }
         }
 
-        if (get(POST_INIT) != null) {
-            Object obj = get(POST_INIT);
-            // obj should be a closure
-            resourceManager.runNow(this, obj);
-        }
+        run(boundInstances.get(POST_INIT));
 
         // running object that implements Startable
         if (boundInstances.size() > 0) {
@@ -374,19 +413,73 @@ public class Atom implements Map<String, Object> {
     /*
      * runs callable after every script is loaded
      */
-    public void runAfter(Object callable) {
-        resourceManager.runAfter(callable);
+    public void runAfter(Object obj) {
+        if (obj == null)
+            return;
+        if (obj instanceof List) {
+            List l = (List) obj;
+            for (Object o : l)
+                resourceManager.runAfter(o);
+        } else {
+            resourceManager.runAfter(obj);
+        }
     }
 
-    public void run(Object callable) {
-        resourceManager.runNow(this, callable);
+    public void run( Object caller, Object obj) {
+        if (obj == null)
+            return;
+        if (obj instanceof List) {
+            List l = (List) obj;
+            for (Object o : l)
+                resourceManager.runNow(caller, o);
+        } else {
+            resourceManager.runNow(caller, obj);
+        }
+    }
+
+    public void run(Object obj) {
+        run(this, obj);
     }
 
     /*
      * runs after all resourceManagers are launched.
      */
-    public void runLaunched(Object callable) {
-        resourceManager.getScripting().runLaunched(callable);
+    public void runLaunched(Object obj) {
+        if (obj == null)
+            return;
+        if (obj instanceof List) {
+            List l = (List) obj;
+            for (Object o : l)
+                resourceManager.getScripting().runLaunched(o);
+        } else {
+            resourceManager.getScripting().runLaunched(obj);
+        }
+    }
+
+    public void runWaitFor(Object obj) {
+        if (obj == null)
+            return;
+        if (obj instanceof List) {
+            List<Pair<String, Object>> l = (List) obj;
+            for (Pair<String, Object> pair : l) {
+                beanLifecycle.addBeanListener(pair.key(), new BeanListener() {
+                    @Override
+                    public void initialized(Object bean) {
+                        run(bean, pair.value());
+                        beanLifecycle.removeBeanListener(this);
+                    }
+                });
+            }
+        } else if (obj instanceof Pair) {
+            Pair<String, Object> pair = (Pair) obj;
+            beanLifecycle.addBeanListener(pair.key(), new BeanListener() {
+                @Override
+                public void initialized(Object bean) {
+                    run(bean, pair.value());
+                    beanLifecycle.removeBeanListener(this);
+                }
+            });
+        }
     }
 
     @Override
@@ -495,7 +588,11 @@ public class Atom implements Map<String, Object> {
             return configuration;
         }
 
-        Object object = boundInstances.get(key);
+        Object object = overrideSettings.get(key);
+
+        if (object == null) {
+            object = boundInstances.get(key);
+        }
 
         // if null try resourceManager.getBean
         if (object == null) {
@@ -513,6 +610,10 @@ public class Atom implements Map<String, Object> {
 
         if (object == null) {
             object = resourceManager.getScripting().get(key.toString());
+        }
+
+        if (object == null) {
+            object = defaultSettings.get(key);
         }
 
         if (object == null
@@ -770,19 +871,22 @@ public class Atom implements Map<String, Object> {
     }
 
     class MyBeanListener extends GroovyObjectSupport {
-
         // name is the name of the bean
         @Override
         public Object invokeMethod(String name, Object args) {
+            Object existing = boundInstances.get(WAIT_FOR);
+            List<Pair> list;
+            if (existing instanceof List) {
+                list = (List<Pair>) existing;
+            } else {
+                list = new LinkedList<>();
+                boundInstances.put(WAIT_FOR, list);
+            }
             Object[] arguments = (Object[]) args;
-            Closure closure = (Closure) arguments[0];
-            beanLifecycle.addBeanListener(name, new BeanListener() {
-                @Override
-                public void initialized(Object bean) {
-                    closure.call(bean);
-                    beanLifecycle.removeBeanListener(this);
-                }
-            });
+            Object value = arguments.length > 0 ? arguments[0] : null;
+            if (value instanceof Closure) {
+                list.add(new Pair(name, value));
+            }
 
             return null;
         }

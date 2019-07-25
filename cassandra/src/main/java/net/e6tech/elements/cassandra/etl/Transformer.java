@@ -43,7 +43,7 @@ public class Transformer<T, E> {
     private Map<PrimaryKey, T> map = new HashMap<>();
     private Class<T> tableClass;
     private Provision provision;
-    private List<Pair<PrimaryKey, E>> entries = new ArrayList<>();
+    private List<Pair<PrimaryKey, E>> entries = Collections.synchronizedList(new LinkedList<>());
     private boolean hasCheckpoint;
     private Inspector tableInspector;
     private ConsistencyLevel readConsistency = null;

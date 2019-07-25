@@ -22,6 +22,7 @@ import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.resources.ResourcesFactory;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.datastructure.Pair;
@@ -38,20 +39,26 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 class InstanceResourceProvider extends PerRequestResourceProvider {
-    private Provision provision;
+    private ResourcesFactory factory;
     private Observer observer;
-    private Module module;
     private Map<Method, String> methods = new ConcurrentHashMap<>();
     private Object prototype;
     private CXFServer server;
 
-    InstanceResourceProvider(JaxRSServer server, Class resourceClass, Object prototype, Module module, Provision provision, Observer observer) {
+    InstanceResourceProvider(JaxRSServer server, Class resourceClass, Object prototype, Module module, ResourcesFactory factory, Observer observer) {
         super(resourceClass);
         this.server = server;
-        this.provision = provision;
         this.observer = observer;
-        this.module = module;
+        this.factory = factory;
         this.prototype = prototype;
+        factory.preOpen(res -> {
+            if (module != null)
+                res.addModule(module);
+            if (server.getExceptionMapper() != null) {
+                res.rebind(ExceptionMapper.class, server.getExceptionMapper());
+                res.rebind((Class<ExceptionMapper>) server.getExceptionMapper().getClass(), server.getExceptionMapper());
+            }
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -61,14 +68,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
         if (prototype != null)
             Reflection.copyInstance(instance, prototype);
         Observer cloneObserver = (observer == null) ? null : observer.clone();
-        UnitOfWork uow = provision.preOpen(res -> {
-            if (module != null)
-                res.addModule(module);
-            if (server.getExceptionMapper() != null) {
-                res.rebind(ExceptionMapper.class, server.getExceptionMapper());
-                res.rebind((Class<ExceptionMapper>) server.getExceptionMapper().getClass(), server.getExceptionMapper());
-            }
-        });
+        UnitOfWork uow = (cloneObserver != null) ? cloneObserver.open(factory) : factory.open();
         return server.getInterceptor().newInterceptor(instance, new Handler(uow, methods, cloneObserver, message));
     }
 

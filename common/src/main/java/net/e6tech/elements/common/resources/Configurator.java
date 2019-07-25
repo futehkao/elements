@@ -19,9 +19,7 @@ package net.e6tech.elements.common.resources;
 import net.e6tech.elements.common.reflection.Annotator;
 
 import java.lang.annotation.Annotation;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -72,12 +70,28 @@ public class Configurator {
         return (t == null) ? defval : t;
     }
 
+    public <T> Map<String, T> map(Class<T> key) {
+        return (Map<String, T>) configuration.get(key);
+    }
+
+    public <T> List<T> list(Class<T> key) {
+        return (List<T>) configuration.get(key);
+    }
+
     public <T> T computeIfAbsent(String key, Function<String, T> mappingFunction) {
         return (T) configuration.computeIfAbsent(key, mappingFunction);
     }
 
     public <T> T computeIfAbsent(Class<T> key, Function<Class<T>, T> mappingFunction) {
         return (T) configuration.computeIfAbsent(key, mappingFunction);
+    }
+
+    public <T> Map<String, T> computeMapIfAbsent(Class<T> key) {
+        return (Map<String, T>) configuration.computeIfAbsent(key, k -> new LinkedHashMap<>());
+    }
+
+    public <T> List<T> computeListIfAbsent(Class<T> key) {
+        return (List<T>) configuration.computeIfAbsent(key, k -> new LinkedList<>());
     }
 
     public <T> Configurator put(Class<T> cls, T instance) {

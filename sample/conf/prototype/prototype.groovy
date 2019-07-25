@@ -17,11 +17,35 @@
 
 import net.e6tech.sample.prototype.*
 
-prototype("prototype") {
+prototype("prototype")
+        .settings([ _name : 'default', _description : 'default', _other : 'default'])
+        .build {
     configuration = """
     _dependent:
-        name: dependent
-        description: description
+        name: ${_name}
+        description: ${_description}
+        other: ${_other}
 """
     _dependent = Dependent
+
+    preInit {
+        print "${clusterHost}"  // see if we can access global var
+        _dependent.preInit = _dependent.preInit + 1
+    }
+
+    postInit {
+        _dependent.postInit = _dependent.postInit + 1
+    }
+
+    after {
+        _dependent.after = _dependent.after + 1
+    }
+
+    waitFor.concrete_owner { c ->
+        c.waitFor = "${_name}"
+    }
+
+    launched {
+        _dependent.launched = _dependent.launched + 1
+    }
 }

@@ -27,6 +27,7 @@ public class Owner {
     @Inject
     private Dependent dependent;
     private String name;
+    private String waitFor;
 
     public Dependent getDependent() {
         return dependent;
@@ -42,5 +43,13 @@ public class Owner {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getWaitFor() {
+        return waitFor;
+    }
+
+    public void setWaitFor(String waitFor) {
+        this.waitFor = waitFor;
     }
 }

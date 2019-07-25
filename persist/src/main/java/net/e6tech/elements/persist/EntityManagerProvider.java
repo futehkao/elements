@@ -49,6 +49,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private BlockingQueue<EntityManagerMonitor> monitorQueue = new LinkedBlockingQueue<>();
     private final List<EntityManagerMonitor> entityManagerMonitors = new ArrayList<>();
     private volatile boolean shutdown = false;
+    private String name;
 
     public EntityManagerProvider() {
     }
@@ -133,6 +134,14 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         return entityManagerMonitors;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     protected void evictCollectionRegion(EvictCollectionRegion notification) {
     }
 
@@ -208,8 +217,18 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
         emHandler.setLongTransaction(longQuery);
         emHandler.setIgnoreInitialLongTransactions(ignoreInitialLongTransactions);
-        resources.bind(EntityManager.class, (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
-                new Class[]{EntityManager.class}, emHandler));
+
+        // first come wins
+        if (!resources.hasInstance(EntityManager.class)) {
+            resources.bind(EntityManager.class, (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
+                    new Class[]{EntityManager.class}, emHandler));
+        }
+
+        String n = getName() == null ? getPersistenceUnitName() : getName();
+        resources.configurator().computeMapIfAbsent(EntityManager.class)
+                .put(n, (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
+                        new Class[]{EntityManager.class}, emHandler));
+
         em.getTransaction().begin();
     }
 
