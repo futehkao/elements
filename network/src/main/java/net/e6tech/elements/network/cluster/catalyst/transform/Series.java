@@ -54,7 +54,6 @@ public class Series<Re extends Reactor, T, R> implements Serializable, Cloneable
     @Override
     public Collection<R> apply(Reactor reactor) {
         Stream stream = segment.stream(reactor);
-        segment = null; // so that it can be gc'd.
         for (Transform transform : transforms) {
             Stream tmp = transform.transform(reactor, stream);
             stream = tmp;
