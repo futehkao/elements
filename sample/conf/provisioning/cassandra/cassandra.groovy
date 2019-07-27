@@ -17,6 +17,8 @@
 import net.e6tech.elements.cassandra.SessionProvider
 import net.e6tech.elements.cassandra.Schema
 
+import java.util.function.Consumer
+
 atom("cassandra_session") {
     configuration = """
     _provider:
@@ -26,10 +28,12 @@ atom("cassandra_session") {
       coreConnections: ${cassandraCoreConnections}
       maxConnections: ${cassandraMaxConnections}
       maxRequests: ${cassandraMaxRequests}
+      builderOptions: ^_options
       lastUpdateClass: net.e6tech.elements.cassandra.etl.LastUpdate
       createKeyspaceArguments:
         replication: 1
 """
+    _options = { t ->   } as Consumer
     _provider = SessionProvider
     _schema = Schema
 

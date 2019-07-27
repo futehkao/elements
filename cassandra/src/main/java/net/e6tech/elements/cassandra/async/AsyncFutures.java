@@ -23,6 +23,7 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -30,10 +31,24 @@ public class AsyncFutures<T, D> {
     static Logger logger = Logger.getLogger();
     protected Async async;
     protected List<ListenableFuture<T>> futures;
+    private long timeout = 0;
 
     AsyncFutures(Async async, List<ListenableFuture<T>> futures) {
         this.async = async;
         this.futures = futures;
+    }
+
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
+
+    public AsyncFutures<T, D> timeout(long timeout) {
+        setTimeout(timeout);
+        return this;
     }
 
     public Async inCompletionOrder() {
@@ -49,7 +64,7 @@ public class AsyncFutures<T, D> {
     protected void futuresAccept(List<ListenableFuture<T>> list, Consumer consumer) {
         for (ListenableFuture<T> future : list) {
             try {
-                T value = future.get();
+                T value = (timeout > 0) ? future.get(timeout, TimeUnit.MILLISECONDS) : future.get();
                 if (consumer != null && value != null)
                     consumer.accept(value);
             } catch (Exception e) {
@@ -71,7 +86,7 @@ public class AsyncFutures<T, D> {
         Map<ListenableFuture<T>, D> futuresData = (Map) async.futuresData;
         for (ListenableFuture<T> future : futures) {
             try {
-                T value = future.get();
+                T value = (timeout > 0) ? future.get(timeout, TimeUnit.MILLISECONDS) : future.get();
                 if (consumer != null && value != null)
                     consumer.accept(futuresData.get(future), value);
             } catch (Exception e) {

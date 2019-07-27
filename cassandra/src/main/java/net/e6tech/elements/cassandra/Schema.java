@@ -17,6 +17,7 @@
 package net.e6tech.elements.cassandra;
 
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.driver.mapping.annotations.Table;
@@ -34,9 +35,7 @@ import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.StringUtil;
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.common.util.concurrent.ThreadPool;
 
-import javax.sound.sampled.Line;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Annotation;
@@ -50,6 +49,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 @SuppressWarnings({"squid:S00115", "squid:S3776"})
@@ -73,6 +74,7 @@ public class Schema {
     private boolean dropColumn = false;
     private ExecutorService threadPool;
     private int threadSize = 1;
+    private long validationWait = 1000L;
 
     public int getThreadSize() {
         return threadSize;
@@ -88,6 +90,19 @@ public class Schema {
 
     public Schema threadSize(int threadSize) {
         setThreadSize(threadSize);
+        return this;
+    }
+
+    public long getValidationWait() {
+        return validationWait;
+    }
+
+    public void setValidationWait(long validationWait) {
+        this.validationWait = validationWait;
+    }
+
+    public Schema validationWait(long wait) {
+        setValidationWait(wait);
         return this;
     }
 
@@ -238,19 +253,23 @@ public class Schema {
         provision.open().accept(Resources.class, resources -> {
             SessionProvider provider = getProvider(resources);
             for (Class cls : classes) {
+                if (getTableName(cls) == null)
+                    continue;
                 TableGenerator generator = provider.getGenerator().createTable(keyspace, cls);
-                String cql = generator.generate();
-                try {
-                    provider.getSession(keyspace).execute(cql);
-                    generator.diff(provider.getSession(keyspace), provider.getTableMetadata(keyspace, generator.getTableName()), isDropColumn());
-                } catch (Exception ex) {
-                    logger.info("Syntax error in creating table for {}", cls);
-                    logger.info(cql);
-                    throw ex;
+                TableMetadata metadata = provider.getTableMetadata(keyspace, generator.getTableName());
+                if (metadata == null) {
+                    String cql = generator.generate();
+                    try {
+                        provider.getSession(keyspace).execute(cql);
+                    } catch (Exception ex) {
+                        logger.info("Syntax error in creating table for {}", cls);
+                        logger.info(cql);
+                        throw ex;
+                    }
                 }
-            }
+                generator.diff(provider.getSession(keyspace), provider.getTableMetadata(keyspace, generator.getTableName()), isDropColumn());
 
-            for (Class cls : classes) {
+                // create indexes
                 List<String> statements = provider.getGenerator().createIndexes(keyspace, cls);
                 for (String cql : statements) {
                     try {
@@ -263,6 +282,49 @@ public class Schema {
                 }
             }
         });
+
+        validateTables(keyspace, classes);
+    }
+
+    protected String getTableName(Class entityClass) {
+        Table table = null;
+        Class tmp = entityClass;
+        while (tmp != null && tmp != Object.class) {
+            table = (Table) tmp.getAnnotation(Table.class);
+            if (table != null)
+                return table.name();
+            tmp = tmp.getSuperclass();
+        }
+        return null;
+    }
+
+    public void validateTables(String keyspace, Class ... classes) {
+        AtomicBoolean validated = new AtomicBoolean(classes.length == 0); // if 0, validated is set to true
+        AtomicInteger index = new AtomicInteger(0);
+        while (!validated.get()) {
+            provision.open().accept(Resources.class, resources -> {
+                SessionProvider provider = getProvider(resources);
+                for (int i = index.get(); i < classes.length; i++) {
+                    Class cls = classes[i];
+                    TableGenerator generator = provider.getGenerator().createTable(keyspace, cls);
+                    TableMetadata metadata = provider.getTableMetadata(keyspace, generator.getTableName());
+                    if (metadata == null) {
+                        index.set(i);
+                        break;
+                    } else if (i == classes.length - 1) {
+                        validated.set(true);
+                    }
+                }
+            });
+            if (!validated.get()) {
+                try {
+                    Thread.sleep(validationWait);
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted", e);
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
     }
 
     public void runScripts(ScriptType type, Class... classes) {
@@ -355,7 +417,8 @@ public class Schema {
             try {
                 future.get();
             } catch (InterruptedException e) {
-                // don't care
+                logger.warn("Interrupted", e);
+                Thread.currentThread().interrupt();
             } catch (ExecutionException e) {
                 if (e.getCause() instanceof RuntimeException)
                     throw (RuntimeException) e.getCause();

@@ -45,7 +45,6 @@ public class TableGenerator extends AbstractGenerator {
         LinkedList<Class> classHierarchy = analyze(entityClass);
         Map<String, String> columnGenerators2 = new LinkedHashMap<>();
 
-
         for (Class cls : classHierarchy) {
             Field[] fields = cls.getDeclaredFields();
             for (Field field : fields) {

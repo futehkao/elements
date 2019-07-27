@@ -75,14 +75,10 @@ public class Generator {
         return gen;
     }
 
-    public List<String> createIndexes(String keyspace, Class cls) {
+    public List<String> createIndexes(String keyspace, Class cls) throws IntrospectionException {
         IndexGenerator gen = null;
-        try {
-            gen = new IndexGenerator(this, cls);
-            gen.setKeyspace(keyspace);
-        } catch (IntrospectionException e) {
-            throw new SystemException(e);
-        }
+        gen = new IndexGenerator(this, cls);
+        gen.setKeyspace(keyspace);
         return gen.generate();
     }
 

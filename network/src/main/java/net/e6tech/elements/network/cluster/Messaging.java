@@ -33,7 +33,7 @@ class Messaging implements Broadcast {
 
     private ActorRef messagingRef;
     private String name = "messaging";
-    private long timeout = 5000L;
+    private long timeout = ClusterNode.DEFAULT_TIME_OUT;
 
     public String getName() {
         return name;

@@ -20,6 +20,7 @@ import com.datastax.driver.mapping.annotations.Table;
 import net.e6tech.elements.common.util.StringUtil;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.beans.IntrospectionException;
 import java.util.LinkedList;
 
 public class AbstractGenerator {
@@ -52,7 +53,7 @@ public class AbstractGenerator {
         return table.keyspace();
     }
 
-    protected LinkedList<Class> analyze(Class entityClass) {
+    protected LinkedList<Class> analyze(Class entityClass) throws IntrospectionException {
         if (entityClass == null)
             return new LinkedList<>();
         Class tmp = entityClass;
@@ -65,7 +66,7 @@ public class AbstractGenerator {
         }
 
         if (table == null) {
-            throw new SystemException("Class " + entityClass.getName() + " is not annotated with @Table");
+            throw new IntrospectionException("Class " + entityClass.getName() + " is not annotated with @Table");
         }
         return classHierarchy;
     }

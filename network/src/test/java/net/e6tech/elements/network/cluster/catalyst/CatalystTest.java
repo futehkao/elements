@@ -202,33 +202,6 @@ public class CatalystTest {
 
     @Test
     public void remoteDataSet() throws Exception {
-        Registry registry = create(2551);
-
-        RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();
-        Segment<Integer> segment = reactor -> {
-            List<Integer> list = new ArrayList<>();
-            Random random = new Random();
-            for (int i = 0; i < 1000; i++) {
-                list.add(random.nextInt(1000));
-            }
-            try {
-                Thread.sleep(100L);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            return list.stream();
-        };
-
-        remoteDataSet.add(segment);
-
-        SimpleCatalyst catalyst = new SimpleCatalyst("blah", registry);
-        catalyst.setWaitTime(100L);
-        catalyst.transform(new Series<>(), remoteDataSet);
-    }
-
-
-    @Test
-    public void remoteDataSet1() throws Exception {
         Registry registry = create(2552);
 
         while (registry.routes("blah", Reactor.class).size() < 3)

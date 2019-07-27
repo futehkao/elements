@@ -18,6 +18,7 @@ package net.e6tech.elements.cassandra;
 
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.datastax.driver.core.policies.RetryPolicy;
 import com.datastax.driver.mapping.*;
 import com.datastax.driver.mapping.annotations.UDT;
 import net.e6tech.elements.cassandra.etl.LastUpdate;
@@ -35,13 +36,13 @@ import net.e6tech.elements.common.util.TextBuilder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class SessionProvider implements ResourceProvider, Initializable {
     private Cluster cluster;
 
     private static final String CREATE_KEYSPACE = "CREATE KEYSPACE IF NOT EXISTS ${keyspace}  WITH replication = {'class':'SimpleStrategy', 'replication_factor' : ${replication}};";
     private static final Map<String, Object> CREATE_KEYSPACE_ARGUMENTS = Collections.unmodifiableMap(MapBuilder.of("replication", 3));
-
 
     private String createKeyspace = CREATE_KEYSPACE;
     private Map<String, Object> createKeyspaceArguments = new HashMap<>(CREATE_KEYSPACE_ARGUMENTS);
@@ -55,10 +56,14 @@ public class SessionProvider implements ResourceProvider, Initializable {
     private int coreConnections = 20;
     private int maxConnections = 200;
     private int maxRequests = 32768;
+    private int poolTimeout = 5000;
+    private int readTimeout = 20000;
+    private Boolean keepAlive;
     private HostDistance distance = HostDistance.LOCAL;
     private NamingStrategy namingStrategy = new DefaultNamingStrategy(NamingConventions.LOWER_CAMEL_CASE, NamingConventions.LOWER_SNAKE_CASE);
     private Class<? extends LastUpdate> lastUpdateClass = LastUpdate.class;
     private Sibyl sibyl = new Sibyl();
+    private Consumer<Cluster.Builder> builderOptions;
 
     public Provision getProvision() {
         return provision;
@@ -149,6 +154,38 @@ public class SessionProvider implements ResourceProvider, Initializable {
         this.distance = distance;
     }
 
+    public int getPoolTimeout() {
+        return poolTimeout;
+    }
+
+    public void setPoolTimeout(int poolTimeout) {
+        this.poolTimeout = poolTimeout;
+    }
+
+    public int getReadTimeout() {
+        return readTimeout;
+    }
+
+    public void setReadTimeout(int readTimeout) {
+        this.readTimeout = readTimeout;
+    }
+
+    public Boolean getKeepAlive() {
+        return keepAlive;
+    }
+
+    public void setKeepAlive(Boolean keepAlive) {
+        this.keepAlive = keepAlive;
+    }
+
+    public Consumer<Cluster.Builder> getBuilderOptions() {
+        return builderOptions;
+    }
+
+    public void setBuilderOptions(Consumer<Cluster.Builder> builderOptions) {
+        this.builderOptions = builderOptions;
+    }
+
     public Session getSession() {
         return getSession(keyspace);
     }
@@ -212,15 +249,28 @@ public class SessionProvider implements ResourceProvider, Initializable {
     protected synchronized void buildCluster() {
         if (cluster != null)
             return;
+
         PoolingOptions poolingOptions = new PoolingOptions();
         poolingOptions
+                .setPoolTimeoutMillis(getPoolTimeout())
                 .setCoreConnectionsPerHost(HostDistance.LOCAL, coreConnections)
                 .setMaxConnectionsPerHost( HostDistance.LOCAL, maxConnections)
                 .setMaxRequestsPerConnection(HostDistance.LOCAL, maxRequests);
 
-        cluster = Cluster.builder().addContactPoint(host).withPort(port)
+        SocketOptions socketOptions = new SocketOptions()
+                .setReadTimeoutMillis(getReadTimeout());
+        if (getKeepAlive() != null)
+            socketOptions.setKeepAlive(getKeepAlive());
+
+        Cluster.Builder builder = Cluster.builder()
+                .addContactPoint(host)
+                .withPort(port)
                 .withPoolingOptions(poolingOptions)
-                .build();
+                .withSocketOptions(socketOptions);
+
+        if (builderOptions != null)
+            builderOptions.accept(builder);
+        cluster = builder.build();
     }
 
     @Override

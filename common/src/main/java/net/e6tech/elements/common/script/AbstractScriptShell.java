@@ -176,6 +176,10 @@ public abstract class AbstractScriptShell {
             scripting.runAfter();
     }
 
+    public Object runClosure(Object caller, Closure closure, Object ... args) {
+        return scripting.runClosure(caller, closure, args);
+    }
+
     public Object runNow(Object caller, Object callable) {
         return scripting.runNow(caller, callable);
     }

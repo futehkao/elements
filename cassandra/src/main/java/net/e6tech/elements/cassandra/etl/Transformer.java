@@ -48,6 +48,7 @@ public class Transformer<T, E> {
     private Inspector tableInspector;
     private ConsistencyLevel readConsistency = null;
     private ConsistencyLevel writeConsistency = null;
+    private long timeout = 0;  // ie disable
 
     public Transformer(Provision provision, Class<T> cls) {
         this.provision = provision;
@@ -81,6 +82,46 @@ public class Transformer<T, E> {
         load();
         return this;
     }
+
+    public ConsistencyLevel getReadConsistency() {
+        return readConsistency;
+    }
+
+    public void setReadConsistency(ConsistencyLevel readConsistency) {
+        this.readConsistency = readConsistency;
+    }
+
+    public Transformer<T, E> readConsistency(ConsistencyLevel readConsistency) {
+        setReadConsistency(readConsistency);
+        return this;
+    }
+
+    public ConsistencyLevel getWriteConsistency() {
+        return writeConsistency;
+    }
+
+    public void setWriteConsistency(ConsistencyLevel writeConsistency) {
+        this.writeConsistency = writeConsistency;
+    }
+
+    public Transformer<T, E> writeConsistency(ConsistencyLevel writeConsistency) {
+        setWriteConsistency(writeConsistency);
+        return this;
+    }
+
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
+
+    public Transformer<T, E> timeout(long timeout) {
+        setTimeout(timeout);
+        return this;
+    }
+
     public Async createAsync() {
         return provision.newInstance(Async.class);
     }
@@ -108,9 +149,13 @@ public class Transformer<T, E> {
             keys.add(e.key());
         }
         if (readConsistency != null)
-            s.get(keys, tableClass, Mapper.Option.consistencyLevel(readConsistency)).inExecutionOrder(map::put);
+            s.get(keys, tableClass, Mapper.Option.consistencyLevel(readConsistency))
+                    .timeout(timeout)
+                    .inExecutionOrder(map::put);
         else
-            s.get(keys, tableClass).inExecutionOrder(map::put);
+            s.get(keys, tableClass)
+                    .timeout(timeout)
+                    .inExecutionOrder(map::put);
         return this;
     }
 
@@ -181,9 +226,13 @@ public class Transformer<T, E> {
         if (writeConsistency != null) {
             Deque<Mapper.Option> mapperOptions = s.mapperOptions(options);
             mapperOptions.addFirst(Mapper.Option.consistencyLevel(writeConsistency));
-            s.save(values(), tableClass, mapperOptions.toArray(new Mapper.Option[0])).inCompletionOrder();
+            s.save(values(), tableClass, mapperOptions.toArray(new Mapper.Option[0]))
+                    .timeout(timeout)
+                    .inCompletionOrder();
         } else {
-            s.save(values(), tableClass).inCompletionOrder();
+            s.save(values(), tableClass)
+                    .timeout(timeout)
+                    .inCompletionOrder();
         }
         return this;
     }

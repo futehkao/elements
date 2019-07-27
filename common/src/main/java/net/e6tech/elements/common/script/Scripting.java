@@ -229,22 +229,27 @@ public class Scripting {
         return obj instanceof Runnable || obj instanceof Closure;
     }
 
+    public Object runClosure(Object caller, Closure closure, Object ... args) {
+        Object ret = null;
+        try {
+            final Closure clonedClosure = (Closure) closure.clone();
+            try {
+                clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
+                clonedClosure.setDelegate(caller);
+                ret = clonedClosure.call(args);
+            } finally {
+                clonedClosure.setDelegate(null);
+            }
+        } catch (Exception th) {
+            logger.warn(th.getMessage(), th);
+        }
+        return ret;
+    }
+
     public Object runNow(Object caller, Object callable) {
         Object ret = null;
         if (callable instanceof Closure) {
-            Closure closure = (Closure) callable;
-            try {
-                final Closure clonedClosure = (Closure) closure.clone();
-                try {
-                    clonedClosure.setResolveStrategy(Closure.DELEGATE_FIRST);
-                    clonedClosure.setDelegate(caller);
-                    ret = clonedClosure.call(caller);
-                } finally {
-                    clonedClosure.setDelegate(null);
-                }
-            } catch (Exception th) {
-                logger.warn(th.getMessage(), th);
-            }
+            runClosure(caller, (Closure) callable, (Object[]) null);
         } else if (callable instanceof Runnable) {
             ((Runnable) callable).run();
         } else if (callable instanceof Callable) {

@@ -33,7 +33,7 @@ public class AsyncImpl<U> implements ClusterAsync<U> {
     Class<U> interfaceClass;
     Registry registry;
     String qualifier;
-    long timeout = 5000L;
+    long timeout;
     CompletionStage<Events.Response> completionStage;
     U proxy;
 

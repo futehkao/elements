@@ -40,7 +40,7 @@ dependencies {
     compile "javax.cache:cache-api:${javaCacheApiVerison}"
 
     // akka core
-    compile group: 'com.typesafe.akka', name: 'akka-actor_2.12', version: "${akkaVersion}"
+    compile group: 'com.typesafe.akka', name: "akka-actor_${akkaScalaVersion}", version: "${akkaVersion}"
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"

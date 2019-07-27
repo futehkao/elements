@@ -38,6 +38,8 @@ import java.util.Map;
  */
 public class ClusterNode implements Initializable {
 
+    public static final long DEFAULT_TIME_OUT = 10000L;
+
     private String name;
     private String configuration;
     private Genesis genesis;
@@ -47,7 +49,7 @@ public class ClusterNode implements Initializable {
     private Registry registry;
     private List<MemberListener> memberListeners = new ArrayList<>();
     private boolean started = false;
-    private long timeout = 5000L;
+    private long timeout = DEFAULT_TIME_OUT;
 
     public long getTimeout() {
         return timeout;
@@ -138,7 +140,7 @@ public class ClusterNode implements Initializable {
     }
 
     public void shutdown() {
-        Patterns.ask(membership, PoisonPill.getInstance(), 5000L);
+        Patterns.ask(membership, PoisonPill.getInstance(), timeout);
         broadcast.shutdown();
         registry.shutdown();
         genesis.getSystem().terminate();

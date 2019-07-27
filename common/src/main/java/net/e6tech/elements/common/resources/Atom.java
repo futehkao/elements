@@ -425,7 +425,7 @@ public class Atom implements Map<String, Object> {
         }
     }
 
-    public void run( Object caller, Object obj) {
+    public void run(Object caller, Object obj) {
         if (obj == null)
             return;
         if (obj instanceof List) {
@@ -465,7 +465,12 @@ public class Atom implements Map<String, Object> {
                 beanLifecycle.addBeanListener(pair.key(), new BeanListener() {
                     @Override
                     public void initialized(Object bean) {
-                        run(bean, pair.value());
+                        if (pair.value() instanceof Closure) {
+                            Closure closure = (Closure) pair.value();
+                            closure.call(bean);
+                        } else {
+                            run(bean, pair.value());
+                        }
                         beanLifecycle.removeBeanListener(this);
                     }
                 });
@@ -475,7 +480,12 @@ public class Atom implements Map<String, Object> {
             beanLifecycle.addBeanListener(pair.key(), new BeanListener() {
                 @Override
                 public void initialized(Object bean) {
-                    run(bean, pair.value());
+                    if (pair.value() instanceof Closure) {
+                        Closure closure = (Closure) pair.value();
+                        closure.call(bean);
+                    } else {
+                        run(bean, pair.value());
+                    }
                     beanLifecycle.removeBeanListener(this);
                 }
             });

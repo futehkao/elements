@@ -26,6 +26,7 @@ import net.e6tech.elements.common.logging.Logger;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -50,8 +51,14 @@ public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
     private void futuresGet(List<ListenableFuture<ResultSet>> list, Consumer<Row> consumer) {
         for (ListenableFuture<ResultSet> future : list) {
             try {
-                for (Row row : future.get()) {
-                    consumer.accept(row);
+                if (getTimeout() > 0) {
+                    for (Row row : future.get(getTimeout(), TimeUnit.MILLISECONDS)) {
+                        consumer.accept(row);
+                    }
+                } else {
+                    for (Row row : future.get()) {
+                        consumer.accept(row);
+                    }
                 }
             } catch (Exception e) {
                 logger.warn(e.getMessage(), e);
@@ -63,8 +70,14 @@ public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
         Map<ListenableFuture<ResultSet>, D> futuresData = (Map) async.futuresData;
         for (ListenableFuture<ResultSet> future : futures) {
             try {
-                for (Row row : future.get()) {
-                    consumer.accept(row, futuresData.get(future));
+                if (getTimeout() > 0){
+                    for (Row row : future.get(getTimeout(), TimeUnit.MILLISECONDS)) {
+                        consumer.accept(row, futuresData.get(future));
+                    }
+                } else {
+                    for (Row row : future.get()) {
+                        consumer.accept(row, futuresData.get(future));
+                    }
                 }
             } catch (Exception e) {
                 logger.warn(e.getMessage(), e);

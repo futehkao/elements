@@ -47,7 +47,7 @@ public class Registry {
     ActorSystem system;
     ActorRef registrar;
     ActorRef workerPool;
-    long timeout = 5000L;
+    long timeout = ClusterNode.DEFAULT_TIME_OUT;
     List<RouteListener> listeners = new ArrayList<>();
 
     public static ThreadPool getThreadPool() {
