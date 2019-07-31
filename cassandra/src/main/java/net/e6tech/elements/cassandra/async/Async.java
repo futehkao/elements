@@ -44,7 +44,6 @@ public class Async {
     Map<ListenableFuture, Object> futuresData = new IdentityHashMap<>(512);
     private Session session;
     private AsyncResultSet result;
-    private Provision provision;
 
     public static void resetAll(Async... asyncs) {
         if (asyncs != null)
@@ -56,14 +55,13 @@ public class Async {
         result = new AsyncResultSet(this, futures);
     }
 
-    public Provision getProvision() {
-        return provision;
+    public Session getSession() {
+        return session;
     }
 
     @Inject
-    public void setProvision(Provision provision) {
-        this.provision = provision;
-        this.session = provision.getInstance(Session.class);
+    public void setSession(Session session) {
+        this.session = session;
     }
 
     public Async prepare(String stmt) {

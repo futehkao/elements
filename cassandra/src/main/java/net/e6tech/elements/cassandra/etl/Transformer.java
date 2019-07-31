@@ -19,9 +19,10 @@ package net.e6tech.elements.cassandra.etl;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.mapping.Mapper;
+import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.async.Async;
-import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
 
@@ -40,9 +41,9 @@ import java.util.stream.Stream;
  * @param <E> Extracted type
  */
 public class Transformer<T, E> {
+    private Resources resources;
     private Map<PrimaryKey, T> map = new HashMap<>();
     private Class<T> tableClass;
-    private Provision provision;
     private List<Pair<PrimaryKey, E>> entries = Collections.synchronizedList(new LinkedList<>());
     private boolean hasCheckpoint;
     private Inspector tableInspector;
@@ -50,8 +51,8 @@ public class Transformer<T, E> {
     private ConsistencyLevel writeConsistency = null;
     private long timeout = 0;  // ie disable
 
-    public Transformer(Provision provision, Class<T> cls) {
-        this.provision = provision;
+    public Transformer(Resources resources, Class<T> cls) {
+        this.resources = resources;
         tableClass = cls;
         tableInspector = getInspector(tableClass);
         hasCheckpoint = tableInspector.getCheckpointColumn(0) != null;
@@ -122,18 +123,6 @@ public class Transformer<T, E> {
         return this;
     }
 
-    public Async createAsync() {
-        return provision.newInstance(Async.class);
-    }
-
-    public Async createAsync(String query) {
-        return provision.getInstance(Sibyl.class).createAsync(query);
-    }
-
-    public Async createAsync(PreparedStatement stmt) {
-        return provision.getInstance(Sibyl.class).createAsync(stmt);
-    }
-
     public Transformer<T, E> addPrimaryKey(PrimaryKey key, E e) {
         if (key == null)
             return this;
@@ -142,7 +131,7 @@ public class Transformer<T, E> {
     }
 
     private Transformer<T, E> load() {
-        Sibyl s = provision.getInstance(Sibyl.class);
+        Sibyl s = resources.getInstance(Sibyl.class);
         map = new HashMap<>(Math.max((int) (entries.size()/.75f) + 1, 16));
         Set<PrimaryKey> keys = new HashSet<>(Math.max((int) (entries.size()/.75f) + 1, 16));
         for (Pair<PrimaryKey, E> e : entries()) {
@@ -164,7 +153,7 @@ public class Transformer<T, E> {
     }
 
     private Inspector getInspector(Class cls) {
-        return provision.getInstance(Sibyl.class).getInspector(cls);
+        return resources.getInstance(SessionProvider.class).getInspector(cls);
     }
 
     private T computeIfAbsent(PrimaryKey key) {
@@ -222,7 +211,7 @@ public class Transformer<T, E> {
     }
 
     public Transformer<T, E> save(Mapper.Option... options) {
-        Sibyl s = provision.getInstance(Sibyl.class);
+        Sibyl s = resources.getInstance(Sibyl.class);
         if (writeConsistency != null) {
             Deque<Mapper.Option> mapperOptions = s.mapperOptions(options);
             mapperOptions.addFirst(Mapper.Option.consistencyLevel(writeConsistency));

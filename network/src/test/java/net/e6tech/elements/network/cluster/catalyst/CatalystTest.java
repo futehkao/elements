@@ -204,8 +204,8 @@ public class CatalystTest {
     public void remoteDataSet() throws Exception {
         Registry registry = create(2552);
 
-        while (registry.routes("blah", Reactor.class).size() < 3)
-            Thread.sleep(100);
+        // while (registry.routes("blah", Reactor.class).size() < 3)
+        //    Thread.sleep(100);
 
         RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();
         Segment<Integer> segment = reactor -> {
@@ -213,6 +213,11 @@ public class CatalystTest {
             Random random = new Random();
             for (int i = 0; i < 1000; i++) {
                 list.add(random.nextInt(1000));
+            }
+            try {
+                Thread.currentThread().sleep(20000L);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
             return list.stream();
         };

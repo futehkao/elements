@@ -16,14 +16,9 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.mapping.Mapper;
 import com.datastax.driver.mapping.MappingManager;
 import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.Sibyl;
-import net.e6tech.elements.cassandra.async.Async;
-import net.e6tech.elements.cassandra.async.AsyncFutures;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Provision;
@@ -31,7 +26,6 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.SystemException;
 
-import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -72,10 +66,6 @@ public class ETLContext {
 
     public UnitOfWork open() {
         return getProvision().open();
-    }
-
-    public Session getSession() {
-        return getProvision().open().apply(Resources.class, resources -> resources.getInstance(Session.class));
     }
 
     public int getBatchSize() {
@@ -124,10 +114,6 @@ public class ETLContext {
 
     public void setExtractAll(boolean extractAll) {
         this.extractAll = extractAll;
-    }
-
-    public <T> Mapper<T> getMapper(Class<T> cls) {
-        return provision.getInstance(Sibyl.class).getMapper(cls);
     }
 
     public String getExtractorName() {
@@ -188,50 +174,32 @@ public class ETLContext {
         this.timeUnit = timeUnit;
     }
 
-    public Async createAsync() {
-        return getProvision().newInstance(Async.class);
-    }
-
-    public Async createAsync(String query) {
-        return provision.getInstance(Sibyl.class).createAsync(query);
-    }
-
-    public Async createAsync(PreparedStatement stmt) {
-        return provision.getInstance(Sibyl.class).createAsync(stmt);
-    }
-
-    public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, Mapper.Option... options) {
-        Sibyl s = provision.getInstance(Sibyl.class);
-        return s.save(list, cls, options);
-    }
-
-    public <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls) {
-        Sibyl s = provision.getInstance(Sibyl.class);
-        return s.get(list, cls);
-    }
-
     public String tableName() {
         return getInspector(getSourceClass()).tableName();
     }
 
     public void saveLastUpdate(LastUpdate lastUpdate) {
-        if (lastUpdateClass == null)
-            lastUpdateClass = getProvision().open().apply(Resources.class,
-                resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
-        getMapper(lastUpdateClass).save(lastUpdate);
-        this.lastUpdate = lastUpdate;
+        open().accept(Sibyl.class, sibyl -> {
+            if (lastUpdateClass == null)
+                lastUpdateClass = getProvision().open().apply(Resources.class,
+                        resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
+            sibyl.getMapper(lastUpdateClass).save(lastUpdate);
+            this.lastUpdate = lastUpdate;
+        });
     }
 
     public LastUpdate lookupLastUpdate() {
-        if (lastUpdate != null)
+        return open().apply(Sibyl.class, sibyl -> {
+            if (lastUpdate != null)
+                return lastUpdate;
+            if (lastUpdateClass == null)
+                lastUpdateClass = getProvision().open().apply(Resources.class,
+                        resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
+            lastUpdate = open().apply(Resources.class, resources ->
+                    resources.getInstance(MappingManager.class).mapper(lastUpdateClass).get(extractor())
+            );
             return lastUpdate;
-        if (lastUpdateClass == null)
-            lastUpdateClass = getProvision().open().apply(Resources.class,
-                    resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
-        lastUpdate = open().apply(Resources.class, resources ->
-            resources.getInstance(MappingManager.class).mapper(lastUpdateClass).get(extractor())
-        );
-        return lastUpdate;
+        });
     }
 
     public LastUpdate getLastUpdate() {
@@ -307,7 +275,7 @@ public class ETLContext {
     }
 
     public Inspector getInspector(Class cls) {
-        return provision.getInstance(Sibyl.class).getInspector(cls);
+        return provision.getInstance(SessionProvider.class).getInspector(cls);
     }
 
     public void initialize() {

@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.cassandra.etl;
 
+import net.e6tech.elements.cassandra.Sibyl;
+
 import java.util.List;
 
 /**
@@ -47,25 +49,28 @@ public interface TimeBatchStrategy<S> extends BatchStrategy<S, TimeBatch> {
     default int run(TimeBatch context) {
         if (context.getSourceClass() == null)
             throw new IllegalStateException("sourceClass not set in context");
-        context.initialize();
-        LastUpdate lastUpdate = context.getLastUpdate();
-        long lastImport = Long.parseLong(lastUpdate.getLastUpdate());
+        return context.open().apply(Sibyl.class, sibyl -> {
+            context.initialize();
+            LastUpdate lastUpdate = context.getLastUpdate();
+            long lastImport = Long.parseLong(lastUpdate.getLastUpdate());
 
-        long start = System.currentTimeMillis();
-        context.setEnd(start - context.getTimeLag());
-        context.setStart(lastImport);
-        int importedCount = 0;
-        List<S> batchResults = null;
+            long start = System.currentTimeMillis();
+            context.setEnd(start - context.getTimeLag());
+            context.setStart(lastImport);
+            int importedCount = 0;
+            List<S> batchResults = null;
 
-        // NOTE, extract must call lastUpdate.update
-        logger.info("Loading Class {}", getClass());
-        while (!(batchResults = extract(context)).isEmpty()) {
-            int processedCount = load(context, batchResults);
-            context.saveLastUpdate(lastUpdate);
-            logger.info("Processed {} instance of {}", processedCount, getClass());
-            importedCount += processedCount;
-        }
-        logger.info("Done loading {} instance of {}", importedCount, getClass());
-        return importedCount;
+            // NOTE, extract must call lastUpdate.update
+            logger.info("Loading Class {}", getClass());
+            while (!(batchResults = extract(context)).isEmpty()) {
+                int processedCount = load(context, batchResults);
+                context.saveLastUpdate(lastUpdate);
+                logger.info("Processed {} instance of {}", processedCount, getClass());
+                importedCount += processedCount;
+            }
+            logger.info("Done loading {} instance of {}", importedCount, getClass());
+            return importedCount;
+        });
+
     }
 }

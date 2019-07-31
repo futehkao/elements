@@ -35,14 +35,9 @@ import net.e6tech.elements.common.util.SystemException;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 public class Sibyl {
-
-    private static Cache<Class, Inspector> inspectors = CacheBuilder.newBuilder()
-            .concurrencyLevel(32)
-            .initialCapacity(128)
-            .maximumSize(2000)
-            .build();
 
     private static Cache<String, PreparedStatement> preparedStatementCache = CacheBuilder.newBuilder()
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
@@ -50,26 +45,30 @@ public class Sibyl {
             .maximumSize(500)
             .build();
 
-    private Provision provision;
+    private Resources resources;
     private boolean saveNullFields = false;
     private ConsistencyLevel readConsistency = ConsistencyLevel.LOCAL_SERIAL;
     private ConsistencyLevel writeConsistency = ConsistencyLevel.LOCAL_QUORUM;
 
-    public Provision getProvision() {
-        return provision;
+    public <T> T computeIfAbsent(String key, Function<String, T> mappingFunction) {
+        return (T) resources.configurator().computeIfAbsent(key, mappingFunction);
+    }
+
+    public Resources getResources() {
+        return resources;
     }
 
     @Inject
-    public void setProvision(Provision provision) {
-        this.provision = provision;
+    public void setResources(Resources resources) {
+        this.resources = resources;
     }
 
     public Generator getGenerator() {
-        return getProvision().getInstance(Generator.class);
+        return getResources().getInstance(Generator.class);
     }
 
     public Session getSession() {
-        return getProvision().open().apply(Resources.class, resources -> resources.getInstance(Session.class));
+        return resources.getInstance(Session.class);
     }
 
     public boolean isSaveNullFields() {
@@ -97,7 +96,7 @@ public class Sibyl {
     }
 
     public Async createAsync() {
-        return getProvision().newInstance(Async.class);
+        return getResources().newInstance(Async.class);
     }
 
     public Async createAsync(String query) {
@@ -107,11 +106,11 @@ public class Sibyl {
         } catch (ExecutionException e) {
             pstmt = getSession().prepare(query);
         }
-        return getProvision().newInstance(Async.class).prepare(pstmt);
+        return getResources().newInstance(Async.class).prepare(pstmt);
     }
 
     public Async createAsync(PreparedStatement stmt) {
-        return getProvision().newInstance(Async.class).prepare(stmt);
+        return getResources().newInstance(Async.class).prepare(stmt);
     }
 
     public Deque<Mapper.Option> mapperOptions (Mapper.Option... options) {
@@ -133,8 +132,12 @@ public class Sibyl {
         return async.accept(list, k -> mapper.getAsync(k.getKeys()));
     }
 
+    public MappingManager getMappingManager() {
+        return resources.getInstance(MappingManager.class);
+    }
+
     public <T> Mapper<T> getMapper(Class<T> cls) {
-        return provision.getInstance(MappingManager.class).mapper(cls);
+        return getMappingManager().mapper(cls);
     }
 
     public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, Mapper.Option... options) {
@@ -189,20 +192,6 @@ public class Sibyl {
     }
 
     public Inspector getInspector(Class cls) {
-        Callable<Inspector> loader = () -> {
-            Inspector inspector = new Inspector(cls, getGenerator());
-            inspector.initialize();
-            return inspector;
-        };
-
-        try {
-            return inspectors.get(cls, loader);
-        } catch (ExecutionException e) {
-            try {
-                return loader.call();
-            } catch (Exception e1) {
-                throw new SystemException(e);
-            }
-        }
+        return getResources().getInstance(SessionProvider.class).getInspector(cls);
     }
 }

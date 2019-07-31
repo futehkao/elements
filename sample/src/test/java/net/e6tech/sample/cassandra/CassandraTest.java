@@ -16,17 +16,21 @@
 
 package net.e6tech.sample.cassandra;
 
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.mapping.Result;
 import net.e6tech.elements.cassandra.Schema;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.MapBuilder;
+import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 public class CassandraTest {
     public static Provision provision;
@@ -40,19 +44,32 @@ public class CassandraTest {
     }
 
     @Test
-    void basic() {
+    void basic() throws InterruptedException {
         Schema schema = provision.newInstance(Schema.class);
         schema.createTables("elements", TestTable.class);
-        List<Long> ids = Arrays.asList(1L, 2L);
-        List<TestTable> testTables = provision.getInstance(Sibyl.class).all(TestTable.class, "select * from test_table where id in :ids",
-                MapBuilder.of("ids", ids));
+        List<Long> ids = Arrays.asList(1L, 2L, 3L);
 
-        Sibyl s = provision.getInstance(Sibyl.class);
-        List<TestTable> list = new ArrayList<>();
-        TestTable test = new TestTable();
-        test.setId(2L);
-        test.setName("test");
-        list.add(test);
-        s.save(list, TestTable.class).inCompletionOrder();
+        ThreadPool pool = ThreadPool.fixedThreadPool("test", 50);
+        long start = System.currentTimeMillis() + 2000L;
+
+        CountDownLatch latch = new CountDownLatch(20);
+        for (int i = 0; i < 20; i++) {
+            long id = i;
+            pool.execute(() -> {
+                provision.open().accept(Sibyl.class, s -> {
+                    Thread.currentThread().sleep(start - System.currentTimeMillis());
+                    List<TestTable> testTables = s.all(TestTable.class, "select * from test_table where id in :ids",
+                           MapBuilder.of("ids", ids));
+                    List<TestTable> list = new ArrayList<>();
+                    TestTable test = new TestTable();
+                    test.setId(id);
+                    test.setName("test");
+                    list.add(test);
+                    s.save(list, TestTable.class).inCompletionOrder();
+                    latch.countDown();
+                });
+            });
+        }
+        latch.await();
     }
 }

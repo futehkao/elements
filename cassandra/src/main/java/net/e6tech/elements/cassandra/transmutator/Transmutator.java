@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.cassandra.transmutator;
 
+import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.async.Async;
 import net.e6tech.elements.cassandra.async.AsyncResultSet;
 import net.e6tech.elements.cassandra.etl.Inspector;
@@ -43,30 +44,32 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
     }
 
     protected void undo(PartitionContext context, Class tableClass) {
-        Inspector inspector = context.getInspector(tableClass);
-        String tableName = inspector.tableName();
-        String partitionKey = inspector.getPartitionKeyColumn(0);
-        String checkpointColumn = inspector.getCheckpointColumn(0);
-        if (checkpointColumn == null)
-            return;
-        String filter = "";
-        if (checkpointColumn.equals(partitionKey))
-            filter = "allow filtering";
-        Object value = context.getLastUpdateValue();
+        context.open().accept(Sibyl.class, sibyl -> {
+            Inspector inspector = context.getInspector(tableClass);
+            String tableName = inspector.tableName();
+            String partitionKey = inspector.getPartitionKeyColumn(0);
+            String checkpointColumn = inspector.getCheckpointColumn(0);
+            if (checkpointColumn == null)
+                return;
+            String filter = "";
+            if (checkpointColumn.equals(partitionKey))
+                filter = "allow filtering";
+            Object value = context.getLastUpdateValue();
 
-        Set list = new HashSet();
-        AsyncResultSet<?> result = context.createAsync("select " + partitionKey + ", count(*) from " + tableName +
-                " where " + checkpointColumn + " > :spk group by " + partitionKey + " " + filter)
-                .execute(bound -> bound.set("spk", value, (Class) value.getClass()));
-        result.inCompletionOrderRows(row -> {
-            if (!row.isNull(0)) {
-                list.add(row.get(0, value.getClass()));
-            }
+            Set list = new HashSet();
+            AsyncResultSet<?> result = sibyl.createAsync("select " + partitionKey + ", count(*) from " + tableName +
+                    " where " + checkpointColumn + " > :spk group by " + partitionKey + " " + filter)
+                    .execute(bound -> bound.set("spk", value, (Class) value.getClass()));
+            result.inCompletionOrderRows(row -> {
+                if (!row.isNull(0)) {
+                    list.add(row.get(0, value.getClass()));
+                }
+            });
+
+            Async async = sibyl.createAsync("delete from " + inspector.tableName() + " where " + partitionKey + " = :partitionKey");
+            async.execute(list, (p, bound) ->  bound.set("partitionKey", p, (Class) p.getClass()))
+                    .inCompletionOrder();
         });
-
-        Async async = context.createAsync("delete from " + inspector.tableName() + " where " + partitionKey + " = :partitionKey");
-        async.execute(list, (p, bound) ->  bound.set("partitionKey", p, (Class) p.getClass()))
-                .inCompletionOrder();
     }
 
     @SuppressWarnings("squid:S3776")

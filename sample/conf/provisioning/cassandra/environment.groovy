@@ -17,8 +17,8 @@
 cassandraHost = "localhost"
 cassandraPort = 9042
 cassandraKeyspace = "elements"
-cassandraCoreConnections = 20
-cassandraMaxConnections = 200
+cassandraCoreConnections = 1
+cassandraMaxConnections = 1
 cassandraMaxRequests = 32768
 
 cassandraTables = ["net.e6tech.elements.cassandra.etl"]

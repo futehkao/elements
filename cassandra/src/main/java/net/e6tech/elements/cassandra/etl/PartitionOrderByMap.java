@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import net.e6tech.elements.cassandra.Sibyl;
+import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.common.resources.Provision;
 
 import java.util.*;
@@ -40,7 +40,7 @@ public class PartitionOrderByMap<T extends PartitionOrderBy> {
     }
 
     public Inspector getInspector(Class cls) {
-        return provision.getInstance(Sibyl.class).getInspector(cls);
+        return provision.getInstance(SessionProvider.class).getInspector(cls);
     }
 
     public PartitionOrderByMap<T> addAll(Collection<T> objects) {
