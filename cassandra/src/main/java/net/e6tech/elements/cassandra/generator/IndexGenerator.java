@@ -16,10 +16,6 @@
 
 package net.e6tech.elements.cassandra.generator;
 
-import com.datastax.driver.mapping.annotations.Column;
-import com.datastax.driver.mapping.annotations.PartitionKey;
-import com.datastax.driver.mapping.annotations.Transient;
-
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
@@ -55,14 +51,12 @@ public class IndexGenerator extends AbstractGenerator{
             for (Field field : fields) {
                 if (Modifier.isStrict(field.getModifiers()))
                     continue;
-                Column column = field.getAnnotation(Column.class);
-                Transient trans = field.getAnnotation(Transient.class);
-                if (trans != null)
+                if (generator.isTransient(field))
                     continue;
 
-                PartitionKey pk = field.getAnnotation(PartitionKey.class);
-                if (pk != null) {
-                    partitionKeys.add(generator.getColumnName(column, field));
+                int pk = generator.partitionKeyIndex(field);
+                if (pk >= 0) {
+                    partitionKeys.add(generator.getColumnName(field));
                     partitionKeys.add(field.getName());
                     continue;
                 }
@@ -83,21 +77,19 @@ public class IndexGenerator extends AbstractGenerator{
 
             if (method == null)
                 throw new IllegalArgumentException("Entity class does not have a get method for property " + desc.getName());
-            Column column = method.getAnnotation(Column.class);
-            if (method != null && !method.getName().equals("getClass")) {
-                Transient trans = method.getAnnotation(Transient.class);
-                if (trans != null)
+            if (!desc.getName().equals("class")) {
+                if (generator.isTransient(desc))
                     continue;
 
-                PartitionKey pk = method.getAnnotation(PartitionKey.class);
-                if (pk != null) {
-                    partitionKeys.add(generator.getColumnName(column, method));
+                int pk = generator.partitionKeyIndex(desc);
+                if (pk >= 0) {
+                    partitionKeys.add(generator.getColumnName(desc));
                     partitionKeys.add(desc.getName());
                     continue;
                 }
 
                 if (partitionKeys.contains(desc.getName())
-                    || partitionKeys.contains(generator.getColumnName(column, method)))
+                    || partitionKeys.contains(generator.getColumnName(desc)))
                     continue;
 
                 /*
@@ -119,7 +111,7 @@ public class IndexGenerator extends AbstractGenerator{
         for (Map.Entry<String, Index> entry : indexes.entrySet()) {
             Index index = entry.getValue();
             builder.append("CREATE INDEX IF NOT EXISTS ");
-            builder.append(getTable().name()).append("__").append(entry.getKey());
+            builder.append(getTableName()).append("__").append(entry.getKey());
             builder.append(" ON ");
             builder.append(fullyQualifiedTableName());
             builder.append("(");
@@ -137,7 +129,7 @@ public class IndexGenerator extends AbstractGenerator{
 
         for (String column : implicitIndexes.keySet()) {
             builder.append("CREATE CUSTOM INDEX IF NOT EXISTS ");
-            builder.append(getTable().name()).append("__").append(column).append("_idx");
+            builder.append(getTableName()).append("__").append(column).append("_idx");
             builder.append(" ON ");
             builder.append(fullyQualifiedTableName());
             builder.append("(");

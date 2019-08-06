@@ -477,8 +477,14 @@ public class Configuration extends LinkedHashMap<String, Object> {
             BeanInfo info = Introspector.getBeanInfo(object.getClass());
             for (PropertyDescriptor desc : info.getPropertyDescriptors()) {
                 if (desc.getWriteMethod() != null && map.containsKey(desc.getName())) {
+                    Class type = desc.getPropertyType();
+                    if (desc.getReadMethod() != null) {
+                        Object existing = desc.getReadMethod().invoke(object);
+                        if (existing != null)
+                            type = existing.getClass();
+                    }
                     String encoding = mapper.writeValueAsString(map.get(desc.getName()));
-                    Object value = mapper.readValue(encoding, desc.getPropertyType());
+                    Object value = mapper.readValue(encoding, type);
                     if (listener != null)
                         listener.instanceCreated(value, desc.getPropertyType(), value);
                     desc.getWriteMethod().invoke(object, value);

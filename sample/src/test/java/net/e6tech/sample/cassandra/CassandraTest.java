@@ -16,12 +16,19 @@
 
 package net.e6tech.sample.cassandra;
 
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.mapping.Result;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.ResultSet;
 import net.e6tech.elements.cassandra.Schema;
+import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.cassandra.Sibyl;
+import net.e6tech.elements.cassandra.driver.v4.SessionV4;
+import net.e6tech.elements.cassandra.etl.PartitionContext;
+import net.e6tech.elements.cassandra.transmutator.Transmutator;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.MapBuilder;
 import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import org.junit.jupiter.api.BeforeAll;
@@ -46,30 +53,45 @@ public class CassandraTest {
     @Test
     void basic() throws InterruptedException {
         Schema schema = provision.newInstance(Schema.class);
-        schema.createTables("elements", TestTable.class);
+        schema.createTables("elements", TimeTable.class);
+        schema.createTables("elements", DerivedTable.class);
         List<Long> ids = Arrays.asList(1L, 2L, 3L);
 
         ThreadPool pool = ThreadPool.fixedThreadPool("test", 50);
         long start = System.currentTimeMillis() + 2000L;
 
-        CountDownLatch latch = new CountDownLatch(20);
-        for (int i = 0; i < 20; i++) {
+        CountDownLatch latch = new CountDownLatch(2);
+        for (int i = 0; i < 2; i++) {
             long id = i;
             pool.execute(() -> {
-                provision.open().accept(Sibyl.class, s -> {
-                    Thread.currentThread().sleep(start - System.currentTimeMillis());
-                    List<TestTable> testTables = s.all(TestTable.class, "select * from test_table where id in :ids",
+                provision.open().accept(Resources.class, Sibyl.class, (resources, s) -> {
+                    SessionV4 v4 = (SessionV4) resources.getInstance(Session.class);
+                    CqlSession cql = v4.unwrap();
+                    PreparedStatement pstmt = cql.prepare("select * from time_table where creation_time in :ids ");
+                    BoundStatement bound =  pstmt.bind();
+                    bound = bound.setList("ids", ids, Long.class);
+                    ResultSet rs =  cql.execute(bound);
+
+                   List<TimeTable> testTables = s.all(TimeTable.class, "select * from time_table where creation_time in :ids",
                            MapBuilder.of("ids", ids));
-                    List<TestTable> list = new ArrayList<>();
-                    TestTable test = new TestTable();
+                    List<TimeTable> list = new ArrayList<>();
+                    TimeTable test = new TimeTable();
+                    test.setCreationTime(System.currentTimeMillis());
                     test.setId(id);
                     test.setName("test");
                     list.add(test);
-                    s.save(list, TestTable.class).inCompletionOrder();
+                    s.save(list, TimeTable.class, null).inExecutionOrder();
                     latch.countDown();
                 });
             });
         }
         latch.await();
+
+        PartitionContext context = provision.newInstance(PartitionContext.class);
+        context.setStartTime(System.currentTimeMillis());
+        context.setBatchSize(100);
+        context.setExtractAll(true);
+        context.setTimeLag(0);
+        new TimeTransmutator().run(context);
     }
 }

@@ -16,12 +16,11 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Session;
+
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.async.Async;
-import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.cassandra.driver.cql.Prepared;
+import net.e6tech.elements.cassandra.driver.cql.ResultSet;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,7 +49,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
         return context.open().apply(Sibyl.class, sibyl -> {
             Map<Comparable, List<S>> results = new HashMap<>((int)(context.getPartitions().size() * 1.4 + 16));
             Class<S> sourceClass = context.getSourceClass();
-            PreparedStatement pstmt = context.getPreparedStatements().computeIfAbsent("extract",
+            Prepared pstmt = context.getPreparedStatements().computeIfAbsent("extract",
                 key -> sibyl.getSession().prepare(context.getExtractionQuery()));
             AtomicInteger total = new AtomicInteger(0);
             while (true) {
@@ -61,14 +60,15 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
                     if (endId.compareTo(startId) > 0) {
                         startId = endId;
                         context.setStartId(partition, startId);
-                        async.execute(bound -> bound.set(context.getInspector().getPartitionKeyColumn(0), partition, (Class) partition.getClass())
-                                .set(context.getInspector().getClusteringKeyColumn(0), context.getStartId(partition), (Class) partition.getClass()));
+                        async.execute(bound ->
+                                bound.set(context.getInspector().getPartitionKeyColumn(0), partition, (Class) partition.getClass())
+                                        .set(context.getInspector().getClusteringKeyColumn(0), context.getStartId(partition), (Class) partition.getClass()));
                     }
                 }
 
                 int before = total.get();
                 async.<ResultSet>inExecutionOrder(rs -> {
-                    List<S> subList = sibyl.getMapper(sourceClass).map(rs).all();
+                    List<S> subList = sibyl.mapAll(sourceClass, rs);
                     if (!subList.isEmpty()) {
                         PartitionOrderBy last = subList.get(subList.size() - 1);
                         Comparable partition = (Comparable) context.getInspector().getPartitionKey(last, 0);
@@ -79,7 +79,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
                     }
                 });
 
-                if (before == total.get())
+                if (before == total.get() || total.get() >= context.getBatchSize())
                     break;
             }
 
@@ -101,10 +101,14 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
         context.setPartitions(partitions);
 
         batchResults = extract(context);
-        processedCount += load(context, batchResults);
 
-        if (logger.isInfoEnabled())
-            logger.info("Processed {} instance of {}", processedCount, context.extractor());
+        while (batchResults.size() > 0) {
+            processedCount += load(context, batchResults);
+            if (logger.isInfoEnabled())
+                logger.info("Processed {} instance of {}", processedCount, context.extractor());
+            batchResults = extract(context);
+        }
+
         return processedCount;
     }
 }

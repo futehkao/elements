@@ -16,24 +16,21 @@
 
 package net.e6tech.elements.cassandra.async;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class AsyncFutures<T, D> {
-    static Logger logger = Logger.getLogger();
     protected Async async;
-    protected List<ListenableFuture<T>> futures;
+    protected List<Future<T>> futures;
     private long timeout = 0;
 
-    AsyncFutures(Async async, List<ListenableFuture<T>> futures) {
+    AsyncFutures(Async async, List<Future<T>> futures) {
         this.async = async;
         this.futures = futures;
     }
@@ -51,18 +48,8 @@ public class AsyncFutures<T, D> {
         return this;
     }
 
-    public Async inCompletionOrder() {
-        return inCompletionOrder(null);
-    }
-
-    public Async inCompletionOrder(Consumer<T> consumer) {
-        List<ListenableFuture<T>> list = (List) Futures.inCompletionOrder((List) futures);
-        futuresAccept(list, consumer);
-        return async;
-    }
-
-    protected void futuresAccept(List<ListenableFuture<T>> list, Consumer consumer) {
-        for (ListenableFuture<T> future : list) {
+    protected void futuresAccept(List<Future<T>> list, Consumer consumer) {
+        for (Future<T> future : list) {
             try {
                 T value = (timeout > 0) ? future.get(timeout, TimeUnit.MILLISECONDS) : future.get();
                 if (consumer != null && value != null)
@@ -74,7 +61,8 @@ public class AsyncFutures<T, D> {
     }
 
     public Async inExecutionOrder() {
-        return inCompletionOrder(null);
+        futuresAccept(futures, null);
+        return async;
     }
 
     public Async inExecutionOrder(Consumer<T> consumer) {
@@ -83,8 +71,8 @@ public class AsyncFutures<T, D> {
     }
 
     public Async inExecutionOrder(BiConsumer<D, T> consumer) {
-        Map<ListenableFuture<T>, D> futuresData = (Map) async.futuresData;
-        for (ListenableFuture<T> future : futures) {
+        Map<Future<T>, D> futuresData = (Map) async.futuresData;
+        for (Future<T> future : futures) {
             try {
                 T value = (timeout > 0) ? future.get(timeout, TimeUnit.MILLISECONDS) : future.get();
                 if (consumer != null && value != null)

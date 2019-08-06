@@ -22,10 +22,13 @@ dependencies {
     compile "org.ow2.asm:asm-commons:${asmVersion}"
     compile "org.ow2.asm:asm-analysis:${asmVersion}"
     compile "org.ow2.asm:asm-util:${asmVersion}"
-    compile("com.datastax.cassandra:cassandra-driver-core:${cassandraDriverVersion}") {
+    compile("com.datastax.cassandra:cassandra-driver-mapping:${cassandraDriverVersion}") {
         exclude group: 'org.ow2.asm'
     }
-    compile "com.datastax.cassandra:cassandra-driver-mapping:${cassandraDriverVersion}"
+
+    compile("com.datastax.oss:java-driver-mapper-processor:4.1.0")
+
+    // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: '4.1.0'
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"

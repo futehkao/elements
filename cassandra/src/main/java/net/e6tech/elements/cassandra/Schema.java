@@ -16,17 +16,14 @@
 
 package net.e6tech.elements.cassandra;
 
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.TableMetadata;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.SyntaxError;
-import com.datastax.driver.mapping.annotations.Table;
-import com.datastax.driver.mapping.annotations.UDT;
+
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.cassandra.etl.ETLContext;
 import net.e6tech.elements.cassandra.etl.Strategy;
 import net.e6tech.elements.cassandra.generator.Codec;
+import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.cassandra.generator.TableGenerator;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
@@ -130,100 +127,12 @@ public class Schema {
         provision.open().accept(Resources.class, resources -> {
             String cql = getProvider(resources).getGenerator().createCodecs(keyspace, userType, codec);
             try {
-                getProvider(resources).getSession(keyspace).execute(cql);
+                resources.getInstance(Session.class).execute(keyspace, cql);
                 logger.info("Created UDT type {} for class {}", userType, codec);
-            } catch (SyntaxError ex) {
+            } catch (Exception ex) {
                 logger.info("Syntax error in creating table for {}", codec);
                 logger.info(cql);
                 throw ex;
-            }
-        });
-    }
-
-    @SuppressWarnings("squid:S3878")
-    public void registerCodecs(String keyspace, String packageName, Class ... order) {
-        try {
-            provision.suppressLogging();
-            provision.open().accept(Resources.class, resources -> {
-                SessionProvider provider = getProvider(resources);
-                Class[] found = (packageName == null) ? new Class[0] : scanClasses(UDT.class, new String[] {packageName});
-                Class[] classes = found;
-                if (order != null) {
-                    List<Class> list = new ArrayList<>();
-                    for (Class cls : found) {
-                        for (Class cls2 : order) {
-                            if (!cls.equals(cls2)) {
-                                list.add(cls);
-                            }
-                        }
-                    }
-                    for (Class cls : order)
-                        list.add(cls);
-
-                    classes = list.toArray(new Class[0]);
-                }
-
-                for (Class codecClass : classes) {
-                    try {
-                        String keySpaceIn = null;
-                        String userType = null;
-                        UDT udt = (UDT) codecClass.getAnnotation(UDT.class);
-                        if (!udt.keyspace().isEmpty())
-                            keySpaceIn = udt.keyspace();
-                        userType = udt.name();
-
-                        if (keyspace != null) {
-                            keySpaceIn = keyspace;
-                        }
-
-                        if (Codec.class.isAssignableFrom(codecClass))
-                            createCodecs(keySpaceIn, userType, (Class) codecClass);
-                        provider.registerCodec(keySpaceIn, userType, codecClass);
-                    } catch (SyntaxError e) {
-                        logger.warn("Cannot register codec for class {}", codecClass.getName());
-                    }
-                }
-            });
-        } finally {
-            provision.resumeLogging();
-        }
-    }
-
-    public void registerCodecs() {
-        provision.open().accept(Resources.class, resources -> {
-            SessionProvider provider = getProvider(resources);
-            for (Map<String, String> map : codecs) {
-                String codecClassName = map.get("codec");
-
-                if (codecClassName == null)
-                    throw new IllegalArgumentException("No codec defined");
-
-                try {
-                    Class<? extends TypeCodec> codecClass = (Class) getClass().getClassLoader().loadClass(codecClassName);
-                    String keySpaceIn = null;
-                    String userType = null;
-
-                    UDT udt = codecClass.getAnnotation(UDT.class);
-                    if (udt != null) {
-                        if (!udt.keyspace().isEmpty())
-                            keySpaceIn = udt.keyspace();
-                        userType = udt.name();
-                    }
-
-                    if (map.get("keyspace") != null)
-                        keySpaceIn = map.get("keyspace");
-
-                    if (map.get("userType") != null)
-                        userType = map.get("userType");
-
-                    if (userType == null)
-                        throw new IllegalArgumentException("No userType defined");
-                    if (Codec.class.isAssignableFrom(codecClass))
-                        createCodecs(keySpaceIn, userType, (Class) codecClass);
-                    provider.registerCodec(keySpaceIn, userType, codecClass);
-                } catch (Exception e) {
-                    throw new SystemException(e);
-                }
             }
         });
     }
@@ -245,7 +154,9 @@ public class Schema {
     }
 
     public void createTables(String keyspace, String ... packageNames) {
-        Class[] classes = scanClasses(Table.class, packageNames);
+        Generator generator = provision.getInstance(SessionProvider.class).getGenerator();
+        Class<? extends Annotation> annotation = generator.tableAnnotation();
+        Class[] classes = scanClasses(annotation, packageNames);
         createTables(keyspace, classes);
     }
 
@@ -260,20 +171,20 @@ public class Schema {
                 if (metadata == null) {
                     String cql = generator.generate();
                     try {
-                        provider.getSession(keyspace).execute(cql);
+                        resources.getInstance(Session.class).execute(keyspace, cql);
                     } catch (Exception ex) {
                         logger.info("Syntax error in creating table for {}", cls);
                         logger.info(cql);
                         throw ex;
                     }
                 }
-                generator.diff(provider.getSession(keyspace), provider.getTableMetadata(keyspace, generator.getTableName()), isDropColumn());
+                generator.diff(resources.getInstance(Session.class), keyspace, provider.getTableMetadata(keyspace, generator.getTableName()), isDropColumn());
 
                 // create indexes
                 List<String> statements = provider.getGenerator().createIndexes(keyspace, cls);
                 for (String cql : statements) {
                     try {
-                        getProvider(resources).getSession(keyspace).execute(cql);
+                        resources.getInstance(Session.class).execute(keyspace, cql);
                     } catch (Exception ex) {
                         logger.info("Syntax error in creating index for {}", cls);
                         logger.info(cql);
@@ -287,12 +198,11 @@ public class Schema {
     }
 
     protected String getTableName(Class entityClass) {
-        Table table = null;
+        Generator generator = provision.getInstance(SessionProvider.class).getGenerator();
         Class tmp = entityClass;
         while (tmp != null && tmp != Object.class) {
-            table = (Table) tmp.getAnnotation(Table.class);
-            if (table != null)
-                return table.name();
+            if (generator.tableAnnotation(tmp) != null)
+                return generator.tableName(tmp);
             tmp = tmp.getSuperclass();
         }
         return null;
@@ -343,7 +253,7 @@ public class Schema {
             for (Class cls : classes) {
                 List<String> statements = getScript(cls, type);
                 for (String stmt : statements) {
-                    getProvider(resources).getSession(keyspace).execute(stmt);
+                    resources.getInstance(Session.class).execute(keyspace, stmt);
                 }
             }
         });

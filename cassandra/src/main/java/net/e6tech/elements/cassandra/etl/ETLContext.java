@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import com.datastax.driver.mapping.MappingManager;
 import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.generator.Generator;
@@ -34,7 +33,8 @@ public class ETLContext {
     public static final long HOUR = 60 * 60 * 1000L;
     public static final long MINUTE = 60 * 1000L;
     public static final long SECOND = 1000L;
-    public static final long MONTH = DAY * 30;
+    public static final long MONTH = DAY * 30;  // not to be used for deriving a partition key
+    public static final long YEAR = DAY * 365;  // not to be used for deriving a partition key
     public static final long TIME_LAG = 5 * 60 * 1000L;
     public static final int BATCH_SIZE = 2000;
 
@@ -44,6 +44,7 @@ public class ETLContext {
     private int importedCount;
     private String extractorName;
     private boolean extractAll = true;
+    private String initialUpdate;
     private Class sourceClass;
     private TimeUnit timeUnit;
     private boolean initialized = false;
@@ -116,6 +117,14 @@ public class ETLContext {
         this.extractAll = extractAll;
     }
 
+    public String getInitialUpdate() {
+        return initialUpdate;
+    }
+
+    public void setInitialUpdate(String initialUpdate) {
+        this.initialUpdate = initialUpdate;
+    }
+
     public String getExtractorName() {
         return extractorName;
     }
@@ -183,7 +192,7 @@ public class ETLContext {
             if (lastUpdateClass == null)
                 lastUpdateClass = getProvision().open().apply(Resources.class,
                         resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
-            sibyl.getMapper(lastUpdateClass).save(lastUpdate);
+            sibyl.save(lastUpdateClass, lastUpdate);
             this.lastUpdate = lastUpdate;
         });
     }
@@ -195,8 +204,8 @@ public class ETLContext {
             if (lastUpdateClass == null)
                 lastUpdateClass = getProvision().open().apply(Resources.class,
                         resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
-            lastUpdate = open().apply(Resources.class, resources ->
-                    resources.getInstance(MappingManager.class).mapper(lastUpdateClass).get(extractor())
+            lastUpdate = open().apply(Sibyl.class, s ->
+                    s.get(lastUpdateClass, new PrimaryKey(extractor()))
             );
             return lastUpdate;
         });
@@ -213,15 +222,19 @@ public class ETLContext {
                 throw new SystemException(e);
             }
             lastUpdate.setExtractor(name);
-            if (extractAll) {
-                // UUID
-                if (UUID.class.isAssignableFrom(getPartitionKeyType())) {
-                    lastUpdate.setLastUpdate(new UUID(Long.MIN_VALUE, Long.MIN_VALUE).toString());
-                } else {
-                    lastUpdate.setLastUpdate("0");
-                }
+            if (initialUpdate != null) {
+                lastUpdate.setLastUpdate(getInitialUpdate());
             } else {
-                lastUpdate.setLastUpdate("" + cutoffOrUpdate(false));
+                if (extractAll) {
+                    // UUID
+                    if (UUID.class.isAssignableFrom(getPartitionKeyType())) {
+                        lastUpdate.setLastUpdate(new UUID(Long.MIN_VALUE, Long.MIN_VALUE).toString());
+                    } else {
+                        lastUpdate.setLastUpdate("0");
+                    }
+                } else {
+                    lastUpdate.setLastUpdate("" + cutoffOrUpdate(false));
+                }
             }
             lastUpdate.setDataType(getGenerator().getDataType(getPartitionKeyType()));
             if (getTimeUnit() != null)

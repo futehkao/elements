@@ -23,8 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PartitionOrderByContext extends PartitionContext {
-    private Map<Comparable, Comparable> startIds = new HashMap<>();
-    private Map<Comparable, Comparable> endIds = new HashMap<>();
+    private Map<Comparable, Comparable> startIds = new HashMap<>(200);
+    private Map<Comparable, Comparable> endIds = new HashMap<>(200);
 
     public String getExtractionQuery() {
         String clusteringKeyColumn = getInspector().getClusteringKeyColumn(0);
@@ -42,7 +42,7 @@ public class PartitionOrderByContext extends PartitionContext {
     public Comparable getStartId(Comparable partition) {
         Comparable id = startIds.get(partition);
         if (id == null)
-            id = 0L;
+            id = Long.MIN_VALUE;
         return id;
     }
 
@@ -53,7 +53,7 @@ public class PartitionOrderByContext extends PartitionContext {
     public Comparable getEndId(Comparable partition) {
         Comparable id = endIds.get(partition);
         if (id == null)
-            id = 1L;
+            id = Long.MIN_VALUE + 1;
         return id;
     }
 

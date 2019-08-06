@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import com.datastax.driver.core.PreparedStatement;
+import net.e6tech.elements.cassandra.driver.cql.Prepared;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 
@@ -24,12 +24,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
 public class PartitionContext extends ETLContext {
     private List<Comparable> partitions = new ArrayList<>();
-    private Map<String, PreparedStatement> preparedStatements = new HashMap<>();
+    private Map<String, Prepared> preparedStatements = new HashMap<>();
 
     private ToIntFunction<List> loadDelegate;
 
@@ -73,7 +72,7 @@ public class PartitionContext extends ETLContext {
         this.loadDelegate = loadDelegate;
     }
 
-    public Map<String, PreparedStatement> getPreparedStatements() {
+    public Map<String, Prepared> getPreparedStatements() {
         return preparedStatements;
     }
 

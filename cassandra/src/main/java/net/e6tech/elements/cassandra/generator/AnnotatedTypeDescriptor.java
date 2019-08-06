@@ -17,76 +17,84 @@
 package net.e6tech.elements.cassandra.generator;
 
 import com.datastax.driver.mapping.annotations.Column;
-import com.datastax.driver.mapping.annotations.Frozen;
-import com.datastax.driver.mapping.annotations.FrozenKey;
-import com.datastax.driver.mapping.annotations.FrozenValue;
+import net.e6tech.elements.common.reflection.Accessor;
 
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 public class AnnotatedTypeDescriptor implements TypeDescriptor {
 
     private AnnotatedTypeDescriptor parent;
-    private AccessibleObject annotated;
+    private AccessibleObject accessibleObject;
+    private PropertyDescriptor descriptor;
     private String columnName;
+    private Generator generator;
 
     public AnnotatedTypeDescriptor(Generator generator, Field field) {
-        this.annotated = field;
-        columnName = generator.getColumnName(annotated.getAnnotation(Column.class), field);
+        this.generator = generator;
+        this.accessibleObject = field;
+        columnName = generator.getColumnName(field);
     }
 
-    public AnnotatedTypeDescriptor(Generator generator, Method method, AnnotatedTypeDescriptor parent) {
-        this.annotated = method;
-        columnName = generator.getColumnName(annotated.getAnnotation(Column.class), method);
+    public AnnotatedTypeDescriptor(Generator generator, PropertyDescriptor descriptor, AnnotatedTypeDescriptor parent) {
+        this.generator = generator;
+        this.descriptor = descriptor;
+        columnName = generator.getColumnName(descriptor);
         this.parent = parent;
     }
 
     @Override
     public boolean isFrozen() {
-        if (annotated.getAnnotation(Frozen.class) != null) {
-            return annotated.getAnnotation(Frozen.class) != null;
-        } else if (parent != null) {
-            return parent.isFrozen();
+        if (generator.isFrozen(descriptor)
+            || generator.isFrozen(accessibleObject))
+            return true;
+        else if (parent != null) {
+            parent.isFrozen();
         }
         return false;
     }
 
     @Override
     public boolean isFrozenKey() {
-        if (annotated.getAnnotation(FrozenKey.class) != null) {
-            return annotated.getAnnotation(FrozenKey.class) != null;
-        } else if (parent != null) {
-            return parent.isFrozenKey();
+        if (generator.isFrozenKey(descriptor)
+                || generator.isFrozenKey(accessibleObject))
+            return true;
+        else if (parent != null) {
+            parent.isFrozenKey();
         }
         return false;
     }
 
     @Override
     public boolean isFrozenValue() {
-        if (annotated.getAnnotation(FrozenValue.class) != null) {
-            return annotated.getAnnotation(FrozenValue.class) != null;
-        } else if (parent != null) {
-            return parent.isFrozenValue();
+        if (generator.isFrozenValue(descriptor)
+                || generator.isFrozenValue(accessibleObject))
+            return true;
+        else if (parent != null) {
+            parent.isFrozenValue();
         }
         return false;
     }
 
     @Override
     public boolean isTimeBased() {
-        if (annotated.getAnnotation(TimeBased.class) != null) {
-            return annotated.getAnnotation(TimeBased.class) != null;
-        } else if (parent != null) {
-            return parent.isTimeBased();
+        if (Accessor.getAnnotation(descriptor, accessibleObject, TimeBased.class) != null)
+            return true;
+        else if (parent != null) {
+            parent.isTimeBased();
         }
         return false;
     }
 
     @Override
     public String getColumnName() {
-        if (annotated.getAnnotation(Column.class) != null) {
+        if (generator.hasColumnAnnotation(descriptor)
+            || generator.hasColumnAnnotation(accessibleObject)) {
             return columnName;
-        } else if (parent != null && parent.annotated.getAnnotation(Column.class) != null) {
+        } else if (parent != null &&
+                (generator.hasColumnAnnotation(parent.descriptor)
+                || generator.hasColumnAnnotation(parent.accessibleObject))) {
             return parent.getColumnName();
         }
         return columnName;

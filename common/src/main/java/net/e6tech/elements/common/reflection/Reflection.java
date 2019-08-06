@@ -252,6 +252,30 @@ public class Reflection {
         }
     }
 
+    public static Map<String, Map<Class<? extends Annotation>, Annotation>> getInterfaceAnnotations(Class cls) {
+        LinkedHashSet<Class> set = new LinkedHashSet<>();
+        if (cls.isInterface())
+            set.add(cls);
+        while (cls != null && cls != Object.class) {
+            for (Class c : cls.getInterfaces())
+                set.add(c);
+            cls = cls.getSuperclass();
+        }
+
+        Map<String, Map<Class<? extends Annotation>, Annotation>> annotations = new HashMap<>(50);
+        for (Class c : set) {
+            try {
+                for (PropertyDescriptor desc : Introspector.getBeanInfo(c).getPropertyDescriptors()) {
+                    Map<Class<? extends Annotation>, Annotation> map = Accessor.getAnnotations(desc);
+                    annotations.put(desc.getName(), map);
+                }
+            } catch (IntrospectionException e) {
+                throw new SystemException(e);
+            }
+        }
+        return annotations;
+    }
+
     public static BeanInfo getBeanInfo(Class cls) {
         try {
             return Introspector.getBeanInfo(cls);

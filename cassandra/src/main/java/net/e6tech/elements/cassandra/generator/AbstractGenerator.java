@@ -16,9 +16,7 @@
 
 package net.e6tech.elements.cassandra.generator;
 
-import com.datastax.driver.mapping.annotations.Table;
 import net.e6tech.elements.common.util.StringUtil;
-import net.e6tech.elements.common.util.SystemException;
 
 import java.beans.IntrospectionException;
 import java.util.LinkedList;
@@ -26,8 +24,9 @@ import java.util.LinkedList;
 public class AbstractGenerator {
 
     protected Generator generator;
-    private Table table;
     private String keyspace;
+    private String tableName;
+    private String tableKeyspace;
 
     AbstractGenerator(Generator generator) {
         this.generator = generator;
@@ -41,16 +40,12 @@ public class AbstractGenerator {
         this.keyspace = keyspace;
     }
 
-    public Table getTable() {
-        return table;
-    }
-
     public String getTableName() {
-        return table.name();
+        return tableName;
     }
 
     public String getTableKeyspace() {
-        return table.keyspace();
+        return tableKeyspace;
     }
 
     protected LinkedList<Class> analyze(Class entityClass) throws IntrospectionException {
@@ -59,13 +54,15 @@ public class AbstractGenerator {
         Class tmp = entityClass;
         LinkedList<Class> classHierarchy = new LinkedList<>();
         while (tmp != null && tmp != Object.class) {
-            if (table == null)
-                table = (Table) tmp.getAnnotation(Table.class);
+            if (generator.tableAnnotation(tmp) != null) {
+                tableName = generator.tableName(tmp);
+                tableKeyspace = generator.tableKeyspace(tmp);
+            }
             classHierarchy.addFirst(tmp);
             tmp = tmp.getSuperclass();
         }
 
-        if (table == null) {
+        if (tableName == null) {
             throw new IntrospectionException("Class " + entityClass.getName() + " is not annotated with @Table");
         }
         return classHierarchy;

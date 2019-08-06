@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.datastax.oss:java-driver-mapper-runtime:4.1.0">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/java-driver-mapper-runtime/4.1.0/f395df8ae30079e5eb2242a61d37c7474d034dcf/java-driver-mapper-runtime-4.1.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/java-driver-mapper-runtime/4.1.0/1c6b1106b8b279cebcbe18d60547a3f3f56ee296/java-driver-mapper-runtime-4.1.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

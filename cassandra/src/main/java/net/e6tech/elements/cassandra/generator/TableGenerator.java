@@ -16,13 +16,9 @@
 
 package net.e6tech.elements.cassandra.generator;
 
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.TableMetadata;
-import com.datastax.driver.mapping.annotations.ClusteringColumn;
-import com.datastax.driver.mapping.annotations.Column;
-import com.datastax.driver.mapping.annotations.PartitionKey;
-import com.datastax.driver.mapping.annotations.Transient;
+import net.e6tech.elements.cassandra.Session;
+import net.e6tech.elements.cassandra.driver.metadata.ColumnMetadata;
+import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -50,20 +46,18 @@ public class TableGenerator extends AbstractGenerator {
             for (Field field : fields) {
                 if (Modifier.isStatic(field.getModifiers()))
                     continue;
-                Column column = field.getAnnotation(Column.class);
-                Transient trans = field.getAnnotation(Transient.class);
-                if (trans != null)
+                if (generator.isTransient(field))
                     continue;
 
-                PartitionKey pk = field.getAnnotation(PartitionKey.class);
-                if (pk != null)
-                    partitionKeys.add(new KeyColumn(generator.getColumnName(column, field), pk.value()));
-                ClusteringColumn cc = field.getAnnotation(ClusteringColumn.class);
-                if (cc != null)
-                    clusterKeys.add(new KeyColumn(generator.getColumnName(column, field), cc.value()));
+                int pk = generator.partitionKeyIndex(field);
+                if (pk >= 0)
+                    partitionKeys.add(new KeyColumn(generator.getColumnName(field), pk));
+                int cc = generator.clusteringColumnIndex(field);
+                if (cc >= 0)
+                    clusterKeys.add(new KeyColumn(generator.getColumnName(field), cc));
                 ColumnGenerator fieldGen = new ColumnGenerator(generator, field.getGenericType(), new AnnotatedTypeDescriptor(generator, field));
-                columnGenerators.put(generator.getColumnName(column, field), fieldGen);
-                columnGenerators2.put(field.getName(), generator.getColumnName(column, field));
+                columnGenerators.put(generator.getColumnName(field), fieldGen);
+                columnGenerators2.put(field.getName(), generator.getColumnName(field));
             }
         }
 
@@ -74,20 +68,23 @@ public class TableGenerator extends AbstractGenerator {
                 method = desc.getReadMethod();
                 type = method.getGenericReturnType();
             }
+            if (type == null && desc.getWriteMethod() != null) {
+                method = desc.getWriteMethod();
+                type = method.getGenericParameterTypes()[0];
+            }
 
             if (method != null && !method.getName().equals("getClass")) {
-                Transient trans = method.getAnnotation(Transient.class);
-                if (trans != null)
+                if (generator.isTransient(desc))
                     continue;
-                Column column = method.getAnnotation(Column.class);
-                PartitionKey pk = method.getAnnotation(PartitionKey.class);
-                if (pk != null)
-                    partitionKeys.add(new KeyColumn(generator.getColumnName(column, method), pk.value()));
-                ClusteringColumn cc = method.getAnnotation(ClusteringColumn.class);
-                if (cc != null)
-                    clusterKeys.add(new KeyColumn(generator.getColumnName(column, method), cc.value()));
 
-                ColumnGenerator colGen = columnGenerators.get(generator.getColumnName(column, method));
+                int pk = generator.partitionKeyIndex(desc);
+                if (pk >= 0)
+                    partitionKeys.add(new KeyColumn(generator.getColumnName(desc), pk));
+                int cc = generator.clusteringColumnIndex(desc);
+                if (cc >= 0)
+                    clusterKeys.add(new KeyColumn(generator.getColumnName(desc), cc));
+
+                ColumnGenerator colGen = columnGenerators.get(generator.getColumnName(desc));
                 if (colGen == null) {
                     String columnName = columnGenerators2.get(desc.getName());
                     if (columnName != null) {
@@ -98,10 +95,14 @@ public class TableGenerator extends AbstractGenerator {
                     }
                 }
                 AnnotatedTypeDescriptor fieldTypeDescriptor = (colGen != null) ? (AnnotatedTypeDescriptor) colGen.getTypeDescriptor() : null;
-                ColumnGenerator methGen = new ColumnGenerator(generator, type, new AnnotatedTypeDescriptor(generator, method, fieldTypeDescriptor));
-                columnGenerators.put(generator.getColumnName(column, method), methGen);
+                ColumnGenerator methGen = new ColumnGenerator(generator, type, new AnnotatedTypeDescriptor(generator, desc, fieldTypeDescriptor));
+                columnGenerators.put(generator.getColumnName(desc), methGen);
             }
         }
+    }
+
+    public Map<String, ColumnGenerator> columns() {
+        return columnGenerators;
     }
 
     public String generate() {
@@ -144,7 +145,7 @@ public class TableGenerator extends AbstractGenerator {
         return builder.toString();
     }
 
-    public void diff(Session session, TableMetadata tableMetadata, boolean dropColumns) {
+    public void diff(Session session, String keyspace, TableMetadata tableMetadata, boolean dropColumns) {
         List<ColumnMetadata> columns = tableMetadata.getColumns();
         Map<String, ColumnGenerator> toAdd = new LinkedHashMap<>();
         Map<String, ColumnMetadata> toRemove = new LinkedHashMap<>();
@@ -172,7 +173,7 @@ public class TableGenerator extends AbstractGenerator {
             builder.append(fullyQualifiedTableName());
             builder.append(" ADD ");
             builder.append(col.generate());
-            session.execute(builder.toString());
+            session.execute(keyspace, builder.toString());
             builder.setLength(0);
         }
 
@@ -182,7 +183,7 @@ public class TableGenerator extends AbstractGenerator {
                 builder.append(fullyQualifiedTableName());
                 builder.append(" DROP ");
                 builder.append(col.getName());
-                session.execute(builder.toString());
+                session.execute(keyspace, builder.toString());
                 builder.setLength(0);
             }
         }

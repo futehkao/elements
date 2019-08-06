@@ -16,31 +16,21 @@
 
 package net.e6tech.elements.cassandra.async;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.ResultSetFuture;
-import com.datastax.driver.core.Row;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+
+import net.e6tech.elements.cassandra.driver.cql.ResultSet;
+import net.e6tech.elements.cassandra.driver.cql.Row;
 import net.e6tech.elements.common.logging.Logger;
 
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
     static Logger logger = Logger.getLogger();
 
-    AsyncResultSet(Async async, List<ResultSetFuture> futures) {
+    AsyncResultSet(Async async, List<Future> futures) {
         super(async, (List) futures);
-    }
-
-    public Async inCompletionOrderRows(Consumer<Row> consumer) {
-        List<ListenableFuture<ResultSet>> list = (List) Futures.inCompletionOrder((List) futures);
-        futuresGet(list, consumer);
-        return async;
     }
 
     public Async inExecutionOrderRows(Consumer<Row> consumer) {
@@ -48,8 +38,8 @@ public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
         return async;
     }
 
-    private void futuresGet(List<ListenableFuture<ResultSet>> list, Consumer<Row> consumer) {
-        for (ListenableFuture<ResultSet> future : list) {
+    private void futuresGet(List<Future<ResultSet>> list, Consumer<Row> consumer) {
+        for (Future<ResultSet> future : list) {
             try {
                 if (getTimeout() > 0) {
                     for (Row row : future.get(getTimeout(), TimeUnit.MILLISECONDS)) {
@@ -66,29 +56,4 @@ public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
         }
     }
 
-    public Async inExecutionRows(BiConsumer<Row, D> consumer) {
-        Map<ListenableFuture<ResultSet>, D> futuresData = (Map) async.futuresData;
-        for (ListenableFuture<ResultSet> future : futures) {
-            try {
-                if (getTimeout() > 0){
-                    for (Row row : future.get(getTimeout(), TimeUnit.MILLISECONDS)) {
-                        consumer.accept(row, futuresData.get(future));
-                    }
-                } else {
-                    for (Row row : future.get()) {
-                        consumer.accept(row, futuresData.get(future));
-                    }
-                }
-            } catch (Exception e) {
-                logger.warn(e.getMessage(), e);
-            }
-        }
-        return async;
-    }
-
-    public Async andThen(Async async, BiConsumer<Row, BoundStatement> biConsumer) {
-        async.reset();
-        inCompletionOrderRows(row -> async.execute(bound -> biConsumer.accept(row, bound)));
-        return async;
-    }
 }

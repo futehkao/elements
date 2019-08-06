@@ -16,42 +16,57 @@
 
 package net.e6tech.elements.cassandra;
 
-import com.datastax.driver.core.*;
-import com.datastax.driver.mapping.Mapper;
-import com.datastax.driver.mapping.MappingManager;
-import com.datastax.driver.mapping.Result;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.cassandra.async.Async;
 import net.e6tech.elements.cassandra.async.AsyncFutures;
+import net.e6tech.elements.cassandra.driver.cql.Bound;
+import net.e6tech.elements.cassandra.driver.cql.Prepared;
+import net.e6tech.elements.cassandra.driver.cql.ResultSet;
 import net.e6tech.elements.cassandra.etl.Inspector;
 import net.e6tech.elements.cassandra.etl.PrimaryKey;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
-import net.e6tech.elements.common.util.SystemException;
 
-import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
-public class Sibyl {
+public abstract class Sibyl {
 
-    private static Cache<String, PreparedStatement> preparedStatementCache = CacheBuilder.newBuilder()
+    private static Cache<String, Prepared> preparedStatementCache = CacheBuilder.newBuilder()
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .initialCapacity(200)
             .maximumSize(500)
             .build();
 
     private Resources resources;
-    private boolean saveNullFields = false;
-    private ConsistencyLevel readConsistency = ConsistencyLevel.LOCAL_SERIAL;
-    private ConsistencyLevel writeConsistency = ConsistencyLevel.LOCAL_QUORUM;
+    private ReadOptions readOptions = new ReadOptions().consistency(Consistency.LOCAL_SERIAL);
+    private WriteOptions writeOptions = new WriteOptions().consistency(Consistency.LOCAL_QUORUM).saveNullFields(false);
 
     public <T> T computeIfAbsent(String key, Function<String, T> mappingFunction) {
         return (T) resources.configurator().computeIfAbsent(key, mappingFunction);
+    }
+
+    public ReadOptions getReadOptions() {
+        return readOptions;
+    }
+
+    public void setReadOptions(ReadOptions readOptions) {
+        this.readOptions = readOptions;
+    }
+
+    public WriteOptions getWriteOptions() {
+        return writeOptions;
+    }
+
+    public void setWriteOptions(WriteOptions writeOptions) {
+        this.writeOptions = writeOptions;
     }
 
     public Resources getResources() {
@@ -71,36 +86,12 @@ public class Sibyl {
         return resources.getInstance(Session.class);
     }
 
-    public boolean isSaveNullFields() {
-        return saveNullFields;
-    }
-
-    public void setSaveNullFields(boolean saveNullFields) {
-        this.saveNullFields = saveNullFields;
-    }
-
-    public ConsistencyLevel getReadConsistency() {
-        return readConsistency;
-    }
-
-    public void setReadConsistency(ConsistencyLevel readConsistency) {
-        this.readConsistency = readConsistency;
-    }
-
-    public ConsistencyLevel getWriteConsistency() {
-        return writeConsistency;
-    }
-
-    public void setWriteConsistency(ConsistencyLevel writeConsistency) {
-        this.writeConsistency = writeConsistency;
-    }
-
     public Async createAsync() {
         return getResources().newInstance(Async.class);
     }
 
     public Async createAsync(String query) {
-        PreparedStatement pstmt = null;
+        Prepared pstmt;
         try {
             pstmt = preparedStatementCache.get(query, () -> getSession().prepare(query));
         } catch (ExecutionException e) {
@@ -109,48 +100,12 @@ public class Sibyl {
         return getResources().newInstance(Async.class).prepare(pstmt);
     }
 
-    public Async createAsync(PreparedStatement stmt) {
+    public Async createAsync(Prepared stmt) {
         return getResources().newInstance(Async.class).prepare(stmt);
     }
 
-    public Deque<Mapper.Option> mapperOptions (Mapper.Option... options) {
-        LinkedList<Mapper.Option> list = new LinkedList<>();
-        if (options != null) {
-            for (Mapper.Option option : options) {
-                list.add(option);
-            }
-        }
-        return list;
-    }
-
-    public <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls,  Mapper.Option... options) {
-        Async async = createAsync();
-        Mapper<X> mapper = getMapper(cls);
-        Deque<Mapper.Option> mapperOptions = mapperOptions(options);
-        mapperOptions.addFirst(Mapper.Option.consistencyLevel(getReadConsistency()));
-        mapper.setDefaultGetOptions(mapperOptions.toArray(new Mapper.Option[0]));
-        return async.accept(list, k -> mapper.getAsync(k.getKeys()));
-    }
-
-    public MappingManager getMappingManager() {
-        return resources.getInstance(MappingManager.class);
-    }
-
-    public <T> Mapper<T> getMapper(Class<T> cls) {
-        return getMappingManager().mapper(cls);
-    }
-
-    public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, Mapper.Option... options) {
-        Async async = createAsync();
-        Mapper<X> mapper = getMapper(cls);
-        Deque<Mapper.Option> mapperOptions = mapperOptions(options);
-        mapperOptions.addFirst(Mapper.Option.saveNullFields(isSaveNullFields()));
-        mapperOptions.addFirst(Mapper.Option.consistencyLevel(getWriteConsistency()));
-        return async.accept(list, item -> mapper.saveAsync(item, mapperOptions.toArray(new Mapper.Option[0])));
-    }
-
     public ResultSet execute(String query, Map<String, Object> map) {
-        PreparedStatement pstmt = null;
+        Prepared pstmt ;
         try {
             pstmt = preparedStatementCache.get(query, () -> getSession().prepare(query));
         } catch (ExecutionException e) {
@@ -159,8 +114,8 @@ public class Sibyl {
         return execute(pstmt, map);
     }
 
-    public ResultSet execute(PreparedStatement pstmt, Map<String, Object> map) {
-       BoundStatement bound = pstmt.bind();
+    protected ResultSet execute(Prepared pstmt, Map<String, Object> map) {
+        Bound bound = pstmt.bind();
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             if (entry.getValue() == null) {
                 bound.setToNull(entry.getKey());
@@ -179,17 +134,23 @@ public class Sibyl {
         return getSession().execute(bound);
     }
 
-    public <X> X one(Class<X> cls, String query, Map<String, Object> map) {
-        ResultSet resultSet = execute(query, map);
-        Result<X> result = getMapper(cls).map(resultSet);
-        return result.one();
-    }
+    public abstract <T> T get(Class<T> cls, PrimaryKey primaryKey);
 
-    public <X> List<X> all(Class<X> cls, String query, Map<String, Object> map) {
-        ResultSet resultSet = execute(query, map);
-        Result<X> result = getMapper(cls).map(resultSet);
-        return result.all();
-    }
+    public abstract <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls, ReadOptions userOptions);
+
+    public abstract <T> void save(Class<T> cls, T entity);
+
+    public abstract <T> void save(Class<T> cls, T entity, WriteOptions options);
+
+    public abstract <T> void delete(Class<T> cls, T entity);
+
+    public abstract  <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, WriteOptions userOptions);
+
+    public abstract <X> X one(Class<X> cls, String query, Map<String, Object> map);
+
+    public abstract <X> List<X> all(Class<X> cls, String query, Map<String, Object> map);
+
+    public abstract <X> List<X> mapAll(Class<X> cls, ResultSet rs);
 
     public Inspector getInspector(Class cls) {
         return getResources().getInstance(SessionProvider.class).getInspector(cls);

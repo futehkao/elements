@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,33 +16,25 @@
 
 package net.e6tech.elements.cassandra;
 
-import com.datastax.driver.core.*;
-import com.datastax.driver.core.exceptions.InvalidQueryException;
-import com.datastax.driver.core.policies.RetryPolicy;
-import com.datastax.driver.mapping.*;
-import com.datastax.driver.mapping.annotations.UDT;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.cassandra.etl.Inspector;
 import net.e6tech.elements.cassandra.etl.LastUpdate;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.inject.Inject;
-import net.e6tech.elements.common.reflection.Reflection;
-import net.e6tech.elements.common.resources.Initializable;
-import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.common.resources.ResourceProvider;
-import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.MapBuilder;
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.common.util.TextBuilder;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
 
-public class SessionProvider implements ResourceProvider, Initializable {
+@BindClass(SessionProvider.class)
+public abstract class SessionProvider implements ResourceProvider, Initializable {
     private static final String CREATE_KEYSPACE = "CREATE KEYSPACE IF NOT EXISTS ${keyspace}  WITH replication = {'class':'SimpleStrategy', 'replication_factor' : ${replication}};";
     private static final Map<String, Object> CREATE_KEYSPACE_ARGUMENTS = Collections.unmodifiableMap(MapBuilder.of("replication", 3));
 
@@ -51,30 +43,27 @@ public class SessionProvider implements ResourceProvider, Initializable {
             .initialCapacity(128)
             .maximumSize(2000)
             .build();
-    private Deque<MappingManager> cachedManagers = new ConcurrentLinkedDeque<>();
-    private Cluster cluster;
-    private String createKeyspace = CREATE_KEYSPACE;
-    private Map<String, Object> createKeyspaceArguments = new HashMap<>(CREATE_KEYSPACE_ARGUMENTS);
+
+    protected String createKeyspace = CREATE_KEYSPACE;
+    protected Map<String, Object> createKeyspaceArguments = new HashMap<>(CREATE_KEYSPACE_ARGUMENTS);
     private String host;
     private int port = 9042;
     private String keyspace;
-    private Map<String, Session> sessions = new HashMap<>();
     private Provision provision;
     private int maxSessions = 20;
-    private Generator generator = new Generator();
     private int coreConnections = 20;
     private int maxConnections = 200;
+    private int heartbeatIntervalSeconds = 10000;
     private int maxRequests = 32768;
     private int poolTimeout = 5000;
     private int readTimeout = 20000;
     private Boolean keepAlive;
-    private HostDistance distance = HostDistance.LOCAL;
-    private NamingStrategy namingStrategy = new DefaultNamingStrategy(NamingConventions.LOWER_CAMEL_CASE, NamingConventions.LOWER_SNAKE_CASE);
     private Class<? extends LastUpdate> lastUpdateClass = LastUpdate.class;
-    private Sibyl sibylDefault = new Sibyl();
-    private Consumer<Cluster.Builder> builderOptions;
+    private Map<String, Session> sessions = new HashMap<>();
+    private WriteOptions defaultWriteOptions = new WriteOptions().consistency(Consistency.LOCAL_QUORUM).saveNullFields(false);
+    private ReadOptions defaultReadOptions = new ReadOptions().consistency(Consistency.LOCAL_SERIAL);
+
     private boolean sharedSession = false;
-    private MappingManager sharedMappingManager;
 
     public Provision getProvision() {
         return provision;
@@ -99,14 +88,6 @@ public class SessionProvider implements ResourceProvider, Initializable {
 
     public void setCreateKeyspaceArguments(Map<String, Object> createKeyspaceArguments) {
         this.createKeyspaceArguments = createKeyspaceArguments;
-    }
-
-    public Cluster getCluster() {
-        return cluster;
-    }
-
-    public void setCluster(Cluster cluster) {
-        this.cluster = cluster;
     }
 
     public String getHost() {
@@ -165,12 +146,12 @@ public class SessionProvider implements ResourceProvider, Initializable {
         this.maxRequests = maxRequests;
     }
 
-    public HostDistance getDistance() {
-        return distance;
+    public int getHeartbeatIntervalSeconds() {
+        return heartbeatIntervalSeconds;
     }
 
-    public void setDistance(HostDistance distance) {
-        this.distance = distance;
+    public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+        this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
     }
 
     public int getPoolTimeout() {
@@ -197,29 +178,7 @@ public class SessionProvider implements ResourceProvider, Initializable {
         this.keepAlive = keepAlive;
     }
 
-    public Consumer<Cluster.Builder> getBuilderOptions() {
-        return builderOptions;
-    }
-
-    public void setBuilderOptions(Consumer<Cluster.Builder> builderOptions) {
-        this.builderOptions = builderOptions;
-    }
-
-    public Session getSession() {
-        return getSession(keyspace);
-    }
-
-    public Session getSession(String keyspaceIn) {
-        return buildSession(getKeyspace(keyspaceIn));
-    }
-
-    public KeyspaceMetadata getKeyspaceMetadata(String keyspaceIn) {
-        return cluster.getMetadata().getKeyspace(getKeyspace(keyspaceIn));
-    }
-
-    public TableMetadata getTableMetadata(String keyspaceIn, String tableName) {
-        return cluster.getMetadata().getKeyspace(getKeyspace(keyspaceIn)).getTable(tableName);
-    }
+    public abstract TableMetadata getTableMetadata(String keyspaceIn, String tableName);
 
     protected String getKeyspace(String keyspaceIn) {
         String ks = keyspaceIn;
@@ -228,12 +187,36 @@ public class SessionProvider implements ResourceProvider, Initializable {
         return ks;
     }
 
-    public Sibyl getSibylDefault() {
-        return sibylDefault;
+    public Cache<Class, Inspector> getInspectors() {
+        return inspectors;
     }
 
-    public void setSibylDefault(Sibyl sibylDefault) {
-        this.sibylDefault = sibylDefault;
+    public void setInspectors(Cache<Class, Inspector> inspectors) {
+        this.inspectors = inspectors;
+    }
+
+    public Map<String, Session> getSessions() {
+        return sessions;
+    }
+
+    public void setSessions(Map<String, Session> sessions) {
+        this.sessions = sessions;
+    }
+
+    public WriteOptions getDefaultWriteOptions() {
+        return defaultWriteOptions;
+    }
+
+    public void setDefaultWriteOptions(WriteOptions defaultWriteOptions) {
+        this.defaultWriteOptions = defaultWriteOptions;
+    }
+
+    public ReadOptions getDefaultReadOptions() {
+        return defaultReadOptions;
+    }
+
+    public void setDefaultReadOptions(ReadOptions defaultReadOptions) {
+        this.defaultReadOptions = defaultReadOptions;
     }
 
     public boolean isSharedSession() {
@@ -244,12 +227,6 @@ public class SessionProvider implements ResourceProvider, Initializable {
         this.sharedSession = sharedSession;
     }
 
-    protected MappingManager createMappingManager(Session session) {
-        DefaultPropertyMapper propertyMapper = new DefaultPropertyMapper();
-        propertyMapper.setNamingStrategy(namingStrategy);
-        MappingConfiguration conf = MappingConfiguration.builder().withPropertyMapper(propertyMapper).build();
-        return new MappingManager(session, conf);
-    }
 
     public Class<? extends LastUpdate> getLastUpdateClass() {
         return lastUpdateClass;
@@ -259,84 +236,26 @@ public class SessionProvider implements ResourceProvider, Initializable {
         this.lastUpdateClass = lastUpdateClass;
     }
 
-    public Generator getGenerator() {
-        return generator;
+    public abstract Generator getGenerator();
+
+    public synchronized Session buildSession(String keyspaceIn) {
+        return sessions.computeIfAbsent(keyspaceIn, k -> createSession(getKeyspace(keyspaceIn)));
     }
 
-    protected synchronized Session buildSession(String keyspaceIn) {
-        return sessions.computeIfAbsent(keyspaceIn, key -> getCluster().connect(keyspaceIn));
-    }
+    protected abstract Session createSession(String keyspaceIn);
 
-    protected synchronized void buildCluster() {
-        if (cluster != null)
-            return;
+    protected abstract void initDriver();
 
-        PoolingOptions poolingOptions = new PoolingOptions();
-        poolingOptions
-                .setPoolTimeoutMillis(getPoolTimeout())
-                .setCoreConnectionsPerHost(HostDistance.LOCAL, coreConnections)
-                .setMaxConnectionsPerHost( HostDistance.LOCAL, maxConnections)
-                .setMaxRequestsPerConnection(HostDistance.LOCAL, maxRequests);
+    protected abstract void initKeyspace();
 
-        SocketOptions socketOptions = new SocketOptions()
-                .setReadTimeoutMillis(getReadTimeout());
-        if (getKeepAlive() != null)
-            socketOptions.setKeepAlive(getKeepAlive());
+    protected abstract void postInit();
 
-        Cluster.Builder builder = Cluster.builder()
-                .addContactPoint(host)
-                .withPort(port)
-                .withPoolingOptions(poolingOptions)
-                .withSocketOptions(socketOptions);
-
-        if (builderOptions != null)
-            builderOptions.accept(builder);
-        cluster = builder.build();
-    }
-
-    @Override
     public void initialize(Resources resources) {
-        generator.setNamingStrategy(namingStrategy);
-        provision.getResourceManager().bind(Generator.class, generator);
-        buildCluster();
-        try {
-            getSession();
-        } catch (InvalidQueryException ex) {
-            // connect to default keyspace and create a named keyspace
-            Session session = getCluster().connect();
-            createKeyspaceArguments.put("keyspace", keyspace);
-            session.execute(TextBuilder.using(createKeyspace).build(createKeyspaceArguments));
-            session.close();
-            getSession();
-        }
-
-        provision.getResourceManager().rebind(Cluster.class, getCluster());
-        provision.getResourceManager().rebind(SessionProvider.class, this);
-    }
-
-    public void registerCodec(Class<? extends TypeCodec> codecClass) {
-        UDT udt = codecClass.getAnnotation(UDT.class);
-        if (udt == null)
-            throw new IllegalArgumentException("Codec class does not have @UDT annotation");
-        registerCodec(udt.keyspace(), udt.name(), codecClass);
-    }
-
-    public void registerCodec(String keyspaceIn, String userType, Class<? extends TypeCodec> codecClass) {
-        try {
-            if (keyspaceIn == null || keyspaceIn.isEmpty())
-                keyspaceIn = this.keyspace;
-
-            CodecRegistry codecRegistry = cluster.getConfiguration().getCodecRegistry();
-            UserType type = cluster.getMetadata().getKeyspace(keyspaceIn).getUserType(userType);
-            if (type == null)
-                throw new SystemException("Invalid user type " + userType + " in keyspace " + keyspace);
-            TypeCodec<UDTValue> userTypeCodec = codecRegistry.codecFor(type);
-            TypeCodec typeCodec = codecClass.getConstructor(TypeCodec.class, Class.class).newInstance(userTypeCodec, Reflection.getParametrizedType(codecClass, 0));
-            codecRegistry.register(typeCodec);
-            generator.setDataType(Reflection.getParametrizedType(codecClass, 0), userType);
-        } catch (Exception e) {
-            throw new SystemException(e);
-        }
+        getProvision().getResourceManager().bind(Generator.class, getGenerator());
+        initDriver();
+        initKeyspace();
+        getProvision().getResourceManager().rebind(SessionProvider.class, this);
+        postInit();
     }
 
     public Inspector getInspector(Class cls) {
@@ -358,39 +277,7 @@ public class SessionProvider implements ResourceProvider, Initializable {
     }
 
     @Override
-    public void onOpen(Resources resources) {
-        MappingManager mappingManager;
-        Session session;
-
-        if (isSharedSession()) {
-            synchronized (this) {
-                getCluster().connect(getKeyspace());
-                session = getCluster().connect(getKeyspace());
-                sharedMappingManager = createMappingManager(session);
-            }
-            mappingManager = sharedMappingManager;
-        } else {
-            try {
-                mappingManager = cachedManagers.pop();
-                session = mappingManager.getSession();
-            } catch (NoSuchElementException ex) {
-                getCluster().connect(getKeyspace());
-                session = getCluster().connect(getKeyspace());
-                mappingManager = createMappingManager(session);
-            }
-        }
-
-
-        resources.rebind(Session.class, session);
-        resources.rebind(MappingManager.class, mappingManager);
-        resources.rebind(Cluster.class, getCluster());
-        resources.rebind(SessionProvider.class, this);
-        Sibyl s = resources.newInstance(Sibyl.class);
-        s.setReadConsistency(sibylDefault.getReadConsistency());
-        s.setWriteConsistency(sibylDefault.getWriteConsistency());
-        s.setSaveNullFields(sibylDefault.isSaveNullFields());
-        resources.rebind(Sibyl.class, s);
-    }
+    public abstract void onOpen(Resources resources);
 
     @Override
     public void afterOpen(Resources resources) {
@@ -418,31 +305,8 @@ public class SessionProvider implements ResourceProvider, Initializable {
     }
 
     @Override
-    public void onClosed(Resources resources) {
-        if (isSharedSession()) {
-            return;
-        }
-
-        MappingManager mappingManager = resources.getInstance(MappingManager.class);
-        if (mappingManager != null) {
-            if (cachedManagers.size() < getMaxSessions()) {
-                cachedManagers.push(mappingManager);
-            } else {
-                mappingManager.getSession().closeAsync();
-            }
-        }
-    }
+    public abstract void onClosed(Resources resources);
 
     @Override
-    public void onShutdown() {
-        if (isSharedSession()) {
-            if (sharedMappingManager != null) {
-                sharedMappingManager.getSession().close();
-            }
-        } else {
-            for (MappingManager mappingManager : cachedManagers) {
-                mappingManager.getSession().close();
-            }
-        }
-    }
+    public abstract void onShutdown();
 }

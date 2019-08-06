@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import net.e6tech.elements.cassandra.SessionProvider
+import net.e6tech.elements.cassandra.driver.v3.SessionProviderV3
+import net.e6tech.elements.cassandra.driver.v4.SessionProviderV4
 import net.e6tech.elements.cassandra.Schema
 
 import java.util.function.Consumer
@@ -28,16 +29,22 @@ atom("cassandra_session") {
       coreConnections: ${cassandraCoreConnections}
       maxConnections: ${cassandraMaxConnections}
       maxRequests: ${cassandraMaxRequests}
-      builderOptions: ^_options
+      sharedSession: true
+      # builderOptions: ^_options
       lastUpdateClass: net.e6tech.elements.cassandra.etl.LastUpdate
       createKeyspaceArguments:
         replication: 1
+      driverOptions:
+        REQUEST_TIMEOUT: '10 seconds'
+        CONNECTION_MAX_REQUESTS: '32768'
+        SOCKET_KEEP_ALIVE: 'true'
+        LOAD_BALANCING_LOCAL_DATACENTER: 'datacenter1'
 """
     _options = { t ->   } as Consumer
-    _provider = SessionProvider
+    _provider = SessionProviderV4
     _schema = Schema
 
     postInit {
-        _schema.createTables(null, cassandraTables.toArray(new String[0]))
+        _schema.createTables('elements', cassandraTables.toArray(new String[0]))
     }
 }

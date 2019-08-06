@@ -69,6 +69,7 @@ public class Lambda {
             throw new ReflectiveOperationException(e.getCause());
         }
     }
+
     public static BiConsumer reflectSetter(final MethodHandles.Lookup lookup, final Method setter) throws ReflectiveOperationException {
         try {
             return SETTERS.get(setter, () -> createSetter(lookup, lookup.unreflect(setter)));

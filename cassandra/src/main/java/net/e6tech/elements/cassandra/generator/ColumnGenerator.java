@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.cassandra.generator;
 
+import net.e6tech.elements.cassandra.driver.datatype.DataType;
+
 import java.lang.reflect.Type;
 
 public class ColumnGenerator {
@@ -33,5 +35,9 @@ public class ColumnGenerator {
 
     public TypeDescriptor getTypeDescriptor() {
         return typeDescriptor;
+    }
+
+    public DataType getDataType() {
+        return dataType;
     }
 }

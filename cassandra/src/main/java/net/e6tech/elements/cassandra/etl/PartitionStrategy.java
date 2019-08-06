@@ -16,12 +16,12 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
+import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.async.Async;
+import net.e6tech.elements.cassandra.driver.cql.Prepared;
+import net.e6tech.elements.cassandra.driver.cql.ResultSet;
+import net.e6tech.elements.cassandra.driver.cql.Row;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.TextBuilder;
 
@@ -63,7 +63,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
             Map<Comparable, Long> map = ref.get();
             for (Row row : rows) {
                 Comparable pk = (Comparable) row.get(0, context.getPartitionKeyType());
-                map.put(pk, row.getLong(1));
+                map.put(pk, row.get(1, Long.class));
                 partitions.add(pk);
             }
         });
@@ -81,14 +81,14 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         return context.open().apply(Sibyl.class, sibyl -> {
             String query = TextBuilder.using("select * from ${table} where ${pk} = :partitionKey")
                     .build("table", context.tableName(), "pk", context.getInspector().getPartitionKeyColumn(0));
-            PreparedStatement pstmt = context.getPreparedStatements().computeIfAbsent("extract",
+            Prepared pstmt = context.getPreparedStatements().computeIfAbsent("extract",
                     key -> sibyl.getSession().prepare(query));
             Async async = sibyl.createAsync(pstmt);
             for (Comparable hour : context.getPartitions()) {
                 async.execute(bound -> bound.set("partitionKey", hour, (Class) hour.getClass()));
             }
             List<S> list = new ArrayList<>();
-            async.<ResultSet>inExecutionOrder(rs -> list.addAll(sibyl.getMapper(context.getSourceClass()).map(rs).all()));
+            async.<ResultSet>inExecutionOrder(rs -> list.addAll(sibyl.mapAll(context.getSourceClass(), rs)));
             return list;
         });
 

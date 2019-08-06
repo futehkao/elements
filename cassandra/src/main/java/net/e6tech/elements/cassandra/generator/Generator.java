@@ -16,30 +16,37 @@
 
 package net.e6tech.elements.cassandra.generator;
 
-import com.datastax.driver.mapping.NamingStrategy;
-import com.datastax.driver.mapping.annotations.Column;
+import net.e6tech.elements.common.reflection.Accessor;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.beans.IntrospectionException;
+import java.beans.PropertyDescriptor;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @SuppressWarnings("squid:S1192")
-public class Generator {
+public abstract class Generator {
 
     private Map<String, Class> dataNames = new HashMap<>();
     private Map<Type, String> dataTypes = new HashMap<>();
-    private NamingStrategy namingStrategy;
 
     public Generator() {
         dataTypes.put(Boolean.class, "boolean");
         dataTypes.put(Boolean.TYPE, "boolean");
+        dataTypes.put(Byte.class, "tinyint");
+        dataTypes.put(Byte.TYPE, "tinyint");
         dataTypes.put(Long.class, "bigint");
         dataTypes.put(Long.TYPE, "bigint");
         dataTypes.put(Integer.class, "int");
@@ -49,19 +56,32 @@ public class Generator {
         dataTypes.put(Double.TYPE, "double");
         dataTypes.put(Float.class, "float");
         dataTypes.put(Float.TYPE, "float");
-        dataTypes.put(String.class, "text");
+        dataTypes.put(Short.class, "smallint");
+        dataTypes.put(Short.TYPE, "smallint");
         dataTypes.put(UUID.class, "uuid");
-        dataTypes.put(byte[].class, "blob");
+        dataTypes.put(ByteBuffer.class, "blob");
+        dataTypes.put(BigInteger.class, "varint");
+        dataTypes.put(LocalTime.class, "time");
+        dataTypes.put(InetAddress.class, "inet");
+        dataTypes.put(LocalDate.class, "date");
+        dataTypes.put(String.class, "varchar");
 
         dataNames.put("boolean", Boolean.class);
+        dataNames.put("tinyint", Byte.class);
         dataNames.put("bigint", Long.class);
         dataNames.put("int", Integer.class);
         dataNames.put("decimal", BigDecimal.class);
         dataNames.put("double", Double.class);
         dataNames.put("float", Float.class);
+        dataNames.put("smallint", Short.class);
         dataNames.put("text", String.class);
+        dataNames.put("varchar", String.class);
         dataNames.put("uuid", UUID.class);
-        dataNames.put("blob", byte[].class);
+        dataNames.put("blob", ByteBuffer.class);
+        dataNames.put("varint", BigInteger.class);
+        dataNames.put("time", LocalTime.class);
+        dataNames.put("inet", InetAddress.class);
+        dataNames.put("date", LocalDate.class);
     }
 
     public TableGenerator createTable(String keyspace, Class cls) {
@@ -113,40 +133,53 @@ public class Generator {
         }
     }
 
-    public NamingStrategy getNamingStrategy() {
-        return namingStrategy;
+    public abstract String toCassandraName(String javaPropertyName);
+
+    public abstract Class<? extends Annotation> tableAnnotation();
+
+    public abstract Annotation tableAnnotation(Class sourceClass);
+
+    public abstract String tableKeyspace(Class sourceClass);
+
+    public abstract String tableName(Class sourceClass);
+
+    public abstract boolean hasColumnAnnotation(AccessibleObject field);
+
+    public abstract boolean hasColumnAnnotation(PropertyDescriptor desc);
+
+    public abstract String getColumnName(Field field);
+
+    public abstract String getColumnName(PropertyDescriptor descriptor);
+
+    public abstract int partitionKeyIndex(AccessibleObject field);
+
+    public abstract int partitionKeyIndex(PropertyDescriptor descriptor);
+
+    public abstract int clusteringColumnIndex(AccessibleObject field);
+
+    public abstract int clusteringColumnIndex(PropertyDescriptor descriptor);
+
+    public abstract boolean isTransient(AccessibleObject field);
+
+    public abstract boolean isTransient(PropertyDescriptor descriptor);
+
+    public abstract boolean isFrozen(AccessibleObject field);
+
+    public abstract boolean isFrozen(PropertyDescriptor descriptor);
+
+    public abstract boolean isFrozenKey(AccessibleObject field);
+
+    public abstract boolean isFrozenKey(PropertyDescriptor descriptor);
+
+    public abstract boolean isFrozenValue(AccessibleObject field);
+
+    public abstract boolean isFrozenValue(PropertyDescriptor descriptor);
+
+    public boolean isTimeBased(AccessibleObject field) {
+        return Accessor.getAnnotation(field, TimeBased.class) != null;
     }
 
-    public void setNamingStrategy(NamingStrategy namingStrategy) {
-        this.namingStrategy = namingStrategy;
-    }
-
-    public String toCassandraName(String javaPropertyName) {
-        return namingStrategy.toCassandraName(javaPropertyName);
-    }
-
-    public String getColumnName(Column column, Field field) {
-        String columnName;
-        if (column == null || column.name().isEmpty()) {
-            columnName = toCassandraName(field.getName());
-        } else {
-            columnName = column.name();
-        }
-        return columnName;
-    }
-
-    public String getColumnName(Column column, Method method) {
-        String columnName;
-        if (column == null || column.name().isEmpty()) {
-            String name = method.getName();
-            if (name.startsWith("is"))
-                name = name.substring(2);
-            else if (name.startsWith("set") || name.startsWith("get"))
-                name = name .substring(3);
-            columnName = toCassandraName(name);
-        } else {
-            columnName = column.name();
-        }
-        return columnName;
+    public boolean isTimeBased(PropertyDescriptor descriptor) {
+        return Accessor.getAnnotation(descriptor, TimeBased.class) != null;
     }
 }

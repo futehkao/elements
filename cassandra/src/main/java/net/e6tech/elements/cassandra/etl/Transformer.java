@@ -16,12 +16,7 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.mapping.Mapper;
-import net.e6tech.elements.cassandra.SessionProvider;
-import net.e6tech.elements.cassandra.Sibyl;
-import net.e6tech.elements.cassandra.async.Async;
+import net.e6tech.elements.cassandra.*;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
@@ -47,8 +42,8 @@ public class Transformer<T, E> {
     private List<Pair<PrimaryKey, E>> entries = Collections.synchronizedList(new LinkedList<>());
     private boolean hasCheckpoint;
     private Inspector tableInspector;
-    private ConsistencyLevel readConsistency = null;
-    private ConsistencyLevel writeConsistency = null;
+    private Consistency readConsistency = null;
+    private Consistency writeConsistency = null;
     private long timeout = 0;  // ie disable
 
     public Transformer(Resources resources, Class<T> cls) {
@@ -84,30 +79,20 @@ public class Transformer<T, E> {
         return this;
     }
 
-    public ConsistencyLevel getReadConsistency() {
+    public Consistency getReadConsistency() {
         return readConsistency;
     }
 
-    public void setReadConsistency(ConsistencyLevel readConsistency) {
+    public void setReadConsistency(Consistency readConsistency) {
         this.readConsistency = readConsistency;
     }
 
-    public Transformer<T, E> readConsistency(ConsistencyLevel readConsistency) {
-        setReadConsistency(readConsistency);
-        return this;
-    }
-
-    public ConsistencyLevel getWriteConsistency() {
+    public Consistency getWriteConsistency() {
         return writeConsistency;
     }
 
-    public void setWriteConsistency(ConsistencyLevel writeConsistency) {
+    public void setWriteConsistency(Consistency writeConsistency) {
         this.writeConsistency = writeConsistency;
-    }
-
-    public Transformer<T, E> writeConsistency(ConsistencyLevel writeConsistency) {
-        setWriteConsistency(writeConsistency);
-        return this;
     }
 
     public long getTimeout() {
@@ -126,6 +111,13 @@ public class Transformer<T, E> {
     public Transformer<T, E> addPrimaryKey(PrimaryKey key, E e) {
         if (key == null)
             return this;
+
+        int keyColumns = tableInspector.getPartitionKeySize() + tableInspector.getClusteringKeySize();
+        if (keyColumns != key.getKeys().length) {
+            throw new IllegalArgumentException("Mismatch key columns.  The primary key for " + tableClass + " consists of " +  keyColumns + " column(s): " +
+                    "the provided primary key has " + key.getKeys().length + " componenets.");
+        }
+
         entries.add(new Pair<>(key, e));
         return this;
     }
@@ -137,12 +129,10 @@ public class Transformer<T, E> {
         for (Pair<PrimaryKey, E> e : entries()) {
             keys.add(e.key());
         }
-        if (readConsistency != null)
-            s.get(keys, tableClass, Mapper.Option.consistencyLevel(readConsistency))
-                    .timeout(timeout)
-                    .inExecutionOrder(map::put);
-        else
-            s.get(keys, tableClass)
+
+        ReadOptions readOptions = new ReadOptions();
+        readOptions.consistency = readConsistency;
+        s.get(keys, tableClass, readOptions)
                     .timeout(timeout)
                     .inExecutionOrder(map::put);
         return this;
@@ -210,19 +200,23 @@ public class Transformer<T, E> {
         return this;
     }
 
-    public Transformer<T, E> save(Mapper.Option... options) {
-        Sibyl s = resources.getInstance(Sibyl.class);
-        if (writeConsistency != null) {
-            Deque<Mapper.Option> mapperOptions = s.mapperOptions(options);
-            mapperOptions.addFirst(Mapper.Option.consistencyLevel(writeConsistency));
-            s.save(values(), tableClass, mapperOptions.toArray(new Mapper.Option[0]))
-                    .timeout(timeout)
-                    .inCompletionOrder();
-        } else {
-            s.save(values(), tableClass)
-                    .timeout(timeout)
-                    .inCompletionOrder();
+    public Transformer<T, E> save() {
+        return save(null);
+    }
+
+    public Transformer<T, E> save(WriteOptions userOptions) {
+        WriteOptions options = WriteOptions.from(userOptions);
+
+        if (options.consistency == null && writeConsistency != null) {
+            options.consistency = writeConsistency;
         }
+
+        Sibyl s = resources.getInstance(Sibyl.class);
+
+        s.save(values(), tableClass, options)
+                .timeout(timeout)
+                    .inExecutionOrder();
+
         return this;
     }
 

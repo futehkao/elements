@@ -60,7 +60,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             AsyncResultSet<?> result = sibyl.createAsync("select " + partitionKey + ", count(*) from " + tableName +
                     " where " + checkpointColumn + " > :spk group by " + partitionKey + " " + filter)
                     .execute(bound -> bound.set("spk", value, (Class) value.getClass()));
-            result.inCompletionOrderRows(row -> {
+            result.inExecutionOrderRows(row -> {
                 if (!row.isNull(0)) {
                     list.add(row.get(0, value.getClass()));
                 }
@@ -68,7 +68,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
 
             Async async = sibyl.createAsync("delete from " + inspector.tableName() + " where " + partitionKey + " = :partitionKey");
             async.execute(list, (p, bound) ->  bound.set("partitionKey", p, (Class) p.getClass()))
-                    .inCompletionOrder();
+                    .inExecutionOrder();
         });
     }
 
