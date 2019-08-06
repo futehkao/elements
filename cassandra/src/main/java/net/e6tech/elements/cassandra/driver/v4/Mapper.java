@@ -22,7 +22,7 @@ import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import net.e6tech.elements.cassandra.ReadOptions;
 import net.e6tech.elements.cassandra.WriteOptions;
-import net.e6tech.elements.cassandra.driver.v4.sample.Product;
+import net.e6tech.elements.cassandra.driver.cql.Row;
 
 import java.util.concurrent.CompletionStage;
 
@@ -32,23 +32,17 @@ public interface Mapper<T> {
 
     T one(AsyncResultSet resultSet);
 
+    T map(Row row);
+
     PagingIterable<T> all(ResultSet resultSet);
 
     MappedAsyncPagingIterable<T> all(AsyncResultSet resultSet);
 
-    T get(Object ... keyColumns);
-
     T get(ReadOptions options, Object ... keyColumns);
-
-    CompletionStage<T> getAsync(Object ... keyColumns);
 
     CompletionStage<T> getAsync(ReadOptions readOptions, Object ... keyColumnss);
 
-    void save(T entity);
-
     void save(WriteOptions options, T entity);
-
-    CompletionStage<Void> saveAsync(T entity);
 
     CompletionStage<Void> saveAsync(WriteOptions options, T entity);
 

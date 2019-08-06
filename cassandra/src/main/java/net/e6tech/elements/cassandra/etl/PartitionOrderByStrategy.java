@@ -18,9 +18,8 @@ package net.e6tech.elements.cassandra.etl;
 
 
 import net.e6tech.elements.cassandra.Sibyl;
-import net.e6tech.elements.cassandra.async.Async;
+import net.e6tech.elements.cassandra.async.AsyncPrepared;
 import net.e6tech.elements.cassandra.driver.cql.Prepared;
-import net.e6tech.elements.cassandra.driver.cql.ResultSet;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,7 +52,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
                 key -> sibyl.getSession().prepare(context.getExtractionQuery()));
             AtomicInteger total = new AtomicInteger(0);
             while (true) {
-                Async async = sibyl.createAsync(pstmt);
+                AsyncPrepared<?> async = sibyl.createAsync(pstmt);
                 for (Comparable partition : context.getPartitions()) {
                     Comparable startId = context.getStartId(partition);
                     Comparable endId = context.getEndId(partition);
@@ -67,7 +66,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
                 }
 
                 int before = total.get();
-                async.<ResultSet>inExecutionOrder(rs -> {
+                async.inExecutionOrder(rs -> {
                     List<S> subList = sibyl.mapAll(sourceClass, rs);
                     if (!subList.isEmpty()) {
                         PartitionOrderBy last = subList.get(subList.size() - 1);

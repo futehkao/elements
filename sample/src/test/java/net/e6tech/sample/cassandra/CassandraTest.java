@@ -58,10 +58,10 @@ public class CassandraTest {
         List<Long> ids = Arrays.asList(1L, 2L, 3L);
 
         ThreadPool pool = ThreadPool.fixedThreadPool("test", 50);
-        long start = System.currentTimeMillis() + 2000L;
 
-        CountDownLatch latch = new CountDownLatch(2);
-        for (int i = 0; i < 2; i++) {
+        int threads = 5;
+        CountDownLatch latch = new CountDownLatch(threads);
+        for (int i = 0; i < threads; i++) {
             long id = i;
             pool.execute(() -> {
                 provision.open().accept(Resources.class, Sibyl.class, (resources, s) -> {

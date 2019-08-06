@@ -25,8 +25,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+// T is the type of value from future.get()
+// D is the associated type of data
 public class AsyncFutures<T, D> {
-    protected Async async;
+    protected Async<T, D> async;
     protected List<Future<T>> futures;
     private long timeout = 0;
 
@@ -71,7 +73,7 @@ public class AsyncFutures<T, D> {
     }
 
     public Async inExecutionOrder(BiConsumer<D, T> consumer) {
-        Map<Future<T>, D> futuresData = (Map) async.futuresData;
+        Map<Future<T>, D> futuresData = async.futuresData;
         for (Future<T> future : futures) {
             try {
                 T value = (timeout > 0) ? future.get(timeout, TimeUnit.MILLISECONDS) : future.get();
@@ -83,5 +85,4 @@ public class AsyncFutures<T, D> {
         }
         return async;
     }
-
 }

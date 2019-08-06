@@ -18,7 +18,6 @@ package net.e6tech.elements.cassandra.etl;
 
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
-import com.datastax.oss.driver.api.mapper.annotations.Entity;
 
 @Table(name = "last_update")
 @SuppressWarnings("squid:S1700")

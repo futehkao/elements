@@ -16,16 +16,5 @@
 
 package net.e6tech.elements.cassandra.driver.cql;
 
-import java.util.LinkedList;
-import java.util.List;
-
-public interface ResultSet extends Iterable<Row> {
-
-    default List<Row> all() {
-        List<Row> all = new LinkedList<>();
-        for (Row row : this) {
-            all.add(row);
-        }
-        return all;
-    }
+public interface ResultSet extends BaseResultSet {
 }

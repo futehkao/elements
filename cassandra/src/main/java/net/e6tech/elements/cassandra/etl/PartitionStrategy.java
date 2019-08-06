@@ -18,7 +18,7 @@ package net.e6tech.elements.cassandra.etl;
 
 import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.cassandra.Sibyl;
-import net.e6tech.elements.cassandra.async.Async;
+import net.e6tech.elements.cassandra.async.AsyncPrepared;
 import net.e6tech.elements.cassandra.driver.cql.Prepared;
 import net.e6tech.elements.cassandra.driver.cql.ResultSet;
 import net.e6tech.elements.cassandra.driver.cql.Row;
@@ -83,12 +83,12 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                     .build("table", context.tableName(), "pk", context.getInspector().getPartitionKeyColumn(0));
             Prepared pstmt = context.getPreparedStatements().computeIfAbsent("extract",
                     key -> sibyl.getSession().prepare(query));
-            Async async = sibyl.createAsync(pstmt);
+            AsyncPrepared<?> async = sibyl.createAsync(pstmt);
             for (Comparable hour : context.getPartitions()) {
                 async.execute(bound -> bound.set("partitionKey", hour, (Class) hour.getClass()));
             }
             List<S> list = new ArrayList<>();
-            async.<ResultSet>inExecutionOrder(rs -> list.addAll(sibyl.mapAll(context.getSourceClass(), rs)));
+            async.inExecutionOrder(rs -> list.addAll(sibyl.mapAll(context.getSourceClass(), rs)));
             return list;
         });
 

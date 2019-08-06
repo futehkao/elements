@@ -20,6 +20,7 @@ import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.SimpleStatement;
 import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.cassandra.driver.Wrapper;
+import net.e6tech.elements.cassandra.driver.cql.AsyncResultSet;
 import net.e6tech.elements.cassandra.driver.cql.Bound;
 import net.e6tech.elements.cassandra.driver.cql.Prepared;
 import net.e6tech.elements.cassandra.driver.cql.ResultSet;
@@ -51,10 +52,10 @@ public class SessionV3 extends Wrapper<com.datastax.driver.core.Session> impleme
         return Wrapper.wrap(new ResultSetV3(), unwrap().execute(((BoundV3) bound).unwrap()));
     }
 
-    public Future executeAsync(Bound bound) {
+    public Future<AsyncResultSet> executeAsync(Bound bound) {
         ResultSetFuture future = unwrap().executeAsync(((BoundV3) bound).unwrap());
 
-        return new Future() {
+        return new Future<AsyncResultSet>() {
             @Override
             public boolean cancel(boolean mayInterruptIfRunning) {
                 return future.cancel(mayInterruptIfRunning);
@@ -71,15 +72,15 @@ public class SessionV3 extends Wrapper<com.datastax.driver.core.Session> impleme
             }
 
             @Override
-            public Object get() throws InterruptedException, ExecutionException {
+            public AsyncResultSet get() throws InterruptedException, ExecutionException {
                 com.datastax.driver.core.ResultSet rs = future.get();
-                return Wrapper.wrap(new ResultSetV3(), rs);
+                return Wrapper.wrap(new AsyncResultSetV3(), rs);
             }
 
             @Override
-            public Object get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+            public AsyncResultSet get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
                 com.datastax.driver.core.ResultSet rs = future.get(timeout, unit);
-                return Wrapper.wrap(new ResultSetV3(), rs);
+                return Wrapper.wrap(new AsyncResultSetV3(), rs);
             }
         };
     }

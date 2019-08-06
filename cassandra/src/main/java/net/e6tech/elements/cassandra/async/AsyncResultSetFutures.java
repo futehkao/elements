@@ -17,7 +17,7 @@
 package net.e6tech.elements.cassandra.async;
 
 
-import net.e6tech.elements.cassandra.driver.cql.ResultSet;
+import net.e6tech.elements.cassandra.driver.cql.AsyncResultSet;
 import net.e6tech.elements.cassandra.driver.cql.Row;
 import net.e6tech.elements.common.logging.Logger;
 
@@ -26,20 +26,20 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-public class AsyncResultSet<D> extends AsyncFutures<ResultSet, D> {
+public class AsyncResultSetFutures<D> extends AsyncFutures<AsyncResultSet, D> {
     static Logger logger = Logger.getLogger();
 
-    AsyncResultSet(Async async, List<Future> futures) {
+    AsyncResultSetFutures(Async async, List<Future<AsyncResultSet>> futures) {
         super(async, (List) futures);
     }
 
-    public Async inExecutionOrderRows(Consumer<Row> consumer) {
+    public Async<AsyncResultSet, D> inExecutionOrderRows(Consumer<Row> consumer) {
         futuresGet(futures, consumer);
         return async;
     }
 
-    private void futuresGet(List<Future<ResultSet>> list, Consumer<Row> consumer) {
-        for (Future<ResultSet> future : list) {
+    private void futuresGet(List<Future<AsyncResultSet>> list, Consumer<Row> consumer) {
+        for (Future<AsyncResultSet> future : list) {
             try {
                 if (getTimeout() > 0) {
                     for (Row row : future.get(getTimeout(), TimeUnit.MILLISECONDS)) {

@@ -20,6 +20,8 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.cassandra.async.Async;
 import net.e6tech.elements.cassandra.async.AsyncFutures;
+import net.e6tech.elements.cassandra.async.AsyncPrepared;
+import net.e6tech.elements.cassandra.driver.cql.BaseResultSet;
 import net.e6tech.elements.cassandra.driver.cql.Bound;
 import net.e6tech.elements.cassandra.driver.cql.Prepared;
 import net.e6tech.elements.cassandra.driver.cql.ResultSet;
@@ -86,22 +88,22 @@ public abstract class Sibyl {
         return resources.getInstance(Session.class);
     }
 
-    public Async createAsync() {
+    public <T, D> Async<T, D> createAsync() {
         return getResources().newInstance(Async.class);
     }
 
-    public Async createAsync(String query) {
+    public <D> AsyncPrepared<D> createAsync(String query) {
         Prepared pstmt;
         try {
             pstmt = preparedStatementCache.get(query, () -> getSession().prepare(query));
         } catch (ExecutionException e) {
             pstmt = getSession().prepare(query);
         }
-        return getResources().newInstance(Async.class).prepare(pstmt);
+        return getResources().newInstance(AsyncPrepared.class).prepare(pstmt);
     }
 
-    public Async createAsync(Prepared stmt) {
-        return getResources().newInstance(Async.class).prepare(stmt);
+    public <D> AsyncPrepared<D> createAsync(Prepared stmt) {
+        return getResources().newInstance(AsyncPrepared.class).prepare(stmt);
     }
 
     public ResultSet execute(String query, Map<String, Object> map) {
@@ -136,6 +138,8 @@ public abstract class Sibyl {
 
     public abstract <T> T get(Class<T> cls, PrimaryKey primaryKey);
 
+    public abstract <T> T get(Class<T> cls, PrimaryKey primaryKey, ReadOptions readOptions);
+
     public abstract <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls, ReadOptions userOptions);
 
     public abstract <T> void save(Class<T> cls, T entity);
@@ -144,13 +148,15 @@ public abstract class Sibyl {
 
     public abstract <T> void delete(Class<T> cls, T entity);
 
+    public abstract  <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls);
+
     public abstract  <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, WriteOptions userOptions);
 
     public abstract <X> X one(Class<X> cls, String query, Map<String, Object> map);
 
     public abstract <X> List<X> all(Class<X> cls, String query, Map<String, Object> map);
 
-    public abstract <X> List<X> mapAll(Class<X> cls, ResultSet rs);
+    public abstract <X> List<X> mapAll(Class<X> cls, BaseResultSet rs);
 
     public Inspector getInspector(Class cls) {
         return getResources().getInstance(SessionProvider.class).getInspector(cls);

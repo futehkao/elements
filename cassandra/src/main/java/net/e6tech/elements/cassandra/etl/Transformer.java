@@ -60,13 +60,10 @@ public class Transformer<T, E> {
     }
 
     public Transformer<T,E> transform(E[] array, BiConsumer<Transformer<T, E>, E> consumer) {
-        List<CompletableFuture> asyncList = new LinkedList<>();
+        // Do not run this asynchronously.  We need to follw the arry order.
         for (E e : array) {
-            asyncList.add(CompletableFuture.runAsync(() ->  consumer.accept(this, e)));
+            consumer.accept(this, e);
         }
-        for (CompletableFuture future : asyncList)
-            future.join();
-        asyncList.clear();
         load();
         return this;
     }
@@ -160,9 +157,16 @@ public class Transformer<T, E> {
 
     @SuppressWarnings("squid:S3776")
     public Transformer<T, E> forEachCreateIfNotExist(BiConsumer<E, T> consumer) {
+        forEachNewOrExisting(consumer, consumer);
+        return this;
+    }
+
+    public Transformer<T, E> forEachNewOrExisting(BiConsumer<E, T> newItems, BiConsumer<E, T> existing) {
         Inspector extractedInspector = null;
-        List<CompletableFuture> asyncList = new LinkedList<>();
+
+        // this cannot be run asynchronously
         for (Pair<PrimaryKey, E> e : entries()) {
+            boolean existingItem = map.get(e.key()) != null;
             T t = computeIfAbsent(e.key());
             E extracted = e.value();
             if (extractedInspector == null)
@@ -179,13 +183,13 @@ public class Transformer<T, E> {
                 }
             }
             if (!duplicate) {
-                asyncList.add(CompletableFuture.runAsync(() -> consumer.accept(extracted, t)));
+                if (existingItem) {
+                    existing.accept(extracted, t);
+                } else {
+                    newItems.accept(extracted, t);
+                }
             }
         }
-
-        for (CompletableFuture future : asyncList)
-            future.join();
-        asyncList.clear();
 
         // update checkpoints.
         for (Pair<PrimaryKey, E> e : entries()) {

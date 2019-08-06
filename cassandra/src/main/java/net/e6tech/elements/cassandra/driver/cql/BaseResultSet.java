@@ -14,25 +14,17 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.cassandra;
+package net.e6tech.elements.cassandra.driver.cql;
 
-import net.e6tech.elements.cassandra.driver.cql.AsyncResultSet;
-import net.e6tech.elements.cassandra.driver.cql.Bound;
-import net.e6tech.elements.cassandra.driver.cql.Prepared;
-import net.e6tech.elements.cassandra.driver.cql.ResultSet;
+import java.util.LinkedList;
+import java.util.List;
 
-import java.util.concurrent.Future;
-
-public interface Session {
-
-    ResultSet execute(String query);
-
-    ResultSet execute(String keyspace, String query);
-
-    ResultSet execute(Bound statement);
-
-    Future<AsyncResultSet> executeAsync(Bound bound);
-
-    Prepared prepare(String query);
+public interface BaseResultSet extends Iterable<Row> {
+    default List<Row> all() {
+        List<Row> all = new LinkedList<>();
+        for (Row row : this) {
+            all.add(row);
+        }
+        return all;
+    }
 }
-

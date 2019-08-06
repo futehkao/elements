@@ -24,8 +24,6 @@ import net.e6tech.elements.cassandra.driver.metadata.AbstractColumnMetadata;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.cassandra.generator.TypeDescriptorImpl;
 
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
@@ -36,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
 
 public class ColumnMetadataV4 extends AbstractColumnMetadata {
 

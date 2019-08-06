@@ -20,30 +20,29 @@ import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.mapping.Mapper;
 import com.datastax.driver.mapping.MappingManager;
 import com.datastax.driver.mapping.Result;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.cassandra.ReadOptions;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.WriteOptions;
 import net.e6tech.elements.cassandra.async.Async;
 import net.e6tech.elements.cassandra.async.AsyncFutures;
-import net.e6tech.elements.cassandra.driver.cql.Bound;
-import net.e6tech.elements.cassandra.driver.cql.Prepared;
-import net.e6tech.elements.cassandra.driver.cql.ResultSet;
+import net.e6tech.elements.cassandra.driver.cql.BaseResultSet;
 import net.e6tech.elements.cassandra.etl.PrimaryKey;
-import net.e6tech.elements.common.resources.Provision;
 
-import java.util.*;
-import java.util.concurrent.ExecutionException;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 public class SibylV3 extends Sibyl {
 
+    @Override
     public <X> X one(Class<X> cls, String query, Map<String, Object> map) {
         net.e6tech.elements.cassandra.driver.cql.ResultSet resultSet = execute(query, map);
         Result<X> result = getMapper(cls).map(((ResultSetV3) resultSet).unwrap());
         return result.one();
     }
 
+    @Override
     public <X> List<X> all(Class<X> cls, String query, Map<String, Object> map) {
         net.e6tech.elements.cassandra.driver.cql.ResultSet resultSet = execute(query, map);
         Result<X> result = getMapper(cls).map(((ResultSetV3) resultSet).unwrap());
@@ -54,16 +53,24 @@ public class SibylV3 extends Sibyl {
         return getResources().getInstance(MappingManager.class);
     }
 
+    @Override
     public <T> void save(Class<T> cls, T entity) {
         getMapper(cls).save(entity);
     }
 
+    @Override
     public <T> void save(Class<T> cls, T entity, WriteOptions options) {
         getMapper(cls).save(entity, writeOptions(options));
     }
 
+    @Override
+    public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls) {
+        return save(list, cls, null);
+    }
+
+    @Override
     public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, WriteOptions userOptions) {
-        Async async = createAsync();
+        Async<Void, X> async = createAsync();
         Mapper<X> mapper = getMapper(cls);
         return async.accept(list, item -> mapper.saveAsync(item, writeOptions(userOptions)));
     }
@@ -95,14 +102,6 @@ public class SibylV3 extends Sibyl {
         return mapperOptions.toArray(new Mapper.Option[0]);
     }
 
-    public <T> void delete(Class<T> cls, T entity) {
-        getMapper(cls).delete(entity);
-    }
-
-    public <T> T get(Class<T> cls, PrimaryKey primaryKey) {
-        return getMapper(cls).get(primaryKey.getKeys());
-    }
-
     private Mapper.Option[] readOptions(ReadOptions userOptions) {
         LinkedList<Mapper.Option> mapperOptions = new LinkedList<>();
         ReadOptions options = ReadOptions.from(userOptions);
@@ -114,14 +113,33 @@ public class SibylV3 extends Sibyl {
         return mapperOptions.toArray(new Mapper.Option[0]);
     }
 
+    @Override
+    public <T> void delete(Class<T> cls, T entity) {
+        getMapper(cls).delete(entity);
+    }
+
+    @Override
+    public <T> T get(Class<T> cls, PrimaryKey primaryKey) {
+        return getMapper(cls).get(primaryKey.getKeys());
+    }
+
+    @Override
+    public <T> T get(Class<T> cls, PrimaryKey primaryKey, ReadOptions options) {
+        Mapper<T> mapper = getMapper(cls);
+        mapper.setDefaultGetOptions(readOptions(options));
+        return getMapper(cls).get(primaryKey.getKeys());
+    }
+
+    @Override
     public <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls, ReadOptions userOptions) {
-        Async async = createAsync();
+        Async<X, PrimaryKey> async = createAsync();
         Mapper<X> mapper = getMapper(cls);
         mapper.setDefaultGetOptions(readOptions(userOptions));
         return async.accept(list, k -> mapper.getAsync(k.getKeys()));
     }
 
-    public <T> List<T> mapAll(Class<T> cls, ResultSet rs) {
+    @Override
+    public <T> List<T> mapAll(Class<T> cls, BaseResultSet rs) {
         return getMapper(cls).map(((ResultSetV3) rs).unwrap()).all();
     }
 

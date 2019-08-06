@@ -202,8 +202,7 @@ public class ETLContext {
             if (lastUpdate != null)
                 return lastUpdate;
             if (lastUpdateClass == null)
-                lastUpdateClass = getProvision().open().apply(Resources.class,
-                        resources -> (Class) resources.getInstance(SessionProvider.class).getLastUpdateClass());
+                lastUpdateClass = (Class) getProvision().getInstance(SessionProvider.class).getLastUpdateClass();
             lastUpdate = open().apply(Sibyl.class, s ->
                     s.get(lastUpdateClass, new PrimaryKey(extractor()))
             );

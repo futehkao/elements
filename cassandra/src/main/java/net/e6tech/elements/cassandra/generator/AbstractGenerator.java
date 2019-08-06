@@ -55,8 +55,10 @@ public class AbstractGenerator {
         LinkedList<Class> classHierarchy = new LinkedList<>();
         while (tmp != null && tmp != Object.class) {
             if (generator.tableAnnotation(tmp) != null) {
-                tableName = generator.tableName(tmp);
-                tableKeyspace = generator.tableKeyspace(tmp);
+                if (tableName == null)
+                    tableName = generator.tableName(tmp);
+                if (tableKeyspace == null)
+                    tableKeyspace = generator.tableKeyspace(tmp);
             }
             classHierarchy.addFirst(tmp);
             tmp = tmp.getSuperclass();

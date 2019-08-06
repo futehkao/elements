@@ -17,9 +17,9 @@
 package net.e6tech.elements.cassandra.driver.v4;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import net.e6tech.elements.cassandra.driver.Wrapper;
+import net.e6tech.elements.cassandra.driver.cql.AsyncResultSet;
 import net.e6tech.elements.cassandra.driver.cql.Bound;
 import net.e6tech.elements.cassandra.driver.cql.Prepared;
 import net.e6tech.elements.cassandra.driver.cql.ResultSet;
@@ -48,11 +48,11 @@ public class SessionV4 extends Wrapper<CqlSession> implements net.e6tech.element
         return Wrapper.wrap(new ResultSetV4(), unwrap().execute(((BoundV4) bound).unwrap()));
     }
 
-    public Future executeAsync(Bound bound) {
-        CompletionStage<AsyncResultSet> completionStage = unwrap().executeAsync(((BoundV4) bound).unwrap());
-        CompletableFuture<AsyncResultSet> future = completionStage.toCompletableFuture();
+    public Future<AsyncResultSet> executeAsync(Bound bound) {
+        CompletionStage<com.datastax.oss.driver.api.core.cql.AsyncResultSet> completionStage = unwrap().executeAsync(((BoundV4) bound).unwrap());
+        CompletableFuture<com.datastax.oss.driver.api.core.cql.AsyncResultSet> future = completionStage.toCompletableFuture();
 
-        return new Future() {
+        return new Future<AsyncResultSet>() {
             @Override
             public boolean cancel(boolean mayInterruptIfRunning) {
                 return future.cancel(mayInterruptIfRunning);
@@ -69,14 +69,14 @@ public class SessionV4 extends Wrapper<CqlSession> implements net.e6tech.element
             }
 
             @Override
-            public Object get() throws InterruptedException, ExecutionException {
-                AsyncResultSet rs = future.get();
+            public net.e6tech.elements.cassandra.driver.cql.AsyncResultSet get() throws InterruptedException, ExecutionException {
+                com.datastax.oss.driver.api.core.cql.AsyncResultSet rs = future.get();
                 return Wrapper.wrap(new AsyncResultSetV4(), rs);
             }
 
             @Override
-            public Object get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-                AsyncResultSet rs = future.get(timeout, unit);
+            public AsyncResultSet get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+                com.datastax.oss.driver.api.core.cql.AsyncResultSet rs = future.get(timeout, unit);
                 return Wrapper.wrap(new AsyncResultSetV4(), rs);
             }
         };

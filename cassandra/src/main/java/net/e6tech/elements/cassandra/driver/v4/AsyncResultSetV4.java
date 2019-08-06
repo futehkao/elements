@@ -23,7 +23,7 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.util.Iterator;
 
-public class AsyncResultSetV4 extends Wrapper<AsyncResultSet> implements net.e6tech.elements.cassandra.driver.cql.ResultSet {
+public class AsyncResultSetV4 extends Wrapper<AsyncResultSet> implements net.e6tech.elements.cassandra.driver.cql.AsyncResultSet {
 
     @Override
     public Iterator<Row> iterator() {

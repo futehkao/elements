@@ -19,49 +19,46 @@ package net.e6tech.elements.cassandra.driver.v3;
 import com.datastax.driver.core.BoundStatement;
 import net.e6tech.elements.cassandra.driver.Wrapper;
 import net.e6tech.elements.cassandra.driver.cql.Bound;
-import net.e6tech.elements.cassandra.generator.Mapping;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class BoundV3 extends Wrapper<BoundStatement> implements Bound {
 
     @Override
     public <V> Bound set(int i, V v, Class<V> targetClass) {
-        unwrap().set(i, v, targetClass);
+        wrap(unwrap().set(i, v, targetClass));
         return this;
     }
 
     @Override
     public <V> Bound set(String name, V v, Class<V> targetClass) {
-        unwrap().set(name, v, targetClass);
+        wrap(unwrap().set(name, v, targetClass));
         return this;
     }
 
     @Override
     public Bound setToNull(String name) {
-        unwrap().setToNull(name);
+        wrap(unwrap().setToNull(name));
         return this;
     }
 
     @Override
     public <T> Bound setList(String name, List<T> v) {
-        unwrap().setList(name, v);
+        wrap(unwrap().setList(name, v));
         return this;
     }
 
     @Override
     public <T> Bound setSet(String name, Set<T> v) {
-        unwrap().setSet(name, v);
+        wrap(unwrap().setSet(name, v));
         return this;
     }
 
     @Override
     public <K, V> Bound setMap(String name, Map<K, V> v) {
-        unwrap().setMap(name, v);
+        wrap(unwrap().setMap(name, v));
         return this;
     }
 }

@@ -16,11 +16,14 @@
 
 package net.e6tech.elements.cassandra.driver.datatype;
 
-import net.e6tech.elements.cassandra.generator.*;
+import net.e6tech.elements.cassandra.generator.Generator;
+import net.e6tech.elements.cassandra.generator.TypeDescriptor;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class DataType {
     private boolean frozen;

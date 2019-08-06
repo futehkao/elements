@@ -23,7 +23,6 @@ import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.driver.Wrapper;
 import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
-import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.TextBuilder;
 

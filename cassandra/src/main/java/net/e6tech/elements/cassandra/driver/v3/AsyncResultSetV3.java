@@ -14,25 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.cassandra;
+package net.e6tech.elements.cassandra.driver.v3;
 
-import net.e6tech.elements.cassandra.driver.cql.AsyncResultSet;
-import net.e6tech.elements.cassandra.driver.cql.Bound;
-import net.e6tech.elements.cassandra.driver.cql.Prepared;
-import net.e6tech.elements.cassandra.driver.cql.ResultSet;
-
-import java.util.concurrent.Future;
-
-public interface Session {
-
-    ResultSet execute(String query);
-
-    ResultSet execute(String keyspace, String query);
-
-    ResultSet execute(Bound statement);
-
-    Future<AsyncResultSet> executeAsync(Bound bound);
-
-    Prepared prepare(String query);
+public class AsyncResultSetV3 extends ResultSetV3 implements net.e6tech.elements.cassandra.driver.cql.AsyncResultSet {
 }
-

@@ -29,7 +29,6 @@ import com.datastax.oss.driver.internal.core.util.concurrent.CompletableFutures;
 import com.datastax.oss.driver.internal.mapper.DaoBase;
 import net.e6tech.elements.cassandra.ReadOptions;
 import net.e6tech.elements.cassandra.WriteOptions;
-import net.e6tech.elements.cassandra.driver.v4.sample.Product;
 import net.e6tech.elements.cassandra.etl.Inspector;
 import net.e6tech.elements.common.logging.Logger;
 
@@ -79,6 +78,13 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
     }
 
     @Override
+    public T map(net.e6tech.elements.cassandra.driver.cql.Row row) {
+        if (row == null)
+            return null;
+        return helper.get(((RowV4) row).unwrap());
+    }
+
+    @Override
     public PagingIterable<T> all(ResultSet resultSet) {
         return resultSet.map(helper::get);
     }
@@ -96,30 +102,17 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
             boundStatementBuilder = boundStatementBuilder.set(accessor.getColumnName(), keys[i], accessor.getType());
             i++;
         }
+
         BoundStatement boundStatement =  boundStatementBuilder.build();
         if (options != null && options.consistency != null) {
-            boundStatement.setConsistencyLevel(DefaultConsistencyLevel.valueOf(options.consistency.name()));
+            boundStatement = boundStatement.setConsistencyLevel(DefaultConsistencyLevel.valueOf(options.consistency.name()));
         }
         return boundStatement;
     }
 
     @Override
-    public T get(Object ... keys) {
-        return get(null, keys);
-    }
-
-    @Override
     public T get(ReadOptions readOptions, Object ... keys) {
         return executeAndMapToSingleEntity(getBoundStatement(readOptions, keys), helper);
-    }
-
-    @Override
-    public CompletionStage<T> getAsync(Object ... keys) {
-        try {
-            return executeAsyncAndMapToSingleEntity(getBoundStatement(null, keys), helper);
-        } catch (Throwable t) {
-            return CompletableFutures.failedFuture(t);
-        }
     }
 
     @Override
@@ -159,7 +152,7 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
 
             boundStatement = boundStatementBuilder.build();
             if (options.consistency != null) {
-                boundStatement.setConsistencyLevel(DefaultConsistencyLevel.valueOf(options.consistency.name()));
+                boundStatement = boundStatement.setConsistencyLevel(DefaultConsistencyLevel.valueOf(options.consistency.name()));
             }
         } else {
             helper.set(entity, boundStatementBuilder, NullSavingStrategy.DO_NOT_SET);
@@ -169,22 +162,8 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
     }
 
     @Override
-    public void save(T entity) {
-        execute(saveBoundStatement(null, entity));
-    }
-
-    @Override
     public void save(WriteOptions options, T entity) {
         execute(saveBoundStatement(options, entity));
-    }
-
-    @Override
-    public CompletionStage<Void> saveAsync(T entity) {
-        try {
-            return executeAsyncAndMapToVoid(saveBoundStatement(null, entity));
-        } catch (Throwable t) {
-            return CompletableFutures.failedFuture(t);
-        }
     }
 
     @Override
@@ -196,16 +175,13 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
         }
     }
 
-
     @Override
     public void delete(T entity) {
         BoundStatementBuilder boundStatementBuilder = deleteStatement.boundStatementBuilder();
 
-        int i = 0;
         for (Inspector.ColumnAccessor accessor : inspector.getPrimaryKeyColumns()) {
             Object key = accessor.get(entity);
             boundStatementBuilder = boundStatementBuilder.set(accessor.getColumnName(), key, accessor.getType());
-            i++;
         }
 
         BoundStatement boundStatement = boundStatementBuilder.build();

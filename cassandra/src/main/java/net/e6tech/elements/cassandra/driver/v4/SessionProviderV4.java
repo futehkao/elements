@@ -30,12 +30,9 @@ import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.TextBuilder;
-import scala.Predef;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 public class SessionProviderV4 extends SessionProvider {

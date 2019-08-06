@@ -17,8 +17,7 @@
 package net.e6tech.elements.cassandra.transmutator;
 
 import net.e6tech.elements.cassandra.Sibyl;
-import net.e6tech.elements.cassandra.async.Async;
-import net.e6tech.elements.cassandra.async.AsyncResultSet;
+import net.e6tech.elements.cassandra.async.AsyncResultSetFutures;
 import net.e6tech.elements.cassandra.etl.Inspector;
 import net.e6tech.elements.cassandra.etl.PartitionContext;
 import net.e6tech.elements.cassandra.etl.PartitionStrategy;
@@ -57,7 +56,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             Object value = context.getLastUpdateValue();
 
             Set list = new HashSet();
-            AsyncResultSet<?> result = sibyl.createAsync("select " + partitionKey + ", count(*) from " + tableName +
+            AsyncResultSetFutures<?> result = sibyl.createAsync("select " + partitionKey + ", count(*) from " + tableName +
                     " where " + checkpointColumn + " > :spk group by " + partitionKey + " " + filter)
                     .execute(bound -> bound.set("spk", value, (Class) value.getClass()));
             result.inExecutionOrderRows(row -> {
@@ -66,8 +65,8 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
                 }
             });
 
-            Async async = sibyl.createAsync("delete from " + inspector.tableName() + " where " + partitionKey + " = :partitionKey");
-            async.execute(list, (p, bound) ->  bound.set("partitionKey", p, (Class) p.getClass()))
+            sibyl.createAsync("delete from " + inspector.tableName() + " where " + partitionKey + " = :partitionKey")
+                .execute(list, (p, bound) ->  bound.set("partitionKey", p, (Class) p.getClass()))
                     .inExecutionOrder();
         });
     }

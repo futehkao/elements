@@ -16,16 +16,14 @@
 
 package net.e6tech.elements.cassandra.driver.v4;
 
-import com.datastax.oss.driver.api.core.AsyncPagingIterable;
 import com.datastax.oss.driver.api.core.MappedAsyncPagingIterable;
-import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import net.e6tech.elements.cassandra.ReadOptions;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.WriteOptions;
 import net.e6tech.elements.cassandra.async.Async;
 import net.e6tech.elements.cassandra.async.AsyncFutures;
+import net.e6tech.elements.cassandra.driver.cql.BaseResultSet;
 import net.e6tech.elements.cassandra.driver.cql.ResultSet;
-import net.e6tech.elements.cassandra.driver.cql.Row;
 import net.e6tech.elements.cassandra.etl.PrimaryKey;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.util.SystemException;
@@ -57,12 +55,17 @@ public class SibylV4 extends Sibyl {
 
     @Override
     public <T> T get(Class<T> cls, PrimaryKey primaryKey) {
-        return mappingManager.getMapper(cls).get(primaryKey.getKeys());
+        return get(cls, primaryKey, null);
+    }
+
+    @Override
+    public <T> T get(Class<T> cls, PrimaryKey primaryKey, ReadOptions readOptions) {
+        return mappingManager.getMapper(cls).get(readOptions(readOptions), primaryKey.getKeys());
     }
 
     @Override
     public <X> AsyncFutures<X, PrimaryKey> get(Collection<PrimaryKey> list, Class<X> cls, ReadOptions userOptions) {
-        Async async = createAsync();
+        Async<X, PrimaryKey> async = createAsync();
         Mapper<X> mapper = mappingManager.getMapper(cls);
         return async.accept(list, item ->
             mapper.getAsync(readOptions(userOptions), item.getKeys()).toCompletableFuture()
@@ -71,12 +74,12 @@ public class SibylV4 extends Sibyl {
 
     @Override
     public <T> void save(Class<T> cls, T entity) {
-        mappingManager.getMapper(cls).save(entity);
+        save(cls, entity, null);
     }
 
     @Override
     public <T> void save(Class<T> cls, T entity, WriteOptions options) {
-        mappingManager.getMapper(cls).save(options, entity);
+        mappingManager.getMapper(cls).save(writeOptions(options), entity);
     }
 
     @Override
@@ -85,8 +88,13 @@ public class SibylV4 extends Sibyl {
     }
 
     @Override
+    public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls) {
+        return save(list, cls, null);
+    }
+
+    @Override
     public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, WriteOptions userOptions) {
-        Async async = createAsync();
+        Async<Void, X> async = createAsync();
         Mapper<X> mapper = mappingManager.getMapper(cls);
         return async.accept(list, item -> mapper.saveAsync(writeOptions(userOptions), item).toCompletableFuture());
     }
@@ -104,21 +112,14 @@ public class SibylV4 extends Sibyl {
     }
 
     @Override
-    public <X> List<X> mapAll(Class<X> cls, ResultSet resultSet) {
-        if (resultSet instanceof  ResultSetV4) {
-            com.datastax.oss.driver.api.core.cql.ResultSet rs = ((ResultSetV4) resultSet).unwrap();
-            return mappingManager.getMapper(cls).all(rs).all();
-        } else {
-            com.datastax.oss.driver.api.core.cql.AsyncResultSet rs = ((AsyncResultSetV4) resultSet).unwrap();
-            MappedAsyncPagingIterable<X> iterable = mappingManager.getMapper(cls).all(rs);
-
-            List<X> list = new LinkedList<>();
-            AsyncIterator<X> asyncIterator = new AsyncIterator<>(iterable);
-            while (asyncIterator.hasNext()) {
-                list.add(asyncIterator.next());
-            }
-            return list;
+    public <X> List<X> mapAll(Class<X> cls, BaseResultSet resultSet) {
+        Mapper<X> mapper = mappingManager.getMapper(cls);
+        List<net.e6tech.elements.cassandra.driver.cql.Row> all = resultSet.all();
+        List<X> list = new LinkedList<>();
+        for (net.e6tech.elements.cassandra.driver.cql.Row row : all) {
+            list.add(mapper.map(row));
         }
+        return list;
     }
 
     private static class AsyncIterator<X> implements Iterator<X> {

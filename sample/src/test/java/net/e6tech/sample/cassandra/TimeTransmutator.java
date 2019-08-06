@@ -24,6 +24,8 @@ import net.e6tech.elements.cassandra.transmutator.Transmutator;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Resources;
 
+import java.util.function.BiConsumer;
+
 
 public class TimeTransmutator extends Transmutator {
 
@@ -34,11 +36,11 @@ public class TimeTransmutator extends Transmutator {
             t.transform(entries, (trans, e) ->
                     trans.addPrimaryKey(new PrimaryKey(e.getCreationTime() / 2), e));
 
-            t.forEachCreateIfNotExist((e, a) -> {
-                Reflection.copyInstance(a, e);
-                a.setValue(a.getValue() + e.getId());
-            });
-
+            t.forEachNewOrExisting((e, a) -> {
+                    Reflection.copyInstance(a, e);
+                    a.setValue(e.getId());
+                },
+                    (e, a) -> a.setValue(a.getValue() + e.getId()));
             return t.save()
                     .size();
         });

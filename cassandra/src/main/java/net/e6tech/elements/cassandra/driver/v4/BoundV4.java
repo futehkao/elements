@@ -40,7 +40,7 @@ public class BoundV4 extends Wrapper<BoundStatement> implements Bound {
 
     @Override
     public Bound setToNull(String name) {
-        unwrap().setToNull(name);
+        wrap(unwrap().setToNull(name));
         return this;
     }
 

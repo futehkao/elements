@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.cassandra.generator;
 
-import com.datastax.driver.mapping.annotations.Column;
 import net.e6tech.elements.common.reflection.Accessor;
 
 import java.beans.PropertyDescriptor;
