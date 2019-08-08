@@ -203,7 +203,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             }
         }
 
-        Map<String, EntityManager> map = resources.configurator().computeMapIfAbsent(EntityManager.class);
+        Map<String, EntityManager> map = resources.getMapVariable(EntityManager.class);
         if (map.get(getProviderName()) != null) {
             throw new IllegalStateException("There is already an EntityManagerProvider named " + getProviderName() + " configured!");
         }
@@ -267,8 +267,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             resources.rebind(EntityManager.class, proxy);
         }
 
-        resources.configurator()
-                .computeMapIfAbsent(EntityManager.class)
+        resources.getMapVariable(EntityManager.class)
                 .put(getProviderName(), proxy);
 
         em.getTransaction().begin();
@@ -354,7 +353,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     @Override
     public void onCommit(Resources resources) {
         try {
-            EntityManager em = resources.configurator().computeMapIfAbsent(EntityManager.class).get(getProviderName());
+            EntityManager em = resources.getMapVariable(EntityManager.class).get(getProviderName());
             em.getTransaction().commit();
             em.clear();
             em.close();
@@ -372,7 +371,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     @Override
     public void onAbort(Resources resources) {
         try {
-            EntityManager em = resources.configurator().computeMapIfAbsent(EntityManager.class).get(getProviderName());
+            EntityManager em = resources.getMapVariable(EntityManager.class).get(getProviderName());
             em.getTransaction().rollback();
             em.clear();
             em.close();

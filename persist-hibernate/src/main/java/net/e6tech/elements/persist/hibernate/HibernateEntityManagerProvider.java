@@ -104,9 +104,9 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     @Override
     public void onOpen(Resources resources) {
         super.onOpen(resources);
-        EntityManager em = resources.configurator().computeMapIfAbsent(EntityManager.class).get(getProviderName());
+        EntityManager em = resources.getMapVariable(EntityManager.class).get(getProviderName());
         SessionImpl session = (SessionImpl) em.getDelegate();
-        resources.configurator().computeMapIfAbsent(SessionImpl.class).put(getProviderName(), session);
+        resources.getMapVariable(SessionImpl.class).put(getProviderName(), session);
 
         // cannot call resources.inject(interceptor), resources is not fully open yet
         if (session.getInterceptor() instanceof PersistenceInterceptor) {
@@ -147,7 +147,7 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     }
 
     private SessionImpl getSessionImpl(Resources resources) {
-        return resources.configurator().computeMapIfAbsent(SessionImpl.class).get(getProviderName());
+        return resources.getMapVariable(SessionImpl.class).get(getProviderName());
     }
 
 }

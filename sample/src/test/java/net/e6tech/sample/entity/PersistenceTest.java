@@ -59,8 +59,8 @@ public class PersistenceTest extends BaseCase {
                 .annotate(c -> c::names, new String[] {"default", "sample-rw"})
                 .open()
                 .accept(EntityManager.class, Resources.class,  (em, res) -> {
-                    assertNotNull(res.configurator().computeMapIfAbsent(EntityManager.class).get("sample-rw"));
-                    EntityManager emDefault = res.configurator().computeMapIfAbsent(EntityManager.class).get("default");
+                    assertNotNull(res.getMapVariable(EntityManager.class).get("sample-rw"));
+                    EntityManager emDefault = res.getMapVariable(EntityManager.class).get("default");
                     assertTrue(em == emDefault);
                 });
 
@@ -68,7 +68,7 @@ public class PersistenceTest extends BaseCase {
                 .annotate(c -> c::names, new String[] {"sample-rw"})
                 .open()
                 .accept(EntityManager.class, Resources.class,  (em, res) -> {
-                    EntityManager emDefault = res.configurator().computeMapIfAbsent(EntityManager.class).get("sample-rw");
+                    EntityManager emDefault = res.getMapVariable(EntityManager.class).get("sample-rw");
                     assertTrue(em == emDefault);
                 });
 
@@ -76,7 +76,7 @@ public class PersistenceTest extends BaseCase {
                 .annotate(c -> c::names, (String[]) null)
                 .open()
                 .accept(EntityManager.class, Resources.class,  (em, res) -> {
-                    EntityManager emOther = res.configurator().computeMapIfAbsent(EntityManager.class).get("default");
+                    EntityManager emOther = res.getMapVariable(EntityManager.class).get("default");
                     assertTrue(em == emOther);
                 });
 

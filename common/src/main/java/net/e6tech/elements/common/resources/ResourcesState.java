@@ -250,4 +250,10 @@ class ResourcesState {
             variables = new HashMap<>();
         variables.put(key, val);
     }
+
+    public <T> Map<String, T> computeMapIfAbsent(Class<T> key) {
+        if (variables == null)
+            variables = new HashMap<>();
+        return (Map<String, T>) variables.computeIfAbsent(key.toString(), k -> new LinkedHashMap<>());
+    }
 }
