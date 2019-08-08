@@ -16,9 +16,9 @@
 
 package net.e6tech.sample.cassandra;
 
-import com.datastax.driver.mapping.annotations.ClusteringColumn;
-import com.datastax.driver.mapping.annotations.PartitionKey;
-import com.datastax.driver.mapping.annotations.Table;
+import net.e6tech.elements.cassandra.annotations.ClusteringColumn;
+import net.e6tech.elements.cassandra.annotations.PartitionKey;
+import net.e6tech.elements.cassandra.annotations.Table;
 import net.e6tech.elements.cassandra.etl.PartitionOrderBy;
 
 @Table(name = "time_table")

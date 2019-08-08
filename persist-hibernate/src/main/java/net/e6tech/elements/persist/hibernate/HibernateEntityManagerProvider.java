@@ -23,8 +23,6 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.serialization.ObjectReference;
 import net.e6tech.elements.common.util.InitialContextFactory;
 import net.e6tech.elements.persist.*;
-import org.hibernate.SessionFactory;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.internal.SessionImpl;
 import org.hibernate.jpa.AvailableSettings;
@@ -106,38 +104,29 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     @Override
     public void onOpen(Resources resources) {
         super.onOpen(resources);
-        EntityManager em = resources.getInstance(EntityManager.class);
+        EntityManager em = resources.configurator().computeMapIfAbsent(EntityManager.class).get(getProviderName());
         SessionImpl session = (SessionImpl) em.getDelegate();
-        SessionFactoryImplementor  factory = session.getSessionFactory();
-        resources.bind(SessionImpl.class, session);
-        resources.bind(SessionFactoryImplementor.class, factory);
-        resources.bind(SessionFactory.class, factory);
+        resources.configurator().computeMapIfAbsent(SessionImpl.class).put(getProviderName(), session);
 
         // cannot call resources.inject(interceptor), resources is not fully open yet
         if (session.getInterceptor() instanceof PersistenceInterceptor) {
             PersistenceInterceptor i = (PersistenceInterceptor) session.getInterceptor();
             i.setResources(resources);
+            if (i instanceof Interceptor) {
+               ((Interceptor) i).setSessionFactory(session.getSessionFactory());
+            }
         }
     }
 
     @Override
     public void afterOpen(Resources resources) {
-        try {
-            SessionImpl session = resources.getInstance(SessionImpl.class);
-            if (session.getInterceptor() instanceof PersistenceInterceptor) {
-                PersistenceInterceptor i = (PersistenceInterceptor) session.getInterceptor();
-                resources.inject(i);
-            }
-        } catch (InstanceNotFoundException ex) {
-            // don't care
-        }
     }
 
     @Override
     public void cleanup(Resources resources) {
         super.cleanup(resources);
         try {
-            SessionImpl session = resources.getInstance(SessionImpl.class);
+            SessionImpl session = getSessionImpl(resources);
             if (session.getInterceptor() instanceof PersistenceInterceptor) {
                 PersistenceInterceptor i = (PersistenceInterceptor) session.getInterceptor();
                 i.cleanup(resources);
@@ -151,11 +140,14 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     public void cancelQuery(Resources resources) {
         super.cancelQuery(resources);
         try {
-            SessionImpl session = resources.getInstance(SessionImpl.class);
-            session.cancelQuery();
+            getSessionImpl(resources).cancelQuery();
         } catch (Exception ex) {
             // don't care
         }
+    }
+
+    private SessionImpl getSessionImpl(Resources resources) {
+        return resources.configurator().computeMapIfAbsent(SessionImpl.class).get(getProviderName());
     }
 
 }

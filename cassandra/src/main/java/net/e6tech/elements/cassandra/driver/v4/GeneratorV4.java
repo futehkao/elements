@@ -16,12 +16,9 @@
 
 package net.e6tech.elements.cassandra.driver.v4;
 
-import com.datastax.driver.mapping.annotations.Frozen;
-import com.datastax.driver.mapping.annotations.FrozenKey;
-import com.datastax.driver.mapping.annotations.FrozenValue;
-import com.datastax.oss.driver.api.mapper.annotations.*;
+import com.datastax.oss.driver.api.mapper.entity.naming.NamingConvention;
 import com.datastax.oss.driver.internal.mapper.processor.entity.BuiltInNameConversions;
-import net.e6tech.elements.cassandra.driver.v3.GeneratorV3;
+import net.e6tech.elements.cassandra.annotations.*;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.reflection.Accessor;
 
@@ -34,98 +31,74 @@ import static com.datastax.oss.driver.api.mapper.entity.naming.NamingConvention.
 
 public class GeneratorV4 extends Generator {
 
-    private Generator v3 = new GeneratorV3();
+    private NamingConvention namingConvention = SNAKE_CASE_INSENSITIVE;
+
+    public NamingConvention getNamingConvention() {
+        return namingConvention;
+    }
+
+    public void setNamingConvention(NamingConvention namingConvention) {
+        this.namingConvention = namingConvention;
+    }
 
     @Override
     public String toCassandraName(String javaPropertyName) {
-        if (v3 != null)
-            return v3.toCassandraName(javaPropertyName);
-
-        return BuiltInNameConversions.toCassandraName(javaPropertyName, SNAKE_CASE_INSENSITIVE);
+        return BuiltInNameConversions.toCassandraName(javaPropertyName, namingConvention);
     }
 
     public Class<? extends Annotation> tableAnnotation() {
-        if (v3 != null)
-            return v3.tableAnnotation();
-        return Entity.class;
+        return Table.class;
     }
 
     public Annotation tableAnnotation(Class sourceClass) {
-        if (v3 != null)
-            return v3.tableAnnotation(sourceClass);
-
-        return sourceClass.getAnnotation(Entity.class);
+        return sourceClass.getAnnotation(Table.class);
     }
 
     public String tableKeyspace(Class sourceClass) {
-        if (v3 != null)
-            return v3.tableKeyspace(sourceClass);
-
-        Entity table = (Entity) sourceClass.getAnnotation(Entity.class);
+        Table table = (Table) sourceClass.getAnnotation(Table.class);
         if (table != null)
-            return table.defaultKeyspace();
+            return table.keyspace();
         return null;
     }
 
     public String tableName(Class sourceClass) {
-        if (v3 != null)
-            return v3.tableName(sourceClass);
-
-        Entity table = (Entity) sourceClass.getAnnotation(Entity.class);
+        Table table = (Table) sourceClass.getAnnotation(Table.class);
         if (table == null)
             throw new IllegalArgumentException("Class " + sourceClass + " is not annotated with @Table");
-        CqlName name = (CqlName) sourceClass.getAnnotation(CqlName.class);
-        if (name != null)
-            return name.value();
-        return toCassandraName(sourceClass.getSimpleName());
+        return (table.name() == null) ? toCassandraName(sourceClass.getSimpleName()) : table.name();
     }
 
     public boolean hasColumnAnnotation(AccessibleObject field) {
-        if (v3 != null)
-            return v3.hasColumnAnnotation(field);
-
-        return Accessor.getAnnotation(field, CqlName.class) != null;
+        return Accessor.getAnnotation(field, Column.class) != null;
     }
 
     public boolean hasColumnAnnotation(PropertyDescriptor desc) {
-        if (v3 != null)
-            return v3.hasColumnAnnotation(desc);
-
-        return Accessor.getAnnotation(desc, CqlName.class) != null;
+        return Accessor.getAnnotation(desc, Column.class) != null;
     }
 
     public String getColumnName(Field field) {
-        if (v3 != null)
-            return v3.getColumnName(field);
-
-        CqlName column = Accessor.getAnnotation(field, CqlName.class);
+        Column column = Accessor.getAnnotation(field, Column.class);
         String columnName;
-        if (column == null || column.value().isEmpty()) {
+        if (column == null || column.name().isEmpty()) {
             columnName = toCassandraName(field.getName());
         } else {
-            columnName = column.value();
+            columnName = column.name();
         }
         return columnName;
     }
 
     public String getColumnName(PropertyDescriptor descriptor) {
-        if (v3 != null)
-            return v3.getColumnName(descriptor);
-
-        CqlName column = Accessor.getAnnotation(descriptor, CqlName.class);
+        Column column = Accessor.getAnnotation(descriptor, Column.class);
         String columnName;
-        if (column == null || column.value().isEmpty()) {
+        if (column == null || column.name().isEmpty()) {
             columnName = toCassandraName(descriptor.getName());
         } else {
-            columnName = column.value();
+            columnName = column.name();
         }
         return columnName;
     }
 
     public int partitionKeyIndex(AccessibleObject field) {
-        if (v3 != null)
-            return v3.partitionKeyIndex(field);
-
         PartitionKey annotation = Accessor.getAnnotation(field, PartitionKey.class);
         if (annotation != null)
             return annotation.value();
@@ -134,9 +107,6 @@ public class GeneratorV4 extends Generator {
     }
 
     public int partitionKeyIndex(PropertyDescriptor descriptor) {
-        if (v3 != null)
-            return v3.partitionKeyIndex(descriptor);
-
         PartitionKey annotation = Accessor.getAnnotation(descriptor, PartitionKey.class);
         if (annotation != null)
             return annotation.value();
@@ -145,9 +115,6 @@ public class GeneratorV4 extends Generator {
     }
 
     public int clusteringColumnIndex(AccessibleObject field) {
-        if (v3 != null)
-            return v3.clusteringColumnIndex(field);
-
         ClusteringColumn annotation = Accessor.getAnnotation(field, ClusteringColumn.class);
         if (annotation != null)
             return annotation.value();
@@ -156,9 +123,6 @@ public class GeneratorV4 extends Generator {
     }
 
     public int clusteringColumnIndex(PropertyDescriptor descriptor) {
-        if (v3 != null)
-            return v3.clusteringColumnIndex(descriptor);
-
         ClusteringColumn annotation = Accessor.getAnnotation(descriptor, ClusteringColumn.class);
         if (annotation != null)
             return annotation.value();
@@ -167,16 +131,10 @@ public class GeneratorV4 extends Generator {
     }
 
     public boolean isTransient(AccessibleObject field) {
-        if (v3 != null)
-            return v3.isTransient(field);
-
         return Accessor.getAnnotation(field, Transient.class) != null;
     }
 
     public boolean isTransient(PropertyDescriptor descriptor) {
-        if (v3 != null)
-            return v3.isTransient(descriptor);
-
         return Accessor.getAnnotation(descriptor, Transient.class) != null;
     }
 

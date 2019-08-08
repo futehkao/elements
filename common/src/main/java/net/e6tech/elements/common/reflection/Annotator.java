@@ -195,6 +195,10 @@ public class Annotator implements InvocationHandler {
             return _set(callable, value);
         }
 
+        public AnnotationValue set(Callable<String[]> callable, String[] value) {
+            return _set(callable, value);
+        }
+
         public AnnotationValue set(Callable<Boolean> callable, Boolean value) {
             return _set(callable, value);
         }

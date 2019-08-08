@@ -62,17 +62,17 @@ public class AsyncFutures<T, D> {
         }
     }
 
-    public Async inExecutionOrder() {
+    public Async<T, D> inExecutionOrder() {
         futuresAccept(futures, null);
         return async;
     }
 
-    public Async inExecutionOrder(Consumer<T> consumer) {
+    public Async<T, D> inExecutionOrder(Consumer<T> consumer) {
         futuresAccept(futures, consumer);
         return async;
     }
 
-    public Async inExecutionOrder(BiConsumer<D, T> consumer) {
+    public Async<T, D> inExecutionOrder(BiConsumer<D, T> consumer) {
         Map<Future<T>, D> futuresData = async.futuresData;
         for (Future<T> future : futures) {
             try {

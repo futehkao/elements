@@ -19,6 +19,7 @@ package net.e6tech.elements.cassandra.generator;
 import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.cassandra.driver.metadata.ColumnMetadata;
 import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
+import net.e6tech.elements.common.logging.Logger;
 
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -31,6 +32,8 @@ import java.util.*;
 
 public class TableGenerator extends AbstractGenerator {
 
+    private static Logger logger = Logger.getLogger();
+
     private Map<String, ColumnGenerator> columnGenerators = new LinkedHashMap<>();
     private List<KeyColumn> clusterKeys = new ArrayList<>();
     private List<KeyColumn> partitionKeys = new ArrayList<>();
@@ -40,14 +43,17 @@ public class TableGenerator extends AbstractGenerator {
         super(generator);
         LinkedList<Class> classHierarchy = analyze(entityClass);
         Map<String, String> columnGenerators2 = new LinkedHashMap<>();
+        Set<String> transientNames = new HashSet<>(50);
 
         for (Class cls : classHierarchy) {
             Field[] fields = cls.getDeclaredFields();
             for (Field field : fields) {
                 if (Modifier.isStatic(field.getModifiers()))
                     continue;
-                if (generator.isTransient(field))
+                if (generator.isTransient(field)) {
+                    transientNames.add(field.getName());
                     continue;
+                }
 
                 int pk = generator.partitionKeyIndex(field);
                 if (pk >= 0)
@@ -74,7 +80,12 @@ public class TableGenerator extends AbstractGenerator {
             }
 
             if (method != null && !method.getName().equals("getClass")) {
-                if (generator.isTransient(desc))
+                if (generator.isTransient(desc)) {
+                    transientNames.add(desc.getName());
+                    continue;
+                }
+
+                if (transientNames.contains(desc.getName()))
                     continue;
 
                 int pk = generator.partitionKeyIndex(desc);
@@ -146,6 +157,7 @@ public class TableGenerator extends AbstractGenerator {
     }
 
     public void diff(Session session, String keyspace, TableMetadata tableMetadata, boolean dropColumns) {
+        logger.info("Diff table " + fullyQualifiedTableName());
         List<ColumnMetadata> columns = tableMetadata.getColumns();
         Map<String, ColumnGenerator> toAdd = new LinkedHashMap<>();
         Map<String, ColumnMetadata> toRemove = new LinkedHashMap<>();

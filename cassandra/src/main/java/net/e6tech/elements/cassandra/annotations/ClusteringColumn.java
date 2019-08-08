@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.cassandra.generator;
+package net.e6tech.elements.cassandra.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -23,6 +23,11 @@ import java.lang.annotation.Target;
 
 @Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Checkpoint {
+public @interface ClusteringColumn {
+    /**
+     * Ordinal to add when several clustering columns are declared within a single entity.
+     *
+     * @return the ordinal value.
+     */
     int value() default 0;
 }

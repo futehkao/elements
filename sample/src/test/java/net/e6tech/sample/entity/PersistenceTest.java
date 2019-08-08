@@ -27,6 +27,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -51,6 +52,36 @@ public class PersistenceTest extends BaseCase {
         department = new Department();
         department.setName("Test");
     }
+
+    @Test
+    void testOtherPersistence() {
+        provision.resourceBuilder(EntityManagerConfig.class)
+                .annotate(c -> c::names, new String[] {"default", "sample-rw"})
+                .open()
+                .accept(EntityManager.class, Resources.class,  (em, res) -> {
+                    assertNotNull(res.configurator().computeMapIfAbsent(EntityManager.class).get("sample-rw"));
+                    EntityManager emDefault = res.configurator().computeMapIfAbsent(EntityManager.class).get("default");
+                    assertTrue(em == emDefault);
+                });
+
+        provision.resourceBuilder(EntityManagerConfig.class)
+                .annotate(c -> c::names, new String[] {"sample-rw"})
+                .open()
+                .accept(EntityManager.class, Resources.class,  (em, res) -> {
+                    EntityManager emDefault = res.configurator().computeMapIfAbsent(EntityManager.class).get("sample-rw");
+                    assertTrue(em == emDefault);
+                });
+
+        provision.resourceBuilder(EntityManagerConfig.class)
+                .annotate(c -> c::names, (String[]) null)
+                .open()
+                .accept(EntityManager.class, Resources.class,  (em, res) -> {
+                    EntityManager emOther = res.configurator().computeMapIfAbsent(EntityManager.class).get("default");
+                    assertTrue(em == emOther);
+                });
+
+    }
+
 
     @Test
     void testInsert() {

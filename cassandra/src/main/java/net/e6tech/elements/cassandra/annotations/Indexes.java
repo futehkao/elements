@@ -14,32 +14,15 @@
  * limitations under the License.
  */
 
-package net.e6tech.sample.cassandra;
+package net.e6tech.elements.cassandra.annotations;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import net.e6tech.elements.cassandra.annotations.PartitionKey;
-import net.e6tech.elements.cassandra.annotations.Table;
-
-@Table(name = "derived_table")
-public class DerivedTable {
-    @PartitionKey
-    Long creationTime;
-
-    Long value = 0L;
-
-    public Long getCreationTime() {
-        return creationTime;
-    }
-
-    public void setCreationTime(Long creationTime) {
-        this.creationTime = creationTime;
-    }
-
-    public Long getValue() {
-        return value;
-    }
-
-    public void setValue(Long value) {
-        this.value = value;
-    }
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Indexes {
+    Index[] value();
 }

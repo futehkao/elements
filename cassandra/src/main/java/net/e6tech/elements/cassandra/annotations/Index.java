@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.cassandra.generator;
+package net.e6tech.elements.cassandra.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -23,7 +23,8 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Mappings {
-    String[] value() default {};
-    Mapping[] mappings() default {};
+public @interface Index {
+    String name() default "";
+    String column();
+    boolean keys() default false;
 }

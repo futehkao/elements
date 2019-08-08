@@ -43,7 +43,7 @@ public class EntityManagerMonitorTest extends BaseCase {
                         provision.resourceBuilder(EntityManagerConfig.class)
                                 .open()
                                 .commit(Resources.class, res -> {
-                                    SessionImpl session = res.getInstance(SessionImpl.class);
+                                    SessionImpl session = (SessionImpl) res.getInstance(EntityManager.class).getDelegate();
                                     MariaDbConnection conn = session.connection().unwrap(MariaDbConnection.class);
                                     conn.lock.lock();
                                     Thread.sleep(20000L);
@@ -67,21 +67,24 @@ public class EntityManagerMonitorTest extends BaseCase {
 
     @Test
     void rollback() throws Exception {
-        provision.resourceBuilder(EntityManagerConfig.class)
-                .annotate(c -> c::timeoutExtension, 3000L)
-                .open()
-                .accept(Resources.class, EntityManager.class, (res, em) -> {
-                    long  start = System.currentTimeMillis();
-                    em.createNativeQuery("DO SLEEP(10);")
-                            .getResultList();
-                    System.out.println("" + (System.currentTimeMillis() - start) + "ms");
-                    try {
-                        Thread.sleep(10000L);
-                    } catch (InterruptedException ex) {
-                        //
-                    }
-                    System.out.println("" + (System.currentTimeMillis() - start) + "ms");
-                });
-        Thread.sleep(30000L);
+        long start = System.currentTimeMillis();
+        try {
+            provision.resourceBuilder(EntityManagerConfig.class)
+                    .annotate(c -> c::timeoutExtension, 3000L)
+                    .open()
+                    .accept(Resources.class, EntityManager.class, (res, em) -> {
+                        em.createNativeQuery("DO SLEEP(10);")
+                                .getResultList();
+                        System.out.println("" + (System.currentTimeMillis() - start) + "ms");
+                        try {
+                            Thread.sleep(10000L);
+                        } catch (InterruptedException ex) {
+                            //
+                        }
+
+                    });
+        } catch(Exception ex) {
+            System.out.println("" + (System.currentTimeMillis() - start) + "ms");
+        }
     }
 }

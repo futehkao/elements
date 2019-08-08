@@ -64,6 +64,11 @@ public class ResourcesBuilder<T extends Annotation> {
         return this;
     }
 
+    public ResourcesBuilder<T> annotate(Function<T, Callable<String[]>> func, String[] value) {
+        consumers.add(res -> res.configurator().annotate(annotationClass, ((annotationValue, annotation) -> annotationValue.set(func.apply(annotation), value))));
+        return this;
+    }
+
     public ResourcesBuilder<T> annotate(Function<T, Callable<Boolean>> func, Boolean value) {
         consumers.add(res -> res.configurator().annotate(annotationClass, ((annotationValue, annotation) -> annotationValue.set(func.apply(annotation), value))));
         return this;

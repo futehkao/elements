@@ -25,6 +25,7 @@ import java.lang.annotation.*;
 @Retention(value = RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
 public @interface EntityManagerConfig {
+    String[] names() default { "default" };
     boolean disable() default false;
     long timeout() default 0L;
     long timeoutExtension() default 0L;

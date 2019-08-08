@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ import javax.persistence.EntityManager
 import net.e6tech.elements.persist.hibernate.HibernateEntityManagerProvider
 import net.e6tech.elements.persist.hibernate.TableIdGenerator
 
-atom("datasource") {
+atom("datasource2") {
     /* below is for Hikari */
     configuration = """
-        dataSource:
+        dataSource2:
             driverClassName: org.mariadb.jdbc.Driver
             username: sample
             password: password
@@ -44,21 +44,22 @@ atom("datasource") {
     """
     */
 
-    dataSource = ElementsHikariDataSource
+    dataSource2 = ElementsHikariDataSource
     //  To set init statements
     // dataSource.connectionInitStatements = dataSourceConnectionInitStatements
     // dataSource = ComboPooledDataSource
 }
 
-atom("persist") {
+atom("persist2") {
 
     configuration = """
-        entityManagerProvider.persistenceUnitName: sample
-        entityManagerProvider.transactionTimeout: ${entityManagerTxTimeout}
-        entityManagerProvider.monitorTransaction: ${entityManagerMonitorTransaction}
-        entityManagerProvider.longTransaction: ${entityManagerLongTransaction}
-        entityManagerProvider.persistenceProperties:
-            javax.persistence.nonJtaDataSource: ^dataSource
+        entityManagerProvider2.persistenceUnitName: sample
+        entityManagerProvider2.providerName: sample-rw
+        entityManagerProvider2.transactionTimeout: ${entityManagerTxTimeout}
+        entityManagerProvider2.monitorTransaction: ${entityManagerMonitorTransaction}
+        entityManagerProvider2.longTransaction: ${entityManagerLongTransaction}
+        entityManagerProvider2.persistenceProperties:
+            javax.persistence.nonJtaDataSource: ^dataSource2
         _tableId:
             defaultIncrementSize: 20
             defaultInitialValue: ^ 10 + _tableId.defaultIncrementSize
@@ -66,18 +67,10 @@ atom("persist") {
             defaultIncrementSize: 30
     """
 
-    entityManagerProvider = HibernateEntityManagerProvider
+    entityManagerProvider2 = HibernateEntityManagerProvider
 
     _tableId = TableIdGenerator
     _tableId2 = TableIdGenerator
-    entityManagerProvider.register('tableId', _tableId)
+    entityManagerProvider2.register('tableId', _tableId)
             .register('tableId2', _tableId2)
-
-    postInit {
-        // testing if EntityManager can be created correctly
-        open({ resources ->
-            EntityManager em = resources.getInstance(EntityManager)
-            resources.abort()
-        })
-    }
 }

@@ -23,6 +23,7 @@ import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.driver.Wrapper;
 import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
+import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.TextBuilder;
 
@@ -33,7 +34,7 @@ import java.util.function.Consumer;
 
 public class SessionProviderV3 extends SessionProvider {
 
-    private GeneratorV3 generator = new GeneratorV3();
+    private Generator generator = new GeneratorV3();
     private NamingStrategy namingStrategy = new DefaultNamingStrategy(NamingConventions.LOWER_CAMEL_CASE, NamingConventions.LOWER_SNAKE_CASE);
 
     private Cluster cluster;
@@ -42,7 +43,7 @@ public class SessionProviderV3 extends SessionProvider {
     private Consumer<Cluster.Builder> builderOptions;
 
     @Override
-    public GeneratorV3 getGenerator() {
+    public Generator getGenerator() {
         return generator;
     }
 
@@ -111,8 +112,14 @@ public class SessionProviderV3 extends SessionProvider {
     }
 
     @Override
+    protected void initGenerator() {
+        GeneratorV3 gen = new GeneratorV3();
+        gen.setNamingStrategy(namingStrategy);
+        generator = gen;
+    }
+
+    @Override
     protected void initDriver() {
-        generator.setNamingStrategy(namingStrategy);
         buildCluster();
     }
 

@@ -16,7 +16,8 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import net.e6tech.elements.cassandra.generator.Checkpoint;
+import net.e6tech.elements.cassandra.annotations.Checkpoint;
+import net.e6tech.elements.cassandra.annotations.PartitionUnit;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.reflection.Accessor;
 import net.e6tech.elements.common.reflection.Accessors;
@@ -236,13 +237,16 @@ public class Inspector {
         Class cls = getSourceClass();
 
         AtomicInteger position = new AtomicInteger(0);
+        Set<String> transientNames = new HashSet<>(50);
         accessors = new Accessors<>(cls,
                 field -> {
                     if (Modifier.isStrict(field.getModifiers())
                         || Modifier.isStatic(field.getModifiers()))
                         return null;
-                    if (gen.isTransient(field))
+                    if (gen.isTransient(field)) {
+                        transientNames.add(field.getName());
                         return null;
+                    }
                     if (propertyMap.get(field.getName()) != null)
                         return null;
 
@@ -265,8 +269,14 @@ public class Inspector {
                     return alloc(position.getAndIncrement(), field);
                 },
                 (desc, existing) -> {
-                    if (gen.isTransient(desc))
+                    if (gen.isTransient(desc)) {
+                        transientNames.add(desc.getName());
                         return null;
+                    }
+
+                    if (transientNames.contains(desc.getName()))
+                        return null;
+
                     if (desc.getName().equals("class"))
                         return null;
 

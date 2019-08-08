@@ -31,6 +31,10 @@ public interface Session {
 
     ResultSet execute(Bound statement);
 
+    Future<AsyncResultSet> executeAsync(String keyspace, String query);
+
+    Future<AsyncResultSet> executeAsync(String query);
+
     Future<AsyncResultSet> executeAsync(Bound bound);
 
     Prepared prepare(String query);

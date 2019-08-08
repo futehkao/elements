@@ -52,41 +52,63 @@ public class SessionV3 extends Wrapper<com.datastax.driver.core.Session> impleme
         return Wrapper.wrap(new ResultSetV3(), unwrap().execute(((BoundV3) bound).unwrap()));
     }
 
+    @Override
+    public Future<AsyncResultSet> executeAsync(String keyspace, String query) {
+        if (StringUtil.isNullOrEmpty(keyspace))
+            return executeAsync(query);
+        SimpleStatement stmt = new SimpleStatement(query);
+        stmt.setKeyspace(keyspace);
+        return new FutureAsyncResultSet(unwrap().executeAsync(stmt));
+    }
+
+    @Override
+    public Future<AsyncResultSet> executeAsync(String query) {
+        ResultSetFuture future = unwrap().executeAsync(query);
+        return new FutureAsyncResultSet(future);
+    }
+
     public Future<AsyncResultSet> executeAsync(Bound bound) {
         ResultSetFuture future = unwrap().executeAsync(((BoundV3) bound).unwrap());
-
-        return new Future<AsyncResultSet>() {
-            @Override
-            public boolean cancel(boolean mayInterruptIfRunning) {
-                return future.cancel(mayInterruptIfRunning);
-            }
-
-            @Override
-            public boolean isCancelled() {
-                return future.isCancelled();
-            }
-
-            @Override
-            public boolean isDone() {
-                return future.isDone();
-            }
-
-            @Override
-            public AsyncResultSet get() throws InterruptedException, ExecutionException {
-                com.datastax.driver.core.ResultSet rs = future.get();
-                return Wrapper.wrap(new AsyncResultSetV3(), rs);
-            }
-
-            @Override
-            public AsyncResultSet get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-                com.datastax.driver.core.ResultSet rs = future.get(timeout, unit);
-                return Wrapper.wrap(new AsyncResultSetV3(), rs);
-            }
-        };
+        return new FutureAsyncResultSet(future);
     }
 
     @Override
     public Prepared prepare(String query) {
         return Wrapper.wrap(new PreparedV3(), unwrap().prepare(query));
+    }
+
+    private static class FutureAsyncResultSet implements Future<AsyncResultSet> {
+        private ResultSetFuture future;
+
+        FutureAsyncResultSet(ResultSetFuture future) {
+            this.future = future;
+        }
+
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            return future.cancel(mayInterruptIfRunning);
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return future.isCancelled();
+        }
+
+        @Override
+        public boolean isDone() {
+            return future.isDone();
+        }
+
+        @Override
+        public AsyncResultSet get() throws InterruptedException, ExecutionException {
+            com.datastax.driver.core.ResultSet rs = future.get();
+            return Wrapper.wrap(new AsyncResultSetV3(), rs);
+        }
+
+        @Override
+        public AsyncResultSet get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+            com.datastax.driver.core.ResultSet rs = future.get(timeout, unit);
+            return Wrapper.wrap(new AsyncResultSetV3(), rs);
+        }
     }
 }

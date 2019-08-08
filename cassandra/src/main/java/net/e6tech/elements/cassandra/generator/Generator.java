@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.cassandra.generator;
 
+import net.e6tech.elements.cassandra.annotations.TimeBased;
 import net.e6tech.elements.common.reflection.Accessor;
 import net.e6tech.elements.common.util.SystemException;
 
@@ -95,11 +96,11 @@ public abstract class Generator {
         return gen;
     }
 
-    public List<String> createIndexes(String keyspace, Class cls) throws IntrospectionException {
+    public IndexGenerator createIndexes(String keyspace, Class cls) throws IntrospectionException {
         IndexGenerator gen = null;
         gen = new IndexGenerator(this, cls);
         gen.setKeyspace(keyspace);
-        return gen.generate();
+        return gen;
     }
 
     public String createCodecs(String keyspace, String userType, Class<? extends Codec> codecClass) {

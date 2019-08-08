@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.cassandra.generator;
 
+import net.e6tech.elements.cassandra.annotations.TimeBased;
 import net.e6tech.elements.common.reflection.Accessor;
 
 import java.beans.PropertyDescriptor;

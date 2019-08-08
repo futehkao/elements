@@ -244,6 +244,8 @@ public abstract class SessionProvider implements ResourceProvider, Initializable
 
     protected abstract Session createSession(String keyspaceIn);
 
+    protected abstract void initGenerator();
+
     protected abstract void initDriver();
 
     protected abstract void initKeyspace();
@@ -251,6 +253,7 @@ public abstract class SessionProvider implements ResourceProvider, Initializable
     protected abstract void postInit();
 
     public void initialize(Resources resources) {
+        initGenerator();
         getProvision().getResourceManager().bind(Generator.class, getGenerator());
         initDriver();
         initKeyspace();

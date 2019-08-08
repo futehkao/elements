@@ -55,5 +55,4 @@ public class AsyncResultSetFutures<D> extends AsyncFutures<AsyncResultSet, D> {
             }
         }
     }
-
 }

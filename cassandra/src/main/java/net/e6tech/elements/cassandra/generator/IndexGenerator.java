@@ -16,6 +16,10 @@
 
 package net.e6tech.elements.cassandra.generator;
 
+import net.e6tech.elements.cassandra.annotations.Checkpoint;
+import net.e6tech.elements.cassandra.annotations.Index;
+import net.e6tech.elements.cassandra.annotations.Indexes;
+
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
@@ -33,6 +37,8 @@ public class IndexGenerator extends AbstractGenerator{
     IndexGenerator(Generator generator, Class entityClass) throws IntrospectionException {
         super(generator);
         LinkedList<Class> classHierarchy = analyze(entityClass);
+        Set<String> transientNames = new HashSet<>(50);
+
         for (Class cls : classHierarchy) {
             Indexes indexList = (Indexes) cls.getAnnotation(Indexes.class);
             if (indexList != null) {
@@ -51,8 +57,10 @@ public class IndexGenerator extends AbstractGenerator{
             for (Field field : fields) {
                 if (Modifier.isStrict(field.getModifiers()))
                     continue;
-                if (generator.isTransient(field))
+                if (generator.isTransient(field)) {
+                    transientNames.add(field.getName());
                     continue;
+                }
 
                 int pk = generator.partitionKeyIndex(field);
                 if (pk >= 0) {
@@ -78,7 +86,12 @@ public class IndexGenerator extends AbstractGenerator{
             if (method == null)
                 throw new IllegalArgumentException("Entity class does not have a get method for property " + desc.getName());
             if (!desc.getName().equals("class")) {
-                if (generator.isTransient(desc))
+                if (generator.isTransient(desc)) {
+                    transientNames.add(desc.getName());
+                    continue;
+                }
+
+                if (transientNames.contains(desc.getName()))
                     continue;
 
                 int pk = generator.partitionKeyIndex(desc);

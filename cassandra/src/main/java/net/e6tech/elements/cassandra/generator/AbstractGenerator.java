@@ -70,7 +70,7 @@ public class AbstractGenerator {
         return classHierarchy;
     }
 
-    protected String fullyQualifiedTableName() {
+    public String fullyQualifiedTableName() {
         StringBuilder builder = new StringBuilder();
         if (!StringUtil.isNullOrEmpty(getTableKeyspace())) {
             builder.append(getTableKeyspace()).append(".");

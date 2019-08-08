@@ -34,6 +34,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by futeh.
  */
 public abstract class EntityManagerProvider implements ResourceProvider, Initializable {
+    private static final String DEFAULT_NAME = "default";
+    private static final String[] DEFAULT_PROVIDER_NAMES = new String[] {DEFAULT_NAME};
     private static Logger logger = Logger.getLogger();
     private ExecutorService threadPool;
     private NotificationCenter notificationCenter;
@@ -49,7 +51,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private BlockingQueue<EntityManagerMonitor> monitorQueue = new LinkedBlockingQueue<>();
     private final List<EntityManagerMonitor> entityManagerMonitors = new ArrayList<>();
     private volatile boolean shutdown = false;
-    private String name;
+    private String providerName = DEFAULT_NAME;
 
     public EntityManagerProvider() {
     }
@@ -134,12 +136,12 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         return entityManagerMonitors;
     }
 
-    public String getName() {
-        return name;
+    public String getProviderName() {
+        return providerName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setProviderName(String providerName) {
+        this.providerName = providerName;
     }
 
     protected void evictCollectionRegion(EvictCollectionRegion notification) {
@@ -152,7 +154,6 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     }
 
     public void initialize(Resources resources) {
-
         startMonitoring();
 
         emf = Persistence.createEntityManagerFactory(persistenceUnitName, persistenceProperties);
@@ -181,20 +182,56 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                 notice -> evictEntity(notice.getUserObject()));
     }
 
-    @Override
-    public void onOpen(Resources resources) {
+    private void shouldOpen(Resources resources) {
         Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
         if (config.isPresent() && config.get().disable())
             throw new NotAvailableException();
 
+        String[] names = config.map(EntityManagerConfig::names).orElse(DEFAULT_PROVIDER_NAMES);
+        if (providerName.length() == 0)
+            names = DEFAULT_PROVIDER_NAMES;
+
+        // caller did not provide a list of named provider so that we would let every configured EntityManagerProvider through.
+        if (names.length == 0)
+            return;
+
+        boolean found = false;
+        for (String n : names) {
+            if (n.equals(getProviderName())) {
+                found = true;
+                break;
+            }
+        }
+
+        Map<String, EntityManager> map = resources.configurator().computeMapIfAbsent(EntityManager.class);
+        if (map.get(getProviderName()) != null) {
+            throw new IllegalStateException("There is already an EntityManagerProvider named " + getProviderName() + " configured!");
+        }
+
+        if (!found)
+            throw new NotAvailableException();
+    }
+
+    @Override
+    public void onOpen(Resources resources) {
+
+        shouldOpen(resources);
+
+        Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
+
+        // timeout
         long timeout = config.map(EntityManagerConfig::timeout).orElse(transactionTimeout);
         if (timeout == 0L)
             timeout = transactionTimeout;
+
+        // timout extension
         long timeoutExt = config.map(EntityManagerConfig::timeoutExtension).orElse(0L);
         timeout += timeoutExt;
 
+        // should monitor
         boolean monitor = config.map(EntityManagerConfig::monitor).orElse(monitorTransaction);
 
+        // longQuery time
         long longQuery = config.map(EntityManagerConfig::longTransaction).orElse(longTransaction);
         if (longQuery == 0L)
             longQuery = longTransaction;
@@ -212,22 +249,27 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         if (monitor) {
             monitor(entityManagerMonitor);
         }
-        resources.bind(EntityManagerMonitor.class, entityManagerMonitor);
+
+        // Is below needed?  We cannot have it
+        // resources.bind(EntityManagerMonitor.class, entityManagerMonitor);
 
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
         emHandler.setLongTransaction(longQuery);
         emHandler.setIgnoreInitialLongTransactions(ignoreInitialLongTransactions);
 
-        // first come wins
+        EntityManager proxy = (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class[]{EntityManager.class}, emHandler);
+
+        // first come first win unless it is the DEFAULT
         if (!resources.hasInstance(EntityManager.class)) {
-            resources.bind(EntityManager.class, (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
-                    new Class[]{EntityManager.class}, emHandler));
+            resources.bind(EntityManager.class, proxy);
+        } else if (getProviderName().equals(DEFAULT_NAME)) {
+            resources.rebind(EntityManager.class, proxy);
         }
 
-        String n = getName() == null ? getPersistenceUnitName() : getName();
-        resources.configurator().computeMapIfAbsent(EntityManager.class)
-                .put(n, (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
-                        new Class[]{EntityManager.class}, emHandler));
+        resources.configurator()
+                .computeMapIfAbsent(EntityManager.class)
+                .put(getProviderName(), proxy);
 
         em.getTransaction().begin();
     }
@@ -312,7 +354,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     @Override
     public void onCommit(Resources resources) {
         try {
-            EntityManager em = resources.getInstance(EntityManager.class);
+            EntityManager em = resources.configurator().computeMapIfAbsent(EntityManager.class).get(getProviderName());
             em.getTransaction().commit();
             em.clear();
             em.close();
@@ -330,7 +372,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     @Override
     public void onAbort(Resources resources) {
         try {
-            EntityManager em = resources.getInstance(EntityManager.class);
+            EntityManager em = resources.configurator().computeMapIfAbsent(EntityManager.class).get(getProviderName());
             em.getTransaction().rollback();
             em.clear();
             em.close();

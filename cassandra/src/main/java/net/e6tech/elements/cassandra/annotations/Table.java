@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.cassandra.generator;
+package net.e6tech.elements.cassandra.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -23,11 +23,18 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Mapping {
-    String value();  // column name
-    String property() default ""; // bean property name
-    boolean frozen() default false;
-    boolean frozenKey() default false;
-    boolean frozenValue() default false;
-    boolean timeBased() default false;
+public @interface Table {
+    /**
+     * The name of the keyspace the table is part of.
+     *
+     * @return the name of the keyspace.
+     */
+    String keyspace() default "";
+
+    /**
+     * The name of the table.
+     *
+     * @return the name of the table.
+     */
+    String name();
 }

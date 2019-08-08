@@ -23,6 +23,7 @@ import java.util.function.Consumer
 atom("cassandra_session") {
     configuration = """
     _provider:
+      v3Annotation: false
       host: "${cassandraHost}"
       port: "${cassandraPort}"
       keyspace: ${cassandraKeyspace}

@@ -20,6 +20,8 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.UserType;
+import net.e6tech.elements.cassandra.annotations.Mapping;
+import net.e6tech.elements.cassandra.annotations.Mappings;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.TextSubstitution;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.cassandra.generator;
+package net.e6tech.elements.cassandra.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(ElementType.TYPE)
+@Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Indexes {
-    Index[] value();
+public @interface PartitionKey {
+    /**
+     * Ordinal to add when the partition key has multiple components.
+     *
+     * @return the ordinal to use.
+     */
+    int value() default 0;
 }
+

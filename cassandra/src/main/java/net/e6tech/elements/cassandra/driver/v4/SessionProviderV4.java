@@ -18,17 +18,19 @@ package net.e6tech.elements.cassandra.driver.v4;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.InvalidKeyspaceException;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
-import com.datastax.oss.driver.api.core.servererrors.InvalidQueryException;
+import com.datastax.oss.driver.api.mapper.entity.naming.NamingConvention;
 import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.driver.Wrapper;
 import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.TextBuilder;
 
 import java.net.InetSocketAddress;
@@ -39,14 +41,32 @@ public class SessionProviderV4 extends SessionProvider {
 
     private Generator generator = new GeneratorV4();
     private CqlSession session;
-    private Map<String, String> driverOptions = new LinkedHashMap<>();
+    private Map<String, ?> driverOptions = new LinkedHashMap<>();
     private MappingManager mappingManager;
+    private boolean v3Annotation = false;
+    private String namingConvention;
 
-    public Map<String, String> getDriverOptions() {
+    public boolean isV3Annotation() {
+        return v3Annotation;
+    }
+
+    public void setV3Annotation(boolean v3Annotation) {
+        this.v3Annotation = v3Annotation;
+    }
+
+    public String getNamingConvention() {
+        return namingConvention;
+    }
+
+    public void setNamingConvention(String namingConvention) {
+        this.namingConvention = namingConvention;
+    }
+
+    public Map<String, ?> getDriverOptions() {
         return driverOptions;
     }
 
-    public void setDriverOptions(Map<String, String> driverOptions) {
+    public void setDriverOptions(Map<String, ?> driverOptions) {
         this.driverOptions = driverOptions;
     }
 
@@ -69,40 +89,64 @@ public class SessionProviderV4 extends SessionProvider {
     }
 
     @Override
+    protected void initGenerator() {
+        if (isV3Annotation()) {
+            try {
+                generator = (Generator) getClass().getClassLoader().loadClass("net.e6tech.elements.cassandra.driver.v3.GeneratorV3").getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
+        } else {
+            GeneratorV4 gen = new GeneratorV4();
+            if (getNamingConvention() != null) {
+                gen.setNamingConvention(NamingConvention.valueOf(getNamingConvention()));
+            }
+            generator = gen;
+        }
+    }
+
+    @Override
     protected void initDriver() {
         if (session != null)
             return;
 
         ProgrammaticDriverConfigLoaderBuilder configBuilder = DriverConfigLoader.programmaticBuilder();
-        for (Map.Entry<String, String> entry : driverOptions.entrySet()) {
-            configBuilder.withString(DefaultDriverOption.valueOf(entry.getKey()), entry.getValue().toString());
+        for (Map.Entry<String, ?> entry : driverOptions.entrySet()) {
+            configBuilder.withString(DefaultDriverOption.valueOf(entry.getKey()), "" + entry.getValue());
         }
 
         DriverConfigLoader loader = configBuilder.build();
-        CqlSessionBuilder builder = CqlSession.builder();
-        session = builder
+        CqlSessionBuilder builder = CqlSession.builder()
                 .withConfigLoader(loader)
-                .addContactPoint(new InetSocketAddress(getHost(), getPort()))
-                .build();
+                .addContactPoint(new InetSocketAddress(getHost(), getPort()));
+        try {
+            session = builder
+                    .withKeyspace(getKeyspace())
+                    .build();
+        } catch (InvalidKeyspaceException ex) {
+            session = builder
+                    .withKeyspace((String) null)
+                    .build();
+
+            // create keyspace
+            createKeyspaceArguments.put("keyspace", getKeyspace());
+            session.execute(TextBuilder.using(createKeyspace).build(createKeyspaceArguments));
+            session.close();
+
+            session = builder
+                    .withKeyspace(getKeyspace())
+                    .build();
+        }
 
         mappingManager = new MappingManager(this, session, getKeyspace());
     }
 
     @Override
     protected void initKeyspace() {
-        try {
-            session.execute("use " + getKeyspace());
-        } catch (InvalidQueryException ex) {
-            // connect to default keyspace and create a named keyspace
-            createKeyspaceArguments.put("keyspace", getKeyspace());
-            session.execute(TextBuilder.using(createKeyspace).build(createKeyspaceArguments));
-            session.execute("use " + getKeyspace());
-        }
     }
 
     @Override
     protected void postInit() {
-
     }
 
     @Override
@@ -118,11 +162,13 @@ public class SessionProviderV4 extends SessionProvider {
 
     @Override
     public void onClosed(Resources resources) {
-
     }
 
     @Override
     public void onShutdown() {
-
+        if (session != null) {
+            session.close();
+            session = null;
+        }
     }
 }

@@ -19,11 +19,13 @@ package net.e6tech.elements.cassandra;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import net.e6tech.elements.cassandra.driver.cql.AsyncResultSet;
 import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.cassandra.etl.ETLContext;
 import net.e6tech.elements.cassandra.etl.Strategy;
 import net.e6tech.elements.cassandra.generator.Codec;
 import net.e6tech.elements.cassandra.generator.Generator;
+import net.e6tech.elements.cassandra.generator.IndexGenerator;
 import net.e6tech.elements.cassandra.generator.TableGenerator;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
@@ -42,10 +44,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -162,7 +161,10 @@ public class Schema {
 
     public void createTables(String keyspace, Class ... classes) {
         provision.open().accept(Resources.class, resources -> {
+            List<TableGenerator> tableGenerators = new LinkedList<>();
+            Session session = resources.getInstance(Session.class);
             SessionProvider provider = getProvider(resources);
+            Map<String,  Future<AsyncResultSet>> tableCreation = new LinkedHashMap<>();
             for (Class cls : classes) {
                 if (getTableName(cls) == null)
                     continue;
@@ -171,20 +173,54 @@ public class Schema {
                 if (metadata == null) {
                     String cql = generator.generate();
                     try {
-                        resources.getInstance(Session.class).execute(keyspace, cql);
+                        logger.info("Creating table asynchronously, {}", generator.fullyQualifiedTableName());
+                        Future<AsyncResultSet> future = session.executeAsync(keyspace, cql);
+                        tableCreation.put(cls.getName(), future);
                     } catch (Exception ex) {
                         logger.info("Syntax error in creating table for {}", cls);
                         logger.info(cql);
                         throw ex;
                     }
                 }
-                generator.diff(resources.getInstance(Session.class), keyspace, provider.getTableMetadata(keyspace, generator.getTableName()), isDropColumn());
+                tableGenerators.add(generator);
+            }
 
+            for (Map.Entry<String, Future<AsyncResultSet>> entry : tableCreation.entrySet()) {
+                try {
+                    entry.getValue().get();
+                } catch (Exception ex) {
+                    throw new SystemException("Cannot create table for " + entry.getKey(), ex);
+                }
+            }
+            tableCreation.clear();
+
+            Map<String,  CompletableFuture<Void>> diffTasks = new LinkedHashMap<>();
+            for (TableGenerator gen : tableGenerators) {
+                CompletableFuture<Void> future = CompletableFuture.runAsync(() ->
+                    gen.diff(session, keyspace, provider.getTableMetadata(keyspace, gen.getTableName()), isDropColumn()));
+                diffTasks.put(gen.getTableName(), future);
+            }
+
+            for (Map.Entry<String, CompletableFuture<Void>> entry : diffTasks.entrySet()) {
+                try {
+                    entry.getValue().get();
+                } catch (Exception ex) {
+                    throw new SystemException("Cannot diff table " + entry.getKey(), ex);
+                }
+            }
+            diffTasks.clear();
+
+            // create indexes
+            Map<String,  Future<AsyncResultSet>> indexCreations = new LinkedHashMap<>();
+            for (Class cls : classes) {
                 // create indexes
-                List<String> statements = provider.getGenerator().createIndexes(keyspace, cls);
+                IndexGenerator indexGenerator =  provider.getGenerator().createIndexes(keyspace, cls);
+                List<String> statements = indexGenerator.generate();
                 for (String cql : statements) {
                     try {
-                        resources.getInstance(Session.class).execute(keyspace, cql);
+                        logger.info("Generating indexes asynchronously for class {}", indexGenerator.fullyQualifiedTableName());
+                        Future<AsyncResultSet> future = session.executeAsync(keyspace, cql);
+                        indexCreations.put(cls.getName(), future);
                     } catch (Exception ex) {
                         logger.info("Syntax error in creating index for {}", cls);
                         logger.info(cql);
@@ -192,6 +228,15 @@ public class Schema {
                     }
                 }
             }
+
+            for (Map.Entry<String, Future<AsyncResultSet>> entry : indexCreations.entrySet()) {
+                try {
+                    entry.getValue().get();
+                } catch (Exception ex) {
+                    throw new SystemException("Cannot create index for " + entry.getKey(), ex);
+                }
+            }
+            indexCreations.clear();
         });
 
         validateTables(keyspace, classes);
