@@ -26,7 +26,7 @@ dependencies {
         exclude group: 'org.ow2.asm'
     }
 
-    compile("com.datastax.oss:java-driver-mapper-processor:4.1.0")
+    compile("com.datastax.oss:java-driver-mapper-processor:${cassandraDriver4Version}")
 
     // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: '4.1.0'
 

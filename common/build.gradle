@@ -26,7 +26,7 @@ dependencies {
     compile "org.apache.logging.log4j:log4j-jul:${log4jVersion}"
     compile "com.lmax:disruptor:${lmaxDisruptorVerions}"
     compile "org.slf4j:slf4j-api:${slf4jVersion}"
-    compile "org.codehaus.groovy:groovy-all:${groovyVersion}"
+    compile ("org.codehaus.groovy:groovy:${groovyVersion}")
     compile "com.google.guava:guava:${guavaVerions}"
     compile "javax.inject:javax.inject:1"
     compile "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"

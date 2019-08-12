@@ -17,6 +17,7 @@ limitations under the License.
 package net.e6tech.elements.web.cxf;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.MethodSignature;
 import org.apache.cxf.common.util.ClassHelper;
 
 import javax.annotation.security.DenyAll;
@@ -210,63 +211,4 @@ public class SecurityAnnotationEngine {
         return new MethodSignature(method);
     }
 
-    static class MethodSignature {
-        private String name;
-        private Class returnType;
-        private Class<?>[] parameterTypes;
-        private String signature;
-
-        MethodSignature(Method method) {
-            name = method.getName();
-            returnType = method.getReturnType();
-            parameterTypes = method.getParameterTypes();
-        }
-
-        public boolean equals(Object obj) {
-            if (obj instanceof MethodSignature) {
-                MethodSignature other = (MethodSignature) obj;
-                if (name.equals(other.name)) {
-                    if (!returnType.equals(other.returnType))
-                        return false;
-                    return equalParamTypes(parameterTypes, other.parameterTypes);
-                }
-            }
-            return false;
-        }
-
-        public int hashCode() {
-            return name.hashCode() ^ returnType.hashCode();
-        }
-
-        boolean equalParamTypes(Class<?>[] params1, Class<?>[] params2) {
-            /* Avoid unnecessary cloning */
-            if (params1.length == params2.length) {
-                for (int i = 0; i < params1.length; i++) {
-                    if (params1[i] != params2[i])
-                        return false;
-                }
-                return true;
-            }
-            return false;
-        }
-
-        public String toString() {
-            if (signature == null) {
-                StringBuilder b = new StringBuilder(returnType.getName());
-                b.append(' ').append(name).append('(');
-                boolean first = true;
-                for (Class<?> cls : parameterTypes) {
-                    if (first) {
-                        first = false;
-                    } else {
-                        b.append(", ");
-                    }
-                    b.append(cls.getName());
-                }
-                b.append(')');
-                signature = b.toString();
-            }
-            return signature;
-        }
-    }
 }

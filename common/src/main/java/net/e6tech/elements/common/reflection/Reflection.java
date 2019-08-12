@@ -34,6 +34,7 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static java.util.Locale.ENGLISH;
 
@@ -252,28 +253,93 @@ public class Reflection {
         }
     }
 
-    public static Map<String, Map<Class<? extends Annotation>, Annotation>> getInterfaceAnnotations(Class cls) {
-        LinkedHashSet<Class> set = new LinkedHashSet<>();
-        if (cls.isInterface())
-            set.add(cls);
-        while (cls != null && cls != Object.class) {
-            for (Class c : cls.getInterfaces())
-                set.add(c);
-            cls = cls.getSuperclass();
+    public static Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> getAnnotationsByName(Class cls) {
+        return getAnnotations(cls).entrySet().stream()
+                .filter(x -> x.getKey() instanceof NamedSignature)
+                .collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue()));
+    }
+
+    public static Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> getAnnotations(Class cls) {
+        List<Class> classes = collectClass(cls);
+
+        Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> annotations = new HashMap<>(50);
+        Map<Class<? extends Annotation>, Annotation> classAnnotations = new HashMap<>(50);
+        for (Class c : classes) {
+            for (Method method : c.getDeclaredMethods()) {
+                Map<Class<? extends Annotation>, Annotation> map = Accessor.getAnnotations(method);
+                MethodSignature signature = new MethodSignature(method);
+                annotations.putIfAbsent(signature, map);
+            }
+
+            Field[] fields = c.getDeclaredFields();
+            for (Field field : fields) {
+                Map<Class<? extends Annotation>, Annotation> map = Accessor.getAnnotations(field);
+                FieldSignature signature = new FieldSignature(field);
+                if (!annotations.containsKey(signature)) {
+                    annotations.put(signature, map);
+                    NamedSignature named = new NamedSignature(field.getName());
+                    annotations.put(named, map);
+                }
+            }
+
+            // unlike method and field, class signature aggregates all annotations including it super classes.
+            ClassSignature classSignature = new ClassSignature(cls);
+            for (Annotation a : c.getAnnotations()) {
+                classAnnotations.putIfAbsent(a.annotationType(), a);
+            }
+            annotations.put(classSignature, classAnnotations);
         }
 
-        Map<String, Map<Class<? extends Annotation>, Annotation>> annotations = new HashMap<>(50);
-        for (Class c : set) {
+        for (Class c : classes) {
             try {
                 for (PropertyDescriptor desc : Introspector.getBeanInfo(c).getPropertyDescriptors()) {
                     Map<Class<? extends Annotation>, Annotation> map = Accessor.getAnnotations(desc);
-                    annotations.put(desc.getName(), map);
+                    PropertySignature signature = new PropertySignature(desc);
+                    if (!annotations.containsKey(signature)) {
+                        annotations.put(signature, map);
+                        NamedSignature named = new NamedSignature(desc.getName());
+                        Map<Class<? extends Annotation>, Annotation> namedMap = annotations.computeIfAbsent(named, key -> new HashMap<>());
+                        for (Map.Entry<Class<? extends Annotation>, Annotation> entry : map.entrySet()) {
+                            namedMap.putIfAbsent(entry.getKey(), entry.getValue());
+                        }
+                    }
                 }
             } catch (IntrospectionException e) {
                 throw new SystemException(e);
             }
         }
-        return annotations;
+
+        return annotations.entrySet().stream()
+                .filter(x -> x.getValue().size() > 0)
+                .collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue()));
+    }
+
+    private static List<Class> collectClass(Class cls) {
+        LinkedHashSet<Class> set = new LinkedHashSet<>();
+        Class tmp =  cls;
+        while (tmp != null && !tmp.equals(Object.class)) {
+            set.add(tmp);
+            Class[] interfaces = tmp.getInterfaces();
+            for (Class intf : interfaces) {
+                collectInterfaces(intf, set);
+            }
+            tmp = tmp.getSuperclass();
+        }
+        List<Class> list = new ArrayList<>(set);
+        return list;
+    }
+
+
+    // this needs to be breadth first
+    private static void collectInterfaces(Class intf, Set<Class> set) {
+        if (!set.contains(intf))
+            set.add(intf);
+        else
+            return;
+        Class[] interfaces = intf.getInterfaces();
+        for (Class i : interfaces) {
+            collectInterfaces(i, set);
+        }
     }
 
     public static BeanInfo getBeanInfo(Class cls) {
@@ -291,11 +357,10 @@ public class Reflection {
         BeanInfo beanInfo = getBeanInfo(cls);
         PropertyDescriptor[] props = beanInfo.getPropertyDescriptors();
         for (PropertyDescriptor prop : props) {
-            if (prop.getReadMethod() == null) {
-                continue;
-            }
-            if (prop.getReadMethod().getAnnotation(annotationClass) != null) {
+            if (prop.getReadMethod() != null && prop.getReadMethod().getAnnotation(annotationClass) != null) {
                 consumer.accept(prop.getReadMethod());
+            } else if (prop.getWriteMethod() != null && prop.getWriteMethod().getAnnotation(annotationClass) != null) {
+                consumer.accept(prop.getWriteMethod());
             }
         }
 

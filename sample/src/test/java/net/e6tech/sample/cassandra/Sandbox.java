@@ -18,19 +18,28 @@ package net.e6tech.sample.cassandra;
 
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import net.e6tech.elements.cassandra.annotations.ClusteringColumn;
+import net.e6tech.elements.cassandra.annotations.PartitionKey;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.reflection.Accessor;
+import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.reflection.Signature;
 import org.junit.jupiter.api.Test;
 
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
+import java.util.*;
 
 public class Sandbox {
+
+    @Test
+    void test() {
+        Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> annotations = Reflection.getAnnotationsByName(Y.class);
+        System.out.println(annotations);
+    }
+
 
     @Test
     void sessionProvider4() {
@@ -45,28 +54,11 @@ public class Sandbox {
         System.out.println(duration);
     }
 
-    @Test
-    void basic() throws Exception {
+    public static class X implements B, D {
 
-        Class cls = Y.class;
+        @ClusteringColumn
+        protected int m;
 
-        LinkedHashSet<Class> set = new LinkedHashSet<>();
-        while (cls != null && cls != Object.class) {
-            for (Class c : cls.getInterfaces())
-                set.add(c);
-            cls = cls.getSuperclass();
-        }
-
-        Map<String, Map<Class<? extends Annotation>, Annotation>> annotations = new HashMap<>(50);
-        for (Class c : set) {
-            for (PropertyDescriptor desc : Introspector.getBeanInfo(c).getPropertyDescriptors()) {
-                Map<Class<? extends Annotation>, Annotation> map = Accessor.getAnnotations(desc);
-                annotations.put(desc.getName(), map);
-            }
-        }
-    }
-
-    public static class X implements B {
 
         @Override
         public String getB() {
@@ -77,21 +69,26 @@ public class Sandbox {
         public void setB(String b) {
 
         }
+
+        @Override
+        @PartitionKey
+        public String getD() {
+            return null;
+        }
+
+        @Override
+        public void setD(String c) {
+
+        }
     }
 
-    public static class Y extends X implements A {
+    public static class Y extends X implements C {
+
+        @PartitionKey
+        protected long m;
 
         @Override
-        public int getA() {
-            return 0;
-        }
-
-        @Override
-        public void setA(int a) {
-
-        }
-
-        @Override
+        @PartitionKey
         public String getC() {
             return null;
         }
@@ -99,6 +96,15 @@ public class Sandbox {
         @Override
         public void setC(String c) {
 
+        }
+
+        @Inject
+        public long getM() {
+            return m;
+        }
+
+        public void setM(long m) {
+            m = m;
         }
     }
 
@@ -114,8 +120,14 @@ public class Sandbox {
         void setB(String b);
     }
 
-    interface C {
+    interface C extends D {
         String getC();
         void setC(String c);
+    }
+
+    interface D {
+        @Inject
+        String getD();
+        void setD(String c);
     }
 }

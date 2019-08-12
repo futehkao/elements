@@ -20,7 +20,10 @@ import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.ClassSignature;
+import net.e6tech.elements.common.reflection.MethodSignature;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.reflection.Signature;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.ResourcesFactory;
 import net.e6tech.elements.common.resources.UnitOfWork;
@@ -35,6 +38,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -44,6 +48,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
     private Map<Method, String> methods = new ConcurrentHashMap<>();
     private Object prototype;
     private CXFServer server;
+    private Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> annotations;
 
     InstanceResourceProvider(JaxRSServer server, Class resourceClass, Object prototype, Module module, ResourcesFactory factory, Observer observer) {
         super(resourceClass);
@@ -59,6 +64,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                 res.rebind((Class<ExceptionMapper>) server.getExceptionMapper().getClass(), server.getExceptionMapper());
             }
         });
+        annotations = Reflection.getAnnotations(resourceClass);
     }
 
     @SuppressWarnings("unchecked")
@@ -88,10 +94,19 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
         @SuppressWarnings("unchecked")
         private void open(Object target, Method method) {
             Class cls = target.getClass();
-            for (Annotation annotation : cls.getAnnotations())
-                uow.put((Class) annotation.annotationType(), annotation);
-            for (Annotation annotation : method.getAnnotations())
-                uow.put((Class) annotation.annotationType(), annotation);
+            ClassSignature classSignature = new ClassSignature(cls);
+            Map<Class<? extends Annotation>, Annotation> map = annotations.getOrDefault(classSignature, new HashMap<>());
+            MethodSignature methodSignature = new MethodSignature(method);
+            Map<Class<? extends Annotation>, Annotation> map2 = annotations.getOrDefault(methodSignature, new HashMap<>());
+
+            for (Map.Entry<Class<? extends Annotation>, Annotation> entry : map.entrySet()) {
+                uow.put((Class) entry.getKey(), entry.getValue());
+            }
+
+            for (Map.Entry<Class<? extends Annotation>, Annotation> entry : map2.entrySet()) {
+                uow.put((Class) entry.getKey(), entry.getValue());
+            }
+
             uow.open();
         }
 

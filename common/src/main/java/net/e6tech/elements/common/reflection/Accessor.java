@@ -83,11 +83,21 @@ public class Accessor {
             for (Annotation a : m.getAnnotations()) {
                 map.put(a.annotationType(), a);
             }
-        } if (desc.getWriteMethod() != null) {
+        }
+
+        if (desc.getWriteMethod() != null) {
             m = desc.getWriteMethod();
             for (Annotation a : m.getAnnotations()) {
                 map.put(a.annotationType(), a);
             }
+        }
+        return map;
+    }
+
+    public static Map<Class<? extends Annotation>, Annotation> getAnnotations(AccessibleObject accessibleObject ) {
+        Map<Class<? extends Annotation>, Annotation> map = new HashMap<>();
+        for (Annotation a : accessibleObject.getAnnotations()) {
+            map.put(a.annotationType(), a);
         }
         return map;
     }
