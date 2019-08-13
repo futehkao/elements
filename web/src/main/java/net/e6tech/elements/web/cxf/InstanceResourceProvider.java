@@ -127,7 +127,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                     uowOpen = true;
                 } catch (Exception th) {
                     JaxRSServer.getLogger().debug(th.getMessage(), th);
-                    server.handleException(frame, th);
+                    server.handleException(message, frame, th);
                 }
             }
 
@@ -170,7 +170,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                 server.recordFailure(frame.getMethod(), methods);
                 abort = true;
                 JaxRSServer.getLogger().debug(th.getMessage(), th);
-                server.handleException(frame, th);
+                server.handleException(message, frame, th);
             } finally {
                 if (uowOpen) {
                     if (abort)

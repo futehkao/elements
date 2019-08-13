@@ -18,8 +18,8 @@
     <orderEntry type="library" name="Gradle: org.junit.jupiter:junit-jupiter-api:5.4.1" level="project" />
     <orderEntry type="library" name="Gradle: org.junit.platform:junit-platform-launcher:1.4.1" level="project" />
     <orderEntry type="module" module-name="common_main" />
-    <orderEntry type="library" name="Gradle: com.zaxxer:HikariCP:3.3.1" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.junit.jupiter:junit-jupiter-engine:5.4.1" level="project" />
+    <orderEntry type="library" name="Gradle: com.zaxxer:HikariCP:3.3.1" level="project" />
     <orderEntry type="library" name="Gradle: org.mariadb.jdbc:mariadb-java-client:2.4.3" level="project" />
     <orderEntry type="library" name="Gradle: javax:javaee-api:8.0.1" level="project" />
     <orderEntry type="library" name="Gradle: org.hibernate.common:hibernate-commons-annotations:5.1.0.Final" level="project" />

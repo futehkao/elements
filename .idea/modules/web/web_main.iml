@@ -152,5 +152,6 @@
     <orderEntry type="library" name="Gradle: com.github.jnr:jnr-x86asm:1.0.2" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.ant:ant-launcher:1.10.5" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: com.github.jnr:jffi:native:1.2.16" level="project" />
+    <orderEntry type="library" name="Gradle: javax:javaee-api:8.0.1" level="project" />
   </component>
 </module>

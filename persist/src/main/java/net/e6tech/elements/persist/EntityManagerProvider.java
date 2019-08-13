@@ -243,15 +243,14 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         }
 
         EntityManager em = emf.createEntityManager();
-        EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(threadPool, this,
-                resources,
-                em, System.currentTimeMillis() + timeout, new Throwable());
         if (monitor) {
+            EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(threadPool, this,
+                    resources,
+                    em, System.currentTimeMillis() + timeout, new Throwable());
             monitor(entityManagerMonitor);
+            resources.getMapVariable(EntityManagerMonitor.class)
+                    .put(getProviderName(), entityManagerMonitor);
         }
-
-        // Is below needed?  We cannot have it
-        // resources.bind(EntityManagerMonitor.class, entityManagerMonitor);
 
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
         emHandler.setLongTransaction(longQuery);
@@ -387,6 +386,9 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
     @Override
     public void onClosed(Resources resources) {
+        EntityManagerMonitor m = resources.getMapVariable(EntityManagerMonitor.class).get(getProviderName());
+        if (m != null)
+            m.close();
     }
 
     @Override

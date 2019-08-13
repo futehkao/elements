@@ -72,7 +72,7 @@ class SharedResourceProvider extends SingletonResourceProvider {
                         cloneObserver.onException(th);
                     server.recordFailure(frame.getMethod(), methods);
                     JaxRSServer.getLogger().debug(th.getMessage(), th);
-                    server.handleException(frame, th);
+                    server.handleException(m, frame, th);
                 }
                 return null;
             });

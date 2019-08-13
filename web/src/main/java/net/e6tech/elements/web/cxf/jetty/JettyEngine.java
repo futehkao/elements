@@ -17,6 +17,7 @@
 package net.e6tech.elements.web.cxf.jetty;
 
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.JavaKeyStore;
@@ -29,14 +30,25 @@ import org.apache.cxf.configuration.security.ClientAuthentication;
 import org.apache.cxf.endpoint.Server;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxws.JaxWsServerFactoryBean;
+import org.apache.cxf.message.Message;
 import org.apache.cxf.transport.Destination;
+import org.apache.cxf.transport.http.AbstractHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngine;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngineFactory;
+import org.eclipse.jetty.server.Dispatcher;
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
+import javax.servlet.DispatcherType;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
@@ -63,6 +75,11 @@ public class JettyEngine implements ServerEngine {
     @Inject(optional = true)
     public void setQueuedThreadPool(QueuedThreadPool queuedThreadPool) {
         this.queuedThreadPool = queuedThreadPool;
+    }
+
+    public void onException(Message message, CallFrame frame, Throwable th) {
+        // org.eclipse.jetty.server.Request request = ( org.eclipse.jetty.server.Request) message.get(AbstractHTTPDestination.HTTP_REQUEST);
+        // request.setHandled(true);
     }
 
     public void start(CXFServer cxfServer, ServerController<?> controller) {
@@ -92,11 +109,11 @@ public class JettyEngine implements ServerEngine {
             if (dest instanceof JettyHTTPDestination) {
                 JettyHTTPDestination jetty = (JettyHTTPDestination) dest;
                 if (jetty.getEngine() instanceof JettyHTTPServerEngine) {
-                    ((JettyHTTPServerEngine) jetty.getEngine()).setThreadPool(queuedThreadPool);
+                    JettyHTTPServerEngine engine = (JettyHTTPServerEngine) jetty.getEngine();
+                    engine.setThreadPool(queuedThreadPool);
                 }
             }
         }
-        cxfServer.setServerEngineData(servers);
         server.start();
     }
 

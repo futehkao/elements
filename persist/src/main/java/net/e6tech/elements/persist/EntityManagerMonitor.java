@@ -32,6 +32,7 @@ public class EntityManagerMonitor {
     private Throwable throwable;
     private ExecutorService threadPool;
     private Thread originatingThread;
+    private volatile boolean interrupted = false;
 
     EntityManagerMonitor(ExecutorService threadPool, EntityManagerProvider provider, Resources resources,
                          EntityManager entityManager, long expiration, Throwable throwable) {
@@ -62,7 +63,8 @@ public class EntityManagerMonitor {
         threadPool.execute(() -> {
             // cancel query
             try {
-                originatingThread.interrupt();
+                interrupt(); // interrupt here in case there is a blocking call during the transaction
+                             // however, this interrupt needs to be clear
                 if (entityManager.isOpen()) {
                     provider.cancelQuery(resources);
                 }
@@ -81,5 +83,19 @@ public class EntityManagerMonitor {
                 logger.warn("Unexpected exception in EntityManagerMonitor during rollback", throwable);
             }
         });
+    }
+
+    private synchronized void interrupt() {
+        if (!interrupted) {
+            originatingThread.interrupt();
+            interrupted = true;
+        }
+    }
+
+    // Called by EntityManagerProvider to clear interrupt
+    synchronized void close() {
+        if (interrupted) {
+            Thread.interrupted(); // clear current interrupt so that it won't propagate further.
+        }
     }
 }

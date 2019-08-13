@@ -309,16 +309,19 @@ public class CXFServer implements Initializable, Startable {
     }
 
     @SuppressWarnings("squid:S00112")
-    void handleException(CallFrame frame, Throwable th) throws Throwable {
+    void handleException(Message message, CallFrame frame, Throwable th) throws Throwable {
         Throwable throwable = ExceptionMapper.unwrap(th);
         if (frame.getTarget() instanceof JaxExceptionHandler) {
             Object response = ((JaxExceptionHandler) frame.getTarget()).handleException(frame, throwable);
             if (response != null) {
-                throw new InvocationException(response);
+                Exception exception = new InvocationException(response);
+                serverEngine.onException(message, frame, exception);
+                throw exception;
             } else {
                 // do nothing
             }
         } else {
+            serverEngine.onException(message, frame, throwable);
             throw throwable;
         }
     }

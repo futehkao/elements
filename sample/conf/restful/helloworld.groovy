@@ -34,25 +34,14 @@ atom("helloWorld") {
         - class: "net.e6tech.sample.web.cxf.HelloWorld"
           singleton: false
           prototype: ^_prototype
-        - class: "net.e6tech.sample.web.cxf.HelloWorld2"
-          classLoader: ^_classLoader
     _helloWorld.responseHeaders:
         'X' : 'X val'
         'Y' : 'Y val'
+    # _helloWorld.serverEngineClass: net.e6tech.elements.web.cxf.tomcat.TomcatEngine
     _securityAnnotation.securityProviders: ^roleMap
  """
-    _classLoader = HelloWorld2.class.getClassLoader()
     _prototype = HelloWorld
     _securityAnnotation = SecurityAnnotationEngine
     _helloWorld = JaxRSServer
 }
 
-@Path("/helloworld")
-class HelloWorld2 {
-    @GET
-    @Produces("application/json")
-    @Path("hello2")
-    String ping() {
-        return "ping ...";
-    }
-}

@@ -18,7 +18,7 @@ package net.e6tech.sample.web.cxf;
 
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.InstanceNotFoundException;
-import net.e6tech.elements.common.resources.ResourceManager;
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.persist.EntityManagerConfig;
 
@@ -30,13 +30,14 @@ import javax.annotation.security.PermitAll;
 import javax.persistence.EntityManager;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.beans.IntrospectionException;
 
 @Path("/helloworld")
 @SuppressWarnings("all") // it is a test case
 public class HelloWorld {
 
     @Inject
-    ResourceManager resourceManager;
+    Provision provision;
 
     @Inject
     Resources resources;
@@ -90,10 +91,18 @@ public class HelloWorld {
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/{greeting}")
     public String sayHello(@PathParam("greeting") String greeting) {
-        String str = "hello " + greeting;
-        if (extraMessage != null)
-            str += " " + extraMessage;
-        return str;
+        return provision.resourceBuilder(EntityManagerConfig.class)
+                .annotate(c -> c::names, new String[] {"sample-rw"})
+                .open()
+                .apply(EntityManager.class, Resources.class,  (em, res) -> {
+                    EntityManager byName = res.getMapVariable(EntityManager.class).get("sample-rw");
+                    assert em == byName;
+
+                    String str = "hello " + greeting;
+                    if (extraMessage != null)
+                        str += " " + extraMessage;
+                    return str;
+                });
     }
 
     @DenyAll

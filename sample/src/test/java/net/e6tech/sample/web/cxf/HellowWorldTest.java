@@ -46,10 +46,9 @@ public class HellowWorldTest extends BaseCase {
     }
 
     @Test
-    public void sayHello() {
-        helloWorld.ping();
+    public void sayHello() throws Exception {
         String response = helloWorld.sayHello("hello");
-        response = helloWorld.sayHello2("hello2", "blah");
+        System.out.println(response);
     }
 
     @Test

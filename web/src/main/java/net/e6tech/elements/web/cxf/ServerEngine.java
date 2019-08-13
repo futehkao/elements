@@ -16,7 +16,9 @@
 
 package net.e6tech.elements.web.cxf;
 
+import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.resources.BindClass;
+import org.apache.cxf.message.Message;
 
 @BindClass
 public interface ServerEngine {
@@ -24,4 +26,7 @@ public interface ServerEngine {
     void start(CXFServer cxfServer, ServerController<?> controller);
 
     void stop(CXFServer cxfServer);
+
+    default void onException(Message message, CallFrame frame, Throwable th) {
+    }
 }
