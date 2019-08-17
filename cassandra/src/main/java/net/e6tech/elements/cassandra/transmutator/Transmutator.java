@@ -17,11 +17,10 @@
 package net.e6tech.elements.cassandra.transmutator;
 
 import net.e6tech.elements.cassandra.Sibyl;
-import net.e6tech.elements.cassandra.async.AsyncResultSetFutures;
-import net.e6tech.elements.cassandra.etl.Inspector;
-import net.e6tech.elements.cassandra.etl.PartitionContext;
-import net.e6tech.elements.cassandra.etl.PartitionStrategy;
-import net.e6tech.elements.cassandra.etl.Strategy;
+import net.e6tech.elements.cassandra.driver.cql.ResultSet;
+import net.e6tech.elements.cassandra.driver.cql.Row;
+import net.e6tech.elements.cassandra.etl.*;
+import net.e6tech.elements.common.util.MapBuilder;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.reflect.Array;
@@ -33,6 +32,15 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
 
     private LinkedList<Descriptor> descriptors = new LinkedList<>();
     private Customizer customizer = null;
+    private Map<String, ETLSettings> settings = new HashMap<>();
+
+    public Map<String, ETLSettings> getSettings() {
+        return settings;
+    }
+
+    public void setSettings(Map<String, ETLSettings> settings) {
+        this.settings = settings;
+    }
 
     public Customizer getCustomizer() {
         return customizer;
@@ -56,14 +64,13 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             Object value = context.getLastUpdateValue();
 
             Set list = new HashSet();
-            AsyncResultSetFutures<?> result = sibyl.createAsync("select " + partitionKey + ", count(*) from " + tableName +
-                    " where " + checkpointColumn + " > :spk group by " + partitionKey + " " + filter)
-                    .execute(bound -> bound.set("spk", value, (Class) value.getClass()));
-            result.inExecutionOrderRows(row -> {
-                if (!row.isNull(0)) {
-                    list.add(row.get(0, value.getClass()));
-                }
-            });
+
+            ResultSet resultSet = sibyl.execute("select " + partitionKey + ", count(*) from " + tableName +
+                    " where " + checkpointColumn + " > :spk group by " + partitionKey + " " + filter,
+                    MapBuilder.of("spk", value));
+            for (Row row : resultSet.all()) {
+                list.add(row.get(0, value.getClass()));
+            }
 
             sibyl.createAsync("delete from " + inspector.tableName() + " where " + partitionKey + " = :partitionKey")
                 .execute(list, (p, bound) ->  bound.set("partitionKey", p, (Class) p.getClass()))
@@ -78,43 +85,71 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         while (cls != null && cls != Object.class) {
             Method[] methods = cls.getDeclaredMethods();
             for (Method method : methods) {
-                Loader loader = method.getAnnotation(Loader.class);
-                if (method.getAnnotation(Loader.class) == null)
-                    continue;
-
-                if (!method.getReturnType().equals(Integer.TYPE)) {
-                    throw new SystemException("Invalid return type for method " + method + ", expecting int");
-                }
-                if (method.getParameterTypes().length != 2) {
-                    throw new SystemException("Invalid number of parameters for method " + method + ", expecting 2");
-                }
-
-                Class ptype = method.getParameterTypes()[1];
-                if (!ptype.isArray()) {
-                    throw new SystemException("Invalid signature for method " + method + ", expecting array type for argument 2.");
-                }
-                Class componentType = ptype.getComponentType();
-                try {
-                    PartitionContext context = PartitionContext.createContext(null, componentType);
-                    PartitionStrategy strategy = context.createStrategy();
-                    context.setExtractorName(componentType.getName() + "_" + getClass().getSimpleName());
-                    context.setLoadDelegate(list -> {
-                        try {
-                            return (Integer) method.invoke(Transmutator.this, context, list.toArray((Object[])Array.newInstance(componentType,0)));
-                        } catch (Exception e) {
-                            throw new SystemException(e);
-                        }
-                    });
-                    Descriptor entry = new Descriptor(loader.value(), context, strategy);
-                    descriptors.addLast(entry);
-                } catch (Exception e) {
-                    throw new SystemException(e);
-                }
+                if (method.getAnnotation(Loader.class) != null)
+                    setupLoader(method);
+                if (method.getAnnotation(PartitionLoader.class) != null)
+                    setupPartitionLoader(method);
             }
             cls = cls.getSuperclass();
         }
 
         Collections.sort(descriptors, Comparator.comparingInt(p -> p.order));
+    }
+
+    private void setupLoader(Method method) {
+        Loader loader = method.getAnnotation(Loader.class);
+        setupContext(loader.value(), method, null, RunType.EACH_ENTRY);
+    }
+
+    private void setupPartitionLoader(Method method) {
+        PartitionLoader loader = method.getAnnotation(PartitionLoader.class);
+        setupContext(loader.value(), method, loader.sourceClass(), RunType.PARTITION);
+    }
+
+    private void setupContext(int order, Method method, Class src, RunType runType) {
+
+        if (!method.getReturnType().equals(Integer.TYPE)) {
+            throw new SystemException("Invalid return type for method " + method + ", expecting int");
+        }
+        if (method.getParameterTypes().length != 2) {
+            throw new SystemException("Invalid number of parameters for method " + method + ", expecting 2");
+        }
+
+        Class ptype = method.getParameterTypes()[1];
+        if (!ptype.isArray()) {
+            throw new SystemException("Invalid signature for method " + method + ", expecting array type for argument 2.");
+        }
+        Class sourceClass = (src != null) ? src : ptype.getComponentType();
+        Class componentType = ptype.getComponentType();
+        try {
+            if (!Partition.class.isAssignableFrom(sourceClass)) {
+                throw new SystemException("Source class " + sourceClass + " does not implement Partition inteface");
+            }
+
+            PartitionContext context = PartitionContext.createContext(null, sourceClass);
+
+            if (!method.getParameterTypes()[0].isAssignableFrom(context.getClass())) {
+                throw new SystemException("Invalid loader (" + getClass() + ") argument type declaration for method " + method
+                        + ": expecting " +  context.getClass() + " but declared as " + method.getParameterTypes()[0]);
+            }
+                        PartitionStrategy strategy = context.createStrategy();
+            context.setExtractorName(sourceClass.getName() + "_" + getClass().getSimpleName());
+            context.setLoadDelegate(list -> {
+                try {
+                    return (Integer) method.invoke(Transmutator.this, context, list.toArray((Object[]) Array.newInstance(componentType, 0)));
+                } catch (Exception e) {
+                    throw new SystemException("Unable to invoke " + method, e);
+                }
+            });
+
+            ETLSettings s = settings.get("" + order);
+
+            Descriptor entry = new Descriptor(order, context, strategy, runType, s);
+
+            descriptors.addLast(entry);
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
     }
 
     public List<Descriptor> describe() {
@@ -133,6 +168,17 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             entry.context.setBatchSize(context.getBatchSize());
             entry.context.setExtractAll(context.isExtractAll());
             entry.context.setTimeLag(context.getTimeLag());
+            if (entry.settings != null) {
+                ETLSettings s = entry.settings;
+                if (s.getStartTime() != null)
+                    entry.context.setStartTime(s.getStartTime());
+                if (s.getBatchSize() != null)
+                    entry.context.setBatchSize(s.getBatchSize());
+                if (s.getExtractAll() != null)
+                    entry.context.setExtractAll(s.getExtractAll());
+                if (s.getTimeLag() != null)
+                    entry.context.setTimeLag(s.getTimeLag());
+            }
         }
 
         if (customizer != null) {
@@ -142,7 +188,14 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         }
 
         for (Descriptor entry : descriptors) {
-            count += entry.strategy.run(entry.context);
+            switch (entry.runType) {
+                case EACH_ENTRY:
+                    count += entry.strategy.run(entry.context);
+                    break;
+                case PARTITION:
+                    count += entry.strategy.runPartitions(entry.context);
+                    break;
+            }
         }
         return count;
     }
@@ -151,15 +204,25 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         int order;
         PartitionContext context;
         PartitionStrategy strategy;
+        RunType runType;
+        ETLSettings settings;
 
-        Descriptor(int order, PartitionContext context, PartitionStrategy strategy) {
+
+        Descriptor(int order, PartitionContext context, PartitionStrategy strategy, RunType runType, ETLSettings settings) {
             this.order = order;
             this.context = context;
             this.strategy= strategy;
+            this.runType = runType;
+            this.settings = settings;
         }
     }
 
     public interface Customizer {
         void customize(PartitionContext context, Descriptor descriptor);
+    }
+
+    private static enum RunType {
+        EACH_ENTRY,
+        PARTITION;
     }
 }

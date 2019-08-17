@@ -51,12 +51,12 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
 
         AtomicReference<Map<Comparable, Long>> ref = new AtomicReference<>(new HashMap<>());
         List<Comparable> partitions = new ArrayList<>();
+        String query = TextBuilder.using(
+                "select ${pk}, count(*) from ${table} " +
+                        "where ${pk} > ${start} and ${pk} < ${end} group by ${pk} allow filtering")
+                .build("pk", partitionKey, "table", table,
+                        "start", lastUpdate.getLastUpdate(), "end", end);
         context.open().accept(Resources.class, res -> {
-            String query = TextBuilder.using(
-                    "select ${pk}, count(*) from ${table} " +
-                    "where ${pk} > ${start} and ${pk} < ${end} group by ${pk} allow filtering")
-                    .build("pk", partitionKey, "table", table,
-                            "start", lastUpdate.getLastUpdate(), "end", end);
             ResultSet rs = res.getInstance(Session.class).execute(query);
             List<Row> rows = rs.all();
             ref.set(new HashMap<>((int)(rows.size() * 1.4 + 16)));
@@ -69,7 +69,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         });
         Map<Comparable, Long> map = ref.get();
         Collections.sort(partitions);
-        Map<Comparable, Long> result = new LinkedHashMap<>();
+        Map<Comparable, Long> result = new LinkedHashMap<>(partitions.size() + 1, 1.0f);
         for (Comparable partition : partitions) {
             result.put(partition, map.get(partition));
         }
@@ -122,7 +122,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                 }
             }
 
-            importedCount += run(concurrent, context);
+            importedCount += run(context, concurrent);
             for (Comparable partition : concurrent) {
                 partitions.remove(partition);
                 lastUpdate.update(partition);
@@ -135,12 +135,70 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         return importedCount;
     }
 
-    public int run(List<Comparable> partitions, C context) {
+    public int run(C context, List<Comparable> partitions) {
         context.setPartitions(partitions);
         List<S> batchResults = extract(context);
         int processedCount = load(context, batchResults);
         if (logger.isInfoEnabled())
             logger.info("Processed {} instance of {}", processedCount, context.extractor());
         return processedCount;
+    }
+
+    public List<Comparable> queryRange(C context) {
+        LastUpdate lastUpdate = context.getLastUpdate();
+        Comparable end = context.getCutoff();
+        String partitionKey = context.getInspector().getPartitionKeyColumn(0);
+        String table = context.tableName();
+
+        List<Comparable> list = new LinkedList<>();
+        // select distinct only works when selecting partition keys
+        String query = TextBuilder.using(
+                "select distinct ${pk} from ${table} " +
+                        "where ${pk} > ${start} and ${pk} < ${end} allow filtering")
+                .build("pk", partitionKey, "table", table,
+                        "start", lastUpdate.getLastUpdate(), "end", end);
+        context.open().accept(Resources.class, res -> {
+
+            ResultSet rs = res.getInstance(Session.class).execute(query);
+            for (Row row : rs.all()) {
+                list.add((Comparable) row.get(0, context.getPartitionKeyType()));
+            }
+        });
+
+        list.sort(null);
+        return list;
+    }
+
+    public int runPartitions(C context) {
+        context.initialize();
+        List<Comparable> list = queryRange(context);
+
+        List<Comparable> batch = new ArrayList<>(context.getBatchSize());
+        for (Comparable c : list) {
+            batch.add(c);
+            if (batch.size() == context.getBatchSize()) {
+                LastUpdate lastUpdate = context.getLastUpdate();
+                runPartitions(batch, context);
+                lastUpdate.update(batch.get(batch.size() - 1));
+                context.saveLastUpdate(lastUpdate);
+                batch.clear();
+            }
+        }
+
+        if (batch.size() > 0) {
+            LastUpdate lastUpdate = context.getLastUpdate();
+            runPartitions(batch, context);
+            lastUpdate.update(batch.get(batch.size() - 1));
+            context.saveLastUpdate(lastUpdate);
+            batch.clear();
+        }
+        return list.size();
+    }
+
+    public void runPartitions(List<Comparable> list, C context) {
+        context.setPartitions(list);
+        int processCount = context.getLoadDelegate().applyAsInt(list);
+        if (logger.isInfoEnabled())
+            logger.info("Processed {} partitions of {}", processCount, context.extractor());
     }
 }

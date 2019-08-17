@@ -94,7 +94,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
     }
 
     @Override
-    public int run(List<Comparable> partitions, PartitionOrderByContext context) {
+    public int run(PartitionOrderByContext context, List<Comparable> partitions) {
         List<S> batchResults = null;
         int processedCount = 0;
         context.setPartitions(partitions);

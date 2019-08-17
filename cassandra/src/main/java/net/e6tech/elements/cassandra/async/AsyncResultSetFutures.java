@@ -20,6 +20,7 @@ package net.e6tech.elements.cassandra.async;
 import net.e6tech.elements.cassandra.driver.cql.AsyncResultSet;
 import net.e6tech.elements.cassandra.driver.cql.Row;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.util.List;
 import java.util.concurrent.Future;
@@ -51,7 +52,7 @@ public class AsyncResultSetFutures<D> extends AsyncFutures<AsyncResultSet, D> {
                     }
                 }
             } catch (Exception e) {
-                logger.warn(e.getMessage(), e);
+                throw new SystemException(e);
             }
         }
     }

@@ -20,6 +20,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 public interface BaseResultSet extends Iterable<Row> {
+
+    Row one();
+
     default List<Row> all() {
         List<Row> all = new LinkedList<>();
         for (Row row : this) {

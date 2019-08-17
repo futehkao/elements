@@ -27,6 +27,11 @@ import java.util.stream.Collectors;
 public class ResultSetV4 extends Wrapper<ResultSet> implements net.e6tech.elements.cassandra.driver.cql.ResultSet {
 
     @Override
+    public Row one() {
+        return Wrapper.wrap(new RowV4(), unwrap().one());
+    }
+
+    @Override
     public List<Row> all() {
         List<com.datastax.oss.driver.api.core.cql.Row> rows = unwrap().all();
         return rows.stream().map(r -> Wrapper.wrap(new RowV4(), r)).collect(Collectors.toList());

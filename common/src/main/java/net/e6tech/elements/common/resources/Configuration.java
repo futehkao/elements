@@ -297,7 +297,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
                     String substitutionObjectKey = prefix;
                     while (substitutionObjectKey.endsWith("."))
                         substitutionObjectKey = substitutionObjectKey.substring(0, substitutionObjectKey.length() - 1);
-                    List<Reference> referenceList = references.get(prefix);
+                    List<Reference> referenceList = references.get(substitutionObjectKey);
                     if (referenceList != null) {
                         for (Reference reference : referenceList) {
                             map.put(reference.key, resolver.resolve(reference.lookup));

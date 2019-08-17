@@ -17,13 +17,19 @@
 package net.e6tech.sample.cassandra;
 
 
+import net.e6tech.elements.cassandra.annotations.ClusteringColumn;
 import net.e6tech.elements.cassandra.annotations.PartitionKey;
 import net.e6tech.elements.cassandra.annotations.Table;
+import net.e6tech.elements.cassandra.etl.Partition;
+import net.e6tech.elements.cassandra.etl.PartitionOrderBy;
 
 @Table(name = "derived_table")
-public class DerivedTable {
+public class DerivedTable implements Partition {
     @PartitionKey
     Long creationTime;
+
+    @ClusteringColumn
+    Long id;
 
     Long value = 0L;
 
@@ -33,6 +39,14 @@ public class DerivedTable {
 
     public void setCreationTime(Long creationTime) {
         this.creationTime = creationTime;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public Long getValue() {

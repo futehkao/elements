@@ -55,6 +55,7 @@ public class CassandraTest {
         Schema schema = provision.newInstance(Schema.class);
         schema.createTables("elements", TimeTable.class);
         schema.createTables("elements", DerivedTable.class);
+        schema.createTables("elements", ReduceTable.class);
         List<Long> ids = Arrays.asList(1L, 2L, 3L);
 
         ThreadPool pool = ThreadPool.fixedThreadPool("test", 50);
@@ -80,7 +81,7 @@ public class CassandraTest {
                     test.setId(id);
                     test.setName("test");
                     list.add(test);
-                    s.save(list, TimeTable.class, null).inExecutionOrder();
+                    s.save(list, TimeTable.class, null);
                     latch.countDown();
                 });
             });

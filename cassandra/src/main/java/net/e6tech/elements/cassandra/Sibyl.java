@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public abstract class Sibyl {
@@ -148,9 +149,9 @@ public abstract class Sibyl {
 
     public abstract <T> void delete(Class<T> cls, T entity);
 
-    public abstract  <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls);
+    public abstract  <X> void save(Collection<X> list, Class<X> cls);
 
-    public abstract  <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, WriteOptions userOptions);
+    public abstract  <X> void save(Collection<X> list, Class<X> cls, WriteOptions userOptions);
 
     public abstract <X> X one(Class<X> cls, String query, Map<String, Object> map);
 

@@ -17,4 +17,5 @@
 package net.e6tech.elements.cassandra.driver.v3;
 
 public class AsyncResultSetV3 extends ResultSetV3 implements net.e6tech.elements.cassandra.driver.cql.AsyncResultSet {
+
 }

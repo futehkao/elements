@@ -14,8 +14,32 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.cassandra.driver.cql;
+package net.e6tech.sample.cassandra;
 
-public interface ResultSet extends BaseResultSet {
+import net.e6tech.elements.cassandra.annotations.PartitionKey;
+import net.e6tech.elements.cassandra.annotations.Table;
 
+@Table(name = "reduce_table")
+public class ReduceTable {
+    @PartitionKey
+    Long creationTime;
+
+    Long sum = 0L;
+
+    public Long getCreationTime() {
+        return creationTime;
+    }
+
+    public void setCreationTime(Long creationTime) {
+        this.creationTime = creationTime;
+    }
+
+    public Long getSum() {
+        return sum;
+    }
+
+    public void setSum(Long sum) {
+        this.sum = sum;
+    }
 }
+

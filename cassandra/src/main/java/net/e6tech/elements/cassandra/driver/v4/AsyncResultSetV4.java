@@ -26,6 +26,11 @@ import java.util.Iterator;
 public class AsyncResultSetV4 extends Wrapper<AsyncResultSet> implements net.e6tech.elements.cassandra.driver.cql.AsyncResultSet {
 
     @Override
+    public Row one() {
+        return Wrapper.wrap(new RowV4(), unwrap().one());
+    }
+
+    @Override
     public Iterator<Row> iterator() {
         return new Iterator<Row>() {
             AsyncResultSet rs = unwrap();

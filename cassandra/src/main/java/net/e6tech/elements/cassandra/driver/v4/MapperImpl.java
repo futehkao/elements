@@ -239,6 +239,11 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
 
     public static <T> Mapper<T> init(MapperContext context, Class<T> cls, Inspector inspector) {
         BlockingOperation.checkNotDriverThread();
-        return CompletableFutures.getUninterruptibly(initAsync(context, cls, inspector));
+        try {
+            return CompletableFutures.getUninterruptibly(initAsync(context, cls, inspector));
+        } catch (Exception ex) {
+            LOG.error("Cannot compile statements for class" + cls);
+            throw ex;
+        }
     }
 }

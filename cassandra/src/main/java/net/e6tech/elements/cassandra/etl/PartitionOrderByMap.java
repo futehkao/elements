@@ -17,6 +17,7 @@
 package net.e6tech.elements.cassandra.etl;
 
 import net.e6tech.elements.cassandra.SessionProvider;
+import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.common.resources.Provision;
 
 import java.util.*;
@@ -29,18 +30,18 @@ import java.util.function.Consumer;
  */
 public class PartitionOrderByMap<T extends PartitionOrderBy> {
 
-    private Map<Comparable, List<T>> partitionMap = new LinkedHashMap<>();
-    private Map<Comparable, List<PrimaryKey>> primaryKeys = new LinkedHashMap<>();
-    private Provision provision;
+    private Map<Comparable, List<T>> partitionMap = new LinkedHashMap<>(); // partition key, list of T object
+    private Map<Comparable, List<PrimaryKey>> primaryKeys = new LinkedHashMap<>(); // partition key, list of primary keys
+    private Sibyl sibyl;
     private Class sourceClass;
 
-    public PartitionOrderByMap(Provision provision, Class sourceClass) {
-        this.provision = provision;
+    public PartitionOrderByMap(Sibyl sibyl, Class sourceClass) {
+        this.sibyl = sibyl;
         this.sourceClass = sourceClass;
     }
 
-    public Inspector getInspector(Class cls) {
-        return provision.getInstance(SessionProvider.class).getInspector(cls);
+    protected Inspector getInspector(Class cls) {
+        return sibyl.getInspector(cls);
     }
 
     public PartitionOrderByMap<T> addAll(Collection<T> objects) {

@@ -25,6 +25,7 @@ public class WriteOptions implements Cloneable {
     public Integer ttl;
     public Boolean saveNullFields;
     public Boolean ifNotExists;
+    public Long timeout; // use for save
 
     public static WriteOptions from(WriteOptions from) {
         if (from == null)
@@ -105,6 +106,14 @@ public class WriteOptions implements Cloneable {
     public WriteOptions ifNotExists(Boolean b) {
         this.ifNotExists = b;
         return this;
+    }
+
+    public Long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(Long timeout) {
+        this.timeout = timeout;
     }
 
     @Override

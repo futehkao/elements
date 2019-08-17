@@ -35,22 +35,26 @@ public class ETLContext {
     public static final long SECOND = 1000L;
     public static final long MONTH = DAY * 30;  // not to be used for deriving a partition key
     public static final long YEAR = DAY * 365;  // not to be used for deriving a partition key
-    public static final long TIME_LAG = 5 * 60 * 1000L;
+    public static final long TIME_LAG = 5 * 60 * 1000L; // 5 minutes
     public static final int BATCH_SIZE = 2000;
 
     private Provision provision;
-    private int batchSize = BATCH_SIZE;
-    private long timeLag = TIME_LAG;
+    private ETLSettings settings = new ETLSettings();
     private int importedCount;
     private String extractorName;
-    private boolean extractAll = true;
     private String initialUpdate;
     private Class sourceClass;
     private TimeUnit timeUnit;
     private boolean initialized = false;
-    private long startTime = System.currentTimeMillis();
     private Class<LastUpdate> lastUpdateClass;
     private LastUpdate lastUpdate;
+
+    public ETLContext() {
+        settings.batchSize(BATCH_SIZE)
+                .timeLag(TIME_LAG)
+                .extractAll(true)
+                .startTime(System.currentTimeMillis());
+    }
 
     public Provision getProvision() {
         return provision;
@@ -70,19 +74,19 @@ public class ETLContext {
     }
 
     public int getBatchSize() {
-        return batchSize;
+        return settings.getBatchSize();
     }
 
     public void setBatchSize(int batchSize) {
-        this.batchSize = batchSize;
+        settings.setBatchSize(batchSize);
     }
 
     public long getTimeLag() {
-        return timeLag;
+        return settings.getTimeLag();
     }
 
     public void setTimeLag(long timeLag) {
-        this.timeLag = timeLag;
+        settings.setTimeLag(timeLag);
     }
 
     public int getImportedCount() {
@@ -102,19 +106,19 @@ public class ETLContext {
     }
 
     public long getStartTime() {
-        return startTime;
+        return settings.getStartTime();
     }
 
     public void setStartTime(long startTime) {
-        this.startTime = startTime;
+        settings.setStartTime(startTime);
     }
 
     public boolean isExtractAll() {
-        return extractAll;
+        return settings.getExtractAll();
     }
 
     public void setExtractAll(boolean extractAll) {
-        this.extractAll = extractAll;
+        settings.setExtractAll(extractAll);
     }
 
     public String getInitialUpdate() {
@@ -171,6 +175,8 @@ public class ETLContext {
                     timeUnit = TimeUnit.MILLISECONDS;
                 } else if (partitionKeyColumn.endsWith("_time")) {
                     timeUnit = TimeUnit.MILLISECONDS;
+                } else if (partitionKeyColumn.endsWith("_epoch")) {
+                    timeUnit = TimeUnit.MILLISECONDS;
                 } else {
                     timeUnit = null;
                 }
@@ -224,7 +230,7 @@ public class ETLContext {
             if (initialUpdate != null) {
                 lastUpdate.setLastUpdate(getInitialUpdate());
             } else {
-                if (extractAll) {
+                if (settings.getExtractAll()) {
                     // UUID
                     if (UUID.class.isAssignableFrom(getPartitionKeyType())) {
                         lastUpdate.setLastUpdate(new UUID(Long.MIN_VALUE, Long.MIN_VALUE).toString());
@@ -255,6 +261,8 @@ public class ETLContext {
 
     @SuppressWarnings("squid:S3776")
     private Comparable cutoffOrUpdate(boolean cutoff) {
+        long startTime = settings.getStartTime();
+        long timeLag = settings.getTimeLag();
         if (TimeUnit.DAYS.equals(getTimeUnit()))
             return (startTime - timeLag)/ DAY;
         else if (TimeUnit.HOURS.equals(getTimeUnit()))

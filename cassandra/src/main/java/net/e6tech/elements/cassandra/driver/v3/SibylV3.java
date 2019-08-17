@@ -64,15 +64,18 @@ public class SibylV3 extends Sibyl {
     }
 
     @Override
-    public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls) {
-        return save(list, cls, null);
+    public <X> void save(Collection<X> list, Class<X> cls) {
+        save(list, cls, null);
     }
 
     @Override
-    public <X> AsyncFutures<Void, X> save(Collection<X> list, Class<X> cls, WriteOptions userOptions) {
+    public <X> void save(Collection<X> list, Class<X> cls, WriteOptions userOptions) {
         Async<Void, X> async = createAsync();
         Mapper<X> mapper = getMapper(cls);
-        return async.accept(list, item -> mapper.saveAsync(item, writeOptions(userOptions)));
+        AsyncFutures futures = async.accept(list, item -> mapper.saveAsync(item, writeOptions(userOptions)));
+        if (userOptions != null && userOptions.timeout != null && userOptions.timeout > 0)
+            futures.timeout(userOptions.timeout);
+        futures.inExecutionOrder();
     }
 
     private Mapper.Option[] writeOptions(WriteOptions userOptions) {

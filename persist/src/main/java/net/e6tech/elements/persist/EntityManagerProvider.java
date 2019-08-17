@@ -18,6 +18,7 @@ package net.e6tech.elements.persist;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationCenter;
+import net.e6tech.elements.common.reflection.Annotator;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.subscribe.Broadcast;
 
@@ -182,14 +183,20 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                 notice -> evictEntity(notice.getUserObject()));
     }
 
+    private String[] providerNames(Resources resources) {
+        Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
+        String[] names = config.map(EntityManagerConfig::names).orElse(DEFAULT_PROVIDER_NAMES);
+        if (providerName.length() == 0)
+            names = DEFAULT_PROVIDER_NAMES;
+        return names;
+    }
+
     private void shouldOpen(Resources resources) {
         Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
         if (config.isPresent() && config.get().disable())
             throw new NotAvailableException();
 
-        String[] names = config.map(EntityManagerConfig::names).orElse(DEFAULT_PROVIDER_NAMES);
-        if (providerName.length() == 0)
-            names = DEFAULT_PROVIDER_NAMES;
+        String[] names = providerNames(resources);
 
         // caller did not provide a list of named provider so that we would let every configured EntityManagerProvider through.
         if (names.length == 0)
@@ -212,10 +219,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             throw new NotAvailableException();
     }
 
-    @Override
-    public void onOpen(Resources resources) {
-
-        shouldOpen(resources);
+    private EntityManagerConfig configuration(Resources resources) {
 
         Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
 
@@ -242,18 +246,43 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                 longQuery = 1000L;
         }
 
+        long longQueryFinal = longQuery;
+        long timeoutFinal = timeout;
+        String[] names = providerNames(resources);
+        EntityManagerConfig result = Annotator.create(EntityManagerConfig.class,
+                (v, a) -> {
+            v.set(a::names, names)
+                    .set(a::disable, config.map(c -> c.disable()).orElse(false))
+                    .set(a::timeout, timeoutFinal)
+                    .set(a::longTransaction, longQueryFinal)
+                    .set(a::monitor, monitor)
+                    .set(a::timeoutExtension, timeoutExt);
+        });
+
+        resources.getMapVariable(EntityManagerConfig.class)
+                .put(getProviderName(), result);
+        return result;
+    }
+
+    @Override
+    public void onOpen(Resources resources) {
+
+        shouldOpen(resources);
+
+        EntityManagerConfig config = configuration(resources);
+
         EntityManager em = emf.createEntityManager();
-        if (monitor) {
+        if (config.monitor()) {
             EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(threadPool, this,
                     resources,
-                    em, System.currentTimeMillis() + timeout, new Throwable());
+                    em, System.currentTimeMillis() + config.timeout(), new Throwable());
             monitor(entityManagerMonitor);
             resources.getMapVariable(EntityManagerMonitor.class)
                     .put(getProviderName(), entityManagerMonitor);
         }
 
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
-        emHandler.setLongTransaction(longQuery);
+        emHandler.setLongTransaction(config.longTransaction());
         emHandler.setIgnoreInitialLongTransactions(ignoreInitialLongTransactions);
 
         EntityManager proxy = (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),

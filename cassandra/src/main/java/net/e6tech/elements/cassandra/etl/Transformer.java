@@ -215,11 +215,11 @@ public class Transformer<T, E> {
             options.consistency = writeConsistency;
         }
 
+        options.timeout = timeout;
+
         Sibyl s = resources.getInstance(Sibyl.class);
 
-        s.save(values(), tableClass, options)
-                .timeout(timeout)
-                    .inExecutionOrder();
+        s.save(values(), tableClass, options);
 
         return this;
     }
