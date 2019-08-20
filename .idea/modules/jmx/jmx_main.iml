@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module external.linked.project.id=":jmx:main" external.linked.project.path="$MODULE_DIR$/../../../jmx" external.root.project.path="$MODULE_DIR$/../../.." external.system.id="GRADLE" external.system.module.group="net.e6tech" external.system.module.type="sourceSet" external.system.module.version="2.5.5" type="JAVA_MODULE" version="4">
+<module external.linked.project.id=":jmx:main" external.linked.project.path="$MODULE_DIR$/../../../jmx" external.root.project.path="$MODULE_DIR$/../../.." external.system.id="GRADLE" external.system.module.group="net.e6tech" external.system.module.type="sourceSet" external.system.module.version="2.5.8" type="JAVA_MODULE" version="4">
+  <component name="ExternalSystem" linkedProjectPath="$MODULE_DIR$/../../../../e6tech" rootProjectPath="$MODULE_DIR$/../../../../e6tech" />
   <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
     <output url="file://$MODULE_DIR$/../../../jmx/out/production/classes" />
     <exclude-output />
@@ -36,7 +37,7 @@
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.9.9" level="project" />
     <orderEntry type="library" name="Gradle: net.bytebuddy:byte-buddy:1.9.13" level="project" />
     <orderEntry type="library" name="Gradle: javax.cache:cache-api:1.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor_2.12:2.5.23" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor_2.13:2.5.24" level="project" />
     <orderEntry type="library" name="Gradle: com.google.guava:failureaccess:1.0.1" level="project" />
     <orderEntry type="library" name="Gradle: com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava" level="project" />
     <orderEntry type="library" name="Gradle: org.checkerframework:checker-qual:2.8.1" level="project" />
@@ -44,8 +45,8 @@
     <orderEntry type="library" name="Gradle: com.google.j2objc:j2objc-annotations:1.3" level="project" />
     <orderEntry type="library" name="Gradle: org.codehaus.mojo:animal-sniffer-annotations:1.17" level="project" />
     <orderEntry type="library" name="Gradle: org.glassfish.jaxb:jaxb-runtime:2.3.1" level="project" />
-    <orderEntry type="library" name="Gradle: org.scala-lang.modules:scala-java8-compat_2.12:0.8.0" level="project" />
-    <orderEntry type="library" name="Gradle: org.scala-lang:scala-library:2.12.8" level="project" />
+    <orderEntry type="library" name="Gradle: org.scala-lang.modules:scala-java8-compat_2.13:0.9.0" level="project" />
+    <orderEntry type="library" name="Gradle: org.scala-lang:scala-library:2.13.0" level="project" />
     <orderEntry type="library" name="Gradle: com.typesafe:config:1.3.3" level="project" />
     <orderEntry type="library" name="Gradle: javax.xml.bind:jaxb-api:2.3.1" level="project" />
     <orderEntry type="library" name="Gradle: org.glassfish.jaxb:txw2:2.3.1" level="project" />

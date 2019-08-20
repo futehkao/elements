@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.network.cluster;
 
+import com.sun.xml.internal.ws.developer.Serialization;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.Genesis;
@@ -263,7 +264,7 @@ public class RegistryTest {
         Map map = new HashMap();
     }
 
-    public static class Response {
+    public static class Response  {
         Map map = new HashMap();
     }
 

@@ -26,6 +26,7 @@ import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.pattern.Patterns;
+import akka.serialization.Serialization;
 
 /**
  * Created by futeh.

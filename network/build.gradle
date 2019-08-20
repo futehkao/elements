@@ -19,9 +19,7 @@ dependencies {
     compile project(':jmx')
     compile "jakarta.ws.rs:jakarta.ws.rs-api:${javaxWsRsApiVersion}"
 
-    compile (group: 'com.github.romix.akka', name: "akka-kryo-serialization_${akkaScalaVersion}", version: "${akkaKryoVersion}") {
-        exclude group: 'org.ow2.asm'
-    }
+    compile "com.esotericsoftware:kryo:${kryoVersion}"
     compile group: 'com.typesafe.akka', name: "akka-cluster_${akkaScalaVersion}", version: "${akkaVersion}"
     compile "org.ow2.asm:asm:${asmVersion}"
     compile("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}") {

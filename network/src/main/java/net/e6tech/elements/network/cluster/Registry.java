@@ -78,6 +78,10 @@ public class Registry {
         listeners.remove(listener);
     }
 
+    public ActorSystem getActorSystem() {
+        return system;
+    }
+
     void onAnnouncement(String path) {
         system.dispatcher().execute(() -> {
             for (RouteListener l : listeners) l.onAnnouncement(path);

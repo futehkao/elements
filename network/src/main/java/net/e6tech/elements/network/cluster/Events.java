@@ -18,6 +18,9 @@ package net.e6tech.elements.network.cluster;
 
 import akka.actor.Actor;
 import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.actor.ExtendedActorSystem;
+import akka.serialization.Serialization;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoSerializable;
 import com.esotericsoftware.kryo.io.Input;
@@ -26,8 +29,11 @@ import net.e6tech.elements.common.subscribe.Subscriber;
 import net.e6tech.elements.common.util.CompressionSerializer;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.function.BiFunction;
 
 /**
@@ -44,6 +50,9 @@ public class Events {
         String topic;
         Subscriber subscriber;
 
+        public Subscribe() {
+        }
+
         public Subscribe(String topic, Subscriber subscriber) {
             this.topic = topic;
             this.subscriber = subscriber;
@@ -54,6 +63,9 @@ public class Events {
         private static final long serialVersionUID = 5224795221846176188L;
         String topic;
         Subscriber subscriber;
+
+        public Unsubscribe() {
+        }
 
         public Unsubscribe(String topic, Subscriber subscriber) {
             this.topic = topic;
@@ -103,6 +115,9 @@ public class Events {
         private static final long serialVersionUID = 6460401252394771795L;
         private String path;
 
+        public RegisterReference() {
+        }
+
         public RegisterReference(String path) {
             this.path = path;
         }
@@ -115,6 +130,9 @@ public class Events {
     public static class Announcement implements Serializable {
         private static final long serialVersionUID = 6910153191195648915L;
         private RegisterReference reference;
+
+        public Announcement() {
+        }
 
         public Announcement(Registration register) {
             reference = register.reference;
@@ -150,6 +168,9 @@ public class Events {
         private transient RegisterReference reference;
         private transient Object[] arguments;
 
+        public Invocation() {
+        }
+
         public Invocation(String path, Object[] arguments)  {
             this.reference = new RegisterReference(path);
             this.arguments = arguments;
@@ -159,7 +180,7 @@ public class Events {
             return arguments;
         }
 
-        public void write (Kryo kryo, Output out) {
+        public void write(Kryo kryo, Output out) {
             CompressionSerializer serializer = new CompressionSerializer();
             byte[] payload;
             try {
@@ -167,15 +188,14 @@ public class Events {
             } catch (Exception e) {
                 throw new SystemException(e);
             }
-            out.writeInt(payload.length);
-            out.write(payload);
+            kryo.writeObjectOrNull(out, payload, byte[].class);
+            kryo.writeObjectOrNull(out, reference, RegisterReference.class);
         }
 
         @SuppressWarnings("squid:S2674")
-        public void read (Kryo kryo, Input in) {
-            int size = in.readInt();
-            byte[] buffer = new byte[size];
-            in.read(buffer);
+        public void read(Kryo kryo, Input in) {
+            byte[] buffer = kryo.readObjectOrNull(in, byte[].class);
+            reference = kryo.readObjectOrNull(in, RegisterReference.class);
             try {
                 arguments = CompressionSerializer.fromBytes(buffer);
             } catch (Exception e) {
@@ -235,6 +255,5 @@ public class Events {
         public ActorRef getResponder() {
             return responder;
         }
-
     }
 }

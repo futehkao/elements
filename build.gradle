@@ -25,7 +25,7 @@ dependencies {
 subprojects {
 
     group 'net.e6tech'
-    version '2.5.7'
+    version '2.5.8'
 
     apply plugin: 'groovy'
     apply plugin: 'java'
@@ -127,9 +127,9 @@ ext.lmaxDisruptorVerions = '3.4.2'
 ext.slf4jVersion = '1.7.26'
 ext.groovyVersion = '2.5.8'
 ext.guavaVerions = '28.0-jre'
-ext.akkaVersion = '2.5.23'
-ext.akkaScalaVersion = '2.12'
-ext.akkaKryoVersion = '0.5.2'
+ext.akkaVersion = '2.5.24'
+ext.akkaScalaVersion = '2.13'
+ext.kryoVersion = '5.0.0-RC4'
 ext.bytebuddyVersion = '1.9.13'
 ext.ehcacheVersion = '3.7.1'
 ext.javaCacheApiVerison = '1.1.1'

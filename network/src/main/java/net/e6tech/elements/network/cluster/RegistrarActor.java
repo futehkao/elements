@@ -20,6 +20,7 @@ import akka.actor.*;
 import akka.routing.RoundRobinRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
+import akka.serialization.Serialization;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import scala.collection.JavaConverters;
@@ -89,7 +90,7 @@ class RegistrarActor extends AbstractActor {
                         getSender().tell(new Events.Response(Collections.emptyList(), getSelf()), getSelf());
                     } else {
                         Collection<Routee> collection = JavaConverters.asJavaCollection(router.routees());
-                        getSender().tell(new Events.Response(collection, getSelf()), getSelf());
+                        getSender().tell(new Events.Response(collection,getSelf()), getSelf());
                     }
                 })
                 .build();

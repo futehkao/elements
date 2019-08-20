@@ -17,6 +17,10 @@
 package net.e6tech.elements.network.cluster.catalyst;
 
 import akka.actor.Actor;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.ClosureSerializer;
 import net.e6tech.elements.network.cluster.ClusterNode;
 import net.e6tech.elements.network.cluster.Invoker;
 import net.e6tech.elements.network.cluster.Registry;
@@ -29,6 +33,7 @@ import net.e6tech.elements.network.cluster.catalyst.scalar.*;
 import net.e6tech.elements.network.cluster.catalyst.transform.*;
 import org.junit.jupiter.api.Test;
 
+import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -79,6 +84,57 @@ public class CatalystTest {
         synchronized (this) {
             wait();
         }
+    }
+
+    @Test
+    void kryo() {
+        Kryo kryo = new Kryo();
+        kryo.register(SerializedLambda.class);
+        kryo.register(ClosureSerializer.Closure.class, new ClosureSerializer());
+        kryo.setRegistrationRequired(false);
+        Output output = new Output(4096, 4096);
+        kryo.writeClassAndObject(output, new M<Integer, Integer>());
+        output.close();
+        Object obj = kryo.readClassAndObject(new Input(output.toBytes()));
+    }
+
+    @Test
+    public void remoteDataSet() throws Exception {
+
+        Registry registry = create(2552);
+
+        while (registry.routes("blah", Reactor.class).size() < 2)
+            Thread.sleep(100);
+
+        RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();
+        Segment<Integer> segment = reactor -> {
+            List<Integer> list = new ArrayList<>();
+            Random random = new Random();
+            for (int i = 0; i < 1000; i++) {
+                list.add(random.nextInt(1000));
+            }
+            System.out.println("Done");
+            try {
+                Thread.currentThread().sleep(200L);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return list.stream();
+        };
+
+        for (int i = 0; i < 5; i++) {
+            remoteDataSet.add(segment);
+        }
+
+        SimpleCatalyst catalyst = new SimpleCatalyst("blah", registry);
+        catalyst.setWaitTime(1000000L);
+
+        Double max = catalyst.builder(remoteDataSet)
+                .add(new MapTransform<>((operator, number) ->
+                        Math.sin(number * Math.PI / 360)))
+                .scalar(new Max<>());
+
+        System.out.println("Max " + max);
     }
 
     @Test
@@ -198,43 +254,6 @@ public class CatalystTest {
                 .add(new MapTransform<>((operator, number) -> Math.sin(number * Math.PI / 360)))
                 .scalar(new Min<>());
         System.out.println("Min " + min + " found in " + (System.currentTimeMillis() - start) + "ms");
-    }
-
-    @Test
-    public void remoteDataSet() throws Exception {
-        Registry registry = create(2552);
-
-        // while (registry.routes("blah", Reactor.class).size() < 3)
-        //    Thread.sleep(100);
-
-        RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();
-        Segment<Integer> segment = reactor -> {
-            List<Integer> list = new ArrayList<>();
-            Random random = new Random();
-            for (int i = 0; i < 1000; i++) {
-                list.add(random.nextInt(1000));
-            }
-            try {
-                Thread.currentThread().sleep(20000L);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            return list.stream();
-        };
-
-        for (int i = 0; i < 5; i++) {
-            remoteDataSet.add(segment);
-        }
-
-        SimpleCatalyst catalyst = new SimpleCatalyst("blah", registry);
-        catalyst.setWaitTime(1000000L);
-
-        Double max = catalyst.builder(remoteDataSet)
-                .add(new MapTransform<>((operator, number) ->
-                        Math.sin(number * Math.PI / 360)))
-                .scalar(new Max<>());
-
-        System.out.println("Max " + max);
     }
 
 
