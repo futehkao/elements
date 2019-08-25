@@ -18,6 +18,8 @@ package net.e6tech.elements.network.cluster;
 
 import akka.actor.ActorRef;
 import akka.actor.ExtendedActorSystem;
+import akka.actor.typed.ActorRefResolver;
+import akka.actor.typed.javadsl.Adapter;
 import akka.serialization.Serialization;
 import akka.serialization.SerializerWithStringManifest;
 import com.esotericsoftware.kryo.Kryo;
@@ -39,6 +41,7 @@ public class Serializer extends SerializerWithStringManifest {
     private Pool<Kryo> pool;
     private Pool<Output> outputPool;
     private ActorRefSerializer actorRefSerializer;
+    private TypedActorRefSerializer typedActorRefSerializer;
     private Cache<String, Class> classCache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
             .initialCapacity(128)
@@ -53,6 +56,7 @@ public class Serializer extends SerializerWithStringManifest {
                 kryo.setInstantiatorStrategy(new DefaultInstantiatorStrategy(new SerializingInstantiatorStrategy()));
                 kryo.setRegistrationRequired(false);
                 kryo.addDefaultSerializer(ActorRef.class, actorRefSerializer);
+                kryo.addDefaultSerializer(akka.actor.typed.ActorRef.class, typedActorRefSerializer);
                 kryo.register(SerializedLambda.class);
                 kryo.register(ClosureSerializer.Closure.class, new ClosureSerializer());
                 return kryo;
@@ -66,6 +70,7 @@ public class Serializer extends SerializerWithStringManifest {
         };
 
         actorRefSerializer = new ActorRefSerializer(actorSystem);
+        typedActorRefSerializer = new TypedActorRefSerializer(actorSystem);
     }
 
     // Pick a unique identifier for your Serializer,
@@ -124,18 +129,44 @@ public class Serializer extends SerializerWithStringManifest {
             return this.system;
         }
 
+        @Override
         public void write(final Kryo kryo, final Output output, final ActorRef obj) {
             output.writeString(Serialization.serializedActorPath(obj));
         }
 
         @Override
         public ActorRef read(Kryo kryo, Input input, Class<? extends ActorRef> type) {
-            String path = input.readString();
-            return this.system().provider().resolveActorRef(path);
+            String str = input.readString();
+            return this.system().provider().resolveActorRef(str);
         }
 
         public ActorRefSerializer(final ExtendedActorSystem system) {
             this.system = system;
+        }
+    }
+
+    public class TypedActorRefSerializer extends com.esotericsoftware.kryo.Serializer<akka.actor.typed.ActorRef> {
+        private final ExtendedActorSystem system;
+        private final ActorRefResolver actorRefResolver;
+
+        public ExtendedActorSystem system() {
+            return this.system;
+        }
+
+        public void write(final Kryo kryo, final Output output, final akka.actor.typed.ActorRef obj) {
+            String str = actorRefResolver.toSerializationFormat(obj);
+            output.writeString(str);
+        }
+
+        @Override
+        public akka.actor.typed.ActorRef read(Kryo kryo, Input input, Class<? extends akka.actor.typed.ActorRef> type) {
+            String str = input.readString();
+            return actorRefResolver.resolveActorRef(str);
+        }
+
+        public TypedActorRefSerializer(final ExtendedActorSystem system) {
+            this.system = system;
+            actorRefResolver = ActorRefResolver.get(Adapter.toTyped(system));
         }
     }
 }

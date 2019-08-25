@@ -53,7 +53,7 @@ bootstrap.with {
 // by the profile.
 // If the parameter is a map, its components are added to the boot after map.
 bootstrap
-        .disable('cluster')
+        //.disable('cluster')
         .preBoot([ hello: { println 'hello world'},   // since value is a closure, simply runs closure
                    variables: true ]) // set variables component to true.  This has the effect of turning main component named variables.
         .preBoot({ println 'hello world'}) // runs an anonymous block

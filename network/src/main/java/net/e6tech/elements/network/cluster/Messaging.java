@@ -16,24 +16,27 @@
 
 package net.e6tech.elements.network.cluster;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
 import akka.actor.PoisonPill;
-import akka.actor.Props;
-import akka.pattern.Patterns;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.javadsl.AskPattern;
+import akka.actor.typed.javadsl.Behaviors;
+import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.common.subscribe.Subscriber;
+import net.e6tech.elements.network.cluster.messaging.MessagingEvents;
+import net.e6tech.elements.network.cluster.messaging.Messenger;
 
 import java.io.Serializable;
 
 /**
  * Created by futeh.
  */
-class Messaging implements Broadcast {
+public class Messaging implements Broadcast {
 
     private ActorRef messagingRef;
     private String name = "messaging";
     private long timeout = ClusterNode.DEFAULT_TIME_OUT;
+    private Genesis genesis;
 
     public String getName() {
         return name;
@@ -51,19 +54,22 @@ class Messaging implements Broadcast {
         this.timeout = timeout;
     }
 
-    public void start(ActorSystem system) {
-        messagingRef = system.actorOf(Props.create(MessagingActor.class, MessagingActor::new), name);
+    public void start(Genesis genesis) {
+        this.genesis = genesis;
+        messagingRef = genesis.typeActorContext().spawn(Behaviors.<MessagingEvents>setup(ctx -> new Messenger(ctx)), name);
     }
 
     public void shutdown() {
         if (messagingRef != null) {
-            Patterns.ask(messagingRef, PoisonPill.getInstance(), timeout);
+            AskPattern.ask(messagingRef, ref -> PoisonPill.getInstance(),
+                    java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
         }
     }
 
     @Override
     public void subscribe(String topic, Subscriber subscriber) {
-        Patterns.ask(messagingRef, new Events.Subscribe(topic, subscriber), timeout);
+        AskPattern.ask(messagingRef, ref -> new MessagingEvents.Subscribe(topic, subscriber),
+                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
     }
 
     @Override
@@ -73,7 +79,8 @@ class Messaging implements Broadcast {
 
     @Override
     public void unsubscribe(String topic, Subscriber subscriber) {
-        Patterns.ask(messagingRef, new Events.Unsubscribe(topic, subscriber), timeout);
+        AskPattern.ask(messagingRef, ref -> new MessagingEvents.Unsubscribe(topic, subscriber),
+                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
     }
 
     @Override
@@ -83,7 +90,8 @@ class Messaging implements Broadcast {
 
     @Override
     public void publish(String topic, Serializable object) {
-        Patterns.ask(messagingRef, new Events.Publish(topic, object), timeout);
+        AskPattern.ask(messagingRef, ref -> new MessagingEvents.Publish(topic, object),
+                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
     }
 
     @Override
@@ -92,11 +100,13 @@ class Messaging implements Broadcast {
     }
 
     public void destination(String destination, Subscriber subscriber) {
-        Patterns.ask(messagingRef, new Events.NewDestination(destination, subscriber), timeout);
+        AskPattern.ask(messagingRef, ref -> new MessagingEvents.NewDestination(messagingRef, destination, subscriber),
+                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
     }
 
     public void send(String destination, Serializable object) {
-         Patterns.ask(messagingRef, new Events.Send(destination, object), timeout);
+        AskPattern.ask(messagingRef, ref -> new MessagingEvents.Send(destination, object),
+                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
     }
 
 }

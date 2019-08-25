@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,18 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.legacy;
 
-import akka.actor.Actor;
 import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.ExtendedActorSystem;
-import akka.serialization.Serialization;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoSerializable;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import net.e6tech.elements.common.subscribe.Subscriber;
 import net.e6tech.elements.common.util.CompressionSerializer;
 import net.e6tech.elements.common.util.SystemException;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.function.BiFunction;
 
 /**
@@ -43,72 +35,6 @@ import java.util.function.BiFunction;
 public class Events {
 
     private Events() {
-    }
-
-    public static class Subscribe implements Serializable {
-        private static final long serialVersionUID = 7295040545418105218L;
-        String topic;
-        Subscriber subscriber;
-
-        public Subscribe() {
-        }
-
-        public Subscribe(String topic, Subscriber subscriber) {
-            this.topic = topic;
-            this.subscriber = subscriber;
-        }
-    }
-
-    public static class Unsubscribe implements Serializable  {
-        private static final long serialVersionUID = 5224795221846176188L;
-        String topic;
-        Subscriber subscriber;
-
-        public Unsubscribe() {
-        }
-
-        public Unsubscribe(String topic, Subscriber subscriber) {
-            this.topic = topic;
-            this.subscriber = subscriber;
-        }
-    }
-
-    public static class NewDestination {
-        String destination;
-        Subscriber subscriber;
-
-        public NewDestination(String destination, Subscriber subscriber) {
-            this.destination = destination;
-            this.subscriber = subscriber;
-        }
-    }
-
-    public static class RemoveDestination {
-        String destination;
-
-        public RemoveDestination(String destination) {
-            this.destination = destination;
-        }
-    }
-
-    public static class Publish {
-        String topic;
-        Object message;
-
-        public Publish(String topic, Object message) {
-            this.topic = topic;
-            this.message = message;
-        }
-    }
-
-    public static class Send {
-        String destination;
-        Object message;
-
-        public Send(String destination, Object message) {
-            this.destination = destination;
-            this.message = message;
-        }
     }
 
     private static class RegisterReference implements Serializable {
@@ -145,16 +71,16 @@ public class Events {
 
     public static class Registration {
         private RegisterReference reference;
-        private BiFunction<Actor, Object[], Object> function;
+        private BiFunction<akka.actor.typed.ActorRef, Object[], Object> function;
         private long timeout;
 
-        public Registration(String path, BiFunction<Actor, Object[], Object> function, long timeout) {
+        public Registration(String path, BiFunction<akka.actor.typed.ActorRef, Object[], Object> function, long timeout) {
             this.reference = new RegisterReference(path);
             this.function = function;
             this.timeout = timeout;
         }
 
-        public BiFunction<Actor, Object[], Object> function() {
+        public BiFunction<akka.actor.typed.ActorRef, Object[], Object> function() {
             return function;
         }
 

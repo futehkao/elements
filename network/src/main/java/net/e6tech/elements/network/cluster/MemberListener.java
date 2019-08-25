@@ -19,7 +19,7 @@ package net.e6tech.elements.network.cluster;
 /**
  * Created by futeh.
  */
-interface MemberListener {
+public interface MemberListener {
     void memberUp(String address);
     void memberDown(String address);
 }

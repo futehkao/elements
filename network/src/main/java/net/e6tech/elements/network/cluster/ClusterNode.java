@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,30 @@
 
 package net.e6tech.elements.network.cluster;
 
-import akka.actor.*;
-import akka.cluster.Cluster;
+import akka.actor.Address;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.Behavior;
+import akka.actor.typed.PostStop;
+import akka.actor.typed.Terminated;
+import akka.actor.typed.javadsl.*;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
-import akka.pattern.Patterns;
+import akka.cluster.typed.Cluster;
+import akka.cluster.typed.Subscribe;
+import akka.cluster.typed.Unsubscribe;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
+import net.e6tech.elements.network.cluster.invocation.RegistryImpl;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Created by futeh.
- */
 public class ClusterNode implements Initializable {
 
     public static final long DEFAULT_TIME_OUT = 10000L;
@@ -43,7 +47,7 @@ public class ClusterNode implements Initializable {
     private String name;
     private String configuration;
     private Genesis genesis;
-    private ActorRef membership;
+    private ActorRef<ClusterEvent.ClusterDomainEvent> membership;
     private Map<Address, Member> members = new HashMap<>();
     private Messaging broadcast;
     private Registry registry;
@@ -123,67 +127,89 @@ public class ClusterNode implements Initializable {
         if (started)
             return;
         if (membership == null)
-            membership = genesis.getSystem().actorOf(Props.create(Membership.class, Membership::new));
+            membership = genesis.typeActorContext().spawnAnonymous(Behaviors.setup(context -> new Membership(context)));
 
         if (broadcast == null) {
             broadcast = new Messaging();
             broadcast.setTimeout(timeout);
         }
         if (registry == null) {
-            registry = new Registry();
+            registry = new RegistryImpl();
             registry.setTimeout(timeout);
         }
-        registry.setWorkerPool(genesis.getWorkerPool());
-        broadcast.start(genesis.getSystem());
-        registry.start(genesis.getSystem());
+        broadcast.start(genesis);
+        registry.start(genesis);
         started = true;
     }
 
     public void shutdown() {
-        Patterns.ask(membership, PoisonPill.getInstance(), timeout);
+        genesis.typeActorContext().stop(membership);
         broadcast.shutdown();
         registry.shutdown();
-        genesis.getSystem().terminate();
+        genesis.terminate();
         members.clear();
         started = false;
     }
 
-    class Membership extends AbstractActor {
+    // listener to cluster events
+    class Membership extends AbstractBehavior<ClusterEvent.ClusterDomainEvent> {
+        private ActorContext<ClusterEvent.ClusterDomainEvent> context;
+        Cluster cluster;
 
-        Cluster cluster = akka.cluster.Cluster.lookup().get(getContext().system());
-
-        //subscribe to cluster changes
-        @Override
-        public void preStart() {
-            cluster.subscribe(getSelf(), ClusterEvent.MemberEvent.class, ClusterEvent.UnreachableMember.class);
-        }
-
-        //re-subscribe when restart
-        @Override
-        public void postStop() {
-            cluster.unsubscribe(getSelf());
+        public Membership(ActorContext<ClusterEvent.ClusterDomainEvent> context) {
+            this.context = context;
+            cluster = Cluster.get(context.getSystem());
+            cluster.subscriptions().tell(new Subscribe<>(context.getSelf(), ClusterEvent.ClusterDomainEvent.class));
         }
 
         @Override
-        public AbstractActor.Receive createReceive() {
-            return receiveBuilder()
-                    .match(ClusterEvent.MemberUp.class, member -> {
-                        members.put(member.member().address(), member.member());
-                        memberListeners.forEach(listener -> listener.memberUp(member.member().address().toString()));
-                    }).match(ClusterEvent.CurrentClusterState.class, state -> {
-                        for (Member member : state.getMembers()) {
-                            if (member.status().equals(MemberStatus.up())) {
-                                members.put(member.address(), member);
-                                memberListeners.forEach(listener -> listener.memberUp(member.address().toString()));
-                            }
-                        }
-                    }).match(ClusterEvent.UnreachableMember.class, member -> {
-                        members.remove(member.member().address());
-                        memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
-                    }).match(ClusterEvent.MemberRemoved.class, member -> {
-                        members.remove(member.member().address());
-                        memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
-                    }).build();
+        public Receive<ClusterEvent.ClusterDomainEvent> createReceive() {
+            ReceiveBuilder<ClusterEvent.ClusterDomainEvent> builder = newReceiveBuilder();
+            return builder
+                    .onMessage(ClusterEvent.MemberUp.class, this::memberUp)
+                    //.onMessage(ClusterEvent.CurrentClusterState.class, this::currentState)
+                    .onMessage(ClusterEvent.MemberRemoved.class, this::removed)
+                    .onMessage(ClusterEvent.UnreachableMember.class, this::unreachable)
+                    .onSignal(PostStop.class, this::postStop)
+                    .onSignal(Terminated.class, this::terminated)
+                    .build();
+        }
+
+        Behavior<ClusterEvent.ClusterDomainEvent> memberUp(ClusterEvent.MemberUp member) {
+            members.put(member.member().address(), member.member());
+            memberListeners.forEach(listener -> listener.memberUp(member.member().address().toString()));
+            return Behaviors.same();
+        }
+
+        Behavior<ClusterEvent.ClusterDomainEvent> currentState(ClusterEvent.CurrentClusterState state) {
+            for (Member member : state.getMembers()) {
+                if (member.status().equals(MemberStatus.up())) {
+                    members.put(member.address(), member);
+                    memberListeners.forEach(listener -> listener.memberUp(member.address().toString()));
+                }
+            }
+            return Behaviors.same();
+        }
+
+        Behavior<ClusterEvent.ClusterDomainEvent> removed(ClusterEvent.MemberRemoved member) {
+            members.remove(member.member().address());
+            memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
+            return Behaviors.same();
+        }
+
+        Behavior<ClusterEvent.ClusterDomainEvent> unreachable(ClusterEvent.UnreachableMember member) {
+            members.remove(member.member().address());
+            memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
+            return Behaviors.same();
+        }
+
+        public Behavior<ClusterEvent.ClusterDomainEvent> postStop(PostStop postStop) {
+            cluster.subscriptions().tell(new Unsubscribe(context.getSelf()));
+            return Behaviors.same();
+        }
+
+        public Behavior<ClusterEvent.ClusterDomainEvent> terminated(Terminated terminated) {
+            return Behaviors.stopped();
         }
     }
 

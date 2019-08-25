@@ -19,7 +19,10 @@ package net.e6tech.elements.network.cluster.catalyst;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.Registry;
-import net.e6tech.elements.network.cluster.catalyst.dataset.*;
+import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
+import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
+import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
+import net.e6tech.elements.network.cluster.catalyst.dataset.Segments;
 import net.e6tech.elements.network.cluster.catalyst.scalar.Scalar;
 import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 
@@ -38,7 +41,7 @@ public class Catalyst<Re extends Reactor> {
     private String qualifier = "";
     private Class<Re> reactorClass;
 
-    public Catalyst(String qualifier, Class<Re> reactorClass, Registry registry) {
+    public Catalyst(String qualifier, Class<Re> reactorClass,  Registry registry) {
         this.qualifier = qualifier;
         this.registry = registry;
         this.reactorClass = reactorClass;

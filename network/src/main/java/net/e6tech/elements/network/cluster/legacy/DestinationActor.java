@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.legacy;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
@@ -24,6 +24,7 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
+import net.e6tech.elements.network.cluster.messaging.MessagingEvents;
 
 import java.io.Serializable;
 
@@ -45,7 +46,7 @@ class DestinationActor extends AbstractActor {
     @Override
     public AbstractActor.Receive createReceive() {
         return receiveBuilder()
-                .match(Events.Send.class, send -> getContext().dispatcher().execute(() -> subscriber.receive(new Notice(send.destination, (Serializable) send.message))))
+                .match(MessagingEvents.Send.class, send -> getContext().dispatcher().execute(() -> subscriber.receive(new Notice(send.getDestination(), (Serializable) send.getMessage()))))
                 .match(DistributedPubSubMediator.SubscribeAck.class, msg ->
                         log.info("subscribing"))
                 .build();

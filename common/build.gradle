@@ -41,6 +41,7 @@ dependencies {
 
     // akka core
     compile group: 'com.typesafe.akka', name: "akka-actor_${akkaScalaVersion}", version: "${akkaVersion}"
+    compile group: 'com.typesafe.akka', name: "akka-actor-typed_${akkaScalaVersion}", version: "${akkaVersion}"
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"

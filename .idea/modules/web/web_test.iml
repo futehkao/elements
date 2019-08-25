@@ -66,15 +66,17 @@
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.9.9" level="project" />
     <orderEntry type="library" name="Gradle: net.bytebuddy:byte-buddy:1.9.13" level="project" />
     <orderEntry type="library" name="Gradle: javax.cache:cache-api:1.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-cluster-sharding_2.13:2.5.24" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-distributed-data_2.13:2.5.24" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-cluster-tools_2.13:2.5.24" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-cluster_2.13:2.5.24" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-remote_2.13:2.5.24" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-persistence_2.13:2.5.24" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-stream_2.13:2.5.24" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-coordination_2.13:2.5.24" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor_2.13:2.5.24" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-cluster-typed_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor-typed_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-cluster-sharding_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-cluster-tools_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-distributed-data_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-cluster_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-remote_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-persistence_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-coordination_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-stream_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor_2.13:2.5.25" level="project" />
     <orderEntry type="library" name="Gradle: org.bouncycastle:bcpg-jdk15on:1.62" level="project" />
     <orderEntry type="library" name="Gradle: org.bouncycastle:bcmail-jdk15on:1.62" level="project" />
     <orderEntry type="library" name="Gradle: org.bouncycastle:bcpkix-jdk15on:1.62" level="project" />
@@ -89,6 +91,12 @@
     <orderEntry type="library" name="Gradle: org.apache.cxf:cxf-rt-bindings-soap:3.3.2" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.cxf:cxf-rt-databinding-jaxb:3.3.2" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.cxf:cxf-rt-wsdl:3.3.2" level="project" />
+    <orderEntry type="library" name="Gradle: org.lmdbjava:lmdbjava:0.6.1" level="project" />
+    <orderEntry type="library" name="Gradle: com.github.jnr:jnr-ffi:2.1.7" level="project" />
+    <orderEntry type="library" name="Gradle: org.ow2.asm:asm-commons:5.0.3" level="project" />
+    <orderEntry type="library" name="Gradle: org.ow2.asm:asm-analysis:5.0.3" level="project" />
+    <orderEntry type="library" name="Gradle: org.ow2.asm:asm-util:5.0.3" level="project" />
+    <orderEntry type="library" name="Gradle: org.ow2.asm:asm-tree:5.0.3" level="project" />
     <orderEntry type="library" name="Gradle: org.ow2.asm:asm:7.1" level="project" />
     <orderEntry type="library" name="Gradle: javax.servlet:javax.servlet-api:3.1.0" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.tomcat:tomcat-annotations-api:9.0.20" level="project" />
@@ -115,7 +123,7 @@
     <orderEntry type="library" name="Gradle: org.glassfish.jaxb:jaxb-xjc:2.3.2" level="project" />
     <orderEntry type="library" name="Gradle: org.glassfish.jaxb:jaxb-runtime:2.3.2" level="project" />
     <orderEntry type="library" name="Gradle: org.scala-lang.modules:scala-java8-compat_2.13:0.9.0" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-protobuf_2.13:2.5.24" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-protobuf_2.13:2.5.25" level="project" />
     <orderEntry type="library" name="Gradle: com.typesafe:ssl-config-core_2.13:0.3.8" level="project" />
     <orderEntry type="library" name="Gradle: org.scala-lang.modules:scala-parser-combinators_2.13:1.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.scala-lang:scala-library:2.13.0" level="project" />
@@ -136,7 +144,6 @@
     <orderEntry type="library" name="Gradle: io.netty:netty:3.10.6.Final" level="project" />
     <orderEntry type="library" name="Gradle: io.aeron:aeron-driver:1.15.1" level="project" />
     <orderEntry type="library" name="Gradle: io.aeron:aeron-client:1.15.1" level="project" />
-    <orderEntry type="library" name="Gradle: org.lmdbjava:lmdbjava:0.6.1" level="project" />
     <orderEntry type="library" name="Gradle: org.glassfish.jaxb:txw2:2.3.2" level="project" />
     <orderEntry type="library" name="Gradle: com.sun.istack:istack-commons-runtime:3.0.8" level="project" />
     <orderEntry type="library" name="Gradle: com.sun.xml.fastinfoset:FastInfoset:1.2.16" level="project" />
@@ -151,10 +158,9 @@
     <orderEntry type="library" name="Gradle: wsdl4j:wsdl4j:1.6.3" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.neethi:neethi:3.1.1" level="project" />
     <orderEntry type="library" name="Gradle: commons-codec:commons-codec:1.10" level="project" />
+    <orderEntry type="library" name="Gradle: com.github.jnr:jnr-constants:0.9.9" level="project" />
     <orderEntry type="library" name="Gradle: org.reactivestreams:reactive-streams:1.0.2" level="project" />
     <orderEntry type="library" name="Gradle: org.agrona:agrona:0.9.31" level="project" />
-    <orderEntry type="library" name="Gradle: com.github.jnr:jnr-ffi:2.1.7" level="project" />
-    <orderEntry type="library" name="Gradle: com.github.jnr:jnr-constants:0.9.9" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.ant:ant:1.10.5" level="project" />
     <orderEntry type="library" name="Gradle: com.github.jnr:jffi:1.2.16" level="project" />
     <orderEntry type="library" name="Gradle: com.github.jnr:jnr-x86asm:1.0.2" level="project" />

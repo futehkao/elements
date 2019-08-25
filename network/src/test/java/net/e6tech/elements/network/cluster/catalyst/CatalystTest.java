@@ -16,15 +16,15 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
-import akka.actor.Actor;
+import akka.actor.typed.ActorRef;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.ClosureSerializer;
 import net.e6tech.elements.network.cluster.ClusterNode;
+import net.e6tech.elements.network.cluster.ClusterNodeTest;
 import net.e6tech.elements.network.cluster.Invoker;
 import net.e6tech.elements.network.cluster.Registry;
-import net.e6tech.elements.network.cluster.RegistryTest;
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
@@ -47,16 +47,16 @@ public class CatalystTest {
     DataSet<Integer> dataSet;
 
     public Registry create(int port) {
-        ClusterNode clusterNode = RegistryTest.create(port);
+        ClusterNode clusterNode = ClusterNodeTest.create(port);
         registry = clusterNode.getRegistry();
         registry.register("blah", Reactor.class, new Reactor() {
                 },
                 new Invoker() {
-                    public Object invoke(Actor actor, Object target, Method method, Object[] arguments) {
-                        System.out.println("Method " + target.getClass().getName() + "::" + method.getName() + " handled by " + actor.self());
+                    public Object invoke(ActorRef actor, Object target, Method method, Object[] arguments) {
+                        System.out.println("Method " + target.getClass().getName() + "::" + method.getName() + " handled by " + actor);
                         return super.invoke(actor, target, method, arguments);
                     }
-                }, 1000L);
+                }, 100000L);
         return registry;
     }
 
@@ -103,31 +103,31 @@ public class CatalystTest {
 
         Registry registry = create(2552);
 
-        while (registry.routes("blah", Reactor.class).size() < 2)
+        while (registry.routes("blah", Reactor.class).size() < 1)
             Thread.sleep(100);
 
         RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();
         Segment<Integer> segment = reactor -> {
             List<Integer> list = new ArrayList<>();
             Random random = new Random();
-            for (int i = 0; i < 1000; i++) {
+            for (int i = 0; i < 10; i++) {
                 list.add(random.nextInt(1000));
             }
             System.out.println("Done");
             try {
-                Thread.currentThread().sleep(200L);
+                Thread.currentThread().sleep(10L);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
             return list.stream();
         };
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             remoteDataSet.add(segment);
         }
 
         SimpleCatalyst catalyst = new SimpleCatalyst("blah", registry);
-        catalyst.setWaitTime(1000000L);
+        catalyst.setWaitTime(100000L);
 
         Double max = catalyst.builder(remoteDataSet)
                 .add(new MapTransform<>((operator, number) ->

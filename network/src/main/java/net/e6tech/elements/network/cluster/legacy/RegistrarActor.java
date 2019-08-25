@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.legacy;
 
 import akka.actor.*;
 import akka.routing.RoundRobinRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
-import akka.serialization.Serialization;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import scala.collection.JavaConverters;
@@ -33,12 +32,10 @@ import java.util.*;
 class RegistrarActor extends AbstractActor {
     private Map<String, Router> routes = new HashMap<>(); // key is the context@method
     private Map<ActorRef, List<String>> actors = new HashMap<>(); // key is actor, values is a list of context@method registered by the actor.
-    private Registry registry;
-    private ActorRef workerPool;
+    private RegistryImpl registry;
 
-    public RegistrarActor(Registry registry, ActorRef workerPool) {
+    public RegistrarActor(RegistryImpl registry) {
         this.registry = registry;
-        this.workerPool = workerPool;
     }
 
     @SuppressWarnings("squid:S3776")
@@ -47,12 +44,12 @@ class RegistrarActor extends AbstractActor {
         return receiveBuilder()
                 .match(Events.Registration.class, message -> { // come from Registry.register
                     String dispatcher;
-                    if (getContext().getSystem().dispatchers().hasDispatcher(Registry.REGISTRY_DISPATCHER)) {
-                        dispatcher = Registry.REGISTRY_DISPATCHER;
+                    if (getContext().getSystem().dispatchers().hasDispatcher(RegistryImpl.REGISTRY_DISPATCHER)) {
+                        dispatcher = RegistryImpl.REGISTRY_DISPATCHER;
                     } else {
                         dispatcher = Genesis.WORKER_POOL_DISPATCHER;
                     }
-                    Props props = Props.create(RegistryEntryActor.class, () -> new RegistryEntryActor(message, workerPool))
+                    Props props = Props.create(RegistryEntryActor.class, () -> new RegistryEntryActor(registry.genesis(), message))
                             .withDispatcher(dispatcher);
                     getContext().actorOf(props); // create the actor
                 })
@@ -103,8 +100,5 @@ class RegistrarActor extends AbstractActor {
         registry.onTerminated(path, actor);
         Router newRouter = router.removeRoutee(getSender());
         routes.put(path, newRouter);
-        if (newRouter.routees().length() == 0) {
-            registry.onRouteRemoved(path);
-        }
     }
 }

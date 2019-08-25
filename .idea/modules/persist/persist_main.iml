@@ -36,7 +36,8 @@
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.9.9" level="project" />
     <orderEntry type="library" name="Gradle: net.bytebuddy:byte-buddy:1.9.13" level="project" />
     <orderEntry type="library" name="Gradle: javax.cache:cache-api:1.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor_2.13:2.5.24" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor-typed_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor_2.13:2.5.25" level="project" />
     <orderEntry type="library" name="Gradle: com.sun.mail:javax.mail:1.6.2" level="project" />
     <orderEntry type="library" name="Gradle: com.google.guava:failureaccess:1.0.1" level="project" />
     <orderEntry type="library" name="Gradle: com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava" level="project" />

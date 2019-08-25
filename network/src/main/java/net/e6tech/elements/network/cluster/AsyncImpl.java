@@ -17,6 +17,7 @@
 package net.e6tech.elements.network.cluster;
 
 import net.e6tech.elements.common.reflection.Primitives;
+import net.e6tech.elements.network.cluster.invocation.InvocationEvents;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -30,12 +31,12 @@ import java.util.function.Function;
  */
 public class AsyncImpl<U> implements ClusterAsync<U> {
 
-    Class<U> interfaceClass;
-    Registry registry;
-    String qualifier;
-    long timeout;
-    CompletionStage<Events.Response> completionStage;
-    U proxy;
+    private Class<U> interfaceClass;
+    private Registry registry;
+    private String qualifier;
+    private long timeout;
+    private CompletionStage<InvocationEvents.Response> completionStage;
+    private U proxy;
 
     public AsyncImpl(Registry registry, String qualifier, Class<U> interfaceClass, long timeout) {
         this.registry = registry;
@@ -73,7 +74,7 @@ public class AsyncImpl<U> implements ClusterAsync<U> {
         return completionStage.thenApply(response -> null);
     }
 
-    public CompletionStage<Events.Response> ask(Consumer<U> consumer) {
+    public CompletionStage<InvocationEvents.Response> ask(Consumer<U> consumer) {
         completionStage = null;
         consumer.accept(proxy);
         return completionStage;
@@ -92,7 +93,7 @@ public class AsyncImpl<U> implements ClusterAsync<U> {
                 return AsyncImpl.this.toString();
             }
 
-            Function<Object[], CompletionStage<Events.Response>> function = registry.route(qualifier, interfaceClass, method, timeout);
+            Function<Object[], CompletionStage<InvocationEvents.Response>> function = registry.route(qualifier, interfaceClass, method, timeout);
             completionStage = function.apply(args);
             return Primitives.defaultValue(method.getReturnType());
 

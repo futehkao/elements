@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.legacy;
 
 import akka.actor.*;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import net.e6tech.elements.common.subscribe.Subscriber;
+import net.e6tech.elements.network.cluster.messaging.MessagingEvents;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,43 +57,43 @@ class MessagingActor extends AbstractActor {
     @Override
     public AbstractActor.Receive createReceive() {
         return receiveBuilder()
-                .match(Events.Subscribe.class, event -> {
-                    Map<Subscriber, ActorRef> map = subscribers.computeIfAbsent(event.topic, topic -> new HashMap<>());
-                    map.computeIfAbsent(event.subscriber,
+                .match(MessagingEvents.Subscribe.class, event -> {
+                    Map<Subscriber, ActorRef> map = subscribers.computeIfAbsent(event.getTopic(), topic -> new HashMap<>());
+                    map.computeIfAbsent(event.getSubscriber(),
                             sub -> getContext().actorOf(Props.create(SubscriberActor.class,
-                                    () -> new SubscriberActor(event.topic, event.subscriber)), SUBSCRIBER_PREFIX + event.topic + System.identityHashCode(event.subscriber)));
+                                    () -> new SubscriberActor(event.getTopic(), event.getSubscriber())), SUBSCRIBER_PREFIX + event.getTopic() + System.identityHashCode(event.getSubscriber())));
                 })
-                .match(Events.Unsubscribe.class, event -> {
-                    Map<Subscriber, ActorRef> map = subscribers.get(event.topic);
+                .match(MessagingEvents.Unsubscribe.class, event -> {
+                    Map<Subscriber, ActorRef> map = subscribers.get(event.getTopic());
                     if (map != null) {
-                        ActorRef child = map.get(event.subscriber);
+                        ActorRef child = map.get(event.getSubscriber());
                         if (child != null) {
-                            mediator.tell(new DistributedPubSubMediator.Unsubscribe(event.topic, child), getSelf());
+                            mediator.tell(new DistributedPubSubMediator.Unsubscribe(event.getTopic(), child), getSelf());
                             child.tell(PoisonPill.getInstance(), getSender());
-                            map.remove(event.subscriber);
+                            map.remove(event.getSubscriber());
                         }
                     }
                 })
-                .match(Events.NewDestination.class, event -> {
-                    if (destinations.get(event.destination) != null) {
+                .match(MessagingEvents.NewDestination.class, event -> {
+                    if (destinations.get(event.getDestination()) != null) {
                         getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")), getSender());
                     } else {
-                        ActorRef dest = getContext().actorOf(Props.create(DestinationActor.class, () -> new DestinationActor(event.subscriber)), DESTINATION_PREFIX + event.destination);
-                        destinations.put(event.destination, dest);
+                        ActorRef dest = getContext().actorOf(Props.create(DestinationActor.class, () -> new DestinationActor(event.getSubscriber())), DESTINATION_PREFIX + event.getDestination());
+                        destinations.put(event.getDestination(), dest);
                     }
                 })
-                .match(Events.RemoveDestination.class, event -> {
-                    ActorRef child = destinations.get(event.destination);
+                .match(MessagingEvents.RemoveDestination.class, event -> {
+                    ActorRef child = destinations.get(event.getDestination());
                     if (child != null) {
                         mediator.tell(new DistributedPubSubMediator.Remove(child.path().name()), getSelf());
                         child.tell(PoisonPill.getInstance(), getSender());
-                        destinations.remove("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + event.destination);
+                        destinations.remove("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + event.getDestination());
                     }
                 })
-                .match(Events.Publish.class, publish -> mediator.tell(new DistributedPubSubMediator.Publish(publish.topic, publish), getSelf())
+                .match(MessagingEvents.Publish.class, publish -> mediator.tell(new DistributedPubSubMediator.Publish(publish.getTopic(), publish), getSelf())
                 )
-                .match(Events.Send.class, send ->
-                    mediator.tell(new DistributedPubSubMediator.Send("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + send.destination,
+                .match(MessagingEvents.Send.class, send ->
+                    mediator.tell(new DistributedPubSubMediator.Send("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + send.getDestination(),
                             send, true), getSender())
                 )
                 .build();

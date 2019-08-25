@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.legacy;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Status;
+import akka.actor.typed.javadsl.Adapter;
 import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import akka.pattern.Patterns;
-import akka.serialization.Serialization;
+import net.e6tech.elements.common.actor.Genesis;
 
 /**
  * Created by futeh.
@@ -44,12 +44,11 @@ class RegistryEntryActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     Cluster cluster = Cluster.lookup().get(getContext().system());
     Events.Registration registration;
-    ActorRef workPool;
-    ActorRef registra;
+    Genesis genesis;
 
-    public RegistryEntryActor(Events.Registration registration, ActorRef workPool) {
+    public RegistryEntryActor(Genesis genesis, Events.Registration registration) {
         this.registration = registration;
-        this.workPool = workPool;
+        this.genesis = genesis;
     }
 
     //subscribe to cluster changes
@@ -84,25 +83,14 @@ class RegistryEntryActor extends AbstractActor {
                     final ActorRef sender = getSender();
                     final ActorRef self = getSelf();
                     try {
-                        if (workPool != null && registration.timeout() > 0) {
-                            Patterns.ask(workPool, (Runnable) () -> {
-                                try {
-                                    Object ret = registration.function().apply(this, message.arguments());
-                                    sender.tell(new Events.Response(ret, self), self);
-                                } catch (Exception ex) {
-                                    sender.tell(new Status.Failure(ex), self);
-                                }
-                            }, registration.timeout());
-                        } else {
-                            Registry.getThreadPool().execute(() -> {
-                                try {
-                                    Object ret = registration.function().apply(this, message.arguments());
-                                    sender.tell(new Events.Response(ret, self), self);
-                                } catch (Exception ex) {
-                                    sender.tell(new Status.Failure(ex), self);
-                                }
-                            });
-                        }
+                        genesis.async(() -> {
+                            try {
+                                Object ret = registration.function().apply(Adapter.toTyped(self), message.arguments());
+                                sender.tell(new Events.Response(ret, self), self);
+                            } catch (Exception ex) {
+                                sender.tell(new Status.Failure(ex), self);
+                            }
+                        }, registration.timeout());
                     } catch (RuntimeException ex) {
                         Throwable throwable = ex.getCause();
                         if (throwable == null) throwable = ex;
@@ -114,7 +102,7 @@ class RegistryEntryActor extends AbstractActor {
     // tell other member about this RegistryEntryActor
     void register(Member member) {
         if (!cluster.selfAddress().equals(member.address())) {
-            getContext().actorSelection(member.address() + "/user/" + Registry.getPath())
+            getContext().actorSelection(member.address() + "/user/" + RegistryImpl.getPath())
                     .tell(new Events.Announcement(registration), getSelf());
         }
     }

@@ -38,7 +38,8 @@
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.9.9" level="project" />
     <orderEntry type="library" name="Gradle: net.bytebuddy:byte-buddy:1.9.13" level="project" />
     <orderEntry type="library" name="Gradle: javax.cache:cache-api:1.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor_2.13:2.5.24" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor-typed_2.13:2.5.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.typesafe.akka:akka-actor_2.13:2.5.25" level="project" />
     <orderEntry type="library" name="Gradle: com.betfair.net.java.opendmk:core-rmic:1.0-b02" level="project" />
     <orderEntry type="library" name="Gradle: com.betfair.net.java.opendmk:core:1.0-b02" level="project" />
     <orderEntry type="library" name="Gradle: com.betfair.net.java.opendmk:jmx-optional:1.0-b02" level="project" />

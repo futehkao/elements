@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.typesafe.akka:akka-distributed-data_2.13:2.5.25">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-distributed-data_2.13/2.5.25/a01d31937fcf05ba208ef7c4e8c4f519991c5a8/akka-distributed-data_2.13-2.5.25.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-distributed-data_2.13/2.5.25/5caeabe46e8ba0f7f0feed78b2a3f1ed88ca2bb9/akka-distributed-data_2.13-2.5.25-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

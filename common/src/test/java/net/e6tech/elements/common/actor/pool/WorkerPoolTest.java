@@ -16,7 +16,8 @@
 
 package net.e6tech.elements.common.actor.pool;
 
-import akka.actor.ActorRef;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.javadsl.AskPattern;
 import akka.pattern.Patterns;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.Resources;
@@ -36,17 +37,15 @@ public class WorkerPoolTest {
         genesis.setName("Genesis");
         genesis.initialize((Resources) null);
 
-        ActorRef pool = genesis.getWorkerPool();
-
         for (int i = 0; i < 5; i++) {
             final int id = i;
-            Patterns.ask(pool, (Runnable) () -> {
-                    System.out.println("message " + id);
-                    try {
-                        Thread.sleep(200L);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+            genesis.async(() -> {
+                System.out.println("message " + id);
+                try {
+                    Thread.sleep(200L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }, 500L);
         }
 
@@ -54,15 +53,12 @@ public class WorkerPoolTest {
 
         for (int i = 0; i < 5; i++) {
             final int id = i;
-            Patterns.ask(pool, new Runnable() {
-                @Override
-                public void run() {
-                    System.out.println("message " + id);
-                    try {
-                        Thread.sleep(200L);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+            genesis.async(() -> {
+                System.out.println("message " + id);
+                try {
+                    Thread.sleep(200L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }, 500L);
         }

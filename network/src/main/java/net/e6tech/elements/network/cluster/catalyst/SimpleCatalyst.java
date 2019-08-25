@@ -20,7 +20,7 @@ import net.e6tech.elements.network.cluster.Registry;
 
 public class SimpleCatalyst extends Catalyst<Reactor> {
 
-    public SimpleCatalyst(String qualifier, Registry registry) {
+    public SimpleCatalyst(String qualifier,  Registry registry) {
         super(qualifier, Reactor.class, registry);
     }
 }

@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.network.cluster;
 
-import com.sun.xml.internal.ws.developer.Serialization;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.Genesis;
@@ -24,7 +23,6 @@ import net.e6tech.elements.common.util.concurrent.Async;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,23 +36,7 @@ import java.util.function.Function;
 public class RegistryTest {
 
     public static ClusterNode create(int port) {
-        String userDir = System.getProperty("user.dir");
-        File file = new File(userDir + "/src/test/resources/akka.conf");
-        Config config = ConfigFactory.parseString(
-                "akka { remote { \n " +
-                        "netty.tcp.port=" + port + "\n" +
-                        "artery.canonical.port=" + port + "\n" +
-                        "} }"
-                )
-                .withFallback(ConfigFactory.parseFile(file));
-
-        // Create an Akka system
-        Genesis genesis = new Genesis();
-        genesis.setName("ClusterSystem");
-        genesis.initialize(config);
-        ClusterNode clusterNode = new ClusterNode();
-        clusterNode.initialize(genesis);
-        return clusterNode;
+        return ClusterNodeTest.create(port);
     }
 
     @SuppressWarnings("unchecked")
@@ -69,8 +51,7 @@ public class RegistryTest {
         Thread.sleep(100L);
 
         // routing ServiceMessage
-        ServiceMessage msg = new ServiceMessage();
-        msg.message = "Hello world!";
+
         long start = System.currentTimeMillis();
         registry.route("blah", 5000L)
                 .apply(new Object[] { "hello world!"})
@@ -97,14 +78,6 @@ public class RegistryTest {
         async.apply(svc -> svc.apply("One more time"))
                 .thenAccept(result -> System.out.println(result));
         Thread.sleep(2000L);
-    }
-
-    static class ServiceMessage implements Serializable {
-        String message;
-
-        public String test(String message) {
-            return message.toUpperCase();
-        }
     }
 
 
@@ -208,16 +181,6 @@ public class RegistryTest {
         Registry registry = clusterNode.getRegistry();
         long start = System.currentTimeMillis();
         AtomicInteger member = new AtomicInteger(0);
-
-        registry.addRouteListener(new RouteListener() {
-            @Override
-            public void onAnnouncement(String path) {
-            synchronized (member) {
-                member.incrementAndGet();
-                member.notifyAll();
-            }
-            }
-        });
 
         synchronized (member) {
             while (member.get() == 0) {

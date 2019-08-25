@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.network.cluster;
 
-import akka.actor.Actor;
+import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.io.Serializable;
@@ -26,7 +26,7 @@ public class Invoker implements Serializable {
     private static final long serialVersionUID = -7148919144897051958L;
 
     @SuppressWarnings("squid:S1172")
-    public Object invoke(Actor actor, Object target, Method method, Object[] arguments) {
+    public Object invoke(ActorRef actor, Object target, Method method, Object[] arguments) {
         try {
             return method.invoke(target, arguments);
         } catch (Exception e) {

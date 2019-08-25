@@ -42,8 +42,8 @@ public class WorkerPool extends AbstractActor {
     private Set<ActorRef> idleWorkers = new LinkedHashSet<>();
     private LinkedList<Task> waiting = new LinkedList<>();
 
-    public static ActorRef newPool(ActorSystem system, int initialCapacity, int maxCapacity, long idleTimeout) {
-        return system.actorOf(Props.create(WorkerPool.class, () -> {
+    public static ActorRef newPool(akka.actor.ActorContext context, int initialCapacity, int maxCapacity, long idleTimeout) {
+        return context.actorOf(Props.create(WorkerPool.class, () -> {
             WorkerPool instance = new WorkerPool();
             instance.setInitialCapacity(initialCapacity);
             instance.setMaxCapacity(maxCapacity);

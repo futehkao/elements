@@ -17,11 +17,12 @@
 package net.e6tech.elements.network.cluster;
 
 import net.e6tech.elements.common.util.concurrent.Async;
+import net.e6tech.elements.network.cluster.invocation.InvocationEvents;
 
 import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
 public interface ClusterAsync<U> extends Async<U> {
 
-    CompletionStage<Events.Response> ask(Consumer<U> consumer);
+    CompletionStage<InvocationEvents.Response> ask(Consumer<U> consumer);
 }

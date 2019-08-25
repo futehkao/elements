@@ -28,8 +28,4 @@ public interface RouteListener {
     default void onTerminated(String path, String address) {
 
     }
-
-    default void onRouteRemoved(String path) {
-
-    }
 }

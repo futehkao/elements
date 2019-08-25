@@ -16,24 +16,23 @@
 
 package net.e6tech.elements.common.actor;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.pattern.Patterns;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.Behavior;
+import akka.actor.typed.Props;
+import akka.actor.typed.SpawnProtocol;
+import akka.actor.typed.javadsl.Adapter;
+import akka.actor.typed.javadsl.AskPattern;
+import akka.actor.typed.javadsl.Behaviors;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import net.e6tech.elements.common.actor.pool.Events;
-import net.e6tech.elements.common.actor.pool.WorkerPool;
-import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.actor.typed.WorkEvents;
+import net.e6tech.elements.common.actor.typed.WorkerPool;
 import net.e6tech.elements.common.resources.*;
-import scala.compat.java8.FutureConverters;
-import scala.concurrent.Await;
-import scala.concurrent.Future;
-import scala.concurrent.duration.Duration;
+import net.e6tech.elements.common.util.SystemException;
+import scala.concurrent.ExecutionContextExecutor;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Created by futeh.
@@ -42,8 +41,9 @@ public class Genesis implements Initializable {
     public static final String WORKER_POOL_DISPATCHER = "worker-pool-dispatcher";
     private String name;
     private String configuration;
-    private ActorSystem system;
-    private ActorRef workerPool;
+    private akka.actor.typed.javadsl.ActorContext<SpawnProtocol> typedActorContext;
+    private akka.actor.typed.ActorSystem<SpawnProtocol> typedSystem;
+    private akka.actor.typed.ActorRef<WorkEvents> workerPool;
     private int initialCapacity = 1;
     private int maxCapacity = Integer.MAX_VALUE;  // ie unlimited
     private long idleTimeout = 10000L;
@@ -104,6 +104,13 @@ public class Genesis implements Initializable {
         }
     }
 
+    public final Behavior<SpawnProtocol> main =
+        Behaviors.setup(
+                context -> {
+                    typedActorContext = context;
+                    return SpawnProtocol.behavior();
+                });
+
     public void initialize(Config cfg) {
         if (name == null)
             throw new IllegalStateException("name is null");
@@ -128,19 +135,41 @@ public class Genesis implements Initializable {
         }
 
         // Create an Akka system
-        system = ActorSystem.create(name, config);
+        typedSystem = akka.actor.typed.ActorSystem.create(Behaviors.setup(context -> main), name, config);
+        try {
+            CompletionStage<ActorRef<WorkEvents>> stage = AskPattern.ask(typedSystem,
+                    replyTo -> new SpawnProtocol.Spawn(WorkerPool.newPool(initialCapacity, maxCapacity, idleTimeout), "WorkerPool", Props.empty(), replyTo),
+                    java.time.Duration.ofSeconds(5), typedSystem.scheduler());
+            stage.whenComplete((ref, throwable) -> {
+                workerPool = ref;
+            });
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
+    }
 
-        // Create a worker pool
-        workerPool = WorkerPool.newPool(system, initialCapacity, maxCapacity, idleTimeout);
+    public <T> akka.actor.ActorRef actorOf(akka.actor.Props props, String name) {
+        return actorContext().actorOf(props, name);
+    }
+
+    public <T> akka.actor.ActorRef actorOf(akka.actor.Props props) {
+        return actorContext().actorOf(props);
+    }
+
+    protected akka.actor.ActorContext actorContext() {
+        return Adapter.toUntyped(typedActorContext);
+    }
+
+    public akka.actor.typed.javadsl.ActorContext<SpawnProtocol> typeActorContext() {
+        return typedActorContext;
+    }
+
+    public ExecutionContextExecutor dispatcher() {
+        return typedActorContext.getExecutionContext();
     }
 
     public void shutdown() {
-        try {
-            Await.ready(system.terminate(), Duration.create(30, TimeUnit.SECONDS));
-        } catch (TimeoutException | InterruptedException e) {
-            Logger.suppress(e);
-            Thread.currentThread().interrupt();
-        }
+        typedSystem.terminate();
     }
 
     public String getName() {
@@ -159,16 +188,8 @@ public class Genesis implements Initializable {
         this.configuration = configuration;
     }
 
-    public ActorRef getWorkerPool() {
-        return workerPool;
-    }
-
-    public void setWorkerPool(ActorRef workerPool) {
-        this.workerPool = workerPool;
-    }
-
-    public ActorSystem getSystem() {
-        return system;
+    public void terminate() {
+        typedSystem.terminate();
     }
 
     public CompletionStage<Void> async(Runnable runnable) {
@@ -176,10 +197,8 @@ public class Genesis implements Initializable {
     }
 
     public CompletionStage<Void> async(Runnable runnable, long timeout) {
-        Future future = Patterns.ask(workerPool, runnable, timeout);
-        return FutureConverters.toJava(future).thenAcceptAsync(ret -> {
-            // do nothing
-        });
+        return AskPattern.ask(workerPool, ref -> new WorkEvents.RunnableTask(ref, runnable),
+                        java.time.Duration.ofMillis(timeout), typedSystem.scheduler());
     }
 
     public <R> CompletionStage<R> async(Callable<R> callable) {
@@ -187,10 +206,8 @@ public class Genesis implements Initializable {
     }
 
     public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
-        Future future = Patterns.ask(workerPool, callable, timeout);
-        return FutureConverters.toJava(future).thenApplyAsync(ret -> {
-            Events.Response response = (Events.Response) ret;
-            return response.getValue();
-        });
+        CompletionStage<R> stage = AskPattern.ask(workerPool, ref -> new WorkEvents.CallableTask(ref, callable),
+                java.time.Duration.ofMillis(timeout), typedSystem.scheduler());
+        return stage;
     }
 }
