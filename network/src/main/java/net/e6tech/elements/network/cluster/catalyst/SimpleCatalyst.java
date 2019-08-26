@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
-import net.e6tech.elements.network.cluster.Registry;
+import net.e6tech.elements.network.cluster.invocation.Registry;
 
 public class SimpleCatalyst extends Catalyst<Reactor> {
 

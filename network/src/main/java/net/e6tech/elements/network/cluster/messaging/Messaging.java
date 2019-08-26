@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2019 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,13 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.messaging;
 
-import akka.actor.PoisonPill;
-import akka.actor.typed.ActorRef;
-import akka.actor.typed.javadsl.AskPattern;
-import akka.actor.typed.javadsl.Behaviors;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.Guardian;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.common.subscribe.Subscriber;
-import net.e6tech.elements.network.cluster.messaging.MessagingEvents;
-import net.e6tech.elements.network.cluster.messaging.Messenger;
+import net.e6tech.elements.network.cluster.ClusterNode;
 
 import java.io.Serializable;
 
@@ -33,10 +29,10 @@ import java.io.Serializable;
  */
 public class Messaging implements Broadcast {
 
-    private ActorRef messagingRef;
+    private Messenger messenger;
     private String name = "messaging";
     private long timeout = ClusterNode.DEFAULT_TIME_OUT;
-    private Genesis genesis;
+    private Guardian guardian;
 
     public String getName() {
         return name;
@@ -54,22 +50,20 @@ public class Messaging implements Broadcast {
         this.timeout = timeout;
     }
 
-    public void start(Genesis genesis) {
-        this.genesis = genesis;
-        messagingRef = genesis.typeActorContext().spawn(Behaviors.<MessagingEvents>setup(ctx -> new Messenger(ctx)), name);
+    public void start(Guardian genesis) {
+        this.guardian = genesis;
+        guardian.spawn(messenger = new Messenger(), name);
     }
 
     public void shutdown() {
-        if (messagingRef != null) {
-            AskPattern.ask(messagingRef, ref -> PoisonPill.getInstance(),
-                    java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
+        if (messenger != null) {
+            messenger.stop();
         }
     }
 
     @Override
     public void subscribe(String topic, Subscriber subscriber) {
-        AskPattern.ask(messagingRef, ref -> new MessagingEvents.Subscribe(topic, subscriber),
-                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
+        messenger.ask(ref -> new MessagingEvents.Subscribe(topic, subscriber), timeout);
     }
 
     @Override
@@ -79,8 +73,7 @@ public class Messaging implements Broadcast {
 
     @Override
     public void unsubscribe(String topic, Subscriber subscriber) {
-        AskPattern.ask(messagingRef, ref -> new MessagingEvents.Unsubscribe(topic, subscriber),
-                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
+        messenger.ask(ref -> new MessagingEvents.Unsubscribe(topic, subscriber), timeout);
     }
 
     @Override
@@ -90,8 +83,7 @@ public class Messaging implements Broadcast {
 
     @Override
     public void publish(String topic, Serializable object) {
-        AskPattern.ask(messagingRef, ref -> new MessagingEvents.Publish(topic, object),
-                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
+        messenger.ask(ref -> new MessagingEvents.Publish(topic, object), timeout);
     }
 
     @Override
@@ -100,13 +92,11 @@ public class Messaging implements Broadcast {
     }
 
     public void destination(String destination, Subscriber subscriber) {
-        AskPattern.ask(messagingRef, ref -> new MessagingEvents.NewDestination(messagingRef, destination, subscriber),
-                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
+        messenger.ask(ref -> new MessagingEvents.NewDestination(ref, destination, subscriber), timeout);
     }
 
     public void send(String destination, Serializable object) {
-        AskPattern.ask(messagingRef, ref -> new MessagingEvents.Send(destination, object),
-                java.time.Duration.ofMillis(timeout), genesis.typeActorContext().getSystem().scheduler());
+        messenger.ask(ref ->  new MessagingEvents.Send(destination, object), timeout);
     }
 
 }

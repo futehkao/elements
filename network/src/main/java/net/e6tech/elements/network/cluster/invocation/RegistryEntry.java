@@ -19,21 +19,27 @@ package net.e6tech.elements.network.cluster.invocation;
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
-import akka.actor.typed.javadsl.AbstractBehavior;
-import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
-import net.e6tech.elements.common.actor.Genesis;
+import akka.actor.typed.receptionist.Receptionist;
+import akka.actor.typed.receptionist.ServiceKey;
+import net.e6tech.elements.common.actor.CommonBehavior;
 
-public class RegistryEntry extends AbstractBehavior<InvocationEvents.Request> {
+import net.e6tech.elements.common.actor.Guardian;
+
+public class RegistryEntry extends CommonBehavior<InvocationEvents.Request> {
     private InvocationEvents.Registration registration;
-    private Genesis genesis;
-    private ActorContext<InvocationEvents.Request> context;
+    private Guardian guardian;
+    private ServiceKey<InvocationEvents.Request> key;
 
-    public RegistryEntry(ActorContext<InvocationEvents.Request> context, Genesis genesis, InvocationEvents.Registration registration) {
-        this.context = context;
+    public RegistryEntry(Guardian guardian, ServiceKey<InvocationEvents.Request> key, InvocationEvents.Registration registration) {
         this.registration = registration;
-        this.genesis = genesis;
+        this.guardian = guardian;
+        this.key = key;
+    }
+
+    protected void initialize() {
+        getSystem().receptionist().tell(Receptionist.register(key, getSelf()));
     }
 
     @Override
@@ -45,16 +51,16 @@ public class RegistryEntry extends AbstractBehavior<InvocationEvents.Request> {
 
     private Behavior<InvocationEvents.Request> request(InvocationEvents.Request request) {
         final ActorRef sender = request.getSender();
-        final ActorRef self = context.getSelf();
+        final ActorRef self = getSelf();
         try {
-            genesis.async(() -> {
+            guardian.async(() -> {
                 try {
                     Object ret = registration.function().apply(self, request.arguments());
                     sender.tell(new InvocationEvents.Response(self, ret));
                 } catch (Exception ex) {
                     sender.tell(new Status.Failure(ex));
                 }
-            }, registration.getTimeout());
+            }, request.getTimeout());
         } catch (RuntimeException ex) {
             Throwable throwable = ex.getCause();
             if (throwable == null) throwable = ex;

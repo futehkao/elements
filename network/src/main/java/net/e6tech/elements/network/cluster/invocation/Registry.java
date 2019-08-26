@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.typed.ActorRef;
-import net.e6tech.elements.common.actor.Genesis;
-import net.e6tech.elements.network.cluster.invocation.InvocationEvents;
+import net.e6tech.elements.common.actor.Guardian;
+import net.e6tech.elements.network.cluster.ClusterAsync;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -28,7 +28,7 @@ import java.util.function.Function;
 
 public interface Registry {
 
-    void start(Genesis genesis);
+    void start(Guardian guadian);
 
     void shutdown() ;
 
@@ -38,11 +38,11 @@ public interface Registry {
 
     <T> Collection routes(String qualifier, Class<T> interfaceClass);
 
-    <R> void register(String path, BiFunction<ActorRef, Object[], R> function, long timeout);
+    <R> void register(String path, BiFunction<ActorRef, Object[], R> function);
 
-    <T> void register(String qualifier, Class<T> interfaceClass, T implementation, long timeout);
+    <T> void register(String qualifier, Class<T> interfaceClass, T implementation);
 
-    <T> void register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker, long timeout);
+    <T> void register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker);
 
     Function<Object[], CompletionStage<InvocationEvents.Response>> route(String qualifier, Class interfaceClass, Method method, long timeout);
 

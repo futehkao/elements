@@ -74,18 +74,13 @@ public class Events {
         private BiFunction<akka.actor.typed.ActorRef, Object[], Object> function;
         private long timeout;
 
-        public Registration(String path, BiFunction<akka.actor.typed.ActorRef, Object[], Object> function, long timeout) {
+        public Registration(String path, BiFunction<akka.actor.typed.ActorRef, Object[], Object> function) {
             this.reference = new RegisterReference(path);
             this.function = function;
-            this.timeout = timeout;
         }
 
         public BiFunction<akka.actor.typed.ActorRef, Object[], Object> function() {
             return function;
-        }
-
-        public long timeout() {
-            return timeout;
         }
     }
 
@@ -93,17 +88,22 @@ public class Events {
         private static final long serialVersionUID = -264975294117974773L;
         private transient RegisterReference reference;
         private transient Object[] arguments;
+        private long timeout = 10000L;
 
         public Invocation() {
         }
 
-        public Invocation(String path, Object[] arguments)  {
+        public Invocation(String path, long timeout, Object[] arguments)  {
             this.reference = new RegisterReference(path);
             this.arguments = arguments;
         }
 
         public Object[] arguments() {
             return arguments;
+        }
+
+        public long getTimeout() {
+            return timeout;
         }
 
         public void write(Kryo kryo, Output out) {
@@ -116,12 +116,14 @@ public class Events {
             }
             kryo.writeObjectOrNull(out, payload, byte[].class);
             kryo.writeObjectOrNull(out, reference, RegisterReference.class);
+            kryo.writeObject(out, timeout);
         }
 
         @SuppressWarnings("squid:S2674")
         public void read(Kryo kryo, Input in) {
             byte[] buffer = kryo.readObjectOrNull(in, byte[].class);
             reference = kryo.readObjectOrNull(in, RegisterReference.class);
+            timeout = kryo.readObject(in, Long.class);
             try {
                 arguments = CompressionSerializer.fromBytes(buffer);
             } catch (Exception e) {

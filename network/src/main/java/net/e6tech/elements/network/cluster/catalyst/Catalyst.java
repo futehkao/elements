@@ -18,7 +18,7 @@ package net.e6tech.elements.network.cluster.catalyst;
 
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
-import net.e6tech.elements.network.cluster.Registry;
+import net.e6tech.elements.network.cluster.invocation.Registry;
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
@@ -37,7 +37,7 @@ import java.util.function.Function;
 @SuppressWarnings({"squid:S00119", "squid:S1700"})
 public class Catalyst<Re extends Reactor> {
     private Registry registry;
-    private long waitTime = 20000L;
+    private long waitTime = 30000L;
     private String qualifier = "";
     private Class<Re> reactorClass;
 

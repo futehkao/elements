@@ -28,7 +28,7 @@ import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.network.cluster.MemberListener;
-import net.e6tech.elements.network.cluster.Messaging;
+import net.e6tech.elements.network.cluster.messaging.Messaging;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -125,7 +125,7 @@ public class ClusterNode implements Initializable {
         if (started)
             return;
         if (membership == null)
-            membership = genesis.actorOf(Props.create(Membership.class, Membership::new));
+            membership = genesis.getGuardian().actorOf(Props.create(Membership.class, Membership::new));
 
         if (broadcast == null) {
             broadcast = new Messaging();
@@ -136,8 +136,8 @@ public class ClusterNode implements Initializable {
             registry.setTimeout(timeout);
         }
        //  registry.setWorkerPool(genesis.getWorkerPool());
-        broadcast.start(genesis);
-        registry.start(genesis);
+        broadcast.start(genesis.getGuardian());
+        registry.start(genesis.getGuardian());
         started = true;
     }
 

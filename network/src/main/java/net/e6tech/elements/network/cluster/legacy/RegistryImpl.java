@@ -21,11 +21,16 @@ import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.actor.typed.javadsl.Adapter;
 import akka.pattern.Patterns;
-import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.Guardian;
 import net.e6tech.elements.common.util.concurrent.ThreadPool;
+import net.e6tech.elements.network.cluster.AsyncImpl;
+import net.e6tech.elements.network.cluster.ClusterAsync;
 import net.e6tech.elements.network.cluster.ClusterNode;
-import net.e6tech.elements.network.cluster.*;
+import net.e6tech.elements.network.cluster.RouteListener;
 import net.e6tech.elements.network.cluster.invocation.InvocationEvents;
+import net.e6tech.elements.network.cluster.invocation.Invoker;
+import net.e6tech.elements.network.cluster.invocation.Local;
+import net.e6tech.elements.network.cluster.invocation.Registry;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.ExecutionContextExecutor;
 import scala.concurrent.Future;
@@ -51,11 +56,11 @@ public class RegistryImpl implements Registry {
 
     private static ThreadPool threadPool = ThreadPool.cachedThreadPool("Cluster-Registry");
 
-    Genesis genesis;
-    ExecutionContextExecutor dispatcher;
-    ActorRef registrar;
-    long timeout = ClusterNode.DEFAULT_TIME_OUT;
-    List<RouteListener> listeners = new ArrayList<>();
+    private Guardian guardian;
+    private ExecutionContextExecutor dispatcher;
+    private ActorRef registrar;
+    private long timeout = ClusterNode.DEFAULT_TIME_OUT;
+    private List<RouteListener> listeners = new ArrayList<>();
 
     public static ThreadPool getThreadPool() {
         return threadPool;
@@ -97,22 +102,22 @@ public class RegistryImpl implements Registry {
         });
     }
 
-    public Genesis genesis() {
-        return genesis;
+    public Guardian getGuardian() {
+        return guardian;
     }
 
-    public void start(Genesis genesis) {
-        this.genesis = genesis;
-        dispatcher = genesis.dispatcher();
-        registrar = genesis.actorOf(Props.create(RegistrarActor.class, () -> new RegistrarActor(this)), getPath());
+    public void start(Guardian guardian) {
+        this.guardian = guardian;
+        dispatcher = guardian.getContext().getExecutionContext();
+        registrar = guardian.actorOf(Props.create(RegistrarActor.class, () -> new RegistrarActor(this)), getPath());
     }
 
     public void shutdown() {
         Patterns.ask(registrar, PoisonPill.getInstance(), timeout);
     }
 
-    public <R> void register(String path, BiFunction<akka.actor.typed.ActorRef, Object[], R> function, long timeout) {
-        Patterns.ask(registrar, new Events.Registration(path, (BiFunction<akka.actor.typed.ActorRef, Object[], Object>) function, timeout), this.timeout);
+    public <R> void register(String path, BiFunction<akka.actor.typed.ActorRef, Object[], R> function) {
+        Patterns.ask(registrar, new Events.Registration(path, (BiFunction<akka.actor.typed.ActorRef, Object[], Object>) function), timeout);
     }
 
     public <T> Collection routes(String qualifier, Class<T> interfaceClass) {
@@ -143,8 +148,9 @@ public class RegistryImpl implements Registry {
                 .join();
     }
 
-    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, long timeout) {
-        register(qualifier, interfaceClass, implementation, null, timeout);
+    @Override
+    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation) {
+        register(qualifier, interfaceClass, implementation, null);
     }
 
     /**
@@ -154,10 +160,10 @@ public class RegistryImpl implements Registry {
      *                       for the qualifier to be unique.
      * @param implementation implementation of the interface
      * @param <T> type of implementation
-     * @param timeout timout period
      */
     @SuppressWarnings({"squid:S1067", "squid:S3776"})
-    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker, long timeout) {
+    @Override
+    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
 
@@ -176,7 +182,7 @@ public class RegistryImpl implements Registry {
                 }
                 Invoker invoker = customizedInvoker;
                 register(fullyQualify(qualifier, interfaceClass, method),
-                        (actor, args) -> invoker.invoke(actor, implementation, method, args), timeout);
+                        (actor, args) -> invoker.invoke(actor, implementation, method, args));
             }
         }
     }
@@ -212,7 +218,7 @@ public class RegistryImpl implements Registry {
 
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout) {
         return arguments -> {
-            Future future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
+            Future future = Patterns.ask(registrar, new Events.Invocation(path, timeout, arguments), timeout);
             return FutureConverters.toJava(future).thenApply(ret -> {
                 Events.Response response = (Events.Response) ret;
                 return new InvocationEvents.Response(Adapter.toTyped(response.getResponder()), response.getValue());

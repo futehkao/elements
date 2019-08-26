@@ -49,20 +49,14 @@ public interface InvocationEvents extends Serializable {
     class Registration implements InvocationEvents {
         private RegisterReference reference;
         private BiFunction<ActorRef, Object[], Object> function;
-        private long timeout;
 
-        public Registration(String path, BiFunction<ActorRef, Object[], Object> function, long timeout) {
+        public Registration(String path, BiFunction<ActorRef, Object[], Object> function) {
             this.reference = new RegisterReference(path);
             this.function = function;
-            this.timeout = timeout;
         }
 
         public BiFunction<ActorRef, Object[], Object> function() {
             return function;
-        }
-
-        public long getTimeout() {
-            return timeout;
         }
 
         public String getPath() {
@@ -75,11 +69,13 @@ public interface InvocationEvents extends Serializable {
         private transient RegisterReference reference;
         private transient Object[] arguments;
         private ActorRef sender;
+        private long timeout = 10000L;
 
-        public Request(ActorRef sender, String path, Object[] arguments)  {
+        public Request(ActorRef sender, String path, long timeout, Object[] arguments)  {
             this.sender = sender;
             this.reference = new RegisterReference(path);
             this.arguments = arguments;
+            this.timeout = timeout;
         }
 
         public Object[] arguments() {
@@ -88,6 +84,10 @@ public interface InvocationEvents extends Serializable {
 
         public ActorRef getSender() {
             return sender;
+        }
+
+        public long getTimeout() {
+            return timeout;
         }
 
         public void write(Kryo kryo, Output out) {
@@ -101,6 +101,7 @@ public interface InvocationEvents extends Serializable {
             kryo.writeObjectOrNull(out, payload, byte[].class);
             kryo.writeObjectOrNull(out, reference, RegisterReference.class);
             kryo.writeObjectOrNull(out, sender, ActorRef.class);
+            kryo.writeObject(out, timeout);
         }
 
         @SuppressWarnings("squid:S2674")
@@ -108,6 +109,7 @@ public interface InvocationEvents extends Serializable {
             byte[] buffer = kryo.readObjectOrNull(in, byte[].class);
             reference = kryo.readObjectOrNull(in, RegisterReference.class);
             sender = kryo.readObjectOrNull(in, ActorRef.class);
+            timeout = kryo.readObject(in, Long.class);
             try {
                 arguments = CompressionSerializer.fromBytes(buffer);
             } catch (Exception e) {

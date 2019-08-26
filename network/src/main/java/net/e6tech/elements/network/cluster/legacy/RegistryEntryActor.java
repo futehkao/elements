@@ -27,6 +27,7 @@ import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.Guardian;
 
 /**
  * Created by futeh.
@@ -44,11 +45,11 @@ class RegistryEntryActor extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     Cluster cluster = Cluster.lookup().get(getContext().system());
     Events.Registration registration;
-    Genesis genesis;
+    Guardian guardian;
 
-    public RegistryEntryActor(Genesis genesis, Events.Registration registration) {
+    public RegistryEntryActor(Guardian guardian, Events.Registration registration) {
         this.registration = registration;
-        this.genesis = genesis;
+        this.guardian = guardian;
     }
 
     //subscribe to cluster changes
@@ -83,14 +84,14 @@ class RegistryEntryActor extends AbstractActor {
                     final ActorRef sender = getSender();
                     final ActorRef self = getSelf();
                     try {
-                        genesis.async(() -> {
+                        guardian.async(() -> {
                             try {
                                 Object ret = registration.function().apply(Adapter.toTyped(self), message.arguments());
                                 sender.tell(new Events.Response(ret, self), self);
                             } catch (Exception ex) {
                                 sender.tell(new Status.Failure(ex), self);
                             }
-                        }, registration.timeout());
+                        }, message.getTimeout());
                     } catch (RuntimeException ex) {
                         Throwable throwable = ex.getCause();
                         if (throwable == null) throwable = ex;

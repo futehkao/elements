@@ -28,12 +28,15 @@ import akka.cluster.MemberStatus;
 import akka.cluster.typed.Cluster;
 import akka.cluster.typed.Subscribe;
 import akka.cluster.typed.Unsubscribe;
+import net.e6tech.elements.common.actor.CommonBehavior;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
+import net.e6tech.elements.network.cluster.invocation.Registry;
 import net.e6tech.elements.network.cluster.invocation.RegistryImpl;
+import net.e6tech.elements.network.cluster.messaging.Messaging;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -127,7 +130,7 @@ public class ClusterNode implements Initializable {
         if (started)
             return;
         if (membership == null)
-            membership = genesis.typeActorContext().spawnAnonymous(Behaviors.setup(context -> new Membership(context)));
+            membership = genesis.getGuardian().spawnAnonymous(new Membership());
 
         if (broadcast == null) {
             broadcast = new Messaging();
@@ -137,13 +140,13 @@ public class ClusterNode implements Initializable {
             registry = new RegistryImpl();
             registry.setTimeout(timeout);
         }
-        broadcast.start(genesis);
-        registry.start(genesis);
+        broadcast.start(genesis.getGuardian());
+        registry.start(genesis.getGuardian());
         started = true;
     }
 
     public void shutdown() {
-        genesis.typeActorContext().stop(membership);
+        genesis.getGuardian().stop(membership);
         broadcast.shutdown();
         registry.shutdown();
         genesis.terminate();
@@ -152,14 +155,12 @@ public class ClusterNode implements Initializable {
     }
 
     // listener to cluster events
-    class Membership extends AbstractBehavior<ClusterEvent.ClusterDomainEvent> {
-        private ActorContext<ClusterEvent.ClusterDomainEvent> context;
+    class Membership extends CommonBehavior<ClusterEvent.ClusterDomainEvent> {
         Cluster cluster;
 
-        public Membership(ActorContext<ClusterEvent.ClusterDomainEvent> context) {
-            this.context = context;
-            cluster = Cluster.get(context.getSystem());
-            cluster.subscriptions().tell(new Subscribe<>(context.getSelf(), ClusterEvent.ClusterDomainEvent.class));
+        public void initialize() {
+            cluster = Cluster.get(getContext().getSystem());
+            cluster.subscriptions().tell(new Subscribe<>(getContext().getSelf(), ClusterEvent.ClusterDomainEvent.class));
         }
 
         @Override
@@ -204,7 +205,7 @@ public class ClusterNode implements Initializable {
         }
 
         public Behavior<ClusterEvent.ClusterDomainEvent> postStop(PostStop postStop) {
-            cluster.subscriptions().tell(new Unsubscribe(context.getSelf()));
+            cluster.subscriptions().tell(new Unsubscribe(getContext().getSelf()));
             return Behaviors.same();
         }
 

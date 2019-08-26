@@ -22,6 +22,7 @@ import akka.actor.typed.*;
 import akka.actor.typed.javadsl.*;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
+import net.e6tech.elements.common.actor.CommonBehavior;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import scala.concurrent.ExecutionContextExecutor;
@@ -30,25 +31,15 @@ import java.util.*;
 
 import static net.e6tech.elements.network.cluster.invocation.InvocationEvents.*;
 
-public class Registrar extends AbstractBehavior<InvocationEvents> {
+public class Registrar extends CommonBehavior<InvocationEvents> {
 
     private Map<ServiceKey, ActorRef<InvocationEvents.Request>> routes = new HashMap<>(); // key is the context@method
     private Map<ServiceKey, Set<ActorRef<InvocationEvents.Request>>> actors = new HashMap<>();
     private Map<ActorRef<InvocationEvents.Request>, ServiceKey> actorKeys = new HashMap<>();
     private RegistryImpl registry;
-    private ActorContext<InvocationEvents> context;
 
-    public Registrar(ActorContext<InvocationEvents> context, RegistryImpl registry) {
-        this.context = context;
+    public Registrar(RegistryImpl registry) {
         this.registry = registry;
-    }
-
-    public ActorContext<InvocationEvents> getContext() {
-        return context;
-    }
-
-    public void setContext(ActorContext<InvocationEvents> context) {
-        this.context = context;
     }
 
     @Override
@@ -64,7 +55,7 @@ public class Registrar extends AbstractBehavior<InvocationEvents> {
     // spawn a RegistryEntry
     private Behavior<InvocationEvents> registration(Registration registration) {
         String dispatcher;
-        ExecutionContextExecutor executor = context.getSystem().dispatchers().lookup(DispatcherSelector.fromConfig(RegistryImpl.REGISTRY_DISPATCHER));
+        ExecutionContextExecutor executor = getContext().getSystem().dispatchers().lookup(DispatcherSelector.fromConfig(RegistryImpl.REGISTRY_DISPATCHER));
         if (executor != null) {
             dispatcher = RegistryImpl.REGISTRY_DISPATCHER;
         } else {
@@ -73,7 +64,7 @@ public class Registrar extends AbstractBehavior<InvocationEvents> {
 
         // spawn a child to listen for RegistryEntry
         ServiceKey<InvocationEvents.Request> key = ServiceKey.create(InvocationEvents.Request.class, registration.getPath());
-        context.spawnAnonymous(Behaviors.setup(
+        getContext().spawnAnonymous(Behaviors.setup(
                 ctx -> {
                     ctx.getSystem().receptionist().tell(Receptionist.subscribe(key, ctx.getSelf().narrow()));
                     return Behaviors.receive(Object.class)
@@ -82,7 +73,7 @@ public class Registrar extends AbstractBehavior<InvocationEvents> {
                                 Set<ActorRef<InvocationEvents.Request>> set = actors.getOrDefault(key, Collections.emptySet());
                                 for (ActorRef<InvocationEvents.Request> ref : msg.getServiceInstances(key)) {
                                     if (!set.contains(ref)) {
-                                        context.watch(ref); // watch for Terminated event
+                                        getContext().watch(ref); // watch for Terminated event
                                         actorKeys.put(ref, key);
                                         registry.onAnnouncement(key.id());
                                     }
@@ -94,17 +85,13 @@ public class Registrar extends AbstractBehavior<InvocationEvents> {
                 }
         ));
 
-        context.spawnAnonymous(
-                        Behaviors.<InvocationEvents.Request>setup(c -> {
-                            c.getSystem().receptionist().tell(Receptionist.register(key, c.getSelf()));
-                            return new RegistryEntry(c, registry.genesis(), registration);
-                        }),
+        spawnAnonymous(new RegistryEntry(registry.getGuardian(), key, registration),
                         Props.empty().withDispatcherFromConfig(dispatcher));
 
         routes.computeIfAbsent(key,
                 k -> {
-                    GroupRouter<InvocationEvents.Request> g = Routers.group(key);
-                    ActorRef<InvocationEvents.Request> router = context.spawnAnonymous(g);
+                    GroupRouter<InvocationEvents.Request> g = Routers.group(key).withRoundRobinRouting();
+                    ActorRef<InvocationEvents.Request> router = getContext().spawnAnonymous(g);
                     return router;
                 });
 
@@ -141,11 +128,10 @@ public class Registrar extends AbstractBehavior<InvocationEvents> {
         ServiceKey key = ServiceKey.create(InvocationEvents.Request.class, message.getPath());
         Set<ActorRef<InvocationEvents.Request>> actors = this.actors.get(key);
         if (actors == null) {
-            message.getSender().tell(new Response(context.getSelf(), Collections.emptySet()));
+            message.getSender().tell(new Response(getSelf(), Collections.emptySet()));
         } else {
-            message.getSender().tell(new Response(context.getSelf(), actors));
+            message.getSender().tell(new Response(getSelf(), actors));
         }
         return Behaviors.same();
     }
-
 }

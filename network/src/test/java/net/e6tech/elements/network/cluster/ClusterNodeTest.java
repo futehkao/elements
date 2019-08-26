@@ -20,6 +20,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
+import net.e6tech.elements.network.cluster.invocation.Registry;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -49,14 +50,14 @@ public class ClusterNodeTest {
     private void register(ClusterNode clusterNode) {
         Registry registry = clusterNode.getRegistry();
         registry.register("blah", Reactor.class, new Reactor() {
-        }, 100000L);
+        });
     }
 
     private ClusterNode start(int port) {
         ClusterNode node = create(port);
         Registry registry = node.getRegistry();
         registry.register("blah", Reactor.class, new Reactor() {
-        }, 100000L);
+        });
         return node;
     }
 
@@ -78,7 +79,7 @@ public class ClusterNodeTest {
     @Test
     void messaging() throws InterruptedException {
         ClusterNode node = start(2552);
-         while (node.getRegistry().routes("blah", Reactor.class).size() < 1)
+         while (node.getMembers().size() < 2)
              Thread.sleep(100);
         node.getBroadcast().subscribe("test", notice -> {
             System.out.println(node + " " + notice);

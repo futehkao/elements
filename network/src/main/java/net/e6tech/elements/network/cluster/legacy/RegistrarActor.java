@@ -49,7 +49,7 @@ class RegistrarActor extends AbstractActor {
                     } else {
                         dispatcher = Genesis.WORKER_POOL_DISPATCHER;
                     }
-                    Props props = Props.create(RegistryEntryActor.class, () -> new RegistryEntryActor(registry.genesis(), message))
+                    Props props = Props.create(RegistryEntryActor.class, () -> new RegistryEntryActor(registry.getGuardian(), message))
                             .withDispatcher(dispatcher);
                     getContext().actorOf(props); // create the actor
                 })

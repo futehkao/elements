@@ -21,23 +21,26 @@ import akka.actor.typed.DispatcherSelector;
 import akka.actor.typed.javadsl.*;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
+import net.e6tech.elements.common.actor.CommonBehavior;
 import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
 
-public class Destination  extends AbstractBehavior<MessagingEvents> {
+public class Destination  extends CommonBehavior<MessagingEvents> {
 
     private Subscriber subscriber;
-    private ActorContext context;
 
-    public Destination(ActorContext context, Subscriber subscriber) {
-        this.context = context;
+    public Destination(Subscriber subscriber) {
         this.subscriber = subscriber;
-        ActorRef mediator = DistributedPubSub.lookup().get(Adapter.toUntyped(context.getSystem())).mediator();
-        mediator.tell(new DistributedPubSubMediator.Put(Adapter.toUntyped(context.getSelf())), Adapter.toUntyped(context.getSelf()));
+    }
 
-        context.spawnAnonymous(Behaviors.receive(DistributedPubSubMediator.SubscribeAck.class)
+    @Override
+    public void initialize() {
+        ActorRef mediator = DistributedPubSub.lookup().get(untypedContext().system()).mediator();
+        mediator.tell(new DistributedPubSubMediator.Put(untypedRef()), untypedRef());
+
+        getContext().spawnAnonymous(Behaviors.receive(DistributedPubSubMediator.SubscribeAck.class)
                 .onMessage(DistributedPubSubMediator.SubscribeAck.class,
                         (ctx, msg) -> {
                             ctx.getSystem().log().info("subscribing to " + msg.toString());
@@ -49,7 +52,7 @@ public class Destination  extends AbstractBehavior<MessagingEvents> {
     public Receive createReceive() {
         return newReceiveBuilder()
                 .onMessage(MessagingEvents.Send.class, send -> {
-                    context.getSystem().dispatchers().lookup(DispatcherSelector.defaultDispatcher())
+                    getContext().getSystem().dispatchers().lookup(DispatcherSelector.defaultDispatcher())
                             .execute(() -> subscriber.receive(new Notice(send.destination, (Serializable) send.message)));
                     return Behaviors.same();
                 })

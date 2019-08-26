@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.util.SystemException;

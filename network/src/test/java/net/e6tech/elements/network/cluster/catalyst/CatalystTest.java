@@ -23,8 +23,8 @@ import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.ClosureSerializer;
 import net.e6tech.elements.network.cluster.ClusterNode;
 import net.e6tech.elements.network.cluster.ClusterNodeTest;
-import net.e6tech.elements.network.cluster.Invoker;
-import net.e6tech.elements.network.cluster.Registry;
+import net.e6tech.elements.network.cluster.invocation.Invoker;
+import net.e6tech.elements.network.cluster.invocation.Registry;
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
@@ -56,7 +56,7 @@ public class CatalystTest {
                         System.out.println("Method " + target.getClass().getName() + "::" + method.getName() + " handled by " + actor);
                         return super.invoke(actor, target, method, arguments);
                     }
-                }, 100000L);
+                });
         return registry;
     }
 
@@ -103,7 +103,7 @@ public class CatalystTest {
 
         Registry registry = create(2552);
 
-        while (registry.routes("blah", Reactor.class).size() < 1)
+        while (registry.routes("blah", Reactor.class).size() < 2)
             Thread.sleep(100);
 
         RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();
@@ -122,7 +122,7 @@ public class CatalystTest {
             return list.stream();
         };
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 100; i++) {
             remoteDataSet.add(segment);
         }
 

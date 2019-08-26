@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.invocation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

@@ -16,13 +16,10 @@
 
 package net.e6tech.elements.network.cluster;
 
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
-import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.util.concurrent.Async;
+import net.e6tech.elements.network.cluster.invocation.Registry;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,7 +44,7 @@ public class RegistryTest {
 
         registry.register("blah", (actor, sv) -> {
             return ((String)sv[0]).toUpperCase();
-        }, 0L);
+        });
         Thread.sleep(100L);
 
         // routing ServiceMessage
@@ -102,7 +99,7 @@ public class RegistryTest {
                 response.map = request.map;
                 return response;
             }
-        }, 500L);
+        });
         Thread.sleep(100L);
 
         Async<X> async = registry.async("blah", X.class, 5000L);
@@ -142,7 +139,7 @@ public class RegistryTest {
                 response.map = request.map;
                 return response;
             }
-        }, 500L);
+        });
         synchronized (this) {
             wait();
         }
@@ -169,7 +166,7 @@ public class RegistryTest {
                 response.map = request.map;
                 return response;
             }
-        }, 500L);
+        });
         synchronized (this) {
             wait();
         }

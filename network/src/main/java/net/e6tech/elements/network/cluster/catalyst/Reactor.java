@@ -17,7 +17,7 @@
 package net.e6tech.elements.network.cluster.catalyst;
 
 import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.network.cluster.Local;
+import net.e6tech.elements.network.cluster.invocation.Local;
 
 import java.util.function.Function;
 
