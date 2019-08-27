@@ -24,6 +24,8 @@ import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import com.typesafe.config.Config;
 import net.e6tech.elements.common.actor.typed.WorkEvents;
+import net.e6tech.elements.common.actor.typed.WorkerPool;
+import net.e6tech.elements.common.actor.typed.WorkerPoolConfig;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.concurrent.Callable;
@@ -34,37 +36,49 @@ public class Guardian extends CommonBehavior<SpawnProtocol> {
     private Behavior<SpawnProtocol> main;
     private akka.actor.typed.ActorRef<WorkEvents> workerPool;
     private long timeout = 5000L;
+    private String name = "galaxy";
 
-    public static Guardian setup(String name, Config config,  long timeout, Behavior<WorkEvents> pool) {
-        Guardian guardian = new Guardian();
-        guardian.timeout = timeout;
-        guardian.main = Behaviors.setup(
+    public Guardian() {
+    }
+
+    public Guardian boot(Config config, WorkerPoolConfig workerPoolConfig) {
+        Behavior<WorkEvents> pool = WorkerPool.newPool(workerPoolConfig);
+        main = Behaviors.setup(
                 context -> {
-                    guardian.setup(guardian, context);
+                    setup(this, context);
                     return SpawnProtocol.behavior();
                 });
 
-        akka.actor.typed.ActorSystem<SpawnProtocol> system = akka.actor.typed.ActorSystem.create(guardian.getMain(), name, config);
+        akka.actor.typed.ActorSystem<SpawnProtocol> system = akka.actor.typed.ActorSystem.create(main, name, config);
 
         try {
+            // start the worker pool actor
             CompletionStage<ActorRef<WorkEvents>> stage = AskPattern.ask(system, // cannot use guardian.getSystem() because context is not set yet
                     replyTo -> new SpawnProtocol.Spawn(pool, "WorkerPool", Props.empty(), replyTo),
-                    java.time.Duration.ofSeconds(5), system.scheduler());
+                    java.time.Duration.ofSeconds(timeout), system.scheduler());
             stage.whenComplete((ref, throwable) -> {
-                guardian.workerPool = ref;
+                workerPool = ref;
             });
         } catch (Exception e) {
             throw new SystemException(e);
         }
-
-        return guardian;
+        return this;
     }
 
-    private Guardian() {
+    public long getTimeout() {
+        return timeout;
     }
 
-    public Behavior<SpawnProtocol> getMain() {
-        return main;
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public CompletionStage<Void> async(Runnable runnable) {

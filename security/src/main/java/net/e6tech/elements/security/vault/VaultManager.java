@@ -764,7 +764,8 @@ public class VaultManager {
         return modified;
     }
 
-    private ClearText getKey(String keyAlias, String version) throws GeneralSecurityException {
+    // This is declared to be protected to allow a subclass to retrieve the key from a different place, e.g. an application key HSM
+    protected ClearText getKey(String keyAlias, String version) throws GeneralSecurityException {
         openKeyData();
         if (version != null) {
             String key = keyAlias + ":" + version;
@@ -780,7 +781,8 @@ public class VaultManager {
         return ct;
     }
 
-    private void addKey(ClearText ct) throws GeneralSecurityException {
+    // This is declared to be protected to allow a subclass to retrieve the key from a different place, e.g. an application key HSM
+    protected void addKey(ClearText ct) throws GeneralSecurityException {
         openKeyData();
         setCreationTimeVersion(ct);
         // need to get the latest passphrase

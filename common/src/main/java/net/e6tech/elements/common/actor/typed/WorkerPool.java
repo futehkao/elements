@@ -20,6 +20,7 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.Terminated;
 import akka.actor.typed.javadsl.*;
+import net.e6tech.elements.common.reflection.Reflection;
 
 import java.time.Duration;
 import java.util.Iterator;
@@ -29,23 +30,19 @@ import java.util.Set;
 
 public class WorkerPool extends AbstractBehavior<WorkEvents> {
 
-    private int initialCapacity = 1;
-    private int maxCapacity = Integer.MAX_VALUE;  // ie unlimited
-    private long idleTimeout = 10000L;
     private boolean cleanupScheduled = false;
     private Set<ActorRef<WorkEvents>> workers = new LinkedHashSet<>();
     private Set<ActorRef<WorkEvents>> idleWorkers = new LinkedHashSet<>();
     private LinkedList<Task> waiting = new LinkedList<>();
+    private WorkerPoolConfig config = new WorkerPoolConfig();
 
     private ActorContext<WorkEvents> context;
 
-    public static Behavior<WorkEvents> newPool(int initialCapacity, int maxCapacity, long idleTimeout) {
+    public static Behavior<WorkEvents> newPool(WorkerPoolConfig config) {
         return Behaviors.setup(ctx -> {
             WorkerPool instance = new WorkerPool(ctx);
-            instance.setInitialCapacity(initialCapacity);
-            instance.setMaxCapacity(maxCapacity);
-            instance.setIdleTimeout(idleTimeout);
-            for (int i = 0; i < initialCapacity; i++) {
+            Reflection.copyInstance(instance.config, config);
+            for (int i = 0; i < instance.config.getInitialCapacity(); i++) {
                 instance.newWorker();
             }
             return instance;
@@ -54,30 +51,6 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
 
     public WorkerPool(ActorContext<WorkEvents> context) {
         this.context = context;
-    }
-
-    public int getInitialCapacity() {
-        return initialCapacity;
-    }
-
-    public void setInitialCapacity(int initialCapacity) {
-        this.initialCapacity = initialCapacity;
-    }
-
-    public int getMaxCapacity() {
-        return maxCapacity;
-    }
-
-    public void setMaxCapacity(int maxCapacity) {
-        this.maxCapacity = maxCapacity;
-    }
-
-    public long getIdleTimeout() {
-        return idleTimeout;
-    }
-
-    public void setIdleTimeout(long idleTimeout) {
-        this.idleTimeout = idleTimeout;
     }
 
     @Override
@@ -104,7 +77,7 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
             ActorRef worker = iterator.next();
             iterator.remove();
             worker.tell(event);
-        } else if (workers.size() < maxCapacity) {
+        } else if (workers.size() < config.getMaxCapacity()) {
             // put in waiting list.  When a work becomes idled, it will be picked up
             waiting.add(new Task(event.getSender(), event));
             newWorker();
@@ -120,7 +93,7 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
             ActorRef worker = iterator.next();
             iterator.remove();
             worker.tell(event);
-        } else if (workers.size() < maxCapacity) {
+        } else if (workers.size() < config.getMaxCapacity()) {
             // put in waiting list.  When a work becomes idled, it will be picked up
             waiting.add(new Task(event.getSender(), event));
             newWorker();
@@ -155,9 +128,9 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
     private Behavior<WorkEvents> cleanup(WorkEvents.Cleanup message) {
         if (cleanupScheduled)
             return Behaviors.same();
-        if (idleTimeout == 0)
+        if (config.getIdleTimeout() == 0)
             return Behaviors.same();
-        final Duration interval = Duration.ofMillis(idleTimeout);
+        final Duration interval = Duration.ofMillis(config.getIdleTimeout());
         ActorRef self = context.getSelf();
         context.scheduleOnce(interval, self, new WorkEvents.Cleanup());
         cleanupScheduled = true;

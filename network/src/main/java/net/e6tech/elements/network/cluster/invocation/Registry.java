@@ -28,7 +28,7 @@ import java.util.function.Function;
 
 public interface Registry {
 
-    void start(Guardian guadian);
+    void start(Guardian guardian);
 
     void shutdown() ;
 

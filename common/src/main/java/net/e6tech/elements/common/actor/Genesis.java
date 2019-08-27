@@ -18,7 +18,7 @@ package net.e6tech.elements.common.actor;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import net.e6tech.elements.common.actor.typed.WorkerPool;
+import net.e6tech.elements.common.actor.typed.WorkerPoolConfig;
 import net.e6tech.elements.common.resources.*;
 
 import java.util.concurrent.Callable;
@@ -32,9 +32,7 @@ public class Genesis implements Initializable {
     private String name;
     private String configuration;
     private Guardian guardian;
-    private int initialCapacity = 1;
-    private int maxCapacity = Integer.MAX_VALUE;  // ie unlimited
-    private long idleTimeout = 10000L;
+    private WorkerPoolConfig workPoolConfig = new WorkerPoolConfig();
     private long timeout = 5000L;
 
     public long getTimeout() {
@@ -45,32 +43,12 @@ public class Genesis implements Initializable {
         this.timeout = timeout;
     }
 
-    public int getInitialCapacity() {
-        return initialCapacity;
+    public WorkerPoolConfig getWorkPoolConfig() {
+        return workPoolConfig;
     }
 
-    public void setInitialCapacity(int initialCapacity) {
-        this.initialCapacity = initialCapacity;
-    }
-
-    public int getMaxCapacity() {
-        return maxCapacity;
-    }
-
-    public void setMaxCapacity(int maxCapacity) {
-        this.maxCapacity = maxCapacity;
-    }
-
-    public long getIdleTimeout() {
-        return idleTimeout;
-    }
-
-    public void setIdleTimeout(long idleTimeout) {
-        if (idleTimeout < 0) {
-            throw new IllegalArgumentException();
-        } else {
-            this.idleTimeout = idleTimeout;
-        }
+    public void setWorkPoolConfig(WorkerPoolConfig workPoolConfig) {
+        this.workPoolConfig = workPoolConfig;
     }
 
     @Override
@@ -115,7 +93,10 @@ public class Genesis implements Initializable {
             ));
         }
         // Create an Akka system
-        guardian = Guardian.setup(name, config, getTimeout(), WorkerPool.newPool(initialCapacity, maxCapacity, idleTimeout));
+        guardian = new Guardian();
+        guardian.setName(getName());
+        guardian.setTimeout(getTimeout());
+        guardian.boot(config, workPoolConfig);
     }
 
     public Guardian getGuardian() {

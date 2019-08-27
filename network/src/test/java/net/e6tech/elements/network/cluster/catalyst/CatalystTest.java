@@ -103,7 +103,7 @@ public class CatalystTest {
 
         Registry registry = create(2552);
 
-        while (registry.routes("blah", Reactor.class).size() < 2)
+        while (registry.routes("blah", Reactor.class).size() < 3)
             Thread.sleep(100);
 
         RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();

@@ -22,7 +22,8 @@ atom("cluster") {
     configuration = """
         genesis:
             name: ${clusterName}
-            initialCapacity: 5
+            workPoolConfig:
+                initialCapacity: 10
            
 """
     genesis = Genesis

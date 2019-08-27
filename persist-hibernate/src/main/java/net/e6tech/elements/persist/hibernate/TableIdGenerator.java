@@ -38,6 +38,7 @@ public class TableIdGenerator extends ModifiedTableGenerator implements Cloneabl
     private long defaultInitialValue = 1;
     private int defaultIncrementSize = 100;
     private String defaultOptimizer = StandardOptimizerDescriptor.POOLED_LO.getExternalName();
+    private String segmentValuePrefix = "";
 
     @SuppressWarnings("squid:S2975") // we really want clone!
     public TableIdGenerator clone() {
@@ -80,6 +81,14 @@ public class TableIdGenerator extends ModifiedTableGenerator implements Cloneabl
         this.defaultOptimizer = defaultOptimizer;
     }
 
+    public String getSegmentValuePrefix() {
+        return segmentValuePrefix;
+    }
+
+    public void setSegmentValuePrefix(String segmentValuePrefix) {
+        this.segmentValuePrefix = segmentValuePrefix;
+    }
+
     @Override
     protected QualifiedName determineGeneratorTableName(Properties params, JdbcEnvironment jdbcEnvironment, ServiceRegistry serviceRegistry) {
         final String tableName = ConfigurationHelper.getString( TABLE_PARAM, params, defaultTableName );
@@ -102,6 +111,11 @@ public class TableIdGenerator extends ModifiedTableGenerator implements Cloneabl
     }
 
     @Override
+    protected String determineSegmentValue(Properties params) {
+        String segmentValue = super.determineSegmentValue(params);
+        return (getSegmentValuePrefix() == null || getSegmentValuePrefix().isEmpty()) ? segmentValue : getSegmentValuePrefix() + segmentValue;
+    }
+
     protected long determineInitialValue(Properties params) {
         long value =  ConfigurationHelper.getLong( INITIAL_PARAM, params, -1 );
         if (value == -1) {
