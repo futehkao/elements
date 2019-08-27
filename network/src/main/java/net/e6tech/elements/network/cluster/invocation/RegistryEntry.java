@@ -18,23 +18,17 @@ package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
-import akka.actor.typed.Behavior;
-import akka.actor.typed.javadsl.Behaviors;
-import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import net.e6tech.elements.common.actor.CommonBehavior;
-
-import net.e6tech.elements.common.actor.Guardian;
+import net.e6tech.elements.common.actor.Typed;
 
 public class RegistryEntry extends CommonBehavior<InvocationEvents.Request> {
     private InvocationEvents.Registration registration;
-    private Guardian guardian;
     private ServiceKey<InvocationEvents.Request> key;
 
-    public RegistryEntry(Guardian guardian, ServiceKey<InvocationEvents.Request> key, InvocationEvents.Registration registration) {
+    public RegistryEntry(ServiceKey<InvocationEvents.Request> key, InvocationEvents.Registration registration) {
         this.registration = registration;
-        this.guardian = guardian;
         this.key = key;
     }
 
@@ -42,18 +36,12 @@ public class RegistryEntry extends CommonBehavior<InvocationEvents.Request> {
         getSystem().receptionist().tell(Receptionist.register(key, getSelf()));
     }
 
-    @Override
-    public Receive<InvocationEvents.Request> createReceive() {
-        return newReceiveBuilder()
-                .onMessage(InvocationEvents.Request.class, this::request)
-                .build();
-    }
-
-    private Behavior<InvocationEvents.Request> request(InvocationEvents.Request request) {
+    @Typed
+    private void request(InvocationEvents.Request request) {
         final ActorRef sender = request.getSender();
         final ActorRef self = getSelf();
         try {
-            guardian.async(() -> {
+            getGuardian().async(() -> {
                 try {
                     Object ret = registration.function().apply(self, request.arguments());
                     sender.tell(new InvocationEvents.Response(self, ret));
@@ -66,7 +54,6 @@ public class RegistryEntry extends CommonBehavior<InvocationEvents.Request> {
             if (throwable == null) throwable = ex;
             sender.tell(new Status.Failure(throwable));
         }
-        return Behaviors.same();
     }
 
 }

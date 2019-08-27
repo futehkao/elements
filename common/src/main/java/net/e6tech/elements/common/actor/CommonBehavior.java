@@ -19,27 +19,98 @@ package net.e6tech.elements.common.actor;
 import akka.actor.PoisonPill;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.ActorSystem;
+import akka.actor.typed.Behavior;
 import akka.actor.typed.Props;
 import akka.actor.typed.javadsl.*;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.util.SystemException;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
 
+    private static Cache<Class, Receive> cache = CacheBuilder.newBuilder()
+            .concurrencyLevel(32)
+            .initialCapacity(128)
+            .maximumSize(100)
+            .build();
+
     private ActorContext<T> context;
+    private Guardian guardian;
+
+    @Override
+    public Receive<T> createReceive() {
+
+        Receive<T> receive = cache.getIfPresent(getClass());
+        if (receive != null)
+            return receive;
+        ReceiveBuilder builder =  newReceiveBuilder();
+
+        Class cls = getClass();
+
+        Set<Class> events = new HashSet<>();
+        while (!cls.equals(CommonBehavior.class)) {
+            for (Method method : cls.getDeclaredMethods()) {
+                Annotation typed = method.getAnnotation(Typed.class);
+
+                if (typed == null)
+                    continue;
+                Class paramType = Reflection.getParametrizedType(getClass(), 0);
+                if (method.getParameterCount() == 1
+                        && (Behavior.class.isAssignableFrom(method.getReturnType()) || void.class.equals(method.getReturnType()))
+                        && !events.contains(method.getParameterTypes()[0])) {
+                    events.add(method.getParameterTypes()[0]);
+                    method.setAccessible(true);
+                    boolean behavior = Behavior.class.isAssignableFrom(method.getReturnType());
+                    boolean onMessage = paramType.isAssignableFrom(method.getParameterTypes()[0]);
+                    if (onMessage) {
+                        builder = builder.onMessage(method.getParameterTypes()[0],
+                                m -> {
+                                    Object ret = method.invoke(this, m);
+                                    return (behavior) ? (Behavior) ret : Behaviors.same();
+                                });
+                    } else {
+                        builder = builder.onSignal(method.getParameterTypes()[0],
+                                m -> {
+                                    Object ret = method.invoke(this, m);
+                                    return (behavior) ? (Behavior) ret : Behaviors.same();
+                                });
+                    }
+                } else {
+                    throw new SystemException("Invoiad method signature for method " + method);
+                }
+            }
+            cls = cls.getSuperclass();
+        }
+
+        receive = builder.build();
+        cache.put(getClass(), receive);
+        return receive;
+    }
 
     public ActorContext<T> getContext() {
         return context;
     }
 
-    void setContext(ActorContext<T> context) {
+    void setup(Guardian guardian, ActorContext<T> context) {
+        this.guardian = guardian;
         this.context = context;
         initialize();
     }
 
     public ActorSystem<Void> getSystem() {
         return context.getSystem();
+    }
+
+    public Guardian getGuardian() {
+        return guardian;
     }
 
     public ActorRef<T> getSelf() {
@@ -52,7 +123,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
     public <U> ActorRef<U> spawn(CommonBehavior<U> behavior, String name) {
         return context.spawn(Behaviors.<U>setup(
                 ctx -> {
-                    behavior.setContext(ctx);
+                    behavior.setup(guardian, ctx);
                     return behavior;
                 }),
                 name);
@@ -61,7 +132,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
     public <U> ActorRef<U> spawnAnonymous(CommonBehavior<U> behavior) {
         return context.spawnAnonymous(Behaviors.<U>setup(
                 ctx -> {
-                    behavior.setContext(ctx);
+                    behavior.setup(guardian, ctx);
                     return behavior;
                 }));
     }
@@ -69,7 +140,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
     public <U> ActorRef<U> spawnAnonymous(CommonBehavior<U> behavior, Props props) {
         return context.spawnAnonymous(Behaviors.<U>setup(
                 ctx -> {
-                    behavior.setContext(ctx);
+                    behavior.setup(guardian, ctx);
                     return behavior;
                 }), props);
     }

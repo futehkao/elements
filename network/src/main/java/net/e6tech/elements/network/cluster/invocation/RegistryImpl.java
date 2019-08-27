@@ -17,8 +17,6 @@
 package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.typed.ActorRef;
-import net.e6tech.elements.common.actor.CommonBehavior;
-import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.actor.Guardian;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.cluster.AsyncImpl;
@@ -71,13 +69,15 @@ public class RegistryImpl implements Registry {
 
     void onAnnouncement(String path) {
         dispatcher.execute(() -> {
-            for (RouteListener l : listeners) l.onAnnouncement(path);
+            for (RouteListener l : listeners)
+                l.onAnnouncement(path);
         });
     }
 
     void onTerminated(String path, ActorRef actor) {
         dispatcher.execute(() -> {
-            for (RouteListener l : listeners) l.onTerminated(path, actor.path().toString());
+            for (RouteListener l : listeners)
+                l.onTerminated(path, actor.path().toString());
         });
     }
 

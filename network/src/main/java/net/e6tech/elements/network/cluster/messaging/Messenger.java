@@ -21,10 +21,12 @@ import akka.actor.Status;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
-import akka.actor.typed.javadsl.*;
+import akka.actor.typed.javadsl.Adapter;
+import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
 import net.e6tech.elements.common.actor.CommonBehavior;
+import net.e6tech.elements.common.actor.Typed;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
@@ -48,20 +50,8 @@ public class Messenger extends CommonBehavior<MessagingEvents> {
         mediator = DistributedPubSub.lookup().get(untypedContext().system()).mediator();
     }
 
-    @Override
-    public Receive<MessagingEvents> createReceive() {
-        return newReceiveBuilder()
-                .onMessage(Subscribe.class, this::subscribe)
-                .onMessage(Unsubscribe.class, this::unsubscribe)
-                .onMessage(NewDestination.class, this::newDestination)
-                .onMessage(RemoveDestination.class, this::removeDestination)
-                .onMessage(Publish.class, this::publish)
-                .onMessage(RemoveDestination.class, this::removeDestination)
-                .onSignal(PostStop.class, this::postStop)
-                .build();
-    }
-
-    private Behavior<MessagingEvents> postStop(PostStop postStop) {
+    @Typed
+    private void postStop(PostStop postStop) {
         for (Map<Subscriber, ActorRef> map : subscribers.values()) {
             for (ActorRef ref : map.values()) {
                 ref.tell(PoisonPill.getInstance());
@@ -73,18 +63,18 @@ public class Messenger extends CommonBehavior<MessagingEvents> {
             ref.tell(PoisonPill.getInstance());
         }
         destinations.clear();
-        return Behaviors.same();
     }
 
-    private Behavior<MessagingEvents> subscribe(Subscribe event) {
+    @Typed
+    private void subscribe(Subscribe event) {
         Map<Subscriber, ActorRef> map = subscribers.computeIfAbsent(event.topic, topic -> new HashMap<>());
         map.computeIfAbsent(event.subscriber,
                 sub -> spawn(new SubscriberActor(event.topic, event.subscriber),
                 SUBSCRIBER_PREFIX + event.topic + System.identityHashCode(event.subscriber)));
-        return Behaviors.same();
     }
 
-    private Behavior<MessagingEvents> unsubscribe(Unsubscribe event) {
+    @Typed
+    private void unsubscribe(Unsubscribe event) {
         Map<Subscriber, ActorRef> map = subscribers.get(event.topic);
         if (map != null) {
             ActorRef child = map.get(event.subscriber);
@@ -94,9 +84,9 @@ public class Messenger extends CommonBehavior<MessagingEvents> {
                 map.remove(event.subscriber);
             }
         }
-        return Behaviors.same();
     }
 
+    @Typed
     private Behavior<MessagingEvents> newDestination(NewDestination event) {
         if (destinations.get(event.destination) != null) {
             event.getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")));
@@ -107,25 +97,25 @@ public class Messenger extends CommonBehavior<MessagingEvents> {
         return Behaviors.same();
     }
 
-    private Behavior<MessagingEvents> removeDestination(RemoveDestination event) {
+    @Typed
+    private void removeDestination(RemoveDestination event) {
         ActorRef child = destinations.get(event.destination);
         if (child != null) {
             mediator.tell(new DistributedPubSubMediator.Remove(child.path().name()), untypedRef());
             child.tell(PoisonPill.getInstance());
             destinations.remove("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + event.destination);
         }
-        return Behaviors.same();
     }
 
-    private Behavior<MessagingEvents> publish(Publish event) {
+    @Typed
+    private void publish(Publish event) {
         mediator.tell(new DistributedPubSubMediator.Publish(event.getTopic(), event), untypedRef());
-        return Behaviors.same();
     }
 
-    private Behavior<MessagingEvents> send(Send event) {
+    @Typed
+    private void send(Send event) {
         mediator.tell(new DistributedPubSubMediator.Send("/user/" + getSelf().path().name() + "/" + DESTINATION_PREFIX + event.destination,
                 event, true), untypedRef());
-        return Behaviors.same();
     }
 
 }

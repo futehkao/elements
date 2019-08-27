@@ -18,12 +18,18 @@ package net.e6tech.elements.network.cluster.invocation;
 
 
 import akka.actor.Status;
-import akka.actor.typed.*;
-import akka.actor.typed.javadsl.*;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.DispatcherSelector;
+import akka.actor.typed.Props;
+import akka.actor.typed.Terminated;
+import akka.actor.typed.javadsl.Behaviors;
+import akka.actor.typed.javadsl.GroupRouter;
+import akka.actor.typed.javadsl.Routers;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import net.e6tech.elements.common.actor.CommonBehavior;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.Typed;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import scala.concurrent.ExecutionContextExecutor;
 
@@ -42,18 +48,9 @@ public class Registrar extends CommonBehavior<InvocationEvents> {
         this.registry = registry;
     }
 
-    @Override
-    public Receive<InvocationEvents> createReceive() {
-        return newReceiveBuilder()
-                .onMessage(Registration.class, this::registration)
-                .onMessage(Request.class, this::request)
-                .onMessage(Routes.class, this::routes)
-                .onSignal(Terminated.class, this::terminated)
-                .build();
-    }
-
     // spawn a RegistryEntry
-    private Behavior<InvocationEvents> registration(Registration registration) {
+    @Typed
+    private void registration(Registration registration) {
         String dispatcher;
         ExecutionContextExecutor executor = getContext().getSystem().dispatchers().lookup(DispatcherSelector.fromConfig(RegistryImpl.REGISTRY_DISPATCHER));
         if (executor != null) {
@@ -85,7 +82,7 @@ public class Registrar extends CommonBehavior<InvocationEvents> {
                 }
         ));
 
-        spawnAnonymous(new RegistryEntry(registry.getGuardian(), key, registration),
+        spawnAnonymous(new RegistryEntry(key, registration),
                         Props.empty().withDispatcherFromConfig(dispatcher));
 
         routes.computeIfAbsent(key,
@@ -94,12 +91,11 @@ public class Registrar extends CommonBehavior<InvocationEvents> {
                     ActorRef<InvocationEvents.Request> router = getContext().spawnAnonymous(g);
                     return router;
                 });
-
-        return Behaviors.same();
     }
 
     // Forward request to router
-    private Behavior<InvocationEvents> request(Request request) {
+    @Typed
+    private void request(Request request) {
         ServiceKey key = ServiceKey.create(InvocationEvents.Request.class, request.getPath());
         ActorRef<InvocationEvents.Request> router = routes.get(key);
         if (router == null) {
@@ -107,11 +103,11 @@ public class Registrar extends CommonBehavior<InvocationEvents> {
         } else {
             router.tell(request);
         }
-
-        return Behaviors.same();
     }
 
-    private Behavior<InvocationEvents> terminated(Terminated terminated) {
+    // received terminated from RegistryEntry
+    @Typed
+    private void terminated(Terminated terminated) {
         ActorRef actor = terminated.getRef();
         ServiceKey key = actorKeys.get(actor);
         if (key != null) {
@@ -121,10 +117,10 @@ public class Registrar extends CommonBehavior<InvocationEvents> {
                 registry.onTerminated(key.id(), actor);
             }
         }
-        return Behaviors.same();
     }
 
-    private Behavior<InvocationEvents> routes(Routes message) {
+    @Typed
+    private void routes(Routes message) {
         ServiceKey key = ServiceKey.create(InvocationEvents.Request.class, message.getPath());
         Set<ActorRef<InvocationEvents.Request>> actors = this.actors.get(key);
         if (actors == null) {
@@ -132,6 +128,5 @@ public class Registrar extends CommonBehavior<InvocationEvents> {
         } else {
             message.getSender().tell(new Response(getSelf(), actors));
         }
-        return Behaviors.same();
     }
 }

@@ -26,7 +26,6 @@ import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.actor.Guardian;
 
 /**

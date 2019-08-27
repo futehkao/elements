@@ -114,9 +114,6 @@ public class Genesis implements Initializable {
                             "}"
             ));
         }
-
-
-
         // Create an Akka system
         guardian = Guardian.setup(name, config, getTimeout(), WorkerPool.newPool(initialCapacity, maxCapacity, idleTimeout));
     }

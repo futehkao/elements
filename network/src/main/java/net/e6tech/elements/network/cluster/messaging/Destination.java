@@ -18,10 +18,11 @@ package net.e6tech.elements.network.cluster.messaging;
 
 import akka.actor.ActorRef;
 import akka.actor.typed.DispatcherSelector;
-import akka.actor.typed.javadsl.*;
+import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
 import net.e6tech.elements.common.actor.CommonBehavior;
+import net.e6tech.elements.common.actor.Typed;
 import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
@@ -48,14 +49,9 @@ public class Destination  extends CommonBehavior<MessagingEvents> {
                         }).build());
     }
 
-    @Override
-    public Receive createReceive() {
-        return newReceiveBuilder()
-                .onMessage(MessagingEvents.Send.class, send -> {
-                    getContext().getSystem().dispatchers().lookup(DispatcherSelector.defaultDispatcher())
-                            .execute(() -> subscriber.receive(new Notice(send.destination, (Serializable) send.message)));
-                    return Behaviors.same();
-                })
-                .build();
+    @Typed
+    private void send(MessagingEvents.Send send) {
+        getContext().getSystem().dispatchers().lookup(DispatcherSelector.defaultDispatcher())
+                .execute(() -> subscriber.receive(new Notice(send.destination, (Serializable) send.message)));
     }
 }

@@ -22,7 +22,6 @@ import akka.actor.typed.Props;
 import akka.actor.typed.SpawnProtocol;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
-import akka.actor.typed.javadsl.Receive;
 import com.typesafe.config.Config;
 import net.e6tech.elements.common.actor.typed.WorkEvents;
 import net.e6tech.elements.common.util.SystemException;
@@ -41,7 +40,7 @@ public class Guardian extends CommonBehavior<SpawnProtocol> {
         guardian.timeout = timeout;
         guardian.main = Behaviors.setup(
                 context -> {
-                    guardian.setContext(context);
+                    guardian.setup(guardian, context);
                     return SpawnProtocol.behavior();
                 });
 
@@ -66,11 +65,6 @@ public class Guardian extends CommonBehavior<SpawnProtocol> {
 
     public Behavior<SpawnProtocol> getMain() {
         return main;
-    }
-
-    @Override
-    public Receive createReceive() {
-        return newReceiveBuilder().build();
     }
 
     public CompletionStage<Void> async(Runnable runnable) {

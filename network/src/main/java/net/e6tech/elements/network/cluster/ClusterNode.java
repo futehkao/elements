@@ -21,7 +21,7 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.Terminated;
-import akka.actor.typed.javadsl.*;
+import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
@@ -30,6 +30,7 @@ import akka.cluster.typed.Subscribe;
 import akka.cluster.typed.Unsubscribe;
 import net.e6tech.elements.common.actor.CommonBehavior;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.Typed;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
@@ -129,6 +130,7 @@ public class ClusterNode implements Initializable {
     public void start() {
         if (started)
             return;
+
         if (membership == null)
             membership = genesis.getGuardian().spawnAnonymous(new Membership());
 
@@ -136,10 +138,12 @@ public class ClusterNode implements Initializable {
             broadcast = new Messaging();
             broadcast.setTimeout(timeout);
         }
+
         if (registry == null) {
             registry = new RegistryImpl();
             registry.setTimeout(timeout);
         }
+
         broadcast.start(genesis.getGuardian());
         registry.start(genesis.getGuardian());
         started = true;
@@ -163,52 +167,40 @@ public class ClusterNode implements Initializable {
             cluster.subscriptions().tell(new Subscribe<>(getContext().getSelf(), ClusterEvent.ClusterDomainEvent.class));
         }
 
-        @Override
-        public Receive<ClusterEvent.ClusterDomainEvent> createReceive() {
-            ReceiveBuilder<ClusterEvent.ClusterDomainEvent> builder = newReceiveBuilder();
-            return builder
-                    .onMessage(ClusterEvent.MemberUp.class, this::memberUp)
-                    //.onMessage(ClusterEvent.CurrentClusterState.class, this::currentState)
-                    .onMessage(ClusterEvent.MemberRemoved.class, this::removed)
-                    .onMessage(ClusterEvent.UnreachableMember.class, this::unreachable)
-                    .onSignal(PostStop.class, this::postStop)
-                    .onSignal(Terminated.class, this::terminated)
-                    .build();
-        }
-
-        Behavior<ClusterEvent.ClusterDomainEvent> memberUp(ClusterEvent.MemberUp member) {
+        @Typed
+        void memberUp(ClusterEvent.MemberUp member) {
             members.put(member.member().address(), member.member());
             memberListeners.forEach(listener -> listener.memberUp(member.member().address().toString()));
-            return Behaviors.same();
         }
 
-        Behavior<ClusterEvent.ClusterDomainEvent> currentState(ClusterEvent.CurrentClusterState state) {
-            for (Member member : state.getMembers()) {
+        @Typed
+        void currentState(ClusterEvent.CurrentClusterState state) {
+             for (Member member : state.getMembers()) {
                 if (member.status().equals(MemberStatus.up())) {
                     members.put(member.address(), member);
                     memberListeners.forEach(listener -> listener.memberUp(member.address().toString()));
                 }
             }
-            return Behaviors.same();
         }
 
-        Behavior<ClusterEvent.ClusterDomainEvent> removed(ClusterEvent.MemberRemoved member) {
+        @Typed
+        void removed(ClusterEvent.MemberRemoved member) {
             members.remove(member.member().address());
             memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
-            return Behaviors.same();
         }
 
-        Behavior<ClusterEvent.ClusterDomainEvent> unreachable(ClusterEvent.UnreachableMember member) {
+        @Typed
+        void unreachable(ClusterEvent.UnreachableMember member) {
             members.remove(member.member().address());
             memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
-            return Behaviors.same();
         }
 
-        public Behavior<ClusterEvent.ClusterDomainEvent> postStop(PostStop postStop) {
+        @Typed
+        public void postStop(PostStop postStop) {
             cluster.subscriptions().tell(new Unsubscribe(getContext().getSelf()));
-            return Behaviors.same();
         }
 
+        @Typed
         public Behavior<ClusterEvent.ClusterDomainEvent> terminated(Terminated terminated) {
             return Behaviors.stopped();
         }
