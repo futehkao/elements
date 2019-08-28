@@ -20,10 +20,10 @@ import akka.actor.Status;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import net.e6tech.elements.common.actor.CommonBehavior;
-import net.e6tech.elements.common.actor.Typed;
+import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Typed;
 
-public class RegistryEntry extends CommonBehavior<InvocationEvents.Request> {
+public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvents.Request> {
     private InvocationEvents.Registration registration;
     private ServiceKey<InvocationEvents.Request> key;
 

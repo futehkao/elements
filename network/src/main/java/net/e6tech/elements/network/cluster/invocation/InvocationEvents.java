@@ -68,10 +68,10 @@ public interface InvocationEvents extends Serializable {
         private static final long serialVersionUID = -264975294117974773L;
         private transient RegisterReference reference;
         private transient Object[] arguments;
-        private ActorRef sender;
+        private ActorRef<InvocationEvents.Response> sender;
         private long timeout = 10000L;
 
-        public Request(ActorRef sender, String path, long timeout, Object[] arguments)  {
+        public Request(ActorRef<InvocationEvents.Response> sender, String path, long timeout, Object[] arguments)  {
             this.sender = sender;
             this.reference = new RegisterReference(path);
             this.arguments = arguments;

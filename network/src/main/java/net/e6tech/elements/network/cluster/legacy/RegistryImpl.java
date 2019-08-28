@@ -21,7 +21,7 @@ import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.actor.typed.javadsl.Adapter;
 import akka.pattern.Patterns;
-import net.e6tech.elements.common.actor.Guardian;
+import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import net.e6tech.elements.network.cluster.AsyncImpl;
 import net.e6tech.elements.network.cluster.ClusterAsync;

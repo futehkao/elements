@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.actor.typed;
+package net.e6tech.elements.common.actor.typed.worker;
 
 public class WorkerPoolConfig {
     private int initialCapacity = 5;

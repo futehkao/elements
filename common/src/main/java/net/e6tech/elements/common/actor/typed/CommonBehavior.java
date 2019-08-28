@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.actor;
+package net.e6tech.elements.common.actor.typed;
 
 import akka.actor.PoisonPill;
 import akka.actor.typed.ActorRef;
@@ -34,7 +34,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
+public abstract class CommonBehavior<Self extends CommonBehavior, T> extends AbstractBehavior<T> {
 
     private static Cache<Class, Receive> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
@@ -62,7 +62,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
 
                 if (typed == null)
                     continue;
-                Class paramType = Reflection.getParametrizedType(getClass(), 0);
+                Class paramType = Reflection.getParametrizedType(getClass(), 1);
                 if (method.getParameterCount() == 1
                         && (Behavior.class.isAssignableFrom(method.getReturnType()) || void.class.equals(method.getReturnType()))
                         && !events.contains(method.getParameterTypes()[0])) {
@@ -120,7 +120,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
     protected void initialize() {
     }
 
-    public <U> ActorRef<U> spawn(CommonBehavior<U> behavior, String name) {
+    public <U> ActorRef<U> spawn(CommonBehavior<?, U> behavior, String name) {
         return context.spawn(Behaviors.<U>setup(
                 ctx -> {
                     behavior.setup(guardian, ctx);
@@ -129,7 +129,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
                 name);
     }
 
-    public <U> ActorRef<U> spawnAnonymous(CommonBehavior<U> behavior) {
+    public <U> ActorRef<U> spawnAnonymous(CommonBehavior<?, U> behavior) {
         return context.spawnAnonymous(Behaviors.<U>setup(
                 ctx -> {
                     behavior.setup(guardian, ctx);
@@ -137,7 +137,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
                 }));
     }
 
-    public <U> ActorRef<U> spawnAnonymous(CommonBehavior<U> behavior, Props props) {
+    public <U> ActorRef<U> spawnAnonymous(CommonBehavior<?, U> behavior, Props props) {
         return context.spawnAnonymous(Behaviors.<U>setup(
                 ctx -> {
                     behavior.setup(guardian, ctx);
@@ -149,6 +149,11 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
                                   long timeoutMillis) {
         return AskPattern.ask(context.getSelf(), r -> message.apply(r),
                 java.time.Duration.ofMillis(timeoutMillis), context.getSystem().scheduler());
+    }
+
+    public Self tell(T msg) {
+        context.getSelf().tell(msg);
+        return (Self) this;
     }
 
     public <U> void stop(ActorRef<U> child) {

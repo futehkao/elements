@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.actor.typed;
+package net.e6tech.elements.common.actor.typed.worker;
 
 import akka.actor.typed.ActorRef;
 

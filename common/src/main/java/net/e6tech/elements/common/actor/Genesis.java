@@ -18,7 +18,8 @@ package net.e6tech.elements.common.actor;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import net.e6tech.elements.common.actor.typed.WorkerPoolConfig;
+import net.e6tech.elements.common.actor.typed.Guardian;
+import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.resources.*;
 
 import java.util.concurrent.Callable;

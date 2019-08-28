@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.actor;
+package net.e6tech.elements.common.actor.typed;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
@@ -23,15 +23,15 @@ import akka.actor.typed.SpawnProtocol;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import com.typesafe.config.Config;
-import net.e6tech.elements.common.actor.typed.WorkEvents;
-import net.e6tech.elements.common.actor.typed.WorkerPool;
-import net.e6tech.elements.common.actor.typed.WorkerPoolConfig;
+import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
+import net.e6tech.elements.common.actor.typed.worker.WorkerPool;
+import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
 
-public class Guardian extends CommonBehavior<SpawnProtocol> {
+public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
 
     private Behavior<SpawnProtocol> main;
     private akka.actor.typed.ActorRef<WorkEvents> workerPool;

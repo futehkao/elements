@@ -28,9 +28,9 @@ import akka.cluster.MemberStatus;
 import akka.cluster.typed.Cluster;
 import akka.cluster.typed.Subscribe;
 import akka.cluster.typed.Unsubscribe;
-import net.e6tech.elements.common.actor.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.Genesis;
-import net.e6tech.elements.common.actor.Typed;
+import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
@@ -159,7 +159,7 @@ public class ClusterNode implements Initializable {
     }
 
     // listener to cluster events
-    class Membership extends CommonBehavior<ClusterEvent.ClusterDomainEvent> {
+    class Membership extends CommonBehavior<Membership, ClusterEvent.ClusterDomainEvent> {
         Cluster cluster;
 
         public void initialize() {

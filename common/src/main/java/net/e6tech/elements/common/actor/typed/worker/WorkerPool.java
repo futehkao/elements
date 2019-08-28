@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.actor.typed;
+package net.e6tech.elements.common.actor.typed.worker;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.Terminated;
-import akka.actor.typed.javadsl.*;
+import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.javadsl.Behaviors;
+import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.reflection.Reflection;
 
 import java.time.Duration;
@@ -28,7 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Set;
 
-public class WorkerPool extends AbstractBehavior<WorkEvents> {
+public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
 
     private boolean cleanupScheduled = false;
     private Set<ActorRef<WorkEvents>> workers = new LinkedHashSet<>();
@@ -53,25 +56,15 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
         this.context = context;
     }
 
-    @Override
-    public Receive<WorkEvents> createReceive() {
-        ReceiveBuilder<WorkEvents> builder = newReceiveBuilder();
-        return builder
-                .onMessage(WorkEvents.IdleWorker.class, this::idle)
-                .onMessage(WorkEvents.RunnableTask.class, this::newTask)
-                .onMessage(WorkEvents.CallableTask.class, this::newTask)
-                .onMessage(WorkEvents.Cleanup.class, this::cleanup)
-                .onSignal(Terminated.class, this::terminated)
-                .build();
-    }
-
+    @Typed
     private Behavior<WorkEvents> terminated(Terminated event) {
         workers.remove(event.ref());
         idleWorkers.remove(event.ref());
         return Behaviors.same();
     }
 
-    private Behavior<WorkEvents> newTask(WorkEvents.RunnableTask event) {
+    @Typed
+    private void newRunnable(WorkEvents.RunnableTask event) {
         if (!idleWorkers.isEmpty()) {
             Iterator<ActorRef<WorkEvents>> iterator = idleWorkers.iterator();
             ActorRef worker = iterator.next();
@@ -84,10 +77,10 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
         } else {
             waiting.add(new Task(event.getSender(), event));
         }
-        return Behaviors.same();
     }
 
-    private Behavior<WorkEvents> newTask(WorkEvents.CallableTask event) {
+    @Typed
+    private void newCallable(WorkEvents.CallableTask event) {
         if (!idleWorkers.isEmpty()) {
             Iterator<ActorRef<WorkEvents>> iterator = idleWorkers.iterator();
             ActorRef worker = iterator.next();
@@ -100,7 +93,6 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
         } else {
             waiting.add(new Task(event.getSender(), event));
         }
-        return Behaviors.same();
     }
 
     private void newWorker() {
@@ -110,9 +102,9 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
         idle(worker);
     }
 
-    private Behavior<WorkEvents> idle(WorkEvents.IdleWorker event) {
+    @Typed
+    private void idle(WorkEvents.IdleWorker event) {
         idle(event.getWorker());
-        return Behaviors.same();
     }
 
     private void idle(ActorRef worker) {
@@ -125,17 +117,17 @@ public class WorkerPool extends AbstractBehavior<WorkEvents> {
         }
     }
 
-    private Behavior<WorkEvents> cleanup(WorkEvents.Cleanup message) {
+    @Typed
+    private void cleanup(WorkEvents.Cleanup message) {
         if (cleanupScheduled)
-            return Behaviors.same();
+            return;
         if (config.getIdleTimeout() == 0)
-            return Behaviors.same();
+            return;
         final Duration interval = Duration.ofMillis(config.getIdleTimeout());
         ActorRef self = context.getSelf();
         context.scheduleOnce(interval, self, new WorkEvents.Cleanup());
         cleanupScheduled = true;
 
-        return Behaviors.same();
     }
 
     private class Task {

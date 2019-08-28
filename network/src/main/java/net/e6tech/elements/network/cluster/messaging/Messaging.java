@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.network.cluster.messaging;
 
-import net.e6tech.elements.common.actor.Guardian;
+import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.common.subscribe.Subscriber;
 import net.e6tech.elements.network.cluster.ClusterNode;

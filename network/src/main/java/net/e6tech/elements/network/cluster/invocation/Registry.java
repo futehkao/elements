@@ -17,7 +17,7 @@
 package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.typed.ActorRef;
-import net.e6tech.elements.common.actor.Guardian;
+import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.network.cluster.ClusterAsync;
 
 import java.lang.reflect.Method;

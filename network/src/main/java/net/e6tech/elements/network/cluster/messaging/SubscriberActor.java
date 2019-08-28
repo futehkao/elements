@@ -21,14 +21,14 @@ import akka.actor.typed.DispatcherSelector;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
-import net.e6tech.elements.common.actor.CommonBehavior;
-import net.e6tech.elements.common.actor.Typed;
+import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
 
-public class SubscriberActor extends CommonBehavior<MessagingEvents> {
+public class SubscriberActor extends CommonBehavior<SubscriberActor, MessagingEvents> {
 
     private Subscriber subscriber;
     private String topic;
