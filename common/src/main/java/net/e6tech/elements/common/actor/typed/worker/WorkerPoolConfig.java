@@ -20,6 +20,15 @@ public class WorkerPoolConfig {
     private int initialCapacity = 5;
     private int maxCapacity = Integer.MAX_VALUE;  // ie unlimited
     private long idleTimeout = 10000L;
+    private String name = "WorkerPool";
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public int getInitialCapacity() {
         return initialCapacity;

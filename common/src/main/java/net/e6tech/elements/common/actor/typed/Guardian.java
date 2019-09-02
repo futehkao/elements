@@ -16,10 +16,7 @@
 
 package net.e6tech.elements.common.actor.typed;
 
-import akka.actor.typed.ActorRef;
-import akka.actor.typed.Behavior;
-import akka.actor.typed.Props;
-import akka.actor.typed.SpawnProtocol;
+import akka.actor.typed.*;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import com.typesafe.config.Config;
@@ -49,12 +46,12 @@ public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
                     return SpawnProtocol.behavior();
                 });
 
-        akka.actor.typed.ActorSystem<SpawnProtocol> system = akka.actor.typed.ActorSystem.create(main, name, config);
+       ActorSystem<SpawnProtocol> system = ActorSystem.create(main, name, config);
 
         try {
             // start the worker pool actor
             CompletionStage<ActorRef<WorkEvents>> stage = AskPattern.ask(system, // cannot use guardian.getSystem() because context is not set yet
-                    replyTo -> new SpawnProtocol.Spawn(pool, "WorkerPool", Props.empty(), replyTo),
+                    replyTo -> new SpawnProtocol.Spawn(pool, workerPoolConfig.getName(), Props.empty(), replyTo),
                     java.time.Duration.ofSeconds(timeout), system.scheduler());
             stage.whenComplete((ref, throwable) -> {
                 workerPool = ref;
