@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.reflection;
 
+import net.e6tech.elements.common.Tags;
 import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Retention;
@@ -26,6 +27,7 @@ import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tags.Common
 public class AnnotatedTest {
 
     @Test

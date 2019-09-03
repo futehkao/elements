@@ -36,7 +36,7 @@ public class Sandbox {
 
     @Test
     void test() {
-        Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> annotations = Reflection.getAnnotationsByName(Y.class);
+        Map<Signature, Map<Class<? extends Annotation>, Annotation>> annotations = Reflection.getAnnotationsByName(Y.class);
         System.out.println(annotations);
     }
 

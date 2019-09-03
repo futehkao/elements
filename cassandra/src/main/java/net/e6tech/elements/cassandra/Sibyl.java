@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 public abstract class Sibyl {
@@ -53,7 +52,7 @@ public abstract class Sibyl {
     private WriteOptions writeOptions = new WriteOptions().consistency(Consistency.LOCAL_QUORUM).saveNullFields(false);
 
     public <T> T computeIfAbsent(String key, Function<String, T> mappingFunction) {
-        return (T) resources.configurator().computeIfAbsent(key, mappingFunction);
+        return resources.configurator().computeIfAbsent(key, mappingFunction);
     }
 
     public ReadOptions getReadOptions() {

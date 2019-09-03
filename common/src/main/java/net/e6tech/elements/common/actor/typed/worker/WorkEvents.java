@@ -21,6 +21,7 @@ import akka.actor.typed.ActorRef;
 import java.io.Serializable;
 import java.util.concurrent.Callable;
 
+@SuppressWarnings("squid:S1948")
 public interface WorkEvents {
 
     class IdleWorker implements WorkEvents, Serializable {

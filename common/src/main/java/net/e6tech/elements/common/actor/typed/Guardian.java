@@ -30,17 +30,13 @@ import java.util.concurrent.CompletionStage;
 
 public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
 
-    private Behavior<SpawnProtocol> main;
     private akka.actor.typed.ActorRef<WorkEvents> workerPool;
     private long timeout = 5000L;
     private String name = "galaxy";
 
-    public Guardian() {
-    }
-
     public Guardian boot(Config config, WorkerPoolConfig workerPoolConfig) {
         Behavior<WorkEvents> pool = WorkerPool.newPool(workerPoolConfig);
-        main = Behaviors.setup(
+        Behavior<SpawnProtocol> main = Behaviors.setup(
                 context -> {
                     setup(this, context);
                     return SpawnProtocol.behavior();
@@ -53,9 +49,7 @@ public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
             CompletionStage<ActorRef<WorkEvents>> stage = AskPattern.ask(system, // cannot use guardian.getSystem() because context is not set yet
                     replyTo -> new SpawnProtocol.Spawn(pool, workerPoolConfig.getName(), Props.empty(), replyTo),
                     java.time.Duration.ofSeconds(timeout), system.scheduler());
-            stage.whenComplete((ref, throwable) -> {
-                workerPool = ref;
-            });
+            stage.whenComplete((ref, throwable) -> workerPool = ref);
         } catch (Exception e) {
             throw new SystemException(e);
         }
@@ -92,9 +86,8 @@ public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
     }
 
     public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
-        CompletionStage<R> stage = AskPattern.ask(workerPool, ref -> new WorkEvents.CallableTask(ref, callable),
+        return AskPattern.ask(workerPool, ref -> new WorkEvents.CallableTask(ref, callable),
                 java.time.Duration.ofMillis(timeout), getSystem().scheduler());
-        return stage;
     }
 
 }

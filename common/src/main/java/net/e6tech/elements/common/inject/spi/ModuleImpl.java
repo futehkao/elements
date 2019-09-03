@@ -124,7 +124,9 @@ public class ModuleImpl implements Module {
             Type[] propTypes = getBindTypes(propType);
             Binding binding = new Binding(propertyValue);
             for (Type type : propTypes) {
-                if (!directory.containsKey(type) || rebind) {
+                if (!directory.containsKey(type)
+                        || (directory.get(type).get(name) == null)
+                        || rebind) {
                     BindingMap bindingMap = directory.computeIfAbsent(type, t -> new BindingMap());
                     bindingMap.bind(name, binding);
                 }
@@ -230,8 +232,8 @@ public class ModuleImpl implements Module {
     private Object newInstance(Object instance) {
         if (instance instanceof Class) {
             try {
-                return ((Class) instance).newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
+                return ((Class) instance).getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
                 throw new SystemException(e);
             }
         } else {

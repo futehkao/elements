@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.util.configure;
 
+import net.e6tech.elements.common.Tags;
 import net.e6tech.elements.common.resources.Configuration;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -25,6 +26,7 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tags.Common
 public class ObjectConfigTest {
 
     public Map load(String configStr) {

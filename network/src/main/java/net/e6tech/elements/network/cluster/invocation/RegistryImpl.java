@@ -89,7 +89,8 @@ public class RegistryImpl implements Registry {
         this.guardian = guardian;
         dispatcher = guardian.getContext().getExecutionContext();
         // Create an Akka system
-        guardian.spawn(registrar = new Registrar(this), getPath());
+        registrar = new Registrar(this);
+        guardian.spawn(registrar, getPath());
     }
 
     public void shutdown() {

@@ -232,7 +232,7 @@ public class Reflection {
 
     public static <T> T newInstance(String className, ClassLoader loader) {
         try {
-            return (T) loadClass(className, loader).newInstance();
+            return (T) loadClass(className, loader).getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new SystemException(e);
         }
@@ -253,13 +253,14 @@ public class Reflection {
         }
     }
 
-    public static Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> getAnnotationsByName(Class cls) {
+
+    public static Map<Signature, Map<Class<? extends Annotation>, Annotation>> getAnnotationsByName(Class cls) {
         return getAnnotations(cls).entrySet().stream()
                 .filter(x -> x.getKey() instanceof NamedSignature)
-                .collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue()));
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    public static Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> getAnnotations(Class cls) {
+    public static Map<Signature, Map<Class<? extends Annotation>, Annotation>> getAnnotations(Class cls) {
         List<Class> classes = collectClass(cls);
 
         Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> annotations = new HashMap<>(50);
@@ -311,7 +312,7 @@ public class Reflection {
 
         return annotations.entrySet().stream()
                 .filter(x -> x.getValue().size() > 0)
-                .collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue()));
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     private static List<Class> collectClass(Class cls) {
@@ -325,8 +326,7 @@ public class Reflection {
             }
             tmp = tmp.getSuperclass();
         }
-        List<Class> list = new ArrayList<>(set);
-        return list;
+        return new ArrayList<>(set);
     }
 
 
@@ -577,7 +577,7 @@ public class Reflection {
                     }
                 } else {
                     try {
-                        target = (T) cls.newInstance();
+                        target = (T) cls.getDeclaredConstructor().newInstance();
                     } catch (Exception e) {
                         throw new SystemException(e);
                     }
@@ -601,7 +601,7 @@ public class Reflection {
                     }
                 } else {
                     try {
-                        target = (T) enclosedType.newInstance();
+                        target = (T) enclosedType.getDeclaredConstructor().newInstance();
                     } catch (Exception e) {
                         throw new SystemException(e);
                     }
@@ -626,6 +626,7 @@ public class Reflection {
             return collection;
         }
 
+        @SuppressWarnings("all")
         protected Object convertBuiltinType(Class type, Object object) {
             if (String.class.isAssignableFrom(type)) {
                 return object.toString();

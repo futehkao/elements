@@ -48,7 +48,7 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         if (version == null) {
             secret = versions.get(versions.lastKey());
         } else {
-            secret = versions.get(new Long(version));
+            secret = versions.get(Long.parseLong(version));
         }
         return secret;
     }
@@ -59,7 +59,7 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         String version = secret.version();
         if (version == null)
             version = "0";
-        versions.put(new Long(version), secret);
+        versions.put(Long.parseLong(version), secret);
     }
 
     public void removeSecret(String alias, String version) {
@@ -70,7 +70,7 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         if (version == null) {
             secrets.remove(alias);
         } else {
-            versions.remove(new Long(version));
+            versions.remove(Long.parseLong(version));
         }
     }
 

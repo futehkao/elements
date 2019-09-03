@@ -22,5 +22,5 @@ public interface ColumnMetadata {
 
     String getName();
 
-    DataType getType();
+    DataType getDataType();
 }

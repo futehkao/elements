@@ -20,7 +20,9 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.persist.EntityManagerConfig;
 import net.e6tech.elements.persist.EntityManagerProvider;
 import net.e6tech.sample.BaseCase;
+import net.e6tech.sample.Tags;
 import org.hibernate.internal.SessionImpl;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mariadb.jdbc.MariaDbConnection;
 
@@ -28,11 +30,13 @@ import javax.persistence.EntityManager;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SuppressWarnings("all")
+@Tags.Sample
 public class EntityManagerMonitorTest extends BaseCase {
     private Employee employee;
     private Department department;
 
     @Test
+    @Disabled
     void entityManagerMonitor() throws Exception {
         AtomicInteger count = new AtomicInteger();
         while (true) {

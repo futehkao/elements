@@ -68,9 +68,8 @@ public class SocketProxyServer implements Startable, Runnable {
 
     public void start() {
         if (threadPool == null) {
-            ThreadGroup group = Thread.currentThread().getThreadGroup();
             threadPool = Executors.newCachedThreadPool(runnable -> {
-                Thread thread = new Thread(group, runnable, "SocketProxyServer");
+                Thread thread = new Thread(runnable, "SocketProxyServer");
                 thread.setName("SocketProxyServer-" + thread.getId());
                 thread.setDaemon(true);
                 return thread;

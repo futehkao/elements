@@ -41,7 +41,7 @@ public class SessionProviderV4 extends SessionProvider {
 
     private Generator generator = new GeneratorV4();
     private CqlSession session;
-    private Map<String, ?> driverOptions = new LinkedHashMap<>();
+    private Map<String, Object> driverOptions = new LinkedHashMap<>();
     private MappingManager mappingManager;
     private boolean v3Annotation = false;
     private String namingConvention;
@@ -62,11 +62,11 @@ public class SessionProviderV4 extends SessionProvider {
         this.namingConvention = namingConvention;
     }
 
-    public Map<String, ?> getDriverOptions() {
+    public Map<String, Object> getDriverOptions() {
         return driverOptions;
     }
 
-    public void setDriverOptions(Map<String, ?> driverOptions) {
+    public void setDriverOptions(Map<String, Object> driverOptions) {
         this.driverOptions = driverOptions;
     }
 
@@ -143,10 +143,12 @@ public class SessionProviderV4 extends SessionProvider {
 
     @Override
     protected void initKeyspace() {
+        // initKeyspace is done in initDriver
     }
 
     @Override
     protected void postInit() {
+        // nothing to do her.
     }
 
     @Override
@@ -162,6 +164,7 @@ public class SessionProviderV4 extends SessionProvider {
 
     @Override
     public void onClosed(Resources resources) {
+        // no need to close using V4 driver.  In fact, there is only one session.
     }
 
     @Override

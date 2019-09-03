@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.util.concurrent;
 
+import net.e6tech.elements.common.Tags;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -23,6 +24,7 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings("all")
+@Tags.Common
 public class BalancerTest {
 
     volatile int success = 0;

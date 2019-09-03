@@ -32,6 +32,7 @@ public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvent
         this.key = key;
     }
 
+    @Override
     protected void initialize() {
         getSystem().receptionist().tell(Receptionist.register(key, getSelf()));
     }

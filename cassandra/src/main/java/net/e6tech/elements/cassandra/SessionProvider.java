@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
+@SuppressWarnings("squid:S3038")
 @BindClass(SessionProvider.class)
 public abstract class SessionProvider implements ResourceProvider, Initializable {
     private static final String CREATE_KEYSPACE = "CREATE KEYSPACE IF NOT EXISTS ${keyspace}  WITH replication = {'class':'SimpleStrategy', 'replication_factor' : ${replication}};";
@@ -280,9 +281,6 @@ public abstract class SessionProvider implements ResourceProvider, Initializable
     }
 
     @Override
-    public abstract void onOpen(Resources resources);
-
-    @Override
     public void afterOpen(Resources resources) {
         //
     }
@@ -306,10 +304,4 @@ public abstract class SessionProvider implements ResourceProvider, Initializable
     public void onAbort(Resources resources) {
         //
     }
-
-    @Override
-    public abstract void onClosed(Resources resources);
-
-    @Override
-    public abstract void onShutdown();
 }

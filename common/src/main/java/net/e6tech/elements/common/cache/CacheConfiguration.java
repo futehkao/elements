@@ -84,7 +84,7 @@ public class CacheConfiguration {
 
         if (provider == null) {
             try {
-                provider = (CacheProvider) getClass().getClassLoader().loadClass(DEFAULT_PROVIDER).newInstance();
+                provider = (CacheProvider) getClass().getClassLoader().loadClass(DEFAULT_PROVIDER).getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 throw new SystemException(e);
             }

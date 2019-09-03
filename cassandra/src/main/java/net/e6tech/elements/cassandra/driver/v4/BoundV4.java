@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@SuppressWarnings("squid:S135")
 public class BoundV4 extends Wrapper<BoundStatement> implements Bound {
 
     @Override
@@ -79,7 +80,7 @@ public class BoundV4 extends Wrapper<BoundStatement> implements Bound {
         Class valueType = null;
         for (Map.Entry<K, V> entry : v.entrySet()) {
             if (entry.getKey() == null && entry.getValue() == null)
-                continue;;
+                continue;
             keyType = entry.getKey().getClass();
             valueType = entry.getValue().getClass();
             break;

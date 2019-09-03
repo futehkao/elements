@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.cassandra.driver.v4;
 
-import com.datastax.oss.driver.api.core.MappedAsyncPagingIterable;
 import net.e6tech.elements.cassandra.ReadOptions;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.WriteOptions;
@@ -26,9 +25,11 @@ import net.e6tech.elements.cassandra.driver.cql.BaseResultSet;
 import net.e6tech.elements.cassandra.driver.cql.ResultSet;
 import net.e6tech.elements.cassandra.etl.PrimaryKey;
 import net.e6tech.elements.common.inject.Inject;
-import net.e6tech.elements.common.util.SystemException;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 public class SibylV4 extends Sibyl {
 
@@ -124,41 +125,4 @@ public class SibylV4 extends Sibyl {
         }
         return list;
     }
-
-    private static class AsyncIterator<X> implements Iterator<X> {
-        MappedAsyncPagingIterable<X> pagingIterable;
-
-        AsyncIterator(MappedAsyncPagingIterable<X> pagingIterable) {
-            this.pagingIterable = pagingIterable;
-        }
-
-        private void prepareNextPage() {
-            while (!pagingIterable.currentPage().iterator().hasNext()) {
-                if (pagingIterable.hasMorePages()) {
-                    try {
-                        pagingIterable = pagingIterable.fetchNextPage().toCompletableFuture().get();
-                    } catch (Exception e) {
-                        throw new SystemException(e);
-                    }
-                }
-                else break;
-            }
-        }
-
-        @Override
-        public boolean hasNext() {
-            prepareNextPage();
-            return pagingIterable.currentPage().iterator().hasNext();
-        }
-
-        @Override
-        public X next() {
-            return pagingIterable.currentPage().iterator().next();
-        }
-
-        @Override
-        public void remove() {
-            pagingIterable.currentPage().iterator().remove();
-        }
-    };
 }

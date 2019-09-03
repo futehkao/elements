@@ -20,5 +20,6 @@ package net.e6tech.elements.security.hsm.thales;
  * This command encrypts pin under an LMK.  A subsequent call to translate pin is needed
  * before storage.
  */
+@SuppressWarnings("all")
 public class EncryptPIN_IBM extends Command {
 }

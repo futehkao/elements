@@ -218,7 +218,7 @@ public class RegistryImpl implements Registry {
 
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout) {
         return arguments -> {
-            Future future = Patterns.ask(registrar, new Events.Invocation(path, timeout, arguments), timeout);
+            Future future = Patterns.ask(registrar, new Events.Invocation(path, arguments), timeout);
             return FutureConverters.toJava(future).thenApply(ret -> {
                 Events.Response response = (Events.Response) ret;
                 return new InvocationEvents.Response(Adapter.toTyped(response.getResponder()), response.getValue());

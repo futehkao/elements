@@ -135,7 +135,7 @@ public class Job implements Initializable, Startable, LaunchListener {
     private void init() {
         try {
             if (target instanceof  Class) {
-                target = ((Class) target).newInstance();
+                target = ((Class) target).getDeclaredConstructor().newInstance();
             }
             invocation = target.getClass().getMethod(targetMethod);
         } catch (Exception e) {

@@ -17,7 +17,6 @@
 package net.e6tech.elements.common.resources.plugin;
 
 import net.e6tech.elements.common.reflection.Reflection;
-import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.ArrayList;
@@ -59,11 +58,12 @@ public class PluginList<T> implements PluginFactory {
         Iterator iterator = list.iterator();
         while (iterator.hasNext()) {
             if (predicate.test(iterator.next())) {
-                iterator.remove();;
+                iterator.remove();
             }
         }
     }
 
+    @SuppressWarnings("squid:S3776")
     public List<T> list() {
         return pluginManager.getResources().configurator().computeIfAbsent(pluginPath.path(),
                 key -> {

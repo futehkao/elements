@@ -162,6 +162,7 @@ public class ClusterNode implements Initializable {
     class Membership extends CommonBehavior<Membership, ClusterEvent.ClusterDomainEvent> {
         Cluster cluster;
 
+        @Override
         public void initialize() {
             cluster = Cluster.get(getContext().getSystem());
             cluster.subscriptions().tell(new Subscribe<>(getContext().getSelf(), ClusterEvent.ClusterDomainEvent.class));

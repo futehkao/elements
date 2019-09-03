@@ -20,6 +20,7 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.persist.EntityManagerConfig;
 import net.e6tech.elements.persist.criteria.Select;
 import net.e6tech.sample.BaseCase;
+import net.e6tech.sample.Tags;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
-
+@Tags.Sample
 public class PersistenceTest extends BaseCase {
 
     private Employee employee;

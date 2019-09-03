@@ -71,7 +71,7 @@ public class Scripting {
     public static Scripting newInstance(ClassLoader classLoader, Properties properties) {
         Scripting script = new Scripting();
 
-        script.engine = new GroovyEngine(classLoader, properties, true);
+        script.engine = new GroovyEngine(classLoader, properties);
 
         return script;
     }
@@ -216,7 +216,7 @@ public class Scripting {
         }
     }
 
-    public Object eval(String script) throws ScriptException {
+    public Object eval(String script) {
         return engine.eval(script);
     }
 
@@ -361,7 +361,7 @@ public class Scripting {
         GroovyShell shell;
         CompilerConfiguration compilerConfig;
 
-        public GroovyEngine(ClassLoader classLoader, Properties properties, boolean useGroovyShell) {
+        public GroovyEngine(ClassLoader classLoader, Properties properties) {
             ClassLoader ctxLoader = classLoader;
             if (ctxLoader == null)
                 ctxLoader = Thread.currentThread().getContextClassLoader();
@@ -447,7 +447,7 @@ public class Scripting {
             }
         }
 
-        public Object eval(Reader reader, String fileName) throws ScriptException {
+        public Object eval(Reader reader, String fileName) {
             Script previous = (Script) get(__SCRIPT);
             Script script = null;
             try {
@@ -465,7 +465,7 @@ public class Scripting {
             }
         }
 
-        public Object eval(String scriptText) throws ScriptException {
+        public Object eval(String scriptText) {
             Script previous = (Script) get(__SCRIPT);
             try {
                 Script script = shell.parse(scriptText);

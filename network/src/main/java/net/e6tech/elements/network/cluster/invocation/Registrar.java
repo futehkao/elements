@@ -20,15 +20,14 @@ package net.e6tech.elements.network.cluster.invocation;
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.DispatcherSelector;
-import akka.actor.typed.Props;
 import akka.actor.typed.Terminated;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.GroupRouter;
 import akka.actor.typed.javadsl.Routers;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import scala.concurrent.ExecutionContextExecutor;
@@ -82,14 +81,12 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
                 }
         ));
 
-        spawnAnonymous(new RegistryEntry(key, registration),
-                        Props.empty().withDispatcherFromConfig(dispatcher));
+        spawnAnonymous(new RegistryEntry(key, registration), DispatcherSelector.fromConfig(dispatcher));
 
         routes.computeIfAbsent(key,
                 k -> {
                     GroupRouter<InvocationEvents.Request> g = Routers.group(key).withRoundRobinRouting();
-                    ActorRef<InvocationEvents.Request> router = getContext().spawnAnonymous(g);
-                    return router;
+                    return getContext().spawnAnonymous(g);
                 });
     }
 
@@ -122,11 +119,11 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
     @Typed
     private void routes(Routes message) {
         ServiceKey key = ServiceKey.create(InvocationEvents.Request.class, message.getPath());
-        Set<ActorRef<InvocationEvents.Request>> actors = this.actors.get(key);
-        if (actors == null) {
+        Set<ActorRef<InvocationEvents.Request>> actorsForKey = this.actors.get(key);
+        if (actorsForKey == null) {
             message.getSender().tell(new Response(getSelf(), Collections.emptySet()));
         } else {
-            message.getSender().tell(new Response(getSelf(), actors));
+            message.getSender().tell(new Response(getSelf(), actorsForKey));
         }
     }
 }

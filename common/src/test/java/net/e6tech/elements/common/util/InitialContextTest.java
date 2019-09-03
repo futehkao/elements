@@ -15,6 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.common.util;
 
+import net.e6tech.elements.common.Tags;
 import org.junit.jupiter.api.Test;
 
 import javax.naming.Context;
@@ -23,6 +24,7 @@ import javax.naming.InitialContext;
 /**
  * Created by futeh.
  */
+@Tags.Common
 public class InitialContextTest {
 
     @Test

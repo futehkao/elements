@@ -22,7 +22,6 @@ import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
@@ -161,6 +160,7 @@ public class Transformer<T, E> {
         return this;
     }
 
+    @SuppressWarnings("squid:S3776")
     public Transformer<T, E> forEachNewOrExisting(BiConsumer<E, T> newItems, BiConsumer<E, T> existing) {
         Inspector extractedInspector = null;
 

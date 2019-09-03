@@ -20,6 +20,7 @@ import net.e6tech.elements.common.resources.Atom;
 import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.elements.web.cxf.SecurityAnnotationEngine;
 import net.e6tech.sample.BaseCase;
+import net.e6tech.sample.Tags;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
+@Tags.Sample
 public class HellowWorldTest extends BaseCase {
     HelloWorld helloWorld;
     RestfulProxy proxy;

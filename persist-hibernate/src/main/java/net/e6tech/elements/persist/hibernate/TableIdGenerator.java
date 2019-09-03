@@ -116,6 +116,7 @@ public class TableIdGenerator extends ModifiedTableGenerator implements Cloneabl
         return (getSegmentValuePrefix() == null || getSegmentValuePrefix().isEmpty()) ? segmentValue : getSegmentValuePrefix() + segmentValue;
     }
 
+    @Override
     protected long determineInitialValue(Properties params) {
         long value =  ConfigurationHelper.getLong( INITIAL_PARAM, params, -1 );
         if (value == -1) {

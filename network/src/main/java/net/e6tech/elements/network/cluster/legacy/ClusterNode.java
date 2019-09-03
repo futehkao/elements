@@ -135,7 +135,6 @@ public class ClusterNode implements Initializable {
             registry = new RegistryImpl();
             registry.setTimeout(timeout);
         }
-       //  registry.setWorkerPool(genesis.getWorkerPool());
         broadcast.start(genesis.getGuardian());
         registry.start(genesis.getGuardian());
         started = true;

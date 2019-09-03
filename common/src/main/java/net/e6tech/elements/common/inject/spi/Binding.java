@@ -40,7 +40,7 @@ class Binding {
     public Binding getInstance(Injector injector) {
         if (implementation != null) {
             try {
-                Object instance = implementation.newInstance();
+                Object instance = implementation.getDeclaredConstructor().newInstance();
                 injector.inject(instance);
                 return new Binding(instance);
             } catch (Exception e) {

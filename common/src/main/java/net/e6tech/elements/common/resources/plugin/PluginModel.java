@@ -19,6 +19,7 @@ package net.e6tech.elements.common.resources.plugin;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
 
 public interface PluginModel {
@@ -80,8 +81,8 @@ public interface PluginModel {
 
     default <P extends Plugin> P newPlugin(Class<P> cls, Object ... args) {
         try {
-            return getPlugin(cls, args).orElse(cls.newInstance());
-        } catch (InstantiationException | IllegalAccessException e) {
+            return getPlugin(cls, args).orElse(cls.getDeclaredConstructor().newInstance());
+        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             throw new SystemException(e);
         }
     }

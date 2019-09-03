@@ -20,6 +20,7 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.util.Objects;
 
+@SuppressWarnings({"squid:S2975", "squid:S1845", "squid:ClassVariableVisibilityCheck"})
 public class WriteOptions implements Cloneable {
     public Consistency consistency;
     public Integer ttl;

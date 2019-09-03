@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.function.BiFunction;
 
+@SuppressWarnings({"squid:S194", "squid:S1948"})
 public interface InvocationEvents extends Serializable {
 
     class RegisterReference implements Serializable {

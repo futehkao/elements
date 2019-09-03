@@ -94,7 +94,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public <T> T getMapVariable(Class<T> key, String name) {
-        return (T) state.computeMapIfAbsent(key).get(name);
+        return state.computeMapIfAbsent(key).get(name);
     }
 
     public Retry getRetry() {

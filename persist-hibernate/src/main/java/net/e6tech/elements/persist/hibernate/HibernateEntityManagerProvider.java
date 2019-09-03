@@ -119,10 +119,6 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     }
 
     @Override
-    public void afterOpen(Resources resources) {
-    }
-
-    @Override
     public void cleanup(Resources resources) {
         super.cleanup(resources);
         try {

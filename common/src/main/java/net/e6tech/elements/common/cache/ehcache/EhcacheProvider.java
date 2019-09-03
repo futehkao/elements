@@ -19,9 +19,9 @@ package net.e6tech.elements.common.cache.ehcache;
 import net.e6tech.elements.common.cache.CacheConfiguration;
 import net.e6tech.elements.common.cache.CacheProvider;
 import org.ehcache.config.builders.CacheConfigurationBuilder;
+import org.ehcache.config.builders.ExpiryPolicyBuilder;
 import org.ehcache.config.builders.ResourcePoolsBuilder;
-import org.ehcache.expiry.Duration;
-import org.ehcache.expiry.Expirations;
+import org.ehcache.expiry.ExpiryPolicy;
 import org.ehcache.jsr107.Eh107Configuration;
 import org.ehcache.jsr107.EhcacheCachingProvider;
 
@@ -31,7 +31,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by futeh.
@@ -51,9 +50,10 @@ public class EhcacheProvider implements CacheProvider {
                 ? ResourcePoolsBuilder.heap(cachePool.getMaxEntries())
                 : ResourcePoolsBuilder.newResourcePoolsBuilder();
 
+        ExpiryPolicy policy = ExpiryPolicyBuilder.timeToLiveExpiration(java.time.Duration.ofMillis(cachePool.getExpiry()));
         org.ehcache.config.CacheConfiguration cacheConfiguration = CacheConfigurationBuilder
                 .newCacheConfigurationBuilder(keyClass, valueClass, builder)
-                .withExpiry(Expirations.timeToLiveExpiration(Duration.of(cachePool.getExpiry(), TimeUnit.MILLISECONDS)))
+                .withExpiry(policy)
                 .build();
 
         Cache<K, V> cache = cachePool.getCacheManager().createCache(poolName, Eh107Configuration.fromEhcacheCacheConfiguration(cacheConfiguration));

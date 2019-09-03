@@ -57,7 +57,7 @@ public abstract class Command extends Message {
     public static Command createInstance(String message, AtallaSimulator simulator) {
         try {
             Message msg = new Message(message);
-            Command request = commands.get(msg.getField(0)).newInstance();
+            Command request = commands.get(msg.getField(0)).getDeclaredConstructor().newInstance();
             request.simulator = simulator;
             request.fields = msg.getFields();
             return request;

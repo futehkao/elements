@@ -31,8 +31,6 @@ public class Messaging implements Broadcast {
     private Messenger messenger;
     private String name = "messaging";
     private long timeout = ClusterNode.DEFAULT_TIME_OUT;
-    private Guardian guardian;
-
     public String getName() {
         return name;
     }
@@ -49,9 +47,9 @@ public class Messaging implements Broadcast {
         this.timeout = timeout;
     }
 
-    public void start(Guardian genesis) {
-        this.guardian = genesis;
-        guardian.spawn(messenger = new Messenger(), name);
+    public void start(Guardian guardian) {
+        messenger = new Messenger();
+        guardian.spawn(messenger, name);
     }
 
     public void shutdown() {

@@ -18,7 +18,6 @@ package net.e6tech.elements.jmx;
 
 import com.j256.simplejmx.common.JmxResource;
 import com.j256.simplejmx.server.JmxServer;
-import com.sun.jdmk.comm.AuthInfo;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
 import net.e6tech.elements.common.util.SystemException;
@@ -53,12 +52,12 @@ public class JMXService {
         start(InetAddress.getLoopbackAddress(), port, jmxrmiPort, user, password);
     }
 
-    @SuppressWarnings("squid:S00112")
+    @SuppressWarnings({"squid:S00112", "squid:S1191"})
     public static void start(InetAddress bindAddress, int port, int jmxrmiPort, String user, char[] password) throws Exception {
         JMXHtmlServer adapter = new JMXHtmlServer(port);
         adapter.setBindAddress(bindAddress);
         if (user != null && user.length() > 0) {
-            AuthInfo authInfo = new AuthInfo(user, new String(password));
+            com.sun.jdmk.comm.AuthInfo authInfo = new com.sun.jdmk.comm.AuthInfo(user, new String(password));
             adapter.addUserAuthenticationInfo(authInfo);
         }
         adapter.start();

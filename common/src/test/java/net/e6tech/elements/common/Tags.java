@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.security.hsm.thales;
+package net.e6tech.elements.common;
 
-@SuppressWarnings("all")
-public class ImportWorkingKey extends Command {
-    private String keyType = "001";  // key type default to ZPK
-    private String zmk;              // zone master key encrypted under lmk
-    private String key;              // key to be imported
-    private String keyScheme = "X";  // double length ANSI
+import org.junit.jupiter.api.Tag;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+public interface Tags {
+    @Target({ ElementType.TYPE, ElementType.METHOD })
+    @Retention(RetentionPolicy.RUNTIME)
+    @Tag("common")
+    @interface Common {
+    }
 }

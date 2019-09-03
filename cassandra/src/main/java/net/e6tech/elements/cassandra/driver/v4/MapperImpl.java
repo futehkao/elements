@@ -119,11 +119,12 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
     public CompletionStage<T> getAsync(ReadOptions readOptions, Object ... keys) {
         try {
             return executeAsyncAndMapToSingleEntity(getBoundStatement(readOptions, keys), helper);
-        } catch (Throwable t) {
+        } catch (Exception t) {
             return CompletableFutures.failedFuture(t);
         }
     }
 
+    @SuppressWarnings("squid:S3776")
     private BoundStatement saveBoundStatement(WriteOptions options, T entity) {
         PreparedStatement save = (options == null) ? saveStatement
                 : saveStatements.computeIfAbsent(options, wo -> {
@@ -170,7 +171,7 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
     public CompletionStage<Void> saveAsync(WriteOptions options, T entity) {
         try {
             return executeAsyncAndMapToVoid(saveBoundStatement(options, entity));
-        } catch (Throwable t) {
+        } catch (Exception t) {
             return CompletableFutures.failedFuture(t);
         }
     }
@@ -188,6 +189,7 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
         execute(boundStatement);
     }
 
+    @SuppressWarnings("squid:S00117")
     public static <T> CompletableFuture<MapperImpl<T>> initAsync(MapperContext context, Class<T> cls, Inspector inspector) {
         LOG.debug("[{}] Initializing new instance for keyspace = {} and table = {}",
                 context.getSession().getName(),
@@ -232,7 +234,7 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
                             CompletableFutures.getCompleted(saveStatement),
                             CompletableFutures.getCompleted(deleteStatement)))
                     .toCompletableFuture();
-        } catch (Throwable t) {
+        } catch (Exception t) {
             return CompletableFutures.failedFuture(t);
         }
     }
@@ -242,7 +244,7 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
         try {
             return CompletableFutures.getUninterruptibly(initAsync(context, cls, inspector));
         } catch (Exception ex) {
-            LOG.error("Cannot compile statements for class" + cls);
+            LOG.error("Cannot compile statements for class {}", cls);
             throw ex;
         }
     }

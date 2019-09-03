@@ -72,7 +72,6 @@ public class Events {
     public static class Registration {
         private RegisterReference reference;
         private BiFunction<akka.actor.typed.ActorRef, Object[], Object> function;
-        private long timeout;
 
         public Registration(String path, BiFunction<akka.actor.typed.ActorRef, Object[], Object> function) {
             this.reference = new RegisterReference(path);
@@ -93,7 +92,7 @@ public class Events {
         public Invocation() {
         }
 
-        public Invocation(String path, long timeout, Object[] arguments)  {
+        public Invocation(String path, Object[] arguments)  {
             this.reference = new RegisterReference(path);
             this.arguments = arguments;
         }

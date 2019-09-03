@@ -24,7 +24,6 @@ import net.e6tech.elements.common.reflection.ClassSignature;
 import net.e6tech.elements.common.reflection.MethodSignature;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.reflection.Signature;
-import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.ResourcesFactory;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.ExceptionMapper;
@@ -48,7 +47,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
     private Map<Method, String> methods = new ConcurrentHashMap<>();
     private Object prototype;
     private CXFServer server;
-    private Map<Signature<?>, Map<Class<? extends Annotation>, Annotation>> annotations;
+    private Map<Signature, Map<Class<? extends Annotation>, Annotation>> annotations;
 
     InstanceResourceProvider(JaxRSServer server, Class resourceClass, Object prototype, Module module, ResourcesFactory factory, Observer observer) {
         super(resourceClass);

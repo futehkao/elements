@@ -156,6 +156,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         return descriptors;
     }
 
+    @SuppressWarnings({"squid:S3776", "squid:S1301"})
     @Override
     public int run(PartitionContext context) {
         context.setSourceClass(getClass());
@@ -221,7 +222,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         void customize(PartitionContext context, Descriptor descriptor);
     }
 
-    private static enum RunType {
+    private enum RunType {
         EACH_ENTRY,
         PARTITION;
     }

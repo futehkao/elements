@@ -302,7 +302,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
         Provision provision = null;
         try {
-            provision = (Provision) cls.newInstance();
+            provision = (Provision) cls.getDeclaredConstructor().newInstance();
             inject(provision);
         } catch (Exception e) {
             throw new SystemException(e);

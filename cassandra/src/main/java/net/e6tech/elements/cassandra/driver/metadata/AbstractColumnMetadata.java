@@ -32,10 +32,6 @@ public abstract class AbstractColumnMetadata implements ColumnMetadata {
     }
 
     @Override
-    public DataType getType() {
-        return dataType;
-    }
-
     public DataType getDataType() {
         return dataType;
     }

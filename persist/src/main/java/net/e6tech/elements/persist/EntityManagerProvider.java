@@ -250,14 +250,14 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         long timeoutFinal = timeout;
         String[] names = providerNames(resources);
         EntityManagerConfig result = Annotator.create(EntityManagerConfig.class,
-                (v, a) -> {
+                (v, a) ->
             v.set(a::names, names)
-                    .set(a::disable, config.map(c -> c.disable()).orElse(false))
+                    .set(a::disable, config.map(EntityManagerConfig::disable).orElse(false))
                     .set(a::timeout, timeoutFinal)
                     .set(a::longTransaction, longQueryFinal)
                     .set(a::monitor, monitor)
-                    .set(a::timeoutExtension, timeoutExt);
-        });
+                    .set(a::timeoutExtension, timeoutExt)
+        );
 
         resources.getMapVariable(EntityManagerConfig.class)
                 .put(getProviderName(), result);
@@ -315,9 +315,8 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private void startMonitoring() {
         // starting a thread to monitor
         if (threadPool == null) {
-            ThreadGroup group = Thread.currentThread().getThreadGroup();
             threadPool = Executors.newCachedThreadPool(runnable -> {
-                Thread thread = new Thread(group, runnable, "EntityManagerProvider");
+                Thread thread = new Thread(runnable, "EntityManagerProvider");
                 thread.setName("EntityManagerProvider-" + thread.getId());
                 thread.setDaemon(true);
                 return thread;

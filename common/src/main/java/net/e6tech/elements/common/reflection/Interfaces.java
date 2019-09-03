@@ -105,7 +105,7 @@ public class Interfaces {
                     Object jump = var;
                     for (int i = 0 ; i < previousVars.length; i++) {
                         if (var.getName().equals(previousVars[i].getName())) {
-                            jump = new Integer(i);
+                            jump = Integer.valueOf(i);
                             break;
                         }
                     }

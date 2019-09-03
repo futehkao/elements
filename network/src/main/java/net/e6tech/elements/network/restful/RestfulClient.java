@@ -580,11 +580,10 @@ public class RestfulClient {
             throw new ServiceUnavailableException();
 
         if (status == null) {
-            switch (code) {
-                case 422:
-                    throw new BadRequestException(message);
-                default:
-                    throw new ServerErrorException(message, code);
+            if (code == 422) {
+                throw new BadRequestException(message);
+            } else {
+                throw new ServerErrorException(message, code);
             }
         }
 

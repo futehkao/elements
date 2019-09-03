@@ -15,6 +15,7 @@
  */
 package net.e6tech.elements.common.cache;
 
+import net.e6tech.elements.common.Tags;
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;
 import org.ehcache.config.builders.CacheConfigurationBuilder;
@@ -36,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests for ehcache and CacheFacade.
  * Created by futeh.
  */
+@Tags.Common
 public class CacheFacadeTest {
     @Test
     public void basic() {

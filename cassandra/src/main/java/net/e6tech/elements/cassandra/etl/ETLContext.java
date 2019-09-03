@@ -216,6 +216,7 @@ public class ETLContext {
         });
     }
 
+    @SuppressWarnings("squid:S3776")
     public LastUpdate getLastUpdate() {
         String name = extractor();
         lookupLastUpdate();

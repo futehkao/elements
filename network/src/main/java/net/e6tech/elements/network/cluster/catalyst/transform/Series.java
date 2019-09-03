@@ -39,7 +39,7 @@ import java.util.stream.Stream;
  * @param <T> Input type
  * @param <R> Output type
  */
-@SuppressWarnings({"squid:S00119",  "squid:S2975"})
+@SuppressWarnings({"squid:S00119",  "squid:S2975", "squid:S1948"})
 public class Series<Re extends Reactor, T, R> implements Serializable, Cloneable, Function<Re, Collection<R>> {
     private static final long serialVersionUID = 5420350641543073437L;
 

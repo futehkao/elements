@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.reflection;
 
+import net.e6tech.elements.common.Tags;
 import net.e6tech.elements.common.inject.BindPropA;
 import net.e6tech.elements.common.inject.BindPropX;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
 
+@Tags.Common
 public class LambdaTest {
     @Test
     void methodHandle() throws Throwable {

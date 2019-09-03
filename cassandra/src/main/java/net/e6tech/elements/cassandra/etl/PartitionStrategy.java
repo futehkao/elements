@@ -79,8 +79,8 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
     @Override
     public List<S> extract(C context) {
         return context.open().apply(Sibyl.class, sibyl -> {
-            String query = TextBuilder.using("select * from ${table} where ${pk} = :partitionKey")
-                    .build("table", context.tableName(), "pk", context.getInspector().getPartitionKeyColumn(0));
+            String query = TextBuilder.using("select * from ${tbl} where ${pk} = :partitionKey")
+                    .build("tbl", context.tableName(), "pk", context.getInspector().getPartitionKeyColumn(0));
             Prepared pstmt = context.getPreparedStatements().computeIfAbsent("extract",
                     key -> sibyl.getSession().prepare(query));
             AsyncPrepared<?> async = sibyl.createAsync(pstmt);
@@ -185,7 +185,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
             }
         }
 
-        if (batch.size() > 0) {
+        if (!batch.isEmpty()) {
             LastUpdate lastUpdate = context.getLastUpdate();
             runPartitions(batch, context);
             lastUpdate.update(batch.get(batch.size() - 1));

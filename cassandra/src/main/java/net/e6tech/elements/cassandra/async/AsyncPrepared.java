@@ -39,10 +39,12 @@ public class AsyncPrepared<D> extends Async<AsyncResultSet, D> {
 
     private Prepared prepared;
 
+    @Override
     protected AsyncFutures<AsyncResultSet, D> createResult() {
-        return new AsyncResultSetFutures<D>(this, futures);
+        return new AsyncResultSetFutures<>(this, futures);
     }
 
+    @Override
     public AsyncResultSetFutures<D> getResult() {
         return (AsyncResultSetFutures) super.getResult();
     }

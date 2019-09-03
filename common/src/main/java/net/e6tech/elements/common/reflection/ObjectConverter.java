@@ -157,7 +157,7 @@ public class ObjectConverter {
                 // class name.  We load the class and create an instance.
                 try {
                     Class cls = getClass().getClassLoader().loadClass((String) value);
-                    value = cls.newInstance();
+                    value = cls.getDeclaredConstructor().newInstance();
                     if (instanceCreation != null)
                         instanceCreation.instanceCreated(value, toType, value);
                     return value;

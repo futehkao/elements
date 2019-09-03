@@ -43,6 +43,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
      * @return a list of data ordered by partition key.  It is very important that the list is ordered
      * by the partition key so that in case of failures the system can recover correctly.
      */
+    @SuppressWarnings("squid:S3776")
     @Override
     public List<S> extract(PartitionOrderByContext context) {
         return context.open().apply(Sibyl.class, sibyl -> {
@@ -101,7 +102,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
 
         batchResults = extract(context);
 
-        while (batchResults.size() > 0) {
+        while (!batchResults.isEmpty()) {
             processedCount += load(context, batchResults);
             if (logger.isInfoEnabled())
                 logger.info("Processed {} instance of {}", processedCount, context.extractor());

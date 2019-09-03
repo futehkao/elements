@@ -19,7 +19,6 @@ import groovy.lang.Closure;
 import groovy.lang.MissingMethodException;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.script.AbstractScriptBase;
-import net.e6tech.elements.common.script.Scripting;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.Map;

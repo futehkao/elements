@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.util.reflection;
 
+import net.e6tech.elements.common.Tags;
 import net.e6tech.elements.common.reflection.ObjectConverter;
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
+@Tags.Common
 public class ObjectConverterTest {
     @Test
     public void convert() throws Exception {

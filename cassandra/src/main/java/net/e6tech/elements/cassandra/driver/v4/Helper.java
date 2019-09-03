@@ -44,7 +44,7 @@ public class Helper<T> extends EntityHelperBase<T> {
     private Inspector inspector;
 
     public Helper(MapperContext context, Class<T> entityClass, Inspector inspector) {
-        super(context, getTableName(entityClass));
+        super(context, inspector.tableName(entityClass));
         LOG.debug("[{}] Entity will be mapped to {}{}",
                 context.getSession().getName(),
                 getKeyspaceId() == null ? "" : getKeyspaceId() + ".",
@@ -54,24 +54,21 @@ public class Helper<T> extends EntityHelperBase<T> {
         this.inspector = inspector;
     }
 
-    private static String getTableName(Class entityClass) {
-        return null;
-    }
-
     @Override
     public Class<T> getEntityClass() {
         return entityClass;
     }
 
+    @SuppressWarnings("squid:S1905") // this is just nonsense from sonarlint.
     @Override
-    public <SettableT extends SettableByName<SettableT>> SettableT set(T entity,
-                                                                       SettableT target,
-                                                                       NullSavingStrategy nullSavingStrategy) {
+    public <S extends SettableByName<S>> S set(T entity,
+                                               S target,
+                                               NullSavingStrategy nullSavingStrategy) {
 
         for (Inspector.ColumnAccessor accessor : inspector.getColumns()) {
             Object value = accessor.get(entity);
             if (value != null || nullSavingStrategy == NullSavingStrategy.SET_TO_NULL) {
-                target = (SettableT) target.set(accessor.getColumnName(), value, accessor.getType());
+                target = (S) target.set(accessor.getColumnName(), value, accessor.getType());
             }
         }
 

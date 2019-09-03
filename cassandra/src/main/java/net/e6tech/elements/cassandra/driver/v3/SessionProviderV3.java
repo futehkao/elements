@@ -38,9 +38,10 @@ public class SessionProviderV3 extends SessionProvider {
     private NamingStrategy namingStrategy = new DefaultNamingStrategy(NamingConventions.LOWER_CAMEL_CASE, NamingConventions.LOWER_SNAKE_CASE);
 
     private Cluster cluster;
-    private volatile MappingManager sharedMappingManager;
+    private MappingManager sharedMappingManager;
     private Deque<MappingManager> cachedManagers = new ConcurrentLinkedDeque<>();
     private Consumer<Cluster.Builder> builderOptions;
+    private volatile boolean sharedInitialized = false;
 
     @Override
     public Generator getGenerator() {
@@ -148,9 +149,9 @@ public class SessionProviderV3 extends SessionProvider {
         Session session;
 
         if (isSharedSession()) {
-            if (sharedMappingManager == null) {
+            if (!sharedInitialized) {
                 synchronized (this) {
-                    if (sharedMappingManager == null) {
+                    if (!sharedInitialized) {
                         cluster.connect(getKeyspace());
                         session = cluster.connect(getKeyspace());
                         sharedMappingManager = createMappingManager(session);

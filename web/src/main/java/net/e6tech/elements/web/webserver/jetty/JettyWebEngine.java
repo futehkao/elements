@@ -81,7 +81,7 @@ public class JettyWebEngine implements WebEngine {
             }
 
             // SSL Context Factory
-            SslContextFactory sslContextFactory = new SslContextFactory();
+            SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
             sslContextFactory.setKeyStoreType(webServer.getKeyStoreFormat());
             sslContextFactory.setKeyStorePath(webServer.getKeyStoreFile());
             sslContextFactory.setKeyStorePassword(new String(webServer.getKeyStorePassword()));

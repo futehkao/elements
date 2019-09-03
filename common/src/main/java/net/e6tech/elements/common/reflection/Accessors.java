@@ -30,7 +30,7 @@ import java.util.function.Function;
 
 public class Accessors<T extends Accessor> {
 
-    public static final Function<Field, Accessor> DEFAULT_FIELD_ACCESSOR_FACTORY = field -> new Accessor(field);
+    public static final Function<Field, Accessor> DEFAULT_FIELD_ACCESSOR_FACTORY = Accessor::new;
     public static final BiFunction<PropertyDescriptor, Accessor, Accessor> DEFAULT_PROPERTY_ACCESSOR_FACTORY =
             (desc, accessor) -> {
                 if (desc.getName().equals("class"))
@@ -44,10 +44,9 @@ public class Accessors<T extends Accessor> {
     private Map<String, T> map = new HashMap<>(100);
 
     public static Accessors<Accessor> simple(Class cls) {
-        Accessors<Accessor> accessors = new Accessors<>(cls,
+        return new Accessors<>(cls,
                 DEFAULT_FIELD_ACCESSOR_FACTORY,
                 DEFAULT_PROPERTY_ACCESSOR_FACTORY);
-        return accessors;
     }
 
     public Accessors(Class targetClass, Function<Field, T> fieldFactory,
@@ -73,6 +72,7 @@ public class Accessors<T extends Accessor> {
         }
     }
 
+    @SuppressWarnings("squid:S3776")
     private void analyzedDescriptors(Class targetClass, BiFunction<PropertyDescriptor, T, T> descriptorFactory) {
         if (descriptorFactory != null) {
             try {

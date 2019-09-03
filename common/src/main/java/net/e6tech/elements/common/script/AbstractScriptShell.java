@@ -19,7 +19,6 @@ import groovy.lang.Closure;
 import groovy.lang.GString;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Configuration;
-import net.e6tech.elements.common.util.SystemException;
 
 import javax.script.ScriptException;
 import java.beans.Introspector;
@@ -95,11 +94,7 @@ public abstract class AbstractScriptShell {
     }
 
     public Object eval(String expression) {
-        try {
-            return getScripting().eval(expression);
-        } catch (ScriptException e) {
-            throw new SystemException(e);
-        }
+        return getScripting().eval(expression);
     }
 
     public boolean isLoading() {

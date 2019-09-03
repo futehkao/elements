@@ -28,7 +28,7 @@ import net.e6tech.elements.common.util.datastructure.Pair;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-import javax.script.ScriptException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -74,9 +74,7 @@ public class Atom implements Map<String, Object> {
         resources = resourceManager.newResources();
         resources.bind(Configuration.Resolver.class, resolver);
         resources.bind(Atom.class, this);
-        resourceManager.getVariable(OVERRIDE_SETTINGS).ifPresent(map -> {
-            overrideSettings = resourceManager.nullableVar(OVERRIDE_SETTINGS);
-        });
+        resourceManager.getVariable(OVERRIDE_SETTINGS).ifPresent(map -> overrideSettings = resourceManager.nullableVar(OVERRIDE_SETTINGS));
 
         BiConsumer<String, Object> addClosure = (key, value) -> {
             Object existing = boundInstances.get(key);
@@ -101,7 +99,6 @@ public class Atom implements Map<String, Object> {
                 resources.configurator.putAll(configuration);
             }
         });
-        // directives.put(WAIT_FOR, (key, value) -> (new MyBeanListener()).invokeMethod(key, new Object[]{value}));
         directives.put(PRE_INIT, addClosure);
         directives.put(POST_INIT, addClosure);
         directives.put(AFTER, addClosure);
@@ -208,8 +205,6 @@ public class Atom implements Map<String, Object> {
         } catch (MissingPropertyException e) {
             logger.trace(e.getMessage(), e);
             return null;
-        } catch (ScriptException e) {
-            throw new SystemException(e);
         }
     }
 
@@ -659,7 +654,7 @@ public class Atom implements Map<String, Object> {
                     throw new IllegalArgumentException("key=" + key + " has already been registered with ResourceManager.");
                 }
             } else {
-                instance = cls.newInstance();
+                instance = cls.getDeclaredConstructor().newInstance();
                 resourceManager.addResourceProvider((ResourceProvider) instance);
                 if (!key.startsWith("_")) {
                     resourceManager.addBean(key, instance);
@@ -681,9 +676,9 @@ public class Atom implements Map<String, Object> {
                     throw new IllegalArgumentException("key=" + key + " has already been registered with ResourceManager.");
                 }
             } else {
-                instance = cls.newInstance();
+                instance = cls.getDeclaredConstructor().newInstance();
             }
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             throw logger.systemException(e);
         }
 

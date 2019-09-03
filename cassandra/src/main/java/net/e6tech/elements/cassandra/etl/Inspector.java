@@ -39,10 +39,8 @@ public class Inspector {
     private List<ColumnAccessor> clusteringKeys = new LinkedList<>();
     private List<ColumnAccessor> checkpoints = new LinkedList<>();
     private List<ColumnAccessor> primaryKeyColumns = new LinkedList<>();
-    private Accessors<ColumnAccessor> accessors;
     private List<ColumnAccessor> columns;
     private Map<String, ColumnAccessor> columnMap;
-
 
     public Inspector(Class sourceClass, Generator generator) {
         this.sourceClass = sourceClass;
@@ -146,6 +144,10 @@ public class Inspector {
         return generator.tableName(sourceClass);
     }
 
+    public String tableName(Class cls) {
+        return generator.tableName(cls);
+    }
+
     public void setPrimaryKey(PrimaryKey key, Object object) {
         try {
             int idx = 0;
@@ -214,8 +216,7 @@ public class Inspector {
 
     private ColumnAccessor alloc(int position, PropertyDescriptor desc) {
         Generator gen = getGenerator();
-        ColumnAccessor descriptor = new ColumnAccessor(position, gen.getColumnName(desc), desc.getName(), desc);
-        return  descriptor;
+        return new ColumnAccessor(position, gen.getColumnName(desc), desc.getName(), desc);
     }
 
     private ColumnAccessor alloc(int position, PropertyDescriptor desc, List<ColumnAccessor> list, Map<String, ColumnAccessor> map) {
@@ -238,7 +239,7 @@ public class Inspector {
 
         AtomicInteger position = new AtomicInteger(0);
         Set<String> transientNames = new HashSet<>(50);
-        accessors = new Accessors<>(cls,
+        Accessors<ColumnAccessor> accessors = new Accessors<>(cls,
                 field -> {
                     if (Modifier.isStrict(field.getModifiers())
                         || Modifier.isStatic(field.getModifiers()))

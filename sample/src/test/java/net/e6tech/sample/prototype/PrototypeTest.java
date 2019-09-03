@@ -17,13 +17,16 @@
 package net.e6tech.sample.prototype;
 
 import net.e6tech.sample.BaseCase;
+import net.e6tech.sample.Tags;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.
  */
+@Tags.Sample
 public class PrototypeTest extends BaseCase {
 
     @Test

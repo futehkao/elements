@@ -16,9 +16,7 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.Sibyl;
-import net.e6tech.elements.common.resources.Provision;
 
 import java.util.*;
 import java.util.function.BiConsumer;

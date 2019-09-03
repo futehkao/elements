@@ -21,6 +21,7 @@ import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
 
+@SuppressWarnings("squid:S1948")
 public interface MessagingEvents extends Serializable {
 
     class Subscribe implements MessagingEvents {

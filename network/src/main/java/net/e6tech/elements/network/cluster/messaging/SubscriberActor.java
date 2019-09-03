@@ -38,6 +38,7 @@ public class SubscriberActor extends CommonBehavior<SubscriberActor, MessagingEv
         this.topic = topic;
     }
 
+    @Override
     protected void initialize() {
         ActorRef mediator = DistributedPubSub.lookup().get(untypedContext().system()).mediator();
         mediator.tell(new DistributedPubSubMediator.Subscribe(topic, untypedRef()), untypedRef());

@@ -22,6 +22,7 @@ import net.e6tech.elements.security.hsm.thales.Command;
 
 import java.io.*;
 
+@SuppressWarnings("all")
 public class ThalesSimulator extends Simulator {
 
     static Logger logger = Logger.getLogger();

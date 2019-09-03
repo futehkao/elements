@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.interceptor;
 
+import net.e6tech.elements.common.Tags;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.Nonnull;
@@ -36,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
+@Tags.Common
 public class InterceptorTest {
 
     private int a = 0;

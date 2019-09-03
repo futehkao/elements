@@ -17,6 +17,7 @@
 package net.e6tech.elements.common.util;
 
 
+import net.e6tech.elements.common.Tags;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
+@Tags.Common
 public class TextSubstitutionTest {
 
     @Test

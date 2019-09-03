@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.inject;
 
+import net.e6tech.elements.common.Tags;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.common.resources.Resources;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tags.Common
 class InjectTest {
 
     @Test

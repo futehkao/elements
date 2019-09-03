@@ -46,7 +46,7 @@ public class ColumnMetadataV3 extends AbstractColumnMetadata {
 
     protected static DataType createDataType(Generator generator, com.datastax.driver.core.DataType dataType) {
         TypeDescriptorImpl impl = new TypeDescriptorImpl();
-        Class type = null;
+        Class type;
         switch (dataType.getName()) {
             case ASCII: type = String.class; break;
             case BIGINT: type = Long.class; break;
@@ -71,6 +71,8 @@ public class ColumnMetadataV3 extends AbstractColumnMetadata {
             case LIST: type = List.class; break;
             case MAP: type = Map.class; break;
             case SET: type = Set.class; break;
+            default:
+                type = null;
         }
         if (type == null)
             return null;
@@ -78,9 +80,9 @@ public class ColumnMetadataV3 extends AbstractColumnMetadata {
         impl.setFrozen(dataType.isFrozen());
         DataType d = DataType.create(generator, type, impl);
 
-        if (d instanceof ListType && dataType.getTypeArguments().size() > 0) {
+        if (d instanceof ListType && !dataType.getTypeArguments().isEmpty()) {
             ((ListType) d).setComponentType(createDataType(generator, dataType.getTypeArguments().get(0)));
-        } else if (d instanceof SetType && dataType.getTypeArguments().size() > 0) {
+        } else if (d instanceof SetType && !dataType.getTypeArguments().isEmpty()) {
             ((SetType) d).setComponentType(createDataType(generator, dataType.getTypeArguments().get(0)));
         } else if (d instanceof MapType && dataType.getTypeArguments().size() > 1) {
             DataType keyType = createDataType(generator, dataType.getTypeArguments().get(0));

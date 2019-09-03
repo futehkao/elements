@@ -16,16 +16,13 @@
 
 package net.e6tech.elements.common.reflection;
 
+import net.e6tech.elements.common.Tags;
 import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import java.lang.invoke.MethodHandles;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.Callable;
 
-import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -34,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
+@Tags.Common
 public class AnnotatorTest {
 
     @Test

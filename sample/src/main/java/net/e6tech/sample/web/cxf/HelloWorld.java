@@ -30,7 +30,6 @@ import javax.annotation.security.PermitAll;
 import javax.persistence.EntityManager;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
-import java.beans.IntrospectionException;
 
 @Path("/helloworld")
 @SuppressWarnings("all") // it is a test case

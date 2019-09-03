@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 
+@SuppressWarnings("squid:S2925")
 public class ClusterNodeTest {
 
     public static ClusterNode create(int port) {

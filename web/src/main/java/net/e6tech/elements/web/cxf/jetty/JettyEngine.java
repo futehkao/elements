@@ -32,23 +32,13 @@ import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxws.JaxWsServerFactoryBean;
 import org.apache.cxf.message.Message;
 import org.apache.cxf.transport.Destination;
-import org.apache.cxf.transport.http.AbstractHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngine;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngineFactory;
-import org.eclipse.jetty.server.Dispatcher;
-import org.eclipse.jetty.server.Handler;
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
-import javax.servlet.DispatcherType;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
@@ -77,6 +67,8 @@ public class JettyEngine implements ServerEngine {
         this.queuedThreadPool = queuedThreadPool;
     }
 
+    @SuppressWarnings("squid:CommentedOutCodeLine")
+    @Override
     public void onException(Message message, CallFrame frame, Throwable th) {
         // org.eclipse.jetty.server.Request request = ( org.eclipse.jetty.server.Request) message.get(AbstractHTTPDestination.HTTP_REQUEST);
         // request.setHandled(true);

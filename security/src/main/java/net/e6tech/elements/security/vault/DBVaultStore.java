@@ -291,7 +291,7 @@ public class DBVaultStore implements VaultStore {
                         connection = dataSource.getConnection();
                         if (version != null) {
                             select = connection.prepareStatement("select v.secret from " + tableName + " v where v.name = ? and v.alias = ? and v.version = ? ");
-                            select.setLong(3, new Long(version));
+                            select.setLong(3, Long.parseLong(version));
                         } else {
                             select = connection.prepareStatement("select v.secret from " + tableName + " v where v.name = ? and v.alias = ? " +
                                     "and v.version = (select max(v1.version) from " + tableName + " v1 where v1.name = ? and v1.alias = ?)");
@@ -365,7 +365,7 @@ public class DBVaultStore implements VaultStore {
                             removeVersion = connection.prepareStatement("delete from " + tableName + " where name = ? and alias = ? and version = ? ");
                             removeVersion.setString(1, name);
                             removeVersion.setString(2, alias);
-                            removeVersion.setLong(3, new Long(version));
+                            removeVersion.setLong(3, Long.parseLong(version));
                             removeAll.executeUpdate();
                         } else {
                             removeAll = connection.prepareStatement("delete from " + tableName + " where name = ? and alias = ?");
@@ -620,7 +620,7 @@ public class DBVaultStore implements VaultStore {
                 for (Secret secret : addedSecrets) {
                     count.setString(1, getName());
                     count.setString(2, secret.alias());
-                    count.setLong(3, new Long(secret.version()));
+                    count.setLong(3, Long.parseLong(secret.version()));
                     try (ResultSet rs = count.executeQuery()) {
                         int c = 0;
                         if (rs.next())
@@ -635,7 +635,7 @@ public class DBVaultStore implements VaultStore {
                         if (c == 0) {
                             insert.setString(1, name);
                             insert.setString(2, secret.alias());
-                            insert.setLong(3, new Long(secret.version()));
+                            insert.setLong(3, Long.parseLong(secret.version()));
                             insert.setString(4, encoded);
                             insert.executeUpdate();
                             insert.clearParameters();
@@ -643,7 +643,7 @@ public class DBVaultStore implements VaultStore {
                             update.setString(1, encoded);
                             update.setString(2, name);
                             update.setString(3, secret.alias());
-                            update.setLong(4, new Long(secret.version()));
+                            update.setLong(4, Long.parseLong(secret.version()));
                             update.executeUpdate();
                             update.clearParameters();
                         }

@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.common.reflection;
 
+import net.e6tech.elements.common.Tags;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -26,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
+
+@Tags.Common
 public class ReflectionTest {
 
     @Test

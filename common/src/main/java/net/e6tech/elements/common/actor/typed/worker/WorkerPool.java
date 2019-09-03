@@ -56,6 +56,7 @@ public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
         this.context = context;
     }
 
+    @SuppressWarnings("squid:S2175")
     @Typed
     private Behavior<WorkEvents> terminated(Terminated event) {
         workers.remove(event.ref());
@@ -96,7 +97,7 @@ public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
     }
 
     private void newWorker() {
-        ActorRef<WorkEvents> worker = context.spawnAnonymous(Behaviors.setup(context -> new Worker(context, this.context.getSelf())));
+        ActorRef<WorkEvents> worker = context.spawnAnonymous(Behaviors.setup(ctx -> new Worker(ctx, this.context.getSelf())));
         workers.add(worker);
         context.watch(worker);
         idle(worker);

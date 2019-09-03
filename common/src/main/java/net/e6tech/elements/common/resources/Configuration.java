@@ -626,7 +626,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
         private class LongConstructor extends AbstractConstruct {
             public Object construct(Node node) {
                 String value = constructScalar((ScalarNode) node).replaceAll("_", "");
-                return new Long(value);
+                return Long.parseLong(value);
 
             }
         }

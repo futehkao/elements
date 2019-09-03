@@ -17,7 +17,6 @@
 package net.e6tech.elements.common.resources.plugin;
 
 import net.e6tech.elements.common.reflection.Reflection;
-import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.LinkedHashMap;
@@ -57,6 +56,7 @@ public class PluginMap<K, V> implements PluginFactory {
         return map.remove(key);
     }
 
+    @SuppressWarnings("squid:S3776")
     public Map<K, V> map() {
         return pluginManager.getResources().configurator().computeIfAbsent(pluginPath.path(),
                 key -> {

@@ -34,7 +34,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-public abstract class CommonBehavior<Self extends CommonBehavior, T> extends AbstractBehavior<T> {
+public abstract class CommonBehavior<S extends CommonBehavior, T> extends AbstractBehavior<T> {
 
     private static Cache<Class, Receive> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
@@ -57,36 +57,7 @@ public abstract class CommonBehavior<Self extends CommonBehavior, T> extends Abs
 
         Set<Class> events = new HashSet<>();
         while (!cls.equals(CommonBehavior.class)) {
-            for (Method method : cls.getDeclaredMethods()) {
-                Annotation typed = method.getAnnotation(Typed.class);
-
-                if (typed == null)
-                    continue;
-                Class paramType = Reflection.getParametrizedType(getClass(), 1);
-                if (method.getParameterCount() == 1
-                        && (Behavior.class.isAssignableFrom(method.getReturnType()) || void.class.equals(method.getReturnType()))
-                        && !events.contains(method.getParameterTypes()[0])) {
-                    events.add(method.getParameterTypes()[0]);
-                    method.setAccessible(true);
-                    boolean behavior = Behavior.class.isAssignableFrom(method.getReturnType());
-                    boolean onMessage = paramType.isAssignableFrom(method.getParameterTypes()[0]);
-                    if (onMessage) {
-                        builder = builder.onMessage(method.getParameterTypes()[0],
-                                m -> {
-                                    Object ret = method.invoke(this, m);
-                                    return (behavior) ? (Behavior) ret : Behaviors.same();
-                                });
-                    } else {
-                        builder = builder.onSignal(method.getParameterTypes()[0],
-                                m -> {
-                                    Object ret = method.invoke(this, m);
-                                    return (behavior) ? (Behavior) ret : Behaviors.same();
-                                });
-                    }
-                } else {
-                    throw new SystemException("Invoiad method signature for method " + method);
-                }
-            }
+            builder = build(builder, cls, events);
             cls = cls.getSuperclass();
         }
 
@@ -95,11 +66,47 @@ public abstract class CommonBehavior<Self extends CommonBehavior, T> extends Abs
         return receive;
     }
 
+    @SuppressWarnings("squid:S3776")
+    private ReceiveBuilder build(ReceiveBuilder builder, Class cls, Set<Class> events) {
+        for (Method method : cls.getDeclaredMethods()) {
+            Annotation typed = method.getAnnotation(Typed.class);
+
+            if (typed == null)
+                continue;
+            Class paramType = Reflection.getParametrizedType(getClass(), 1);
+            if (method.getParameterCount() == 1
+                    && (Behavior.class.isAssignableFrom(method.getReturnType()) || void.class.equals(method.getReturnType()))
+                    && !events.contains(method.getParameterTypes()[0])) {
+                events.add(method.getParameterTypes()[0]);
+                method.setAccessible(true);
+                boolean behavior = Behavior.class.isAssignableFrom(method.getReturnType());
+                boolean onMessage = paramType.isAssignableFrom(method.getParameterTypes()[0]);
+                if (onMessage) {
+                    builder = builder.onMessage(method.getParameterTypes()[0],
+                            m -> {
+                                Object ret = method.invoke(this, m);
+                                return (behavior) ? (Behavior) ret : Behaviors.same();
+                            });
+                } else {
+                    builder = builder.onSignal(method.getParameterTypes()[0],
+                            m -> {
+                                Object ret = method.invoke(this, m);
+                                return (behavior) ? (Behavior) ret : Behaviors.same();
+                            });
+                }
+            } else {
+                throw new SystemException("Invoiad method signature for method " + method);
+            }
+        }
+
+        return builder;
+    }
+
     public ActorContext<T> getContext() {
         return context;
     }
 
-    void setup(Guardian guardian, ActorContext<T> context) {
+    public void setup(Guardian guardian, ActorContext<T> context) {
         this.guardian = guardian;
         this.context = context;
         initialize();
@@ -129,6 +136,15 @@ public abstract class CommonBehavior<Self extends CommonBehavior, T> extends Abs
                 name);
     }
 
+    public <U> ActorRef<U> spawn(CommonBehavior<?, U> behavior, String name, Props props) {
+        return context.spawn(Behaviors.<U>setup(
+                ctx -> {
+                    behavior.setup(guardian, ctx);
+                    return behavior;
+                }),
+                name, props);
+    }
+
     public <U> ActorRef<U> spawnAnonymous(CommonBehavior<?, U> behavior) {
         return context.spawnAnonymous(Behaviors.<U>setup(
                 ctx -> {
@@ -147,13 +163,13 @@ public abstract class CommonBehavior<Self extends CommonBehavior, T> extends Abs
 
     public <U> CompletionStage<U> ask(Function<ActorRef<U>, T> message,
                                   long timeoutMillis) {
-        return AskPattern.ask(context.getSelf(), r -> message.apply(r),
+        return AskPattern.ask(context.getSelf(), message::apply,
                 java.time.Duration.ofMillis(timeoutMillis), context.getSystem().scheduler());
     }
 
-    public Self tell(T msg) {
+    public S tell(T msg) {
         context.getSelf().tell(msg);
-        return (Self) this;
+        return (S) this;
     }
 
     public <U> void stop(ActorRef<U> child) {
@@ -173,11 +189,11 @@ public abstract class CommonBehavior<Self extends CommonBehavior, T> extends Abs
         return Adapter.toUntyped(getContext());
     }
 
-    public <T> akka.actor.ActorRef actorOf(akka.actor.Props props, String name) {
+    public akka.actor.ActorRef actorOf(akka.actor.Props props, String name) {
         return untypedContext().actorOf(props, name);
     }
 
-    public <T> akka.actor.ActorRef actorOf(akka.actor.Props props) {
+    public akka.actor.ActorRef actorOf(akka.actor.Props props) {
         return untypedContext().actorOf(props);
     }
 }

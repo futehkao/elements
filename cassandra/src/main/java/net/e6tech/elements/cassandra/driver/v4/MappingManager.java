@@ -41,7 +41,7 @@ public class MappingManager {
         this.session = session;
         this.keyspace = keyspace;
         if (keyspace == null)
-            this.keyspace = session.getKeyspace().map(id -> id.asInternal()).orElse(null);
+            this.keyspace = session.getKeyspace().map(CqlIdentifier::asInternal).orElse(null);
     }
 
     public <T> Mapper<T> getMapper(Class<T> cls) {
@@ -54,7 +54,6 @@ public class MappingManager {
 
     private class MapperBuilder<T> {
         protected Map<Object, Object> customState;
-        private DefaultMapperContext context;
         private LazyReference<Mapper<T>> cache;
 
         protected MapperBuilder() {
@@ -71,7 +70,7 @@ public class MappingManager {
             Inspector inspector = sessionProvider.getInspector(cls);
             CqlIdentifier tableId = CqlIdentifier.fromInternal(inspector.tableName());
             CqlIdentifier keyspaceId = CqlIdentifier.fromInternal(keyspace);
-            context = new DefaultMapperContext(session, customState)
+            DefaultMapperContext context = new DefaultMapperContext(session, customState)
                     .withKeyspaceAndTable(keyspaceId, tableId);
             this.cache = new LazyReference<>(() -> MapperImpl.init(context, cls, inspector));
             return this;

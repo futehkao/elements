@@ -18,6 +18,7 @@ package net.e6tech.elements.cassandra;
 
 import net.e6tech.elements.common.util.SystemException;
 
+@SuppressWarnings({"squid:S2975", "squid:S1845", "squid:ClassVariableVisibilityCheck"})
 public class ReadOptions implements Cloneable {
     public Consistency consistency;
 

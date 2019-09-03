@@ -157,7 +157,8 @@ public class TableGenerator extends AbstractGenerator {
     }
 
     public void diff(Session session, String keyspace, TableMetadata tableMetadata, boolean dropColumns) {
-        logger.info("Diff table " + fullyQualifiedTableName());
+        if (logger.isInfoEnabled())
+            logger.info("Diff table {}", fullyQualifiedTableName());
         List<ColumnMetadata> columns = tableMetadata.getColumns();
         Map<String, ColumnGenerator> toAdd = new LinkedHashMap<>();
         Map<String, ColumnMetadata> toRemove = new LinkedHashMap<>();

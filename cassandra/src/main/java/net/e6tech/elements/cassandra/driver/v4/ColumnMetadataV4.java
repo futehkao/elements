@@ -48,7 +48,7 @@ public class ColumnMetadataV4 extends AbstractColumnMetadata {
 
     protected static DataType createDataType(Generator generator, com.datastax.oss.driver.api.core.type.DataType dataType) {
         TypeDescriptorImpl impl = new TypeDescriptorImpl();
-        Class type = null;
+        Class type;
         switch (dataType.getProtocolCode()) {
             case ASCII: type = String.class; break;
             case BIGINT: type = Long.class; break;
@@ -72,6 +72,8 @@ public class ColumnMetadataV4 extends AbstractColumnMetadata {
             case LIST: type = List.class; break;
             case MAP: type = Map.class; break;
             case SET: type = Set.class; break;
+            default:
+                type = null;
         }
         if (type == null)
             return null;
