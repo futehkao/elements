@@ -50,13 +50,24 @@ public interface InvocationEvents extends Serializable {
     class Registration implements InvocationEvents {
         private RegisterReference reference;
         private BiFunction<ActorRef, Object[], Object> function;
+        private ActorRef sender;
 
         public Registration(String path, BiFunction<ActorRef, Object[], Object> function) {
             this.reference = new RegisterReference(path);
             this.function = function;
         }
 
-        public BiFunction<ActorRef, Object[], Object> function() {
+        public Registration(ActorRef sender, String path, BiFunction<ActorRef, Object[], Object> function) {
+            this.sender = sender;
+            this.reference = new RegisterReference(path);
+            this.function = function;
+        }
+
+        public ActorRef getSender() {
+            return sender;
+        }
+
+        public BiFunction<ActorRef, Object[], Object> getFunction() {
             return function;
         }
 

@@ -23,11 +23,11 @@ import akka.actor.typed.receptionist.ServiceKey;
 import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Typed;
 
-public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvents.Request> {
+public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvents> {
     private InvocationEvents.Registration registration;
-    private ServiceKey<InvocationEvents.Request> key;
+    private ServiceKey<InvocationEvents> key;
 
-    public RegistryEntry(ServiceKey<InvocationEvents.Request> key, InvocationEvents.Registration registration) {
+    public RegistryEntry(ServiceKey<InvocationEvents> key, InvocationEvents.Registration registration) {
         this.registration = registration;
         this.key = key;
     }
@@ -35,6 +35,14 @@ public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvent
     @Override
     protected void initialize() {
         getSystem().receptionist().tell(Receptionist.register(key, getSelf()));
+        getContext().getSelf().tell(registration);
+    }
+
+    @Typed
+    private void registration(InvocationEvents.Registration registration) {
+        if (registration.getSender() != null) {
+            registration.getSender().tell(getContext().getSelf());
+        }
     }
 
     @Typed
@@ -44,7 +52,7 @@ public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvent
         try {
             getGuardian().async(() -> {
                 try {
-                    Object ret = registration.function().apply(self, request.arguments());
+                    Object ret = registration.getFunction().apply(self, request.arguments());
                     sender.tell(new InvocationEvents.Response(self, ret));
                 } catch (Exception ex) {
                     sender.tell(new Status.Failure(ex));

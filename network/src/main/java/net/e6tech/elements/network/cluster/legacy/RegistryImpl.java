@@ -116,8 +116,10 @@ public class RegistryImpl implements Registry {
         Patterns.ask(registrar, PoisonPill.getInstance(), timeout);
     }
 
-    public <R> void register(String path, BiFunction<akka.actor.typed.ActorRef, Object[], R> function) {
-        Patterns.ask(registrar, new Events.Registration(path, (BiFunction<akka.actor.typed.ActorRef, Object[], Object>) function), timeout);
+    public <R, U> CompletionStage<U> register(String path, BiFunction<akka.actor.typed.ActorRef, Object[], R> function) {
+        Events.Registration registration = new Events.Registration(path, (BiFunction<akka.actor.typed.ActorRef, Object[], Object>) function);
+        Future future = Patterns.ask(registrar, registration, timeout);
+        return FutureConverters.toJava(future);
     }
 
     public <T> Collection routes(String qualifier, Class<T> interfaceClass) {

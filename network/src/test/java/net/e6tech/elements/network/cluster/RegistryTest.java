@@ -44,8 +44,12 @@ public class RegistryTest {
 
         registry.register("blah", (actor, sv) -> {
             return ((String)sv[0]).toUpperCase();
-        });
-        Thread.sleep(1000L); // one may have to adjust this value
+        })
+                .whenComplete((ret, exception) -> {
+                    if (exception != null)
+                        System.out.println(exception);
+                    else
+                     System.out.println(ret);} );
 
         // routing ServiceMessage
 

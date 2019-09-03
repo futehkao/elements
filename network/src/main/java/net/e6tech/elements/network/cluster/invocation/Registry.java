@@ -38,7 +38,7 @@ public interface Registry {
 
     <T> Collection routes(String qualifier, Class<T> interfaceClass);
 
-    <R> void register(String path, BiFunction<ActorRef, Object[], R> function);
+    <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function);
 
     <T> void register(String qualifier, Class<T> interfaceClass, T implementation);
 

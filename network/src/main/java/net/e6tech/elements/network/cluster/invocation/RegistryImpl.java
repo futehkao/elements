@@ -129,8 +129,8 @@ public class RegistryImpl implements Registry {
     }
 
     @Override
-    public <R> void register(String path, BiFunction<ActorRef, Object[], R> function) {
-        registrar.ask(ref -> new InvocationEvents.Registration(path,  (BiFunction<ActorRef, Object[], Object>)function), timeout);
+    public <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function) {
+        return registrar.ask(ref -> new InvocationEvents.Registration(ref, path,  (BiFunction<ActorRef, Object[], Object>)function), timeout);
     }
 
     @Override
