@@ -45,14 +45,16 @@ public class RegistryTest {
         registry.register("blah", (actor, sv) -> {
             return ((String)sv[0]).toUpperCase();
         })
-                .whenComplete((ret, exception) -> {
-                    if (exception != null)
-                        System.out.println(exception);
-                    else
-                     System.out.println(ret);} );
+        .whenComplete((ret, exception) -> {
+            if (exception != null)
+                System.out.println(exception);
+            else
+                System.out.println(ret);} );
+
+        while (registry.routes("blah").size() < 1)
+            Thread.sleep(100);
 
         // routing ServiceMessage
-
         long start = System.currentTimeMillis();
         registry.route("blah", 5000L)
                 .apply(new Object[] { "hello world!"})

@@ -49,7 +49,7 @@ public class Messaging implements Broadcast {
 
     public void start(Guardian guardian) {
         messenger = new Messenger();
-        guardian.spawn(messenger, name);
+        guardian.childActor(messenger).withName(name).spawn();
     }
 
     public void shutdown() {

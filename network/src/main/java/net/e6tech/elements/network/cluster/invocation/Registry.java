@@ -22,6 +22,7 @@ import net.e6tech.elements.network.cluster.ClusterAsync;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -36,13 +37,15 @@ public interface Registry {
 
     void setTimeout(long timeout);
 
-    <T> Collection routes(String qualifier, Class<T> interfaceClass);
+    Collection routes(String path);
+
+    Collection routes(String qualifier, Class interfaceClass);
 
     <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function);
 
-    <T> void register(String qualifier, Class<T> interfaceClass, T implementation);
+    <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation);
 
-    <T> void register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker);
+    <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker);
 
     Function<Object[], CompletionStage<InvocationEvents.Response>> route(String qualifier, Class interfaceClass, Method method, long timeout);
 

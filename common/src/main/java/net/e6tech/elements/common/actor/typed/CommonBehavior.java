@@ -20,7 +20,6 @@ import akka.actor.PoisonPill;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
-import akka.actor.typed.Props;
 import akka.actor.typed.javadsl.*;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -127,38 +126,8 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
     protected void initialize() {
     }
 
-    public <U> ActorRef<U> spawn(CommonBehavior<?, U> behavior, String name) {
-        return context.spawn(Behaviors.<U>setup(
-                ctx -> {
-                    behavior.setup(guardian, ctx);
-                    return behavior;
-                }),
-                name);
-    }
-
-    public <U> ActorRef<U> spawn(CommonBehavior<?, U> behavior, String name, Props props) {
-        return context.spawn(Behaviors.<U>setup(
-                ctx -> {
-                    behavior.setup(guardian, ctx);
-                    return behavior;
-                }),
-                name, props);
-    }
-
-    public <U> ActorRef<U> spawnAnonymous(CommonBehavior<?, U> behavior) {
-        return context.spawnAnonymous(Behaviors.<U>setup(
-                ctx -> {
-                    behavior.setup(guardian, ctx);
-                    return behavior;
-                }));
-    }
-
-    public <U> ActorRef<U> spawnAnonymous(CommonBehavior<?, U> behavior, Props props) {
-        return context.spawnAnonymous(Behaviors.<U>setup(
-                ctx -> {
-                    behavior.setup(guardian, ctx);
-                    return behavior;
-                }), props);
+    public <X extends CommonBehavior<X, Y>, Y> Spawn<X, Y> childActor(X child) {
+        return new Spawn<>(this, child);
     }
 
     public <U> CompletionStage<U> ask(Function<ActorRef<U>, T> message,

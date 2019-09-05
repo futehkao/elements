@@ -38,9 +38,9 @@ import static net.e6tech.elements.network.cluster.invocation.InvocationEvents.*;
 
 public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
 
-    private Map<ServiceKey, ActorRef<InvocationEvents>> routes = new HashMap<>(); // key is the context@method
-    private Map<ServiceKey, Set<ActorRef<InvocationEvents>>> actors = new HashMap<>();
-    private Map<ActorRef<InvocationEvents>, ServiceKey> actorKeys = new HashMap<>();
+    private Map<String, ActorRef<InvocationEvents.Request>> routes = new HashMap<>(); // key is the context@method
+    private Map<String, Set<ActorRef<InvocationEvents.Request>>> actors = new HashMap<>();
+    private Map<ActorRef<InvocationEvents.Request>, String> actorKeys = new HashMap<>();
     private RegistryImpl registry;
 
     public Registrar(RegistryImpl registry) {
@@ -59,33 +59,39 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
         }
 
         // spawn a child to listen for RegistryEntry
-        ServiceKey<InvocationEvents> key = ServiceKey.create(InvocationEvents.class, registration.getPath());
+        ServiceKey<InvocationEvents.Request> key = ServiceKey.create(InvocationEvents.Request.class, registration.getPath());
         getContext().spawnAnonymous(Behaviors.setup(
                 ctx -> {
+                    // Subscribe to Receptionist using key
                     ctx.getSystem().receptionist().tell(Receptionist.subscribe(key, ctx.getSelf().narrow()));
                     return Behaviors.receive(Object.class)
                             .onMessage(Receptionist.Listing.class,
-                            (c, msg) -> {
-                                Set<ActorRef<InvocationEvents>> set = actors.getOrDefault(key, Collections.emptySet());
-                                for (ActorRef<InvocationEvents> ref : msg.getServiceInstances(key)) {
-                                    if (!set.contains(ref)) {
-                                        getContext().watch(ref); // watch for Terminated event
-                                        actorKeys.put(ref, key);
-                                        registry.onAnnouncement(key.id());
-                                    }
-                                }
-                                actors.put(key, new LinkedHashSet<>(msg.getServiceInstances(key)));
-                                return Behaviors.same();
-                            })
-                    .build();
+                                    (c, msg) -> {
+                                        Set<ActorRef<InvocationEvents.Request>> set = actors.getOrDefault(registration.getPath(), Collections.emptySet());
+                                        for (ActorRef<InvocationEvents.Request> ref : msg.getServiceInstances(key)) {
+                                            if (!set.contains(ref)) {
+                                                getContext().watch(ref); // watch for Terminated event
+                                                actorKeys.put(ref, registration.getPath());
+                                                registry.onAnnouncement(registration.getPath());
+                                            }
+                                        }
+                                        actors.put(registration.getPath(), new LinkedHashSet<>(msg.getServiceInstances(key)));
+                                        return Behaviors.same();
+                                    })
+                            .build();
                 }
         ));
 
-        spawnAnonymous(new RegistryEntry(key, registration), DispatcherSelector.fromConfig(dispatcher));
+        // spawn a RegistryEntry and register it with Receptionist using key
+        childActor(new RegistryEntry(registration))
+                .withName(registration.getPath())
+                .withProps(DispatcherSelector.fromConfig(dispatcher))
+                .whenSetup((ctx, child) -> getSystem().receptionist().tell(Receptionist.register(key, child.getSelf())))
+                .spawn();
 
-        routes.computeIfAbsent(key,
+        routes.computeIfAbsent(registration.getPath(),
                 k -> {
-                    GroupRouter<InvocationEvents> g = Routers.group(key).withRoundRobinRouting();
+                    GroupRouter<InvocationEvents.Request> g = Routers.group(key).withRoundRobinRouting();
                     return getContext().spawnAnonymous(g);
                 });
     }
@@ -93,8 +99,7 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
     // Forward request to router
     @Typed
     private void request(Request request) {
-        ServiceKey key = ServiceKey.create(InvocationEvents.Request.class, request.getPath());
-        ActorRef<InvocationEvents> router = routes.get(key);
+        ActorRef<InvocationEvents.Request> router = routes.get(request.getPath());
         if (router == null) {
             request.getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")));
         } else {
@@ -106,20 +111,19 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
     @Typed
     private void terminated(Terminated terminated) {
         ActorRef actor = terminated.getRef();
-        ServiceKey key = actorKeys.get(actor);
+        String key = actorKeys.get(actor);
         if (key != null) {
-            Set<ActorRef<InvocationEvents>> set =  actors.get(key);
+            Set<ActorRef<InvocationEvents.Request>> set =  actors.get(key);
             if (set != null) {
                 set.remove(actor);
-                registry.onTerminated(key.id(), actor);
+                registry.onTerminated(key, actor);
             }
         }
     }
 
     @Typed
     private void routes(Routes message) {
-        ServiceKey key = ServiceKey.create(InvocationEvents.Request.class, message.getPath());
-        Set<ActorRef<InvocationEvents>> actorsForKey = this.actors.get(key);
+        Set<ActorRef<InvocationEvents.Request>> actorsForKey = this.actors.get(message.getPath());
         if (actorsForKey == null) {
             message.getSender().tell(new Response(getSelf(), Collections.emptySet()));
         } else {

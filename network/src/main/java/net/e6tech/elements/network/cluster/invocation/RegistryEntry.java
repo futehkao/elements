@@ -18,31 +18,22 @@ package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
-import akka.actor.typed.receptionist.Receptionist;
-import akka.actor.typed.receptionist.ServiceKey;
 import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Typed;
 
-public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvents> {
+public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvents.Request> {
     private InvocationEvents.Registration registration;
-    private ServiceKey<InvocationEvents> key;
 
-    public RegistryEntry(ServiceKey<InvocationEvents> key, InvocationEvents.Registration registration) {
+    public RegistryEntry(InvocationEvents.Registration registration) {
         this.registration = registration;
-        this.key = key;
     }
 
     @Override
-    protected void initialize() {
-        getSystem().receptionist().tell(Receptionist.register(key, getSelf()));
-        getContext().getSelf().tell(registration);
-    }
+    public void initialize() {
+        super.initialize();
+        if (registration.getSender() != null)
+            registration.getSender().tell(this.getSelf());
 
-    @Typed
-    private void registration(InvocationEvents.Registration registration) {
-        if (registration.getSender() != null) {
-            registration.getSender().tell(getContext().getSelf());
-        }
     }
 
     @Typed

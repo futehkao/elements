@@ -81,6 +81,10 @@ public class Events {
         public BiFunction<akka.actor.typed.ActorRef, Object[], Object> function() {
             return function;
         }
+
+        public String getPath() {
+            return reference.path();
+        }
     }
 
     public static class Invocation implements Serializable, KryoSerializable {

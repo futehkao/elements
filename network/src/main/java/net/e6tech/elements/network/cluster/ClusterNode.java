@@ -132,7 +132,7 @@ public class ClusterNode implements Initializable {
             return;
 
         if (membership == null)
-            membership = genesis.getGuardian().spawnAnonymous(new Membership());
+            membership = genesis.getGuardian().childActor(new Membership()).spawn();
 
         if (broadcast == null) {
             broadcast = new Messaging();

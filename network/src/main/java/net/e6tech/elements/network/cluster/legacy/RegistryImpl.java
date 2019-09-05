@@ -22,6 +22,7 @@ import akka.actor.Props;
 import akka.actor.typed.javadsl.Adapter;
 import akka.pattern.Patterns;
 import net.e6tech.elements.common.actor.typed.Guardian;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import net.e6tech.elements.network.cluster.AsyncImpl;
 import net.e6tech.elements.network.cluster.ClusterAsync;
@@ -40,7 +41,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -116,13 +119,12 @@ public class RegistryImpl implements Registry {
         Patterns.ask(registrar, PoisonPill.getInstance(), timeout);
     }
 
-    public <R, U> CompletionStage<U> register(String path, BiFunction<akka.actor.typed.ActorRef, Object[], R> function) {
-        Events.Registration registration = new Events.Registration(path, (BiFunction<akka.actor.typed.ActorRef, Object[], Object>) function);
-        Future future = Patterns.ask(registrar, registration, timeout);
+    public  <R, U> CompletionStage<U> register(String path, BiFunction<akka.actor.typed.ActorRef, Object[], R> function) {
+        Future future = Patterns.ask(registrar, new Events.Registration(path, (BiFunction<akka.actor.typed.ActorRef, Object[], Object>) function), timeout);
         return FutureConverters.toJava(future);
     }
 
-    public <T> Collection routes(String qualifier, Class<T> interfaceClass) {
+    public Collection routes(String qualifier, Class interfaceClass) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
         for (Method method : interfaceClass.getMethods()) {
@@ -151,8 +153,8 @@ public class RegistryImpl implements Registry {
     }
 
     @Override
-    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation) {
-        register(qualifier, interfaceClass, implementation, null);
+    public <T, U> CompletionStage<List<U>>  register(String qualifier, Class<T> interfaceClass, T implementation) {
+        return register(qualifier, interfaceClass, implementation, null);
     }
 
     /**
@@ -165,10 +167,11 @@ public class RegistryImpl implements Registry {
      */
     @SuppressWarnings({"squid:S1067", "squid:S3776"})
     @Override
-    public <T> void register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker) {
+    public <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
 
+        ArrayList<CompletableFuture<U>> list = new ArrayList<>();
         for (Method method : interfaceClass.getMethods()) {
             Local local = method.getAnnotation(Local.class);
             if (local != null)
@@ -183,10 +186,22 @@ public class RegistryImpl implements Registry {
                     customizedInvoker = new Invoker();
                 }
                 Invoker invoker = customizedInvoker;
-                register(fullyQualify(qualifier, interfaceClass, method),
-                        (actor, args) -> invoker.invoke(actor, implementation, method, args));
+                list.add((CompletableFuture) register(fullyQualify(qualifier, interfaceClass, method),
+                        (actor, args) -> invoker.invoke(actor, implementation, method, args)).toCompletableFuture());
             }
         }
+
+        return CompletableFuture.supplyAsync(() -> {
+            List<U> results = new ArrayList<>();
+            for (CompletableFuture<U> stage : list) {
+                try {
+                    results.add(stage.get(getTimeout(), TimeUnit.MILLISECONDS));
+                } catch (Exception e) {
+                    throw new SystemException(e);
+                }
+            }
+            return results;
+        });
     }
 
     String fullyQualify(String qualifier, Class interfaceClass, Method method) {
@@ -199,17 +214,16 @@ public class RegistryImpl implements Registry {
         builder.append(interfaceClass.getName());
         builder.append("::");
         builder.append(method.getName());
-        builder.append("(");
         boolean first = true;
         for (Class param : method.getParameterTypes()) {
-            if (first)
+            if (first) {
                 first = false;
-            else {
+                builder.append("+");
+            } else {
                 builder.append(",");
             }
             builder.append(param.getTypeName());
         }
-        builder.append(")");
         return builder.toString();
     }
 

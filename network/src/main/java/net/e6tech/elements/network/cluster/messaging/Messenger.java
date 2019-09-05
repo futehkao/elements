@@ -69,8 +69,9 @@ public class Messenger extends CommonBehavior<Messenger, MessagingEvents> {
     private void subscribe(Subscribe event) {
         Map<Subscriber, ActorRef> map = subscribers.computeIfAbsent(event.topic, topic -> new HashMap<>());
         map.computeIfAbsent(event.subscriber,
-                sub -> spawn(new SubscriberActor(event.topic, event.subscriber),
-                SUBSCRIBER_PREFIX + event.topic + System.identityHashCode(event.subscriber)));
+                sub -> childActor(new SubscriberActor(event.topic, event.subscriber))
+                .withName(SUBSCRIBER_PREFIX + event.topic + System.identityHashCode(event.subscriber))
+                .spawn());
     }
 
     @Typed
@@ -91,7 +92,9 @@ public class Messenger extends CommonBehavior<Messenger, MessagingEvents> {
         if (destinations.get(event.destination) != null) {
             event.getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")));
         } else {
-            ActorRef dest = spawn(new Destination(event.subscriber), DESTINATION_PREFIX + event.destination);
+            ActorRef dest = childActor(new Destination(event.subscriber))
+                    .withName(DESTINATION_PREFIX + event.destination)
+                    .spawn();
             destinations.put(event.destination, dest);
         }
         return Behaviors.same();

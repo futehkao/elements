@@ -21,6 +21,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.ClosureSerializer;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.cluster.ClusterNode;
 import net.e6tech.elements.network.cluster.ClusterNodeTest;
 import net.e6tech.elements.network.cluster.invocation.Invoker;
@@ -49,14 +50,21 @@ public class CatalystTest {
     public Registry create(int port) {
         ClusterNode clusterNode = ClusterNodeTest.create(port);
         registry = clusterNode.getRegistry();
-        registry.register("blah", Reactor.class, new Reactor() {
-                },
-                new Invoker() {
-                    public Object invoke(ActorRef actor, Object target, Method method, Object[] arguments) {
-                        System.out.println("Method " + target.getClass().getName() + "::" + method.getName() + " handled by " + actor);
-                        return super.invoke(actor, target, method, arguments);
-                    }
-                });
+        try {
+            List list = registry.register("blah", Reactor.class, new Reactor() {
+                    },
+                    new Invoker() {
+                        public Object invoke(ActorRef actor, Object target, Method method, Object[] arguments) {
+                            System.out.println("Method " + target.getClass().getName() + "::" + method.getName() + " handled by " + actor);
+                            return super.invoke(actor, target, method, arguments);
+                        }
+                    })
+                    .toCompletableFuture()
+                    .get();
+            assertTrue(!list.isEmpty());
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
         return registry;
     }
 
@@ -103,7 +111,7 @@ public class CatalystTest {
 
         Registry registry = create(2552);
 
-        while (registry.routes("blah", Reactor.class).size() < 3)
+        while (registry.routes("blah", Reactor.class).size() < 2)
             Thread.sleep(100);
 
         RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();

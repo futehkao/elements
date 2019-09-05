@@ -52,15 +52,10 @@ public interface InvocationEvents extends Serializable {
         private BiFunction<ActorRef, Object[], Object> function;
         private ActorRef sender;
 
-        public Registration(String path, BiFunction<ActorRef, Object[], Object> function) {
-            this.reference = new RegisterReference(path);
-            this.function = function;
-        }
-
         public Registration(ActorRef sender, String path, BiFunction<ActorRef, Object[], Object> function) {
-            this.sender = sender;
             this.reference = new RegisterReference(path);
             this.function = function;
+            this.sender = sender;
         }
 
         public ActorRef getSender() {
@@ -81,7 +76,7 @@ public interface InvocationEvents extends Serializable {
         private transient RegisterReference reference;
         private transient Object[] arguments;
         private ActorRef<InvocationEvents.Response> sender;
-        private long timeout = 10000L;
+        private long timeout;
 
         public Request(ActorRef<InvocationEvents.Response> sender, String path, long timeout, Object[] arguments)  {
             this.sender = sender;
