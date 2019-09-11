@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.neethi/neethi/3.1.1/3a942a7921e66bb0081b16cf8f8a68e456b91de1/neethi-3.1.1.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.neethi/neethi/3.1.1/4fadbfd5b7c421a82382b17caa1a50885fa51835/neethi-3.1.1-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.neethi/neethi/3.1.1/b49204478267155a924d8ebe23b295345544aeec/neethi-3.1.1-sources.jar!/" />
     </SOURCES>

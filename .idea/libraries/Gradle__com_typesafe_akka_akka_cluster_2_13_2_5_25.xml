@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-cluster_2.13/2.5.25/a9a04d76390f28d932c2161521ba5f7f3476e564/akka-cluster_2.13-2.5.25.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-cluster_2.13/2.5.25/cfb4c7c76c8c663cc34c91fccc097287c74e5244/akka-cluster_2.13-2.5.25-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-cluster_2.13/2.5.25/b1bb4b5ae1b91a7cd763af22b931ba8a655c7db6/akka-cluster_2.13-2.5.25-sources.jar!/" />
     </SOURCES>

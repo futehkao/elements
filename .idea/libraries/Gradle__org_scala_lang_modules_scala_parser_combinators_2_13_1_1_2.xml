@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-parser-combinators_2.13/1.1.2/1c591dfd20e117ecd0931de1a7ba12145dc83645/scala-parser-combinators_2.13-1.1.2.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-parser-combinators_2.13/1.1.2/dc1f6e0b745105e6d87933c671e8b1fd40bb7400/scala-parser-combinators_2.13-1.1.2-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-parser-combinators_2.13/1.1.2/3c11f3bb6efdaf7ab83874f139e9d755215dd3b1/scala-parser-combinators_2.13-1.1.2-sources.jar!/" />
     </SOURCES>

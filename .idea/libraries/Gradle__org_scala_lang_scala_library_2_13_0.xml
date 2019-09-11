@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-library/2.13.0/e988ea597113786768900f1c260c694a2ae32a42/scala-library-2.13.0.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-library/2.13.0/70443cc1f3d895be40b36d1c7909055bff092029/scala-library-2.13.0-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-library/2.13.0/80a99c2699c361524e0eb51ebbcce55bbeda6689/scala-library-2.13.0-sources.jar!/" />
     </SOURCES>

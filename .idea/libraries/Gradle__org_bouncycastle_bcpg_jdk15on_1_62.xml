@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.bouncycastle/bcpg-jdk15on/1.62/f8ca06c266064f75354658d1b4c464da3532e358/bcpg-jdk15on-1.62.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.bouncycastle/bcpg-jdk15on/1.62/ace59b6675506a260f09bc8d71cdd3e4ded74ec7/bcpg-jdk15on-1.62-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.bouncycastle/bcpg-jdk15on/1.62/89b81fca1f7d0e6574d213069159236105717bd/bcpg-jdk15on-1.62-sources.jar!/" />
     </SOURCES>

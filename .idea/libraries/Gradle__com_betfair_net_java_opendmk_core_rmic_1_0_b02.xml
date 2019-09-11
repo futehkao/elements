@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.betfair.net.java.opendmk/core-rmic/1.0-b02/5d172b50351681fd71e0f3656ffb7cc42dbc10f8/core-rmic-1.0-b02.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.betfair.net.java.opendmk/core-rmic/1.0-b02/951d70544d7550b2b1e6dd13b7e5b85499e2d297/core-rmic-1.0-b02-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.betfair.net.java.opendmk/core-rmic/1.0-b02/c7bcca45e1c5744c69214d4658a59db9daaf68e9/core-rmic-1.0-b02-sources.jar!/" />
     </SOURCES>

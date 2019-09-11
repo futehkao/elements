@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-transports-http-jetty/3.3.2/fe7f6637afded3001b7600d4d1e7ab9a9083832e/cxf-rt-transports-http-jetty-3.3.2.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-transports-http-jetty/3.3.2/b39a337873da75ec9b9ce4847e357e24953ee543/cxf-rt-transports-http-jetty-3.3.2-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-transports-http-jetty/3.3.2/5ff0755819e99d376b4f21e65f110d434e6d82b8/cxf-rt-transports-http-jetty-3.3.2-sources.jar!/" />
     </SOURCES>

@@ -28,17 +28,19 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public abstract class CommonBehavior<S extends CommonBehavior, T> extends AbstractBehavior<T> {
 
-    private static Cache<Class, Receive> cache = CacheBuilder.newBuilder()
+    private static Cache<Class, List<MessageBuilder>> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
             .initialCapacity(128)
-            .maximumSize(100)
+            .maximumSize(500)
             .build();
 
     private ActorContext<T> context;
@@ -46,56 +48,52 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
 
     @Override
     public Receive<T> createReceive() {
-
-        Receive<T> receive = cache.getIfPresent(getClass());
-        if (receive != null)
-            return receive;
         ReceiveBuilder builder =  newReceiveBuilder();
 
         Class cls = getClass();
 
-        Set<Class> events = new HashSet<>();
+        Set<String> events = new HashSet<>();
         while (!cls.equals(CommonBehavior.class)) {
             builder = build(builder, cls, events);
             cls = cls.getSuperclass();
         }
 
-        receive = builder.build();
-        cache.put(getClass(), receive);
+        Receive<T> receive  = builder.build();
         return receive;
     }
 
     @SuppressWarnings("squid:S3776")
-    private ReceiveBuilder build(ReceiveBuilder builder, Class cls, Set<Class> events) {
-        for (Method method : cls.getDeclaredMethods()) {
-            Annotation typed = method.getAnnotation(Typed.class);
-
-            if (typed == null)
-                continue;
-            Class paramType = Reflection.getParametrizedType(getClass(), 1);
-            if (method.getParameterCount() == 1
-                    && (Behavior.class.isAssignableFrom(method.getReturnType()) || void.class.equals(method.getReturnType()))
-                    && !events.contains(method.getParameterTypes()[0])) {
-                events.add(method.getParameterTypes()[0]);
-                method.setAccessible(true);
-                boolean behavior = Behavior.class.isAssignableFrom(method.getReturnType());
-                boolean onMessage = paramType.isAssignableFrom(method.getParameterTypes()[0]);
-                if (onMessage) {
-                    builder = builder.onMessage(method.getParameterTypes()[0],
-                            m -> {
-                                Object ret = method.invoke(this, m);
-                                return (behavior) ? (Behavior) ret : Behaviors.same();
-                            });
+    private ReceiveBuilder build(ReceiveBuilder builder, Class cls, Set<String> events) {
+        List<MessageBuilder> list = cache.getIfPresent(cls);
+        if (list == null) {
+            list = new ArrayList<>();
+            for (Method method : cls.getDeclaredMethods()) {
+                Annotation typed = method.getAnnotation(Typed.class);
+                if (typed == null)
+                    continue;
+                Class paramType = Reflection.getParametrizedType(getClass(), 1);
+                if (method.getParameterCount() == 1
+                        && (Behavior.class.isAssignableFrom(method.getReturnType()) || void.class.equals(method.getReturnType()))) {
+                    method.setAccessible(true);
+                    boolean behavior = Behavior.class.isAssignableFrom(method.getReturnType());
+                    boolean onMessage = paramType.isAssignableFrom(method.getParameterTypes()[0]);
+                    if (onMessage) {
+                        list.add(new OnMessage(method, behavior));
+                    } else {
+                        list.add(new OnSignal(method, behavior));
+                    }
                 } else {
-                    builder = builder.onSignal(method.getParameterTypes()[0],
-                            m -> {
-                                Object ret = method.invoke(this, m);
-                                return (behavior) ? (Behavior) ret : Behaviors.same();
-                            });
+                    throw new SystemException("Invalid method signature for method " + method);
                 }
-            } else {
-                throw new SystemException("Invoiad method signature for method " + method);
             }
+            cache.put(cls, list);
+        }
+
+        for (MessageBuilder mb : list) {
+            if (events.contains(mb.signature()))
+                continue;
+            events.add(mb.signature());
+            builder = mb.build(builder, this);
         }
 
         return builder;
@@ -164,5 +162,66 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
 
     public akka.actor.ActorRef actorOf(akka.actor.Props props) {
         return untypedContext().actorOf(props);
+    }
+
+    static abstract class MessageBuilder {
+        protected boolean behavior;
+        protected Method method;
+        private String signature;
+
+        MessageBuilder(Method method, boolean behavior) {
+            this.method = method;
+            this.behavior = behavior;
+            StringBuilder builder = new StringBuilder();
+            builder.append(method.getName());
+            builder.append("(");
+            boolean first = true;
+            for (Class param : method.getParameterTypes()) {
+                if (first) {
+                    first = false;
+                } else {
+                    builder.append(",");
+                }
+                builder.append(param.getTypeName());
+            }
+            builder.append(")");
+            signature = builder.toString();
+        }
+
+        abstract ReceiveBuilder build(ReceiveBuilder builder, Behavior target);
+
+        String signature() {
+            return signature;
+        }
+    }
+
+    static class OnMessage extends MessageBuilder {
+        OnMessage(Method method, boolean behavior) {
+            super(method, behavior);
+        }
+
+        @Override
+        public ReceiveBuilder build(ReceiveBuilder builder, Behavior target) {
+            return builder.onMessage(method.getParameterTypes()[0],
+                    m -> {
+                        Object ret = method.invoke(target, m);
+                        return (behavior) ? (Behavior) ret : Behaviors.same();
+                    });
+        }
+    }
+
+    static class OnSignal extends MessageBuilder {
+        OnSignal(Method method, boolean behavior) {
+            super(method, behavior);
+        }
+
+        @Override
+        public ReceiveBuilder build(ReceiveBuilder builder, Behavior target) {
+            return builder.onSignal(method.getParameterTypes()[0],
+                    m -> {
+                        Object ret = method.invoke(target, m);
+                        return (behavior) ? (Behavior) ret : Behaviors.same();
+                    });
+        }
     }
 }

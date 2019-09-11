@@ -51,7 +51,7 @@ class RegistrarActor extends AbstractActor {
                     }
                     Props props = Props.create(RegistryEntryActor.class, () -> new RegistryEntryActor(registry.getGuardian(), message))
                             .withDispatcher(dispatcher);
-                    ActorRef entry = getContext().actorOf(props, message.getPath()); // create the actor
+                    ActorRef entry = getContext().actorOf(props); // create the actor
                     getSender().tell(entry, getSelf());
                 })
                 .match(Events.Announcement.class, message -> { // Receiving an announce event from a newly created RegisterEntry actor.

@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.cassandra/cassandra-driver-mapping/3.7.2/8dfc6c0db8dee2d65f4783904cdcc02e326c34a5/cassandra-driver-mapping-3.7.2.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.cassandra/cassandra-driver-mapping/3.7.2/64d9f7a9d907e1cd99cb57213de7cd540f86b8b3/cassandra-driver-mapping-3.7.2-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.cassandra/cassandra-driver-mapping/3.7.2/7e30aeac3c19443d383984a9ac29a2ed076461f0/cassandra-driver-mapping-3.7.2-sources.jar!/" />
     </SOURCES>

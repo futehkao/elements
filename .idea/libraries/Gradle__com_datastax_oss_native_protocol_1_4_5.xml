@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/native-protocol/1.4.5/ba7c9c8f1d7b98a172d2486d44d4f4480fc50698/native-protocol-1.4.5.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/native-protocol/1.4.5/3d13a61a10646bc1464fee7031d8715c542e38ef/native-protocol-1.4.5-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/native-protocol/1.4.5/aa3551e68c1f86ed83b9989814ebfc2e053c8392/native-protocol-1.4.5-sources.jar!/" />
     </SOURCES>

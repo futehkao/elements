@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax/javaee-api/8.0.1/515a40c1f19802a18a187f59bfbe445a62218a04/javaee-api-8.0.1.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax/javaee-api/8.0.1/1c74ab243269d20ab01d3237d58f59662f07c1e3/javaee-api-8.0.1-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax/javaee-api/8.0.1/338ec882eaaccd6c9b56892c3a843e7f7446c11c/javaee-api-8.0.1-sources.jar!/" />
     </SOURCES>

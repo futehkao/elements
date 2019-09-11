@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-actor-typed_2.13/2.5.25/6da99216d0e331ac9f551a2d55c826263aa57427/akka-actor-typed_2.13-2.5.25.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-actor-typed_2.13/2.5.25/369c1d598fbb291be1706409933c6fe7befaef7b/akka-actor-typed_2.13-2.5.25-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-actor-typed_2.13/2.5.25/9a22473ca346fa8146515282d1ceb86ac578b71f/akka-actor-typed_2.13-2.5.25-sources.jar!/" />
     </SOURCES>

@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/java-driver-mapper-processor/4.1.0/e485bec50902f4737430fb773eb4ae60939aa4d4/java-driver-mapper-processor-4.1.0.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/java-driver-mapper-processor/4.1.0/b1e6f51dd5b949b719565590b28472e926000140/java-driver-mapper-processor-4.1.0-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/java-driver-mapper-processor/4.1.0/e5eac4be354fa1f9d0fa931ce25d3e69b2675424/java-driver-mapper-processor-4.1.0-sources.jar!/" />
     </SOURCES>

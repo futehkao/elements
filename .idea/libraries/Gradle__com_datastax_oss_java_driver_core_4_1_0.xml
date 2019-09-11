@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/java-driver-core/4.1.0/6718ec7aa6288cb97c5dea63d3fb5372b21841d1/java-driver-core-4.1.0.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/java-driver-core/4.1.0/c3348e3687deef75825bdfce0c910606f2b42a38/java-driver-core-4.1.0-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.datastax.oss/java-driver-core/4.1.0/292ff414684633d50c286ccefbd8d256db30eee5/java-driver-core-4.1.0-sources.jar!/" />
     </SOURCES>

@@ -84,14 +84,13 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
 
         // spawn a RegistryEntry and register it with Receptionist using key
         childActor(new RegistryEntry(registration))
-                .withName(registration.getPath())
                 .withProps(DispatcherSelector.fromConfig(dispatcher))
                 .whenSetup((ctx, child) -> getSystem().receptionist().tell(Receptionist.register(key, child.getSelf())))
                 .spawn();
 
         routes.computeIfAbsent(registration.getPath(),
                 k -> {
-                    GroupRouter<InvocationEvents.Request> g = Routers.group(key).withRoundRobinRouting();
+                    GroupRouter<Request> g = Routers.group(key).withRoundRobinRouting();
                     return getContext().spawnAnonymous(g);
                 });
     }

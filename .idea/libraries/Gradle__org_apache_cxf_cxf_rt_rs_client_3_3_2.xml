@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-rs-client/3.3.2/f42c65c811406f2b1257fdf58ed7245dd5fc149d/cxf-rt-rs-client-3.3.2.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-rs-client/3.3.2/9e9bdf68e0384f93b0e5a055f7ced4831c749c30/cxf-rt-rs-client-3.3.2-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-rs-client/3.3.2/7814751e62a2b8a5d5fa66a0e944a1f746608836/cxf-rt-rs-client-3.3.2-sources.jar!/" />
     </SOURCES>

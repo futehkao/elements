@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/jakarta.ws.rs/jakarta.ws.rs-api/2.1.5/e45d7f94d7406489755d911e63c216b4a3210374/jakarta.ws.rs-api-2.1.5.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/jakarta.ws.rs/jakarta.ws.rs-api/2.1.5/1293ec0ad880fcb812c60dde3ec2ea131540fcbc/jakarta.ws.rs-api-2.1.5-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/jakarta.ws.rs/jakarta.ws.rs-api/2.1.5/76d35c591d1b127b0523338cd7c490b7d2862305/jakarta.ws.rs-api-2.1.5-sources.jar!/" />
     </SOURCES>

@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-rs-security-cors/3.3.2/6406688508d2f5d854855c01da194cff71866bea/cxf-rt-rs-security-cors-3.3.2.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-rs-security-cors/3.3.2/3abd14bb031207f34acda05c4753b427ad159b75/cxf-rt-rs-security-cors-3.3.2-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-rs-security-cors/3.3.2/315b4628861171c2c4fa862f1b9ef9b6cfa1ee/cxf-rt-rs-security-cors-3.3.2-sources.jar!/" />
     </SOURCES>

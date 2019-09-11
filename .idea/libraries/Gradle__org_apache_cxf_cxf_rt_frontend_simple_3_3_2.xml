@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-frontend-simple/3.3.2/de798345627f1bd8aa7e2f426b53cfaeb0a820a4/cxf-rt-frontend-simple-3.3.2.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-frontend-simple/3.3.2/8a83717538cc389de8e6692bcb07ca596fce8b1c/cxf-rt-frontend-simple-3.3.2-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-frontend-simple/3.3.2/c7e960fd312e817cf35c9f03f97150375e140464/cxf-rt-frontend-simple-3.3.2-sources.jar!/" />
     </SOURCES>

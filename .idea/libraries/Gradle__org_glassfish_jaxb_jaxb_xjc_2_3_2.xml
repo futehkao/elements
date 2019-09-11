@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.jaxb/jaxb-xjc/2.3.2/9cfd86529359747d07251c017d4e46254faa2c2b/jaxb-xjc-2.3.2.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.jaxb/jaxb-xjc/2.3.2/c1e600d15ada312f9f933e55ab1b9ab258d8deae/jaxb-xjc-2.3.2-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.jaxb/jaxb-xjc/2.3.2/b6377534530bd2255fca544f1eb9549c771d722d/jaxb-xjc-2.3.2-sources.jar!/" />
     </SOURCES>

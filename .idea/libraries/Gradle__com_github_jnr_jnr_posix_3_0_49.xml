@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.jnr/jnr-posix/3.0.49/f0265a1e04c51aa056f2e34eb3834d4e898d5950/jnr-posix-3.0.49.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.jnr/jnr-posix/3.0.49/f9f39e34372106c8ce5bb84e76e8940d305727ae/jnr-posix-3.0.49-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.jnr/jnr-posix/3.0.49/6259ea6a4bc0c5937cfab15742564c77dde6beed/jnr-posix-3.0.49-sources.jar!/" />
     </SOURCES>

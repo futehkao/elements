@@ -28,13 +28,14 @@ import akka.cluster.MemberStatus;
 import akka.cluster.typed.Cluster;
 import akka.cluster.typed.Subscribe;
 import akka.cluster.typed.Unsubscribe;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.cluster.invocation.Registry;
 import net.e6tech.elements.network.cluster.invocation.RegistryImpl;
 import net.e6tech.elements.network.cluster.messaging.Messaging;
@@ -55,6 +56,7 @@ public class ClusterNode implements Initializable {
     private Map<Address, Member> members = new HashMap<>();
     private Messaging broadcast;
     private Registry registry;
+    private Class<? extends Registry> registryClass;
     private List<MemberListener> memberListeners = new ArrayList<>();
     private boolean started = false;
     private long timeout = DEFAULT_TIME_OUT;
@@ -108,6 +110,14 @@ public class ClusterNode implements Initializable {
         return members;
     }
 
+    public Class<? extends Registry> getRegistryClass() {
+        return registryClass;
+    }
+
+    public void setRegistryClass(Class<? extends Registry> registryClass) {
+        this.registryClass = registryClass;
+    }
+
     public void initialize(Resources resources) {
         if (genesis == null) {
             genesis = new Genesis();
@@ -140,7 +150,15 @@ public class ClusterNode implements Initializable {
         }
 
         if (registry == null) {
-            registry = new RegistryImpl();
+            Class<? extends Registry> rc = getRegistryClass();
+            if (rc == null)
+                rc = RegistryImpl.class;
+
+            try {
+                registry = rc.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
             registry.setTimeout(timeout);
         }
 

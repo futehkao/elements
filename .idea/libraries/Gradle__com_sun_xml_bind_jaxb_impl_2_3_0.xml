@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-impl/2.3.0/3a3c6a62719d967175b76b63925f1fb495f11437/jaxb-impl-2.3.0.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-impl/2.3.0/aac7e1663f9733765856295199031d41e379c1/jaxb-impl-2.3.0-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-impl/2.3.0/bb0a5a9f4e1116f2bc88fb7d38efd843704b65f8/jaxb-impl-2.3.0-sources.jar!/" />
     </SOURCES>

@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.9.9/2ea299c145207161c212e28abbc8f513fa245940/jackson-annotations-2.9.9.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.9.9/bbf6ddcc9fae15f4ca54a925e7518fd74f4b1ce7/jackson-annotations-2.9.9-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.9.9/4ac77aa5799fcf00a9cde00cd7da4d08bdc038ff/jackson-annotations-2.9.9-sources.jar!/" />
     </SOURCES>

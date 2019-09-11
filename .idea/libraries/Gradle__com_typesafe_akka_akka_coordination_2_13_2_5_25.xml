@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-coordination_2.13/2.5.25/3da2cfe2b1f37eeab6b2947892943eba07b40be2/akka-coordination_2.13-2.5.25.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-coordination_2.13/2.5.25/9a7e5bb189054e414c4c4159f8651f56e6e09c6a/akka-coordination_2.13-2.5.25-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-coordination_2.13/2.5.25/404ce9eeb1139e523706b1277c626165839f2005/akka-coordination_2.13-2.5.25-sources.jar!/" />
     </SOURCES>

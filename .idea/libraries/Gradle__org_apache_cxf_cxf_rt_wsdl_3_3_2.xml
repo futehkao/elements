@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-wsdl/3.3.2/24d9f56dfeb6d34d23e18daaf41a5697fe685daf/cxf-rt-wsdl-3.3.2.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-wsdl/3.3.2/636babed93b6021f715db1388a5c914f740da8cd/cxf-rt-wsdl-3.3.2-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.cxf/cxf-rt-wsdl/3.3.2/1008f8ae2031d702770dba9982427f1bd006b14a/cxf-rt-wsdl-3.3.2-sources.jar!/" />
     </SOURCES>
