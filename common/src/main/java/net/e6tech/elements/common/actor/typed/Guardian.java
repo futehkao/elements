@@ -35,7 +35,7 @@ public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
     private String name = "galaxy";
 
     public Guardian boot(Config config, WorkerPoolConfig workerPoolConfig) {
-        Behavior<WorkEvents> pool = WorkerPool.newPool(workerPoolConfig);
+        Behavior<WorkEvents> pool = WorkerPool.newPool(this, workerPoolConfig);
         Behavior<SpawnProtocol> main = Behaviors.setup(
                 context -> {
                     setup(this, context);

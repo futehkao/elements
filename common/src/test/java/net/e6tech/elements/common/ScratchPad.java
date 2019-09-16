@@ -68,7 +68,8 @@ public class ScratchPad {
         int bufferSize = 1024;
 
         // Construct the Disruptor
-        Disruptor<LongEvent> disruptor = new Disruptor<>(LongEvent::new, bufferSize, DaemonThreadFactory.INSTANCE,
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
+        Disruptor<LongEvent> disruptor = new Disruptor<>(LongEvent::new, bufferSize, executorService,
                 ProducerType.SINGLE, new YieldingWaitStrategy());
 
         // Connect the handler
@@ -80,22 +81,15 @@ public class ScratchPad {
             }
             System.out.println("Event: " + event + " Thread: " + Thread.currentThread());
         };
-        WorkHandler<LongEvent>[] workers = new WorkHandler[10];
+        WorkHandler<LongEvent>[] workers = new WorkHandler[Runtime.getRuntime().availableProcessors() / 2];
         for (int i = 0; i < workers.length; i++) {
             workers[i] = handler;
         }
 
-        disruptor.handleEventsWithWorkerPool(workers);
-        /*
-        disruptor.handleEventsWith((event, sequence, endOfBatch) -> {
-            System.out.println("Event: " + event + " Thread: " + Thread.currentThread());
-            try {
-                Thread.sleep(10000L);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }); */
-
+        disruptor.handleEventsWithWorkerPool(workers)
+                .then((event, sequence, endOfBatch) -> {
+                    event.set(0);
+                });
 
         // Start the Disruptor, starts all threads running
         disruptor.start();
@@ -104,10 +98,9 @@ public class ScratchPad {
         RingBuffer<LongEvent> ringBuffer = disruptor.getRingBuffer();
 
         System.out.println("Main thread: " + Thread.currentThread());
-        ByteBuffer bb = ByteBuffer.allocate(8);
         for (long l = 0; l < 10; l++) {
-            bb.putLong(0, l);
-            ringBuffer.publishEvent((event, sequence, buffer) -> event.set(buffer.getLong(0)), bb);
+            final long x = l;
+            ringBuffer.publishEvent((event, sequence, buffer) -> event.set(x));
         }
 
         synchronized (this) {

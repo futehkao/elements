@@ -58,8 +58,7 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
             cls = cls.getSuperclass();
         }
 
-        Receive<T> receive  = builder.build();
-        return receive;
+        return builder.build();
     }
 
     @SuppressWarnings("squid:S3776")
@@ -164,7 +163,7 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
         return untypedContext().actorOf(props);
     }
 
-    static abstract class MessageBuilder {
+    abstract static class MessageBuilder {
         protected boolean behavior;
         protected Method method;
         private String signature;

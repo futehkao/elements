@@ -43,7 +43,7 @@ public class RegistryImpl implements Registry {
     private Registrar registrar;
     private ExecutionContextExecutor dispatcher;
     private long timeout = ClusterNode.DEFAULT_TIME_OUT;
-    private List<RouteListener> listeners = new ArrayList<>();
+    private List<RouteListener> listeners = Collections.synchronizedList(new ArrayList<>());
 
     public static String getPath() {
         return path;
@@ -99,6 +99,17 @@ public class RegistryImpl implements Registry {
         registrar.stop();
     }
 
+    public Collection routes(String path) {
+        try {
+            InvocationEvents.Response response = (InvocationEvents.Response)  registrar.ask(ref -> new InvocationEvents.Routes(ref, path), timeout)
+                    .toCompletableFuture()
+                    .get();
+            return (Collection) response.getValue();
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
+    }
+
     public Collection routes(String qualifier, Class interfaceClass) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass needs to be an interface");
@@ -117,17 +128,6 @@ public class RegistryImpl implements Registry {
             }
         }
         return Collections.emptyList();
-    }
-
-    public Collection routes(String path) {
-        try {
-            InvocationEvents.Response response = (InvocationEvents.Response)  registrar.ask(ref -> new InvocationEvents.Routes(ref, path), timeout)
-                    .toCompletableFuture()
-                    .get();
-            return (Collection) response.getValue();
-        } catch (Exception e) {
-            throw new SystemException(e);
-        }
     }
 
     @Override

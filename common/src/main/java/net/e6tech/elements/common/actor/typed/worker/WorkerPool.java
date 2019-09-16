@@ -19,9 +19,9 @@ package net.e6tech.elements.common.actor.typed.worker;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.Terminated;
-import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.reflection.Reflection;
 
@@ -37,23 +37,18 @@ public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
     private Set<ActorRef<WorkEvents>> workers = new LinkedHashSet<>();
     private Set<ActorRef<WorkEvents>> idleWorkers = new LinkedHashSet<>();
     private LinkedList<Task> waiting = new LinkedList<>();
-    private WorkerPoolConfig config = new WorkerPoolConfig();
+    protected WorkerPoolConfig config = new WorkerPoolConfig();
 
-    private ActorContext<WorkEvents> context;
-
-    public static Behavior<WorkEvents> newPool(WorkerPoolConfig config) {
+    public static Behavior<WorkEvents> newPool(Guardian guardian, WorkerPoolConfig config) {
         return Behaviors.setup(ctx -> {
-            WorkerPool instance = new WorkerPool(ctx);
+            WorkerPool instance = new WorkerPool();
+            instance.setup(guardian, ctx);
             Reflection.copyInstance(instance.config, config);
             for (int i = 0; i < instance.config.getInitialCapacity(); i++) {
                 instance.newWorker();
             }
             return instance;
         });
-    }
-
-    public WorkerPool(ActorContext<WorkEvents> context) {
-        this.context = context;
     }
 
     @SuppressWarnings("squid:S2175")
@@ -97,9 +92,9 @@ public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
     }
 
     private void newWorker() {
-        ActorRef<WorkEvents> worker = context.spawnAnonymous(Behaviors.setup(ctx -> new Worker(ctx, this.context.getSelf())));
+        ActorRef<WorkEvents> worker = childActor(new Worker(getSelf())).spawn();
         workers.add(worker);
-        context.watch(worker);
+        getContext().watch(worker);
         idle(worker);
     }
 
@@ -125,8 +120,8 @@ public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
         if (config.getIdleTimeout() == 0)
             return;
         final Duration interval = Duration.ofMillis(config.getIdleTimeout());
-        ActorRef self = context.getSelf();
-        context.scheduleOnce(interval, self, new WorkEvents.Cleanup());
+        ActorRef self = getSelf();
+        getContext().scheduleOnce(interval, self, new WorkEvents.Cleanup());
         cleanupScheduled = true;
 
     }

@@ -111,8 +111,7 @@ public class CatalystTest {
 
         Registry registry = create(2552);
 
-        while (registry.routes("blah", Reactor.class).size() < 2)
-            Thread.sleep(100);
+        registry.waitForRoutes("blah", Reactor.class, coll -> coll.size() >= 2, 60000L);
 
         RemoteDataSet<Integer> remoteDataSet = new RemoteDataSet<>();
         Segment<Integer> segment = reactor -> {

@@ -33,14 +33,15 @@ import net.e6tech.elements.common.resources.NotAvailableException;
 import scala.concurrent.ExecutionContextExecutor;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static net.e6tech.elements.network.cluster.invocation.InvocationEvents.*;
 
 public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
 
     private Map<String, ActorRef<InvocationEvents.Request>> routes = new HashMap<>(); // key is the context@method
-    private Map<String, Set<ActorRef<InvocationEvents.Request>>> actors = new HashMap<>();
-    private Map<ActorRef<InvocationEvents.Request>, String> actorKeys = new HashMap<>();
+    private Map<String, Set<ActorRef<InvocationEvents.Request>>> actors = new ConcurrentHashMap<>();
+    private Map<ActorRef<InvocationEvents.Request>, String> actorKeys = new ConcurrentHashMap<>();
     private RegistryImpl registry;
 
     public Registrar(RegistryImpl registry) {

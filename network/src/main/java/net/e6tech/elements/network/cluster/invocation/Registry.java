@@ -19,13 +19,14 @@ package net.e6tech.elements.network.cluster.invocation;
 import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.network.cluster.ClusterAsync;
+import net.e6tech.elements.network.cluster.RouteListener;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.concurrent.TimeoutException;
+import java.util.function.*;
 
 public interface Registry {
 
@@ -37,9 +38,57 @@ public interface Registry {
 
     void setTimeout(long timeout);
 
+    void addRouteListener(RouteListener listener);
+
+    void removeRouteListener(RouteListener listener);
+
     Collection routes(String path);
 
     Collection routes(String qualifier, Class interfaceClass);
+
+    default void waitLoop(BooleanSupplier test, long timeout) throws TimeoutException {
+        Object monitor = new Object();
+        RouteListener listener = new RouteListener() {
+            @Override
+            public void onAnnouncement(String path) {
+                synchronized (monitor) {
+                    monitor.notifyAll();
+                }
+            }
+        };
+        try {
+            addRouteListener(listener);
+            long start = System.currentTimeMillis();
+            boolean first = true;
+            synchronized (monitor) {
+                while (!test.getAsBoolean()) {
+                    if (!first && System.currentTimeMillis() - start > timeout) {
+                        throw new TimeoutException();
+                    }
+                    if (first)
+                        first = false;
+                    try {
+                        long wait = timeout - (System.currentTimeMillis() - start);
+                        if (wait > 0)
+                            monitor.wait(timeout);
+
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        } finally {
+            removeRouteListener(listener);
+        }
+    }
+
+    default void waitForRoutes(String qualifier, Predicate<Collection> predicate, long timeout) throws TimeoutException {
+        waitLoop(() -> predicate.test(routes(qualifier)), timeout);
+    }
+
+    default void waitForRoutes(String qualifier, Class interfaceClass, Predicate<Collection> predicate, long timeout) throws TimeoutException {
+        waitLoop(() -> predicate.test(routes(qualifier, interfaceClass)), timeout);
+    }
 
     <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function);
 
