@@ -118,7 +118,7 @@ public class Annotator implements InvocationHandler {
             try {
                 entry.setValue(entry.getKey().invoke(original));
             } catch (Exception e) {
-                Logger.suppress(e);
+                throw new SystemException(e);
             }
         }
         hashCode = null;
