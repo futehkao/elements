@@ -108,6 +108,13 @@ public class Configuration extends LinkedHashMap<String, Object> {
         }
     }
 
+    public Configuration load(Configuration config) {
+        properties.putAll(config.properties);
+        merge(this, config);
+        references.putAll(config.references);
+        return this;
+    }
+
     public Configuration load(String configStr) {
         String text = configStr;
         Yaml yaml = newYaml();

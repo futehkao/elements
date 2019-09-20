@@ -81,6 +81,14 @@ public class PersistenceTest extends BaseCase {
                     assertTrue(em == emOther);
                 });
 
+        provision.resourceBuilder(EntityManagerConfig.class)
+                .annotate(c -> c::names,  new String[] {"delegate"})
+                .open()
+                .accept(EntityManager.class, Resources.class,  (em, res) -> {
+                    EntityManager emOther = res.getMapVariable(EntityManager.class).get("delegate");
+                    assertTrue(em == emOther);
+                });
+
     }
 
 

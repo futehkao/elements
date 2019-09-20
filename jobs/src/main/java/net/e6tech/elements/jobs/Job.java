@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Job implements Initializable, Startable, LaunchListener {
 
     private static Logger logger = Logger.getLogger();
+    private static ThreadLocal<Job> currentJob = new ThreadLocal<>();
 
     private JobServer jobServer;
     private Scheduler scheduler;
@@ -60,6 +61,10 @@ public class Job implements Initializable, Startable, LaunchListener {
     private String targetMethod;
     private AtomicInteger running = new AtomicInteger(0);
     private boolean started = false;
+
+    public static Job getCurrentJob() {
+        return currentJob.get();
+    }
 
     public JobServer getJobServer() {
         return jobServer;
@@ -106,9 +111,11 @@ public class Job implements Initializable, Startable, LaunchListener {
     }
 
     @JmxAttributeMethod
-    public String getNextFireTime() {
+    public String getDisplayNextFireTime() {
         try {
             Trigger trigger = scheduler.getTrigger(new TriggerKey(name, group));
+            if (trigger.getNextFireTime() == null)
+                return "NA";
             return trigger.getNextFireTime().toString();
         } catch (SchedulerException e) {
             Logger.suppress(e);
@@ -116,6 +123,41 @@ public class Job implements Initializable, Startable, LaunchListener {
             Logger.suppress(th);
         }
         return "NA";
+    }
+
+    public Date getNextFireTime() throws SchedulerException {
+        Trigger trigger = scheduler.getTrigger(new TriggerKey(name, group));
+        return trigger.getNextFireTime();
+    }
+
+    public Date getFireTimeAfter(Date date) throws SchedulerException {
+        Trigger trigger = scheduler.getTrigger(new TriggerKey(name, group));
+        return trigger.getFireTimeAfter(date);
+    }
+
+    public long computePrevious() throws SchedulerException {
+        Date nextFire = getNextFireTime();
+        long interval = getFireTimeAfter(nextFire).getTime() - getNextFireTime().getTime();
+        Trigger trigger = scheduler.getTrigger(new TriggerKey(name, group));
+        if (trigger instanceof CronTrigger) {
+            CronTrigger cronTrigger = (CronTrigger) trigger;
+            try {
+                CronExpression cronEx = new CronExpression(cronTrigger.getCronExpression());
+                cronEx.setTimeZone(cronTrigger.getTimeZone());
+                int n = 0;
+                long prev;
+                do {
+                    n++;
+                    prev = cronEx.getTimeAfter(new Date(nextFire.getTime() - n * interval)).getTime();
+                } while (prev > nextFire.getTime() - interval);
+                return prev;
+            } catch (ParseException e) {
+                throw new SystemException(e);
+            }
+
+        }
+
+        return nextFire.getTime() - interval;
     }
 
     @JmxAttributeMethod
@@ -195,7 +237,6 @@ public class Job implements Initializable, Startable, LaunchListener {
     }
 
     protected CronTrigger updateTrigger(CronTriggerImpl trigger) throws ParseException {
-
         trigger.setName(name);
         trigger.setGroup(group);
         trigger.setCronExpression(cronExpression);
@@ -215,13 +256,19 @@ public class Job implements Initializable, Startable, LaunchListener {
                     jobServer.resourceManager != null) {
                 jobServer.resourceManager.createLoggerContext();
             }
+            currentJob.set(this);
             return invocation.invoke(target);
         } catch (InvocationTargetException ex) {
             Logger.suppress(ex);
             throw ex.getTargetException();
         } finally {
             running.decrementAndGet();
+            currentJob.remove();
         }
+    }
+
+    public void trigger() throws SchedulerException {
+        scheduler.triggerJob(new JobKey(name, group));
     }
 
     public Scheduler getScheduler() {

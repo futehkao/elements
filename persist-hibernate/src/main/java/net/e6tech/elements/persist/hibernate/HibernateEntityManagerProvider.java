@@ -102,11 +102,11 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     }
 
     @Override
-    public void onOpen(Resources resources) {
-        super.onOpen(resources);
-        EntityManager em = resources.getMapVariable(EntityManager.class).get(getProviderName());
+    protected void onOpen(Resources resources, String alias, EntityManagerConfig config) {
+        super.onOpen(resources, alias, config);
+        EntityManager em = resources.getMapVariable(EntityManager.class).get(alias);
         SessionImpl session = (SessionImpl) em.getDelegate();
-        resources.getMapVariable(SessionImpl.class).put(getProviderName(), session);
+        resources.getMapVariable(SessionImpl.class).put(alias, session);
 
         // cannot call resources.inject(interceptor), resources is not fully open yet
         if (session.getInterceptor() instanceof PersistenceInterceptor) {
@@ -119,10 +119,10 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     }
 
     @Override
-    public void cleanup(Resources resources) {
-        super.cleanup(resources);
+    protected void cleanup(Resources resources, String alias) {
+        super.cleanup(resources, alias);
         try {
-            SessionImpl session = getSessionImpl(resources);
+            SessionImpl session = getSessionImpl(resources, alias);
             if (session.getInterceptor() instanceof PersistenceInterceptor) {
                 PersistenceInterceptor i = (PersistenceInterceptor) session.getInterceptor();
                 i.cleanup(resources);
@@ -133,17 +133,16 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
     }
 
     @Override
-    public void cancelQuery(Resources resources) {
-        super.cancelQuery(resources);
+    public void cancelQuery(Resources resources, String alias) {
+        super.cancelQuery(resources, alias);
         try {
-            getSessionImpl(resources).cancelQuery();
+            getSessionImpl(resources, alias).cancelQuery();
         } catch (Exception ex) {
             // don't care
         }
     }
 
-    private SessionImpl getSessionImpl(Resources resources) {
-        return resources.getMapVariable(SessionImpl.class).get(getProviderName());
+    private SessionImpl getSessionImpl(Resources resources, String alias) {
+        return resources.getMapVariable(SessionImpl.class).get(alias);
     }
-
 }

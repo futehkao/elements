@@ -94,8 +94,14 @@ public class Atom implements Map<String, Object> {
         };
         directives.put(CONFIGURATION, (key, value) -> {
             if (value != null) {
-                configuration = new Configuration(resourceManager.getScripting().getProperties());
-                configuration.load(value.toString());
+                if (configuration == null) {
+                    configuration = new Configuration(resourceManager.getScripting().getProperties());
+                    configuration.load(value.toString());
+                } else {
+                    Configuration more = new Configuration(resourceManager.getScripting().getProperties());
+                    more.load(value.toString());
+                    configuration.load(more);
+                }
                 resources.configurator.putAll(configuration);
             }
         });

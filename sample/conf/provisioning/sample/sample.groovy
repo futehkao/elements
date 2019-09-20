@@ -61,6 +61,7 @@ bootstrap
         .boot(null, 'cluster', 'trivial', 'jobs')
         .after([persist: "$__dir/../../persist.groovy",
                 persist2: "$__dir/../../persist2.groovy",
+                persist3: "$__dir/../../persist3.groovy",
             notification: "$__dir/../../notification.groovy",
             concrete: "$__dir/../../prototype/concrete.groovy",
             restful: "$__dir/../../restful/**"])

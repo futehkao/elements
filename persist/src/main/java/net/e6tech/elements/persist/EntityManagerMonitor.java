@@ -33,9 +33,11 @@ public class EntityManagerMonitor {
     private ExecutorService threadPool;
     private Thread originatingThread;
     private volatile boolean interrupted = false;
+    private String alias;
 
-    EntityManagerMonitor(ExecutorService threadPool, EntityManagerProvider provider, Resources resources,
+    EntityManagerMonitor(String alias, ExecutorService threadPool, EntityManagerProvider provider, Resources resources,
                          EntityManager entityManager, long expiration, Throwable throwable) {
+        this.alias = alias;
         this.provider = provider;
         this.resources = resources;
         this.entityManager = entityManager;
@@ -66,7 +68,7 @@ public class EntityManagerMonitor {
                 interrupt(); // interrupt here in case there is a blocking call during the transaction
                              // however, this interrupt needs to be clear
                 if (entityManager.isOpen()) {
-                    provider.cancelQuery(resources);
+                    provider.cancelQuery(resources, alias);
                 }
             } catch (Throwable ex) {
                 logger.warn("Unexpected exception in EntityManagerMonitor cancel query", throwable);

@@ -66,6 +66,14 @@ public interface Configurable<U> {
         return configurable();
     }
 
+    default <V, T extends Annotation> U annotate(Class<T> cls, Function<T, V> func, V value) {
+        return annotate(cls, ((annotationValue, annotation) -> annotationValue.set(() -> func.apply(annotation), value)));
+    }
+
+    default <T extends Annotation> ConfigurableAnnotator<U, T> annotate(Class<T> cls) {
+        return new ConfigurableAnnotator<>(cls, this);
+    }
+
     default <T> U put(Class<T> cls, T instance) {
         configurator().put(cls, instance);
         return configurable();
@@ -84,5 +92,28 @@ public interface Configurable<U> {
     default U putAll(Map map) {
         configurator().putAll(map);
         return configurable();
+    }
+
+    class ConfigurableAnnotator<U, T extends Annotation> implements Configurable<U> {
+        Class<T> annotationClass;
+        Configurable<U> configurable;
+
+        ConfigurableAnnotator(Class<T> annotationClass, Configurable<U> configurable) {
+            this.annotationClass = annotationClass;
+            this.configurable = configurable;
+        }
+
+        public Configurator configurator() {
+            return configurable.configurator();
+        }
+
+        public U configurable() {
+            return configurable.configurable();
+        }
+
+        public <V> ConfigurableAnnotator<U, T> annotate(Function<T, V> func, V value) {
+            this.annotate(annotationClass, func, value);
+            return this;
+        }
     }
 }

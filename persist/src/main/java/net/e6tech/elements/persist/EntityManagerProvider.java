@@ -53,6 +53,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private final List<EntityManagerMonitor> entityManagerMonitors = new ArrayList<>();
     private volatile boolean shutdown = false;
     private String providerName = DEFAULT_NAME;
+    private ResourceManager resourceManager;
 
     public EntityManagerProvider() {
     }
@@ -73,6 +74,15 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     @Inject(optional = true)
     public void setNotificationCenter(NotificationCenter center) {
         this.notificationCenter = center;
+    }
+
+    public ResourceManager getResourceManager() {
+        return resourceManager;
+    }
+
+    @Inject
+    public void setResourceManager(ResourceManager resourceManager) {
+        this.resourceManager = resourceManager;
     }
 
     public Broadcast getBroadcast() {
@@ -186,12 +196,12 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private String[] providerNames(Resources resources) {
         Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
         String[] names = config.map(EntityManagerConfig::names).orElse(DEFAULT_PROVIDER_NAMES);
-        if (providerName.length() == 0)
+        if (names.length == 0)
             names = DEFAULT_PROVIDER_NAMES;
         return names;
     }
 
-    private void shouldOpen(Resources resources) {
+    private void shouldOpen(Resources resources, String alias) {
         Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
         if (config.isPresent() && config.get().disable())
             throw new NotAvailableException();
@@ -204,22 +214,22 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
         boolean found = false;
         for (String n : names) {
-            if (n.equals(getProviderName())) {
+            if (n.equals(alias)) {
                 found = true;
                 break;
             }
         }
 
         Map<String, EntityManager> map = resources.getMapVariable(EntityManager.class);
-        if (map.get(getProviderName()) != null) {
-            throw new IllegalStateException("There is already an EntityManagerProvider named " + getProviderName() + " configured!");
+        if (map.get(alias) != null) {
+            throw new IllegalStateException("There is already an EntityManagerProvider named " + alias + " configured!");
         }
 
         if (!found)
             throw new NotAvailableException();
     }
 
-    private EntityManagerConfig configuration(Resources resources) {
+    protected EntityManagerConfig configuration(Resources resources, String alias) {
 
         Optional<EntityManagerConfig> config = resources.configurator().annotation(EntityManagerConfig.class);
 
@@ -260,25 +270,26 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         );
 
         resources.getMapVariable(EntityManagerConfig.class)
-                .put(getProviderName(), result);
+                .put(alias, result);
         return result;
     }
 
     @Override
-    public void onOpen(Resources resources) {
+    public final void onOpen(Resources resources) {
+        shouldOpen(resources, getProviderName());
+        EntityManagerConfig config = configuration(resources, getProviderName());
+        onOpen(resources, getProviderName(), config);
+    }
 
-        shouldOpen(resources);
-
-        EntityManagerConfig config = configuration(resources);
-
+    protected void onOpen(Resources resources, String alias, EntityManagerConfig config) {
         EntityManager em = emf.createEntityManager();
         if (config.monitor()) {
-            EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(threadPool, this,
+            EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(alias, threadPool, this,
                     resources,
                     em, System.currentTimeMillis() + config.timeout(), new Throwable());
             monitor(entityManagerMonitor);
             resources.getMapVariable(EntityManagerMonitor.class)
-                    .put(getProviderName(), entityManagerMonitor);
+                    .put(alias, entityManagerMonitor);
         }
 
         EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
@@ -291,12 +302,15 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         // first come first win unless it is the DEFAULT
         if (!resources.hasInstance(EntityManager.class)) {
             resources.bind(EntityManager.class, proxy);
-        } else if (getProviderName().equals(DEFAULT_NAME)) {
+        } else if (alias.equals(DEFAULT_NAME)) {
             resources.rebind(EntityManager.class, proxy);
         }
 
         resources.getMapVariable(EntityManager.class)
-                .put(getProviderName(), proxy);
+                .put(alias, proxy);
+
+        resources.getMapVariable(EntityManagerProvider.class)
+                .put(alias, this);
 
         em.getTransaction().begin();
     }
@@ -312,7 +326,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     }
 
     @SuppressWarnings({"squid:S3776", "squid:S1181", "squid:S1141"})
-    private void startMonitoring() {
+    protected void startMonitoring() {
         // starting a thread to monitor
         if (threadPool == null) {
             threadPool = Executors.newCachedThreadPool(runnable -> {
@@ -378,55 +392,100 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     }
 
     @Override
-    public void onCommit(Resources resources) {
+    public final void afterOpen(Resources resources) {
+        afterOpen(resources, getProviderName());
+    }
+
+    protected void afterOpen(Resources resources, String alias) {
+    }
+
+    @Override
+    public final void onCommit(Resources resources) {
+        onCommit(resources, getProviderName());
+    }
+
+    protected void onCommit(Resources resources, String alias) {
         try {
-            EntityManager em = resources.getMapVariable(EntityManager.class).get(getProviderName());
+            EntityManager em = resources.getMapVariable(EntityManager.class).get(alias);
             em.getTransaction().commit();
             em.clear();
             em.close();
         } catch (InstanceNotFoundException ex) {
             Logger.suppress(ex);
         } finally {
-            cleanup(resources);
+            cleanup(resources, alias);
         }
     }
 
     @Override
-    public void afterCommit(Resources resources) {
+    public final void afterCommit(Resources resources) {
+        afterCommit(resources, getProviderName());
+    }
+
+    protected void afterCommit(Resources resources, String alias) {
     }
 
     @Override
-    public void onAbort(Resources resources) {
+    public final void onAbort(Resources resources) {
+        onAbort(resources, getProviderName());
+    }
+
+    protected void onAbort(Resources resources, String alias) {
         try {
-            EntityManager em = resources.getMapVariable(EntityManager.class).get(getProviderName());
+            EntityManager em = resources.getMapVariable(EntityManager.class).get(alias);
             em.getTransaction().rollback();
             em.clear();
             em.close();
         } catch (Exception th) {
             Logger.suppress(th);
         }  finally {
-            cleanup(resources);
+            cleanup(resources, alias);
         }
     }
 
-    protected void cleanup(Resources resources) {
+    protected void cleanup(Resources resources, String alias) {
     }
 
     @Override
-    public void onClosed(Resources resources) {
-        EntityManagerMonitor m = resources.getMapVariable(EntityManagerMonitor.class).get(getProviderName());
+    public final void afterAbort(Resources resources) {
+        afterAbort(resources, getProviderName());
+    }
+
+    protected void afterAbort(Resources resources, String alias) {
+    }
+
+    @Override
+    public final void onClosed(Resources resources) {
+        onClosed(resources, getProviderName());
+    }
+
+    protected void onClosed(Resources resources, String alias) {
+        EntityManagerMonitor m = resources.getMapVariable(EntityManagerMonitor.class).get(alias);
         if (m != null)
             m.close();
     }
 
     @Override
-    public void onShutdown() {
+    public final void onShutdown() {
+        onShutdown(getProviderName());
+    }
+
+    @SuppressWarnings("squid:S1172")
+    protected void onShutdown(String alias) {
         if (emf.isOpen()) {
             emf.close();
         }
         shutdown = true;
     }
 
-    public void cancelQuery(Resources resources) {
+    public void cancelQuery(Resources resources, String alias) {
     }
+
+    @Override
+    public final String getDescription() {
+        return getDescription(getProviderName());
+    }
+
+    @SuppressWarnings("squid:S1172")
+    protected String getDescription(String alia) { return getClass().getName(); }
 }

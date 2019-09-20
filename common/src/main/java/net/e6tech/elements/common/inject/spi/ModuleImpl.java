@@ -164,9 +164,9 @@ public class ModuleImpl implements Module {
         Binding binding = new Binding(instance);
         synchronized (directory) {
             for (Type type : types) {
-                if (!directory.containsKey(type) || rebind) {
-                    BindingMap bindList = directory.computeIfAbsent(type, t -> new BindingMap());
-                    bindList.bind(name, binding);
+                BindingMap bindMap = directory.computeIfAbsent(type, t -> new BindingMap());
+                if (bindMap.get(name) == null || rebind) {
+                    bindMap.bind(name, binding);
                 }
             }
             singletons.add(binding);

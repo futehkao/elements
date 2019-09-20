@@ -90,9 +90,8 @@ public class HelloWorld {
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/{greeting}")
     public String sayHello(@PathParam("greeting") String greeting) {
-        return provision.resourceBuilder(EntityManagerConfig.class)
-                .annotate(c -> c::names, new String[] {"sample-rw"})
-                .open()
+        return provision.open()
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::names, new String[] {"sample-rw"})
                 .apply(EntityManager.class, Resources.class,  (em, res) -> {
                     EntityManager byName = res.getMapVariable(EntityManager.class).get("sample-rw");
                     assert em == byName;

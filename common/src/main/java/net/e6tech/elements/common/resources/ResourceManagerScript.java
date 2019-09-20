@@ -121,6 +121,14 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
         return getShell().bindNamedInstance((Class<T>) b.getClass(), name, b);
     }
 
+    public <T> T rebindNamedInstance(String name, Class<T> a, T b) {
+        return getShell().rebindNamedInstance(a, name, b);
+    }
+
+    public <T> T rebindNamedInstance(String name, T b) {
+        return getShell().rebindNamedInstance((Class<T>) b.getClass(), name, b);
+    }
+
     public <T> T registerBean(String name, Object instance) {
         return getShell().registerBean(name, instance);
     }
