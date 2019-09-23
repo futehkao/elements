@@ -266,6 +266,19 @@ public class ModuleImpl implements Module {
 
     @Override
     public Injector build(Module... components) {
+        return build(true, components);
+    }
+
+    /**
+     *
+     * @param strict true mean all registered but un-injected instances need to have all of their dependencies resolved.  These type of instances are stored in
+     *               singletons.
+     *
+     * @param components    additional module to add
+     * @return
+     */
+    @Override
+    public Injector build(boolean strict, Module... components) {
         Injector parent = null;
         if (components != null && components.length > 0) {
             Module[] remaining = new Module[components.length - 1];
@@ -290,7 +303,7 @@ public class ModuleImpl implements Module {
 
         if (list != null)
             for (Binding binding : list) {
-                injector.inject(binding.getValue());
+                injector.inject(binding.getValue(), strict);
             }
 
         return injector;

@@ -144,7 +144,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         module.bindInstance(NotificationCenter.class, notificationCenter);
         module.bindInstance(Interceptor.class, Interceptor.getInstance());
         module.bindInstance(PluginManager.class, pluginManager);
-        injector = module.build();
+        injector = module.build(false);
 
         getScripting().put("notificationCenter", notificationCenter);
         getScripting().put("interceptor", Interceptor.getInstance());
@@ -364,7 +364,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         if (o != null)
             throw new AlreadyBoundException(String.format(ALREADY_BOUND_MSG, cls, o));
         module.bindInstance(cls, resource);
-        injector = module.build();
+        injector = module.build(false);
         T instance = getInstance(cls);
         listeners.forEach(l -> l.bound(cls, instance));
         return instance;
@@ -372,7 +372,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T rebind(Class<T> cls, T resource) {
         module.rebindInstance(cls, resource);
-        injector = module.build();
+        injector = module.build(false);
         T instance = getInstance(cls);
         listeners.forEach(l -> l.bound(cls, instance));
         return instance;
@@ -380,7 +380,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T unbind(Class<T> cls) {
         T instance = (T) module.unbindInstance(cls);
-        injector = module.build();
+        injector = module.build(false);
         listeners.forEach(l -> l.unbound(cls, instance));
         return instance;
     }
@@ -402,7 +402,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         } else {
             module.bindInstance(cls, null);
         }
-        injector = module.build();
+        injector = module.build(true);
 
         if (service != null) {
             listeners.forEach(l -> l.classBound(cls, service));
@@ -417,7 +417,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             throw new AlreadyBoundException("Instance named " + name + " is already bound to " + instance);
         } else {
             module.bindNamedInstance(a, name, b);
-            injector = module.build();
+            injector = module.build(false);
             listeners.forEach(l -> l.namedInstanceBound(name, a, b));
         }
         return instance;
@@ -425,7 +425,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public <T> T rebindNamedInstance(Class<T> cls, String name, T resource) {
         T instance = (T) module.rebindNamedInstance(cls, name, resource);
-        injector = module.build();
+        injector = module.build(false);
         listeners.forEach(l -> l.namedInstanceBound(name, cls, instance));
         return instance;
     }

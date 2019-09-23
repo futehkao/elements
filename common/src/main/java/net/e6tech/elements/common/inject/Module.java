@@ -157,4 +157,6 @@ public interface Module {
     <T> T getBoundNamedInstance(Class<T> cls, String name);
 
     Injector build(Module... components);
+
+    Injector build(boolean strict, Module... components);
 }
