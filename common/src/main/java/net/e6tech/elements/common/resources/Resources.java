@@ -343,9 +343,8 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public <T> T getNamedInstance(Class<T> cls, String name) {
-        return getModule().getBoundNamedInstance(cls, name);
+        return state.getNamedInstance(cls, name);
     }
-
 
     public <T> T inject(T object) {
         return inject(object, new HashSet<>());

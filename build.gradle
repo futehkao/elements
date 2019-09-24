@@ -25,7 +25,7 @@ dependencies {
 subprojects {
 
     group 'net.e6tech'
-    version '2.5.14'
+    version '2.5.15'
 
     apply plugin: 'groovy'
     apply plugin: 'java'

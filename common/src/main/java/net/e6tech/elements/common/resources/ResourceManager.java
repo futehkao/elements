@@ -479,7 +479,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         if (instance instanceof Class) {
             obj = newInstance((Class) instance);
         } else {
-            inject(obj);
+            inject(obj, false);
         }
         return obj;
     }

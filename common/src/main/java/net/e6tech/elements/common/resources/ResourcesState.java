@@ -208,6 +208,23 @@ class ResourcesState {
         return (T) getModule().rebindNamedInstance(cls, name, resource);
     }
 
+    public <T> T getNamedInstance(Resources resources, Class<T> cls, String name) {
+        T instance = null;
+        if (state == State.INITIAL) {
+            if (getModule().getBoundNamedInstance(cls, name) != null)
+                instance = getModule().getBoundNamedInstance(cls, name);
+            if (resources.getResourceManager().hasInstance(cls))
+                instance = resources.getResourceManager().getModule().getBoundNamedInstance(cls, name);
+        } else {
+            instance = createInjector(resources).getNamedInstance(cls, name);
+        }
+        if (instance == null) {
+            throw new InstanceNotFoundException("No instance for class " + cls.getName() +
+                    ". Use newInstance if you meant to create an instance.");
+        }
+        return instance;
+    }
+
     public boolean hasInstance(Resources resources, Class cls) {
         if (cls.isAssignableFrom(Resources.class) || cls.isAssignableFrom(ResourceManager.class))
             return true;
