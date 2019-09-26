@@ -213,7 +213,7 @@ class ResourcesState {
         if (state == State.INITIAL) {
             if (getModule().getBoundNamedInstance(cls, name) != null)
                 instance = getModule().getBoundNamedInstance(cls, name);
-            if (resources.getResourceManager().hasInstance(cls))
+            else if (resources.getResourceManager().getModule().getBoundNamedInstance(cls, name) != null)
                 instance = resources.getResourceManager().getModule().getBoundNamedInstance(cls, name);
         } else {
             instance = createInjector(resources).getNamedInstance(cls, name);
@@ -242,7 +242,7 @@ class ResourcesState {
         if (state == State.INITIAL) {
             if (getModule().getBoundInstance(cls) != null)
                 instance = getModule().getBoundInstance(cls);
-            if (resources.getResourceManager().hasInstance(cls))
+            else if (resources.getResourceManager().hasInstance(cls))
                 instance = resources.getResourceManager().getInstance(cls);
         } else {
              instance = createInjector(resources).getInstance(cls);

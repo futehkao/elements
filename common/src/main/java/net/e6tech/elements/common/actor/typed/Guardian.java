@@ -35,10 +35,14 @@ public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
     private String name = "galaxy";
 
     public Guardian boot(Config config, WorkerPoolConfig workerPoolConfig) {
+        Object monitor = new Object();
         Behavior<WorkEvents> pool = WorkerPool.newPool(this, workerPoolConfig);
         Behavior<SpawnProtocol> main = Behaviors.setup(
                 context -> {
                     setup(this, context);
+                    synchronized (monitor) {
+                        monitor.notifyAll();
+                    }
                     return SpawnProtocol.behavior();
                 });
 
@@ -53,6 +57,17 @@ public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
         } catch (Exception e) {
             throw new SystemException(e);
         }
+
+        synchronized (monitor) {
+            while (getContext() == null) {
+                try {
+                    monitor.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+
         return this;
     }
 

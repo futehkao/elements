@@ -18,6 +18,12 @@ package net.e6tech.elements.common.resources;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Type;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Created by futeh.
  */
@@ -35,5 +41,29 @@ public class ResourceManagerTest {
         ResourceManager resourceManager = new ResourceManager();
         resourceManager.load("classpath://net/e6tech/elements/common/resources/FX Trader Joe's.groovy");
         resourceManager.getAtoms();
+    }
+
+    @Test
+    void getNamedInstance() {
+        ResourceManager resourceManager = new ResourceManager();
+        resourceManager.rebindNamedInstance(X.class, "x", new X());
+        UnitOfWork unitOfWork = new UnitOfWork(resourceManager);
+        unitOfWork.preOpen(res -> {
+            X x = res.getNamedInstance(X.class, "x");
+            assertNotNull(x);
+        });
+
+        unitOfWork.accept(Resources.class, res -> {
+            X x = res.getNamedInstance(X.class, "x");
+            assertNotNull(x);
+        });
+
+        Map<String, Object> map = resourceManager.getModule().listBindings(X.class);
+        assertTrue(!map.isEmpty());
+        Map<Type, Map<String, Object>> bindings = resourceManager.getModule().listBindings();
+    }
+
+    public static class X {
+
     }
 }

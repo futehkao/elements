@@ -264,6 +264,36 @@ public class ModuleImpl implements Module {
         return directory.containsKey(cls);
     }
 
+    public Map<String, Object> listBindings(Class cls) {
+        Map<String, Object> map = new HashMap<>();
+        BindingMap bindingMap = directory.get(cls);
+        if (bindingMap != null) {
+            for (Map.Entry<String, Binding> entry : bindingMap.bindings.entrySet()) {
+                if (entry.getValue().getImplementation() != null)
+                    map.put(entry.getKey(), entry.getValue().getImplementation());
+                else
+                    map.put(entry.getKey(), entry.getValue().getValue());
+            }
+        }
+        return map;
+    }
+
+    public Map<Type, Map<String, Object>> listBindings() {
+        Map<Type, Map<String, Object>> bindings = new HashMap<>();
+        for (Map.Entry<Type, BindingMap> entry : directory.entrySet()) {
+            Map<String, Object> map = new HashMap<>();
+            BindingMap bindingMap = entry.getValue();
+            for (Map.Entry<String, Binding> e : bindingMap.bindings.entrySet()) {
+                if (e.getValue().getImplementation() != null)
+                    map.put(e.getKey(), e.getValue().getImplementation());
+                else
+                    map.put(e.getKey(), e.getValue().getValue());
+            }
+            bindings.put(entry.getKey(), map);
+        }
+        return bindings;
+    }
+
     @Override
     public Injector build(Module... components) {
         return build(true, components);
@@ -275,7 +305,6 @@ public class ModuleImpl implements Module {
      *               singletons.
      *
      * @param components    additional module to add
-     * @return
      */
     @Override
     public Injector build(boolean strict, Module... components) {
@@ -284,7 +313,7 @@ public class ModuleImpl implements Module {
             Module[] remaining = new Module[components.length - 1];
             if (remaining.length > 0)
                 System.arraycopy(components, 1, remaining, 0, components.length - 1);
-            parent = components[0].build(remaining);
+            parent = components[0].build(strict, remaining);
         }
 
         // Go through every singleton and inject it.  This is needed because

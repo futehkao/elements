@@ -136,6 +136,10 @@ public interface Module {
 
     void add(Module module);
 
+    Map<String, Object> listBindings(Class cls);
+
+    Map<Type, Map<String, Object>> listBindings();
+
     void bindClass(Class cls, Class service);
 
     Class getBoundClass(Class cls);

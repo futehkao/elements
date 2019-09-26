@@ -218,19 +218,33 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
             if (existing != null)
                 return existing;
 
-            boolean hasPrevious = resourceManager.getScripting().containsKey(Atom.OVERRIDE_SETTINGS);
-            Map<String, Object> previous = (Map) resourceManager.getScripting().get(Atom.OVERRIDE_SETTINGS);
-            Atom prototypeAtom = null;
+            boolean hasPreviousSettings = resourceManager.getScripting().containsKey(Atom.OVERRIDE_SETTINGS);
+            boolean hasPreviousName = resourceManager.getScripting().containsKey(Atom.OVERRIDE_NAME);
+            Map<String, Object> previousSettings = (Map) resourceManager.getScripting().get(Atom.OVERRIDE_SETTINGS);
+            String previousName = (String) resourceManager.getScripting().get(Atom.OVERRIDE_NAME);
+            Atom prototypeAtom;
             try {
                 if (settings != null) {
                     resourceManager.getScripting().put(Atom.OVERRIDE_SETTINGS, settings);
                 }
+
+                if (!prototype)
+                    resourceManager.getScripting().put(Atom.OVERRIDE_NAME, name);
+
                 prototypeAtom = (prototypePath != null) ? (Atom) resourceManager.exec(prototypePath) : null;
             } finally {
-                if (hasPrevious) {
-                   resourceManager.getScripting().put(Atom.OVERRIDE_SETTINGS, previous);
+                if (hasPreviousSettings) {
+                   resourceManager.getScripting().put(Atom.OVERRIDE_SETTINGS, previousSettings);
                 } else if (settings != null){
                     resourceManager.getScripting().remove(Atom.OVERRIDE_SETTINGS);
+                }
+
+                if (!prototype) {
+                    if (hasPreviousName) {
+                        resourceManager.getScripting().put(Atom.OVERRIDE_NAME, previousName);
+                    } else {
+                        resourceManager.getScripting().remove(Atom.OVERRIDE_NAME);
+                    }
                 }
             }
             return resourceManager.createAtom(name, atomConsumer(), prototypeAtom, prototype);

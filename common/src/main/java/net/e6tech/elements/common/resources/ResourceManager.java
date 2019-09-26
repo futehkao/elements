@@ -288,6 +288,12 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         } else {
             if (!prototype)
                 atoms.put(atomName, atom);
+            else {
+                String overrideName = (String) getScripting().get(Atom.OVERRIDE_NAME);
+                if (overrideName != null)
+                    atom.setName(overrideName);
+            }
+
         }
         consumer.accept(atom);
         TimedLogger timed = new TimedLogger(0);
