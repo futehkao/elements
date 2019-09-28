@@ -25,6 +25,7 @@ import net.e6tech.elements.common.subscribe.Broadcast;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 import javax.persistence.metamodel.Metamodel;
 import java.lang.reflect.Proxy;
 import java.util.*;
@@ -54,6 +55,8 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private volatile boolean shutdown = false;
     private String providerName = DEFAULT_NAME;
     private ResourceManager resourceManager;
+    private InvocationListener<EntityManager> entityManagerListener;
+    private InvocationListener<Query> queryListener;
 
     public EntityManagerProvider() {
     }
@@ -153,6 +156,22 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
 
     public void setProviderName(String providerName) {
         this.providerName = providerName;
+    }
+
+    public InvocationListener<EntityManager> getEntityManagerListener() {
+        return entityManagerListener;
+    }
+
+    public void setEntityManagerListener(InvocationListener<EntityManager> entityManagerListener) {
+        this.entityManagerListener = entityManagerListener;
+    }
+
+    public InvocationListener<Query> getQueryListener() {
+        return queryListener;
+    }
+
+    public void setQueryListener(InvocationListener<Query> queryListener) {
+        this.queryListener = queryListener;
     }
 
     protected void evictCollectionRegion(EvictCollectionRegion notification) {
@@ -292,7 +311,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                     .put(alias, entityManagerMonitor);
         }
 
-        EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em);
+        EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em, getEntityManagerListener(), getQueryListener());
         emHandler.setLongTransaction(config.longTransaction());
         emHandler.setIgnoreInitialLongTransactions(ignoreInitialLongTransactions);
 

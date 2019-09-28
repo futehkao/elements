@@ -167,8 +167,16 @@ public class Reflection {
         }
     }
 
-    @SuppressWarnings("squid:S1872")
     public static Class getCallingClass() {
+        return privateGetCallingClass(1);
+    }
+
+    public static Class getCallingClass(int index) {
+        return privateGetCallingClass(index + 1);
+    }
+
+    @SuppressWarnings("squid:S1872")
+    public static Class privateGetCallingClass(int index) {
         Class<?>[] trace = securityManager.getClassContext(); // trace[0]
                                                               // trace[1] is Reflection because of this call.
                                                               // trace[2] is the caller who wants the calling class
@@ -181,12 +189,19 @@ public class Reflection {
                 break;
         }
 
-        // trace[i] = Reflection; trace[i+1] = caller; trace[i+2] = caller's caller
-        if (i >= trace.length || i + 2 >= trace.length) {
+        // trace[i] = Reflection this method
+        // trace[i+1] = Reflection.getCallingClass method
+        // trace[i+2] = caller
+        // trace[i+3] = caller's caller
+        if (i >= trace.length || i + 2 + index >= trace.length) {
             throw new IllegalStateException("Failed to find caller in the stack");
         }
 
-        return trace[i + 2];
+        return trace[i + 2 + index];
+    }
+
+    public static Class<?>[] getClassContext() {
+        return securityManager.getClassContext();
     }
 
     public static <V, C> Optional<V> mapCallingStackTrace(Function<Each<StackTraceElement,C>, ? extends V> mapper) {

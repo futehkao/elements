@@ -44,9 +44,9 @@ public class EntityManagerMonitorTest extends BaseCase {
                 try {
                     int n = count.incrementAndGet();
                     if (n % 4 == 0) {
-                        provision.resourceBuilder(EntityManagerConfig.class)
+                        provision
                                 .open()
-                                .commit(Resources.class, res -> {
+                                .accept(Resources.class, res -> {
                                     SessionImpl session = (SessionImpl) res.getInstance(EntityManager.class).getDelegate();
                                     MariaDbConnection conn = session.connection().unwrap(MariaDbConnection.class);
                                     conn.lock.lock();
@@ -73,9 +73,8 @@ public class EntityManagerMonitorTest extends BaseCase {
     void rollback() throws Exception {
         long start = System.currentTimeMillis();
         try {
-            provision.resourceBuilder(EntityManagerConfig.class)
-                    .annotate(c -> c::timeoutExtension, 3000L)
-                    .open()
+            provision.open()
+                    .annotate(EntityManagerConfig.class, EntityManagerConfig::timeoutExtension, 3000L)
                     .accept(Resources.class, EntityManager.class, (res, em) -> {
                         em.createNativeQuery("DO SLEEP(10);")
                                 .getResultList();

@@ -402,8 +402,8 @@ public class Atom implements Map<String, Object> {
             res = resourceManager.open(null);
             consumer.accept(res);
         } finally {
-            if (resources != null)
-                resources.commit();
+            if (res != null)
+                res.commit();
         }
         return this;
     }

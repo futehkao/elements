@@ -18,6 +18,9 @@ import net.e6tech.elements.persist.datasource.hikari.ElementsHikariDataSource
 import javax.persistence.EntityManager
 import net.e6tech.elements.persist.hibernate.HibernateEntityManagerProvider
 import net.e6tech.elements.persist.hibernate.TableIdGenerator
+import net.e6tech.elements.persist.InvocationListener
+
+import java.lang.reflect.Method
 
 atom("datasource") {
     /* below is for Hikari */
@@ -50,10 +53,27 @@ atom("datasource") {
     // dataSource = ComboPooledDataSource
 }
 
+class Listener implements InvocationListener {
+
+    void beforeInvocation(Class callingClass, Object proxy, Method method, Object[] args) {
+        println "Before invocation " + proxy.getClass().getName() + "::" + method.getName()
+    }
+
+    void afterInvocation(Class callingClass, Object proxy, Method method, Object[] args, Object returnValue) {
+        println "After invocation " + proxy.getClass().getName() + "::" + method.getName();
+    }
+
+    void onException(Class callingClass, Object proxy, Method method, Object[] args, Throwable ex) {
+
+    }
+}
+
 atom("persist") {
 
     configuration = """
         entityManagerProvider.persistenceUnitName: sample
+        entityManagerProvider.entityManagerListener: ^_emListener
+        entityManagerProvider.queryListener: ^_queryListener
         entityManagerProvider.transactionTimeout: ${entityManagerTxTimeout}
         entityManagerProvider.monitorTransaction: ${entityManagerMonitorTransaction}
         entityManagerProvider.longTransaction: ${entityManagerLongTransaction}
@@ -66,10 +86,14 @@ atom("persist") {
             defaultIncrementSize: 30
     """
 
+    _emListener = Listener
+    _queryListener = Listener
+
     entityManagerProvider = HibernateEntityManagerProvider
 
     _tableId = TableIdGenerator
     _tableId2 = TableIdGenerator
+
     entityManagerProvider.register('tableId', _tableId)
             .register('tableId2', _tableId2)
 
@@ -81,3 +105,5 @@ atom("persist") {
         })
     }
 }
+
+

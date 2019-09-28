@@ -17,6 +17,7 @@ limitations under the License.
 package net.e6tech.elements.persist;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.Reflection;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -28,16 +29,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by futeh.
  */
 @SuppressWarnings({"squid:S00112", "squid:S1149"})
-public class Watcher implements InvocationHandler {
+public class Watcher<T> implements InvocationHandler {
     protected static Logger logger = Logger.getLogger();
     private static ThreadLocal<Stack<Long>> gracePeriod = new ThreadLocal<>();
 
-    private Object target;
+    private T target;
     private boolean monitorTransaction = true;
     private long longTransaction = 200L;
     private AtomicInteger ignoreInitialLongTransactions;
 
-    public Watcher(Object target) {
+    public Watcher(T target) {
         this.target = target;
     }
 
@@ -102,11 +103,11 @@ public class Watcher implements InvocationHandler {
         this.ignoreInitialLongTransactions = ignoreInitialLongTransactions;
     }
 
-    public Object getTarget() {
+    public T getTarget() {
         return target;
     }
 
-    public void setTarget(Object target) {
+    public void setTarget(T target) {
         this.target = target;
     }
 
@@ -122,14 +123,15 @@ public class Watcher implements InvocationHandler {
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         try {
             initGracePeriod();
-            return doInvoke(proxy, method, args);
+            Class callingClass = Reflection.getCallingClass(1);
+            return doInvoke(callingClass, proxy, method, args);
         } finally {
             clearGracePeriod();
         }
     }
 
     @SuppressWarnings("squid:S1172")
-    public Object doInvoke(Object proxy, Method method, Object[] args) throws Throwable {
+    public Object doInvoke(Class callingClass, Object proxy, Method method, Object[] args) throws Throwable {
 
         long start = System.currentTimeMillis();
         try {

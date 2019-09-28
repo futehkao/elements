@@ -25,7 +25,9 @@ import javax.persistence.criteria.*;
 import javax.persistence.metamodel.EntityType;
 import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -38,10 +40,11 @@ public class Select<T> extends Statement<T> {
 
     private static final String GETTER_MSG = "Only accepts getter";
 
-    Select parent;
-    int maxResults = -1;
-    int firstResult = -1;
-    List<Selection<?>> selections = new ArrayList<>();
+    private Select parent;
+    private int maxResults = -1;
+    private int firstResult = -1;
+    private List<Selection<?>> selections = new ArrayList<>();
+    private Map<String, Object> hints = new HashMap<>();
 
     public Select(Where where, Root<T> root) {
         super(where, root);
@@ -59,6 +62,16 @@ public class Select<T> extends Statement<T> {
         Root<T> root = query.from(cls);
         Where<T> where = new Where(entityManager, builder, query, root);
         return new Select<>(where, root);
+    }
+
+    public Select<T> hint(String hint, Object value) {
+        hints.put(hint, value);
+        return this;
+    }
+
+    public Select<T> removeHint(String hint) {
+        hints.remove(hint);
+        return this;
     }
 
     public <X, R> void addConverter(Class<X> from, Class<R> to, Function<X, R> function) {
@@ -109,6 +122,7 @@ public class Select<T> extends Statement<T> {
         if (firstResult >= 0)
             query.setFirstResult(firstResult);
 
+        setHints(query);
         return (R) query.getSingleResult();
     }
 
@@ -129,7 +143,13 @@ public class Select<T> extends Statement<T> {
         if (firstResult >= 0)
             query.setFirstResult(firstResult);
 
+        setHints(query);
         return query.getResultList();
+    }
+
+    private void setHints(Query query) {
+        for (Map.Entry<String, Object> entry : hints.entrySet())
+            query.setHint(entry.getKey(), entry.getValue());
     }
 
     public Path path(Consumer<T> consumer) {

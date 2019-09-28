@@ -56,34 +56,31 @@ public class PersistenceTest extends BaseCase {
 
     @Test
     void testOtherPersistence() {
-        provision.resourceBuilder(EntityManagerConfig.class)
-                .annotate(c -> c::names, new String[] {"default", "sample-rw"})
-                .open()
+        provision.open()
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::names, new String[] {"default", "sample-rw"})
                 .accept(EntityManager.class, Resources.class,  (em, res) -> {
                     assertNotNull(res.getMapVariable(EntityManager.class).get("sample-rw"));
                     EntityManager emDefault = res.getMapVariable(EntityManager.class).get("default");
                     assertTrue(em == emDefault);
                 });
 
-        provision.resourceBuilder(EntityManagerConfig.class)
-                .annotate(c -> c::names, new String[] {"sample-rw"})
+        provision
                 .open()
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::names,  new String[] {"sample-rw"})
                 .accept(EntityManager.class, Resources.class,  (em, res) -> {
                     EntityManager emDefault = res.getMapVariable(EntityManager.class).get("sample-rw");
                     assertTrue(em == emDefault);
                 });
 
-        provision.resourceBuilder(EntityManagerConfig.class)
-                .annotate(c -> c::names, (String[]) null)
-                .open()
+        provision.open()
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::names, (String[]) null)
                 .accept(EntityManager.class, Resources.class,  (em, res) -> {
                     EntityManager emOther = res.getMapVariable(EntityManager.class).get("default");
                     assertTrue(em == emOther);
                 });
 
-        provision.resourceBuilder(EntityManagerConfig.class)
-                .annotate(c -> c::names,  new String[] {"delegate"})
-                .open()
+        provision.open()
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::names,  new String[] {"delegate"})
                 .accept(EntityManager.class, Resources.class,  (em, res) -> {
                     EntityManager emOther = res.getMapVariable(EntityManager.class).get("delegate");
                     assertTrue(em == emOther);
@@ -118,9 +115,9 @@ public class PersistenceTest extends BaseCase {
     @Test
     void testInsertDepartment() {
 
-        provision.resourceBuilder(EntityManagerConfig.class)
-                .annotate(c -> c::timeoutExtension, 100000L)
-                .open().commit(EntityManager.class, (em) -> {
+        provision.open()
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::timeoutExtension, 100000L)
+                .accept(EntityManager.class, (em) -> {
             try {
                 Department d = Select.create(em, Department.class)
                         .where(new Department() {{

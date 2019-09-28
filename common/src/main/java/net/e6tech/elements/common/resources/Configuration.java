@@ -111,7 +111,10 @@ public class Configuration extends LinkedHashMap<String, Object> {
     public Configuration load(Configuration config) {
         properties.putAll(config.properties);
         merge(this, config);
-        references.putAll(config.references);
+        for (Map.Entry<String, List<Reference>> entry : config.references.entrySet()) {
+            List<Reference> current = references.computeIfAbsent(entry.getKey(), k -> new ArrayList<>());
+            current.addAll(entry.getValue());
+        }
         return this;
     }
 
