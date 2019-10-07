@@ -67,7 +67,7 @@ public class Response implements Serializable {
     }
 
     public <T> T read(Class<T> cls) throws IOException {
-        if (cls.isAssignableFrom(String.class))
+        if (result == null || cls.isAssignableFrom(String.class))
             return (T) result;
         return mapper.readValue(result, cls);
     }

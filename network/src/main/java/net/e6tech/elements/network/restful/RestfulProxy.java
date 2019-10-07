@@ -39,7 +39,6 @@ import java.util.*;
  */
 public class RestfulProxy {
 
-    private String hostAddress;
     private RestfulClient client;
     private Interceptor interceptor;
     private Map<String, String> requestProperties = new LinkedHashMap<>();
@@ -47,8 +46,12 @@ public class RestfulProxy {
     private Response lastResponse;
 
     public RestfulProxy(String hostAddress) {
-        this.hostAddress = hostAddress;
         client = new RestfulClient(hostAddress);
+        interceptor = Interceptor.getInstance();
+    }
+
+    public RestfulProxy(RestfulClient client) {
+        this.client = client;
         interceptor = Interceptor.getInstance();
     }
 
@@ -69,11 +72,7 @@ public class RestfulProxy {
     }
 
     public String getHostAddress() {
-        return hostAddress;
-    }
-
-    public void setHostAddress(String hostAddress) {
-        this.hostAddress = hostAddress;
+        return client.getAddress();
     }
 
     public boolean isSkipHostnameCheck() {
@@ -94,12 +93,22 @@ public class RestfulProxy {
 
     public  <T> T newProxy(Class<T> serviceClass) {
         client.setPrinter(printer);
-        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, printer));
+        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, null, printer));
+    }
+
+    public  <T> T newProxy(Class<T> serviceClass, Presentation presentation) {
+        client.setPrinter(printer);
+        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, presentation, printer));
     }
 
     public  <T> T newProxy(Class<T> serviceClass, InterceptorListener listener) {
         client.setPrinter(printer);
-        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, printer), listener);
+        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, null, printer), listener);
+    }
+
+    public  <T> T newProxy(Class<T> serviceClass, Presentation presentation, InterceptorListener listener) {
+        client.setPrinter(printer);
+        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, presentation, printer), listener);
     }
 
     public Map<String, String> getRequestProperties() {
@@ -135,10 +144,12 @@ public class RestfulProxy {
         private String context;
         private Map<Method, MethodForwarder> methodForwarders = new ConcurrentHashMap<>();
         private Map<Method, String> methodSignatures = new ConcurrentHashMap<>();
+        private Presentation presentation;
         private PrintWriter printer;
 
-        InvocationHandler(RestfulProxy proxy, Class<?> serviceClass, PrintWriter printer) {
+        InvocationHandler(RestfulProxy proxy, Class<?> serviceClass, Presentation presentation, PrintWriter printer) {
             this.proxy = proxy;
+            this.presentation = presentation;
             this.printer = printer;
             Path path = serviceClass.getAnnotation(Path.class);
             if (path != null) {
@@ -163,6 +174,8 @@ public class RestfulProxy {
                 printer.println(signature);
             }
             Request request = proxy.client.create();
+            if (presentation != null)
+                request.setPresentation(presentation);
             for (Map.Entry<String, String> entry : proxy.requestProperties.entrySet()) {
                 request.setRequestProperty(entry.getKey(), entry.getValue());
             }
@@ -208,7 +221,6 @@ public class RestfulProxy {
                     sb.append(",");
             }
         }
-
     }
 
     private static class MethodForwarder {

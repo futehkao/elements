@@ -17,6 +17,7 @@
 package net.e6tech.elements.persist.criteria;
 
 import net.e6tech.elements.common.interceptor.Interceptor;
+import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 
 import javax.persistence.EntityManager;
@@ -263,7 +264,7 @@ public class Select<T> extends Statement<T> {
             } else {
                 throw new UnsupportedOperationException(GETTER_MSG);
             }
-            return null;
+            return Primitives.defaultValue(desc.getPropertyType());
         });
         joinCondition.accept(joinTemplate);
 
@@ -309,7 +310,7 @@ public class Select<T> extends Statement<T> {
             } else {
                 throw new UnsupportedOperationException(GETTER_MSG);
             }
-            return null;
+            return Primitives.defaultValue(desc.getPropertyType());
         });
         joinCondition.run();
         Interceptor.setInterceptorHandler(where.getTemplate(), where);
@@ -347,7 +348,7 @@ public class Select<T> extends Statement<T> {
             } else {
                 throw new UnsupportedOperationException(GETTER_MSG);
             }
-            return null;
+            return Primitives.defaultValue(desc.getPropertyType());
         });
         joinCondition.run();
         Interceptor.setInterceptorHandler(where.getTemplate(), where);

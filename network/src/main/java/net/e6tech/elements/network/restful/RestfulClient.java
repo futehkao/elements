@@ -36,7 +36,6 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 
@@ -440,12 +439,12 @@ public class RestfulClient {
         }
     }
 
-    protected Response submit(String context, String method, Properties requestProperties, Object data, Param ... params) throws Throwable {
+    protected Response submit(String context, String method, Map<String, String> requestProperties, Object data, Param ... params) throws Throwable {
         return _submit(staticAddress, context, method, requestProperties, data, params);
     }
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S1141", "squid:S00100", "squid:S00112", "squid:S2093"})
-    protected Response _submit(String dest, String context, String method, Properties requestProperties, Object data, Param ... params) throws Throwable {
+    protected Response _submit(String dest, String context, String method,  Map<String, String>  requestProperties, Object data, Param ... params) throws Throwable {
         Response response = null;
         HttpURLConnection conn = null;
         try {
@@ -646,10 +645,9 @@ public class RestfulClient {
         conn.setRequestProperty("Accept", marshaller.getAccept());
     }
 
-    private void loadRequestProperties(HttpURLConnection conn, Properties properties) {
-        for (String key : properties.stringPropertyNames()) {
-            conn.setRequestProperty(key, properties.getProperty(key));
-        }
+    private void loadRequestProperties(HttpURLConnection conn,  Map<String, String>  properties) {
+        for (Map.Entry<String, String> entry : properties.entrySet())
+            conn.setRequestProperty(entry.getKey(), entry.getValue());
     }
 
     private SSLSocketFactory getSSLSocketFactory() {

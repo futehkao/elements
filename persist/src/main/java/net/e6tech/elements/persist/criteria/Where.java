@@ -155,7 +155,7 @@ public class Where<T> extends Handler {
             if (cls.isPrimitive()) {
                 return Primitives.defaultValue(cls);
             }
-            return null;
+            return Primitives.defaultValue(desc.getPropertyType());
         } else {
             // setter
             Path current = getPath().get(property);

@@ -18,6 +18,7 @@ package net.e6tech.elements.persist.criteria;
 
 import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
+import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 
 import javax.persistence.criteria.*;
@@ -132,7 +133,7 @@ public class Statement<T> {
             } else {
                 throw new UnsupportedOperationException("Only accepts getter");
             }
-            return null;
+            return Primitives.defaultValue(desc.getPropertyType());
         };
     }
 

@@ -72,7 +72,7 @@ public class OrderBy<T> extends Handler {
             if (cls.isPrimitive()) {
                 return Primitives.defaultValue(cls);
             }
-            return null;
+            return Primitives.defaultValue(descriptor.getPropertyType());
         } else {
             throw new UnsupportedOperationException("Only accepts getter");
         }
