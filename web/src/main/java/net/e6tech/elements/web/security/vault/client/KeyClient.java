@@ -27,7 +27,6 @@ import net.e6tech.elements.security.vault.Credential;
 
 import javax.crypto.SecretKey;
 import javax.ws.rs.NotAuthorizedException;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
@@ -231,10 +230,6 @@ public class KeyClient implements Startable {
         try {
             String value = new String(result, StandardCharsets.UTF_8);
             return mapper.readValue(value, cls);
-        } catch (UnsupportedEncodingException e) {
-            // impossible
-            Logger.suppress(e);
-            return null;
         } catch (Exception e) {
             throw new GeneralSecurityException(e);
         }

@@ -35,7 +35,9 @@ dependencies {
     compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-logging-log4j', version: "${tomcatLog4jVersion}"
 
     // compile 'javax.ws.rs:jsr311-api:1.1.1'
-    compile "org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}"
+    compile ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}") {
+        exclude group: 'org.glassfish.jaxb', module: 'jaxb-runtime' // from common
+    }
     compile "org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}"
     compile "org.apache.cxf:cxf-rt-transports-local:${cxfVersion}"
     compile "org.apache.cxf:cxf-rt-transports-http:${cxfVersion}"

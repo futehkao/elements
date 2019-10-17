@@ -20,12 +20,21 @@ dependencies {
     compile "jakarta.ws.rs:jakarta.ws.rs-api:${javaxWsRsApiVersion}"
 
     compile "com.esotericsoftware:kryo:${kryoVersion}"
-    compile group: 'com.typesafe.akka', name: "akka-cluster-typed_${akkaScalaVersion}", version: "${akkaVersion}"
-    compile group: 'com.typesafe.akka', name: "akka-cluster_${akkaScalaVersion}", version: "${akkaVersion}"
+
     compile "org.ow2.asm:asm:${asmVersion}"
-    compile("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}") {
+    compile "org.ow2.asm:asm-commons:${asmVersion}"
+    compile "org.ow2.asm:asm-util:${asmVersion}"
+
+    compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
         exclude group: 'org.ow2.asm'
     }
+
+    compile (group: 'com.typesafe.akka', name: "akka-cluster-typed_${akkaScalaVersion}", version: "${akkaVersion}") {
+        exclude group: 'com.github.jnr'
+        exclude group: 'org.ow2.asm'
+    }
+    compile group: 'com.typesafe.akka', name: "akka-cluster_${akkaScalaVersion}", version: "${akkaVersion}"
+    compile("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}")
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"

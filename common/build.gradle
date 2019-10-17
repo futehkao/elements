@@ -35,8 +35,10 @@ dependencies {
     compile "com.fasterxml.jackson.module:jackson-module-jaxb-annotations:${jacksonVersion}"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${jacksonVersion}"
     compile "net.bytebuddy:byte-buddy:${bytebuddyVersion}"
-    // compile 'org.ow2.asm:asm:5.2'
-    compile "org.ehcache:ehcache:${ehcacheVersion}"
+    compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: "${jaxbRuntime}"
+    compile ("org.ehcache:ehcache:${ehcacheVersion}") {
+        exclude group: 'org.glassfish.jaxb', module: 'jaxb-runtime'
+    }
     compile "javax.cache:cache-api:${javaCacheApiVerison}"
 
     // akka core
