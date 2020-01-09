@@ -23,6 +23,7 @@ import java.util.Objects;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class PluginPaths<T> {
 
     private List<PluginPath> paths = new ArrayList<>();

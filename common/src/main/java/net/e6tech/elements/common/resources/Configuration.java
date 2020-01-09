@@ -46,7 +46,7 @@ import java.util.*;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S3776", "squid:S134", "squid:MethodCyclomaticComplexity"})
+@SuppressWarnings({"unchecked", "squid:S3776", "squid:S134", "squid:MethodCyclomaticComplexity"})
 public class Configuration extends LinkedHashMap<String, Object> {
 
     private static Logger logger = Logger.getLogger();

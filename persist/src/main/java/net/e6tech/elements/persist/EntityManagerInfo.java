@@ -14,27 +14,17 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.persist;
 
-import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.network.cluster.invocation.Local;
+import net.e6tech.elements.common.resources.Resources;
 
-import java.util.function.Function;
+public interface EntityManagerInfo {
 
-public interface Reactor {
+    Resources getResources();
 
-    default Provision getProvision() {
-        return null;
-    }
+    String getAlias();
 
-    @Local
-    default <T> T get(Class<T> cls) {
-        return null;
-    }
+    EntityManagerProvider getProvider();
 
-    @SuppressWarnings("unchecked")
-    default <R> R apply(Function<? extends Reactor, R> function) {
-        Function<Reactor, R> capture = (Function) function;
-        return capture.apply(this);
-    }
+    EntityManagerConfig getConfig();
 }

@@ -39,6 +39,7 @@ public class AsyncImpl<U> implements ClusterAsync<U> {
     private CompletionStage<InvocationEvents.Response> completionStage;
     private U proxy;
 
+    @SuppressWarnings("unchecked")
     public AsyncImpl(Registry registry, String qualifier, Class<U> interfaceClass, long timeout) {
         this.registry = registry;
         this.qualifier = qualifier;
@@ -61,7 +62,7 @@ public class AsyncImpl<U> implements ClusterAsync<U> {
         this.timeout = timeout;
     }
 
-    @SuppressWarnings("squid:S2259")
+    @SuppressWarnings({"unchecked", "squid:S2259"})
     public <R> CompletionStage<R> apply(Function<U, R> function) {
         completionStage = null;
         function.apply(proxy);

@@ -229,6 +229,7 @@ public class ModuleImpl implements Module {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private Object newInstance(Object instance) {
         if (instance instanceof Class) {
             try {
@@ -241,6 +242,7 @@ public class ModuleImpl implements Module {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T getBoundNamedInstance(Class<T> cls, String name) {
         BindingMap bindList = directory.get(cls);
 

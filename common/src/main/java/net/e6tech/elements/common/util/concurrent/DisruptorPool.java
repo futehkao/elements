@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
+@SuppressWarnings("unchecked")
 public class DisruptorPool {
     private DisruptorConfig config = new DisruptorConfig();
     Disruptor<Event> disruptor;

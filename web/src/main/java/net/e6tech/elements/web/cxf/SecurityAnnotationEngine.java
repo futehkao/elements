@@ -55,6 +55,7 @@ public class SecurityAnnotationEngine {
         this.securityProviders = securityProviders;
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Class<? extends T> getSecurityProvider(Class<T> cls) {
         Class roleProvider = securityProviders.get(cls);
         if (roleProvider == null)
@@ -64,6 +65,7 @@ public class SecurityAnnotationEngine {
         return roleProvider;
     }
 
+    @SuppressWarnings("unchecked")
     public SecurityAnnotationEngine register(Class cls) {
         Class roleProvider = getSecurityProvider(cls);
         // populate from most specific to least specific.  Once a method signature

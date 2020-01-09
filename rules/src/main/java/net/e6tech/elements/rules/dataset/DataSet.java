@@ -36,6 +36,7 @@ public class DataSet implements Map<String, Column> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public void addRow(List row) {
         if (row.size() != columns.length)
             throw new IllegalArgumentException();
@@ -55,6 +56,7 @@ public class DataSet implements Map<String, Column> {
         return list.get(column);
     }
 
+    @SuppressWarnings("unchecked")
     public void set(int row, int column, Object object) {
         if (row >= getRowSize())
             throw new NoSuchElementException();

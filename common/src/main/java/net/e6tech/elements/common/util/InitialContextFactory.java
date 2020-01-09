@@ -32,7 +32,7 @@ import java.util.List;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S2176", "squid:S1319", "squid:S1149"})
+@SuppressWarnings({"unchecked", "squid:S2176", "squid:S1319", "squid:S1149"})
 public class InitialContextFactory implements javax.naming.spi.InitialContextFactory {
     static InheritableThreadLocal<Context> threadLocal = new InheritableThreadLocal<>();
 

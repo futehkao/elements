@@ -32,6 +32,7 @@ import java.util.Iterator;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class ObjectConverter {
 
     public static final  ObjectMapper mapper;

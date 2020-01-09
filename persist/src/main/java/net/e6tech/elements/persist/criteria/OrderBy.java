@@ -52,6 +52,7 @@ public class OrderBy<T> extends Handler {
         this.template = template;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Object invoke(CallFrame frame) throws Throwable {
         PropertyDescriptor descriptor = Reflection.propertyDescriptor(frame.getMethod());

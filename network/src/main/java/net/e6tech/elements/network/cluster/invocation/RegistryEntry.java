@@ -28,6 +28,7 @@ public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvent
         this.registration = registration;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void initialize() {
         super.initialize();
@@ -35,6 +36,7 @@ public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvent
             registration.getSender().tell(this.getSelf());
     }
 
+    @SuppressWarnings("unchecked")
     @Typed
     private void request(InvocationEvents.Request request) {
         final ActorRef sender = request.getSender();

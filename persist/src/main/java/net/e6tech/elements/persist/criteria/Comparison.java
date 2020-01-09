@@ -23,7 +23,7 @@ import javax.persistence.criteria.Predicate;
 /**
  * Created by futeh.
  */
-@SuppressWarnings("squid:S00115")
+@SuppressWarnings({"unchecked", "squid:S00115"})
 public enum Comparison {
     equal {
         Predicate compare(CriteriaBuilder builder, Expression expression, Object object) {

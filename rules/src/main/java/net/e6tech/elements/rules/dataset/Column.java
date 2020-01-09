@@ -70,6 +70,7 @@ public class Column implements Iterable {
         return calculate.calculate(this);
     }
 
+    @SuppressWarnings("unchecked")
     public BigDecimal max() {
         Number number = (Number) Collections.max(getData());
         if (number == null)
@@ -77,6 +78,7 @@ public class Column implements Iterable {
         return new BigDecimal(number.toString());
     }
 
+    @SuppressWarnings("unchecked")
     public List getData() {
         List list = new ArrayList<>();
         for (Object obj : this)

@@ -31,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Set;
 
+@SuppressWarnings("unchecked")
 public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
 
     private boolean cleanupScheduled = false;

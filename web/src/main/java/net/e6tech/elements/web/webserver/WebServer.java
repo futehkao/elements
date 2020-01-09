@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
+@SuppressWarnings("unchecked")
 public class WebServer implements Startable {
 
     protected static Logger logger = Logger.getLogger();

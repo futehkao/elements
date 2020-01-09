@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests for ehcache and CacheFacade.
  * Created by futeh.
  */
+@SuppressWarnings("deprecation")
 @Tags.Common
 public class CacheFacadeTest {
     @Test

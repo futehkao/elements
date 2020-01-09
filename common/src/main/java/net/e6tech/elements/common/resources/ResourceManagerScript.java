@@ -117,6 +117,7 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
         return getShell().bindNamedInstance(a, name, b);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T bindNamedInstance(String name, T b) {
         return getShell().bindNamedInstance((Class<T>) b.getClass(), name, b);
     }
@@ -125,6 +126,7 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
         return getShell().rebindNamedInstance(a, name, b);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T rebindNamedInstance(String name, T b) {
         return getShell().rebindNamedInstance((Class<T>) b.getClass(), name, b);
     }
@@ -213,6 +215,7 @@ public abstract class ResourceManagerScript extends AbstractScriptBase<ResourceM
             return build();
         }
 
+        @SuppressWarnings("unchecked")
         public Atom build() {
             Atom existing = resourceManager.getAtom(name);
             if (existing != null)

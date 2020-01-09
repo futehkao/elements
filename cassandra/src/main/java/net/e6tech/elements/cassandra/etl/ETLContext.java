@@ -193,6 +193,7 @@ public class ETLContext {
         return getInspector(getSourceClass()).tableName();
     }
 
+    @SuppressWarnings("unchecked")
     public void saveLastUpdate(LastUpdate lastUpdate) {
         open().accept(Sibyl.class, sibyl -> {
             if (lastUpdateClass == null)
@@ -203,6 +204,7 @@ public class ETLContext {
         });
     }
 
+    @SuppressWarnings("unchecked")
     public LastUpdate lookupLastUpdate() {
         return open().apply(Sibyl.class, sibyl -> {
             if (lastUpdate != null)

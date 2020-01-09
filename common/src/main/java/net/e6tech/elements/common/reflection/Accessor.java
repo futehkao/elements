@@ -145,6 +145,7 @@ public class Accessor {
         return name;
     }
 
+    @SuppressWarnings("unchecked")
     public Object get(Object target) {
         try {
             if (lambdaGetter != null)
@@ -158,6 +159,7 @@ public class Accessor {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public void set(Object target, Object value) {
         try {
             if (lambdaSetter != null)

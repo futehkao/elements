@@ -30,6 +30,7 @@ import java.util.function.Consumer;
 public class AsyncResultSetFutures<D> extends AsyncFutures<AsyncResultSet, D> {
     static Logger logger = Logger.getLogger();
 
+    @SuppressWarnings("unchecked")
     AsyncResultSetFutures(Async async, List<Future<AsyncResultSet>> futures) {
         super(async, (List) futures);
     }

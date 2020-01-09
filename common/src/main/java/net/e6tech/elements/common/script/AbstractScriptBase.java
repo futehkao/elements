@@ -47,6 +47,7 @@ public abstract class AbstractScriptBase<T extends AbstractScriptShell> extends 
         return getBinding().hasVariable(var);
     }
 
+    @SuppressWarnings("unchecked")
     protected <V> V getVariable(String var) {
         return (V) getBinding().getVariable(var);
     }

@@ -126,6 +126,7 @@ public class PluginPath<T> {
         return hash;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object object) {
         if (!(object instanceof  PluginPath))

@@ -27,7 +27,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.*;
 
-
+@SuppressWarnings("unchecked")
 public abstract class Transmutator implements Strategy<PartitionContext> {
 
     private LinkedList<Descriptor> descriptors = new LinkedList<>();

@@ -30,6 +30,7 @@ import java.util.function.BiConsumer;
 
 @Tags.Common
 public class LambdaTest {
+    @SuppressWarnings("unchecked")
     @Test
     void methodHandle() throws Throwable {
         Constructor constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, Integer.TYPE);

@@ -47,6 +47,7 @@ public class BeanLifecycle {
         listeners.add(beanListener);
     }
 
+    @SuppressWarnings("unchecked")
     public void addBeanListener(Class cls, BeanListener beanListener) {
         for (Object bean : initializedBeans.values()) {
             if (cls.isAssignableFrom(bean.getClass())) {
@@ -109,6 +110,7 @@ public class BeanLifecycle {
         classBeanListeners.clear();
     }
 
+    @SuppressWarnings("unchecked")
     private void fireBeanEvent(String beanName, Object bean, int eventType) {
         List<BeanListener> list = null; // to avoid concurrent mod to listeners
         if (beanName != null) {

@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S1845", "squid:S3776"})
+@SuppressWarnings({"unchecked", "squid:S1845", "squid:S3776"})
 public class Atom implements Map<String, Object> {
     public static final String OVERRIDE_SETTINGS = "__atom_override_settings";
     public static final String OVERRIDE_NAME = "__atom_override_name";

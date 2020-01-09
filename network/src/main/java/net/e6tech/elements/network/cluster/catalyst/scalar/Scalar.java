@@ -38,6 +38,7 @@ public class Scalar<Re extends Reactor, T, R, U> implements Cloneable, Function<
         setMapping(mapping);
     }
 
+    @SuppressWarnings("unchecked")
     public U apply(Re reactor) {
         Function<Re, Collection<R>> t = series;
         Collection<R> collection = t.apply(reactor);
@@ -45,6 +46,7 @@ public class Scalar<Re extends Reactor, T, R, U> implements Cloneable, Function<
         return m.apply(reactor, collection);
     }
 
+    @SuppressWarnings("unchecked")
     public Scalar<Re, T, R, U> clone() {
         try {
             return (Scalar) super.clone();

@@ -25,6 +25,7 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class PluginMap<K, V> implements PluginFactory {
 
     private Map<K, Object> map = new LinkedHashMap<>();
@@ -33,7 +34,12 @@ public class PluginMap<K, V> implements PluginFactory {
 
     @Override
     public PluginMap<K, V> create(PluginManager pluginManager) {
-        PluginMap<K, V> copy = new PluginMap<>();
+        PluginMap<K, V> copy;
+        try {
+            copy = getClass().getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
         copy.pluginManager = pluginManager;
         copy.map = map;
         return copy;

@@ -130,6 +130,7 @@ public class RegistryImpl implements Registry {
         return Collections.emptyList();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function) {
         return registrar.ask(ref -> new InvocationEvents.Registration(ref, path,  (BiFunction<ActorRef, Object[], Object>)function), timeout);
@@ -148,7 +149,7 @@ public class RegistryImpl implements Registry {
      * @param implementation implementation of the interface
      * @param <T> type of implementation
      */
-    @SuppressWarnings({"squid:S1067", "squid:S3776"})
+    @SuppressWarnings({"unchecked", "squid:S1067", "squid:S3776"})
     @Override
     public <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker) {
         if (!interfaceClass.isInterface())

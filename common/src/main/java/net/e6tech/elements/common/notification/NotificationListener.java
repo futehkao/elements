@@ -50,6 +50,7 @@ public interface NotificationListener<T extends Notification> {
                 });
     }
 
+    @SuppressWarnings("unchecked")
     default Class<? extends Notification>[] getNotificationTypes() {
         Type[] genericInterfaces = getClass().getGenericInterfaces();
         for (Type genericInterface : genericInterfaces) {

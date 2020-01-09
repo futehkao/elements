@@ -32,11 +32,13 @@ public class Bindings {
         this.resources = resources;
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T get(Class<T> cls) {
         Binding<T> binding = bindings.computeIfAbsent(cls, key -> resources.getBinding(cls));
         return binding.get();
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Bindings rebind(Class<T> cls, T newValue) {
         Binding<T> binding = bindings.computeIfAbsent(cls, key -> resources.getBinding(cls));
         binding.rebind(newValue);

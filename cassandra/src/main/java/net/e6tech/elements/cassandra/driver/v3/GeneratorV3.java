@@ -48,10 +48,12 @@ public class GeneratorV3 extends Generator {
         return Table.class;
     }
 
+    @SuppressWarnings("unchecked")
     public Annotation tableAnnotation(Class sourceClass) {
         return sourceClass.getAnnotation(Table.class);
     }
 
+    @SuppressWarnings("unchecked")
     public String tableKeyspace(Class sourceClass) {
         Table table = (Table) sourceClass.getAnnotation(Table.class);
         if (table != null)
@@ -59,6 +61,7 @@ public class GeneratorV3 extends Generator {
         return null;
     }
 
+    @SuppressWarnings("unchecked")
     public String tableName(Class sourceClass) {
         Table table = (Table) sourceClass.getAnnotation(Table.class);
         if (table == null)

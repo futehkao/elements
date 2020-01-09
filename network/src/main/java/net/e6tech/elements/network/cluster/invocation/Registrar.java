@@ -97,6 +97,7 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
     }
 
     // Forward request to router
+    @SuppressWarnings("unchecked")
     @Typed
     private void request(Request request) {
         ActorRef<InvocationEvents.Request> router = routes.get(request.getPath());
@@ -121,6 +122,7 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Typed
     private void routes(Routes message) {
         Set<ActorRef<InvocationEvents.Request>> actorsForKey = this.actors.get(message.getPath());

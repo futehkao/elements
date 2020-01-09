@@ -21,6 +21,7 @@ import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Typed;
 
+@SuppressWarnings("unchecked")
 public class Worker extends CommonBehavior<Worker, WorkEvents> {
 
     private ActorRef pool;

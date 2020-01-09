@@ -33,7 +33,7 @@ import java.util.concurrent.Callable;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S00115", "squid:S134", "squid:S1192", "squid:S3400", "squid:S1075"})
+@SuppressWarnings({"unchecked", "squid:S00115", "squid:S134", "squid:S1192", "squid:S3400", "squid:S1075"})
 public class Scripting {
 
     public static final String SCRIPT_BASE_CLASS = "scriptBaseClass";

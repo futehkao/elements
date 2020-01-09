@@ -73,6 +73,7 @@ public class JobServer {
         return scheduler;
     }
 
+    @SuppressWarnings("unchecked")
     public Job registerJob(String name, Object target) {
         Job job = resourceManager.registerBean(name, Job.class);
         job.setJobServer(this);

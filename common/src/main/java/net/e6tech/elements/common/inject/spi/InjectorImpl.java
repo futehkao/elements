@@ -71,6 +71,7 @@ public class InjectorImpl implements Injector {
         return getNamedInstance(cls, null);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T getNamedInstance(Class<T> boundClass, String name) {
         return privateGetNamedInstance(boundClass, name).map(binding -> (T) binding.getValue()).orElse(null);
@@ -242,7 +243,7 @@ public class InjectorImpl implements Injector {
             }
         }
 
-        @SuppressWarnings("squid:S3776")
+        @SuppressWarnings({"unchecked", "squid:S3776"})
         InjectionAttempt inject(InjectorImpl injector, Object target) {
             Type t = getType();
             Optional<Binding> opt = injector.privateGetNamedInstance(t, name);

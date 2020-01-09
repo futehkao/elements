@@ -104,6 +104,7 @@ public class MethodAnnotationReflection {
         return Optional.empty();
     }
 
+    @SuppressWarnings("unchecked")
     private static Optional<Method> getMethodForClass(Method methodOnDifferentClass, Class targetClass) {
         try {
             // Look to see if there is a method that has an exact signature match

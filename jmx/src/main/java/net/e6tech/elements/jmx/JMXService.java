@@ -52,7 +52,7 @@ public class JMXService {
         start(InetAddress.getLoopbackAddress(), port, jmxrmiPort, user, password);
     }
 
-    @SuppressWarnings({"squid:S00112", "squid:S1191"})
+    @SuppressWarnings({"unchecked", "squid:S00112", "squid:S1191"})
     public static void start(InetAddress bindAddress, int port, int jmxrmiPort, String user, char[] password) throws Exception {
         JMXHtmlServer adapter = new JMXHtmlServer(port);
         adapter.setBindAddress(bindAddress);

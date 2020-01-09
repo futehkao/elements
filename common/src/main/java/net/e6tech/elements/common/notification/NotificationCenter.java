@@ -29,7 +29,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Created by futeh on 1/21/16.
  */
-@SuppressWarnings({"squid:S1149"})
+@SuppressWarnings({"unchecked", "squid:S1149"})
 public class NotificationCenter implements Broadcast {
 
     private Map<Object, List<NotificationListener>> srcNotificationListeners = new ConcurrentHashMap<>();

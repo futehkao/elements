@@ -25,6 +25,7 @@ import java.util.*;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class Converter {
 
     private Converter() {

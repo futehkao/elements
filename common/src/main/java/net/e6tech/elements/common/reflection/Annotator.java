@@ -51,6 +51,7 @@ public class Annotator implements InvocationHandler {
         objectMethods.put("equals", 1);
     }
 
+    @SuppressWarnings("unchecked")
     protected Annotator(Class type, Map<Method, Object> values) {
         this.type = type;
         this.values = values;
@@ -125,6 +126,7 @@ public class Annotator implements InvocationHandler {
         toString = null;
     }
 
+    @SuppressWarnings("unchecked")
     private int hashCodeImpl() {
         int hash = 0;
         Map.Entry<Method, Object> entry;

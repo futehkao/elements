@@ -59,7 +59,7 @@ public class Helper<T> extends EntityHelperBase<T> {
         return entityClass;
     }
 
-    @SuppressWarnings("squid:S1905") // this is just nonsense from sonarlint.
+    @SuppressWarnings({"unchecked", "squid:S1905"}) // this is just nonsense from sonarlint.
     @Override
     public <S extends SettableByName<S>> S set(T entity,
                                                S target,
@@ -75,6 +75,7 @@ public class Helper<T> extends EntityHelperBase<T> {
         return target;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public T get(GettableByName source) {
         T returnValue = null;

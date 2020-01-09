@@ -37,6 +37,7 @@ import java.util.function.Function;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class Select<T> extends Statement<T> {
 
     private static final String GETTER_MSG = "Only accepts getter";

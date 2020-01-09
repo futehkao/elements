@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class NotificationProcessor implements NotificationListener {
 
     private ExecutorService threadPool;

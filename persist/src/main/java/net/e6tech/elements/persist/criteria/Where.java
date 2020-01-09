@@ -35,6 +35,7 @@ import java.util.function.Function;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class Where<T> extends Handler {
 
     Where parent;

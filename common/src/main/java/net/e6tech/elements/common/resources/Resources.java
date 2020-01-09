@@ -50,7 +50,7 @@ import java.util.function.Supplier;
  * Created by futeh.
  */
 @BindClass(Resources.class)
-@SuppressWarnings({"squid:S1141", "squid:S134", "squid:S1602", "squid:S00100", "squid:MethodCyclomaticComplexity"})
+@SuppressWarnings({"unchecked", "squid:S1141", "squid:S134", "squid:S1602", "squid:S00100", "squid:MethodCyclomaticComplexity"})
 public class Resources implements AutoCloseable, ResourcePool {
 
     private static Logger logger = Logger.getLogger(Resources.class);
@@ -448,7 +448,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     // configurator can be changed by preOpen
-    // whereas initialConfigurator records the initial configuration values when Resources is opeen
+    // whereas initialConfigurator records the initial configuration values when Resources is open
     // It is then used in replay.
     public Resources configure(Configurator configurator) {
         this.configurator.putAll(configurator);

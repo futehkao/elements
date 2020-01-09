@@ -24,24 +24,51 @@ import javax.persistence.Query;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Created by futeh.
  */
-public class EntityManagerInvocationHandler extends Watcher<EntityManager> {
+public class EntityManagerInvocationHandler extends Watcher<EntityManager> implements EntityManagerInfo {
+    private static Set<Method> infoMethods = new HashSet<>();
 
     private Resources resources;
+    private String alias;
+    private EntityManagerProvider provider;
+    private EntityManagerConfig config;
     private InvocationListener<EntityManager> entityManagerListener;
     private InvocationListener<Query> queryListener;
 
-    public EntityManagerInvocationHandler(Resources resources, EntityManager em, InvocationListener<EntityManager> entityManagerListener, InvocationListener<Query> queryListener) {
+    static {
+        for (Method method : EntityManagerInfo.class.getDeclaredMethods()) {
+            infoMethods.add(method);
+        }
+
+        for (Method method : EntityManagerInvocationHandler.class.getDeclaredMethods()) {
+            infoMethods.add(method);
+        }
+    }
+
+    public EntityManagerInvocationHandler(Resources resources, EntityManager em,
+                                          String alias,
+                                          EntityManagerProvider provider,
+                                          EntityManagerConfig config,
+                                          InvocationListener<EntityManager> entityManagerListener,
+                                          InvocationListener<Query> queryListener) {
         super(em);
         this.resources = resources;
+        this.alias = alias;
+        this.provider = provider;
+        this.config = config;
         this.entityManagerListener = entityManagerListener;
         this.queryListener = queryListener;
     }
 
-    @SuppressWarnings("squid:S00112")
+    @SuppressWarnings({"unchecked", "squid:S00112"})
     private static Object doInvoke(Class callingClass, Watcher watcher, InvocationListener listener, InvocationListener<Query> queryListener, Object proxy, Method method, Object[] args) throws Throwable {
         long start = System.currentTimeMillis();
         Object ret = null;
@@ -79,7 +106,29 @@ public class EntityManagerInvocationHandler extends Watcher<EntityManager> {
 
     @Override
     public Object doInvoke(Class callingClass, Object proxy, Method method, Object[] args) throws Throwable {
+        if (infoMethods.contains(method))
+            return method.invoke(this, args);
         return doInvoke(callingClass, this, entityManagerListener, queryListener, proxy, method, args);
+    }
+
+    @Override
+    public Resources getResources() {
+        return resources;
+    }
+
+    @Override
+    public String getAlias() {
+        return alias;
+    }
+
+    @Override
+    public EntityManagerProvider getProvider() {
+        return provider;
+    }
+
+    @Override
+    public EntityManagerConfig getConfig() {
+        return config;
     }
 
     public static class QueryInvocationHandler extends Watcher<Query> {

@@ -98,11 +98,11 @@ public class PluginManager {
         }
     }
 
-    public ClassLoader getPluginClassLoader() {
+    public URLClassLoader getPluginClassLoader() {
         return classLoader;
     }
 
-    @SuppressWarnings({"squid:S3824", "squid:S3776"})
+    @SuppressWarnings({"unchecked", "squid:S3824", "squid:S3776"})
     protected Optional getDefaultPlugin(Class type) {
         Object lookup = defaultPlugins.get(type);
         if (lookup == NULL_OBJECT)
@@ -112,7 +112,7 @@ public class PluginManager {
             Class t = type;
             while (t != null && !t.equals(Object.class)) {
                 try {
-                    Field field = type.getField(DEFAULT_PLUGIN);
+                    Field field = t.getField(DEFAULT_PLUGIN);
                     lookup = field.get(null);
                     defaultPlugins.put(type, lookup);
                     break;

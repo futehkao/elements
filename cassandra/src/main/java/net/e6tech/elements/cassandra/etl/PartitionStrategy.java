@@ -28,6 +28,7 @@ import net.e6tech.elements.common.util.TextBuilder;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+@SuppressWarnings("unchecked")
 public class PartitionStrategy<S extends Partition, C extends PartitionContext> implements BatchStrategy<S, C> {
 
     @Override

@@ -183,6 +183,7 @@ public class Builder<T> implements InterceptorHandler {
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected Object get(String propertyName, CallFrame frame) {
         Class returnType = frame.getMethod().getReturnType();
         if (isBuiltInClass(returnType)) {
@@ -211,6 +212,7 @@ public class Builder<T> implements InterceptorHandler {
         return child.proxy;
     }
 
+    @SuppressWarnings("unchecked")
     protected void set(String propertyName, CallFrame frame) {
         Class type = frame.getMethod().getParameterTypes()[0];
         if (isBuiltInClass(type)) {

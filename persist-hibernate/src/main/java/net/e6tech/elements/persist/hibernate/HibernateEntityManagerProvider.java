@@ -46,6 +46,7 @@ public class HibernateEntityManagerProvider extends EntityManagerProvider {
 
     private net.e6tech.elements.common.interceptor.Interceptor interceptor = new net.e6tech.elements.common.interceptor.Interceptor();
 
+    @SuppressWarnings("unchecked")
     @Override
     public void initialize(Resources resources) {
         if (System.getProperty(Context.INITIAL_CONTEXT_FACTORY) == null) {

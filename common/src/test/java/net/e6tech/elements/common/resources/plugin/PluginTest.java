@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class PluginTest {
 
     @Test

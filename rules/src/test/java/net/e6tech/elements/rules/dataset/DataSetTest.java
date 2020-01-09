@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class DataSetTest {
 
+    @SuppressWarnings("unchecked")
     @Test
     public void test() throws Exception {
         DataSet dataSet = new DataSet(new String[] {"number"}, new Class[] {Integer.class});

@@ -52,6 +52,7 @@ public class Spawn<S extends CommonBehavior<S, T>, T> {
         return this;
     }
 
+    @SuppressWarnings("unchecked")
     public ActorRef<T> spawn() {
         ActorContext context = parent.getContext();
         if (name != null) {

@@ -32,6 +32,7 @@ public class AsyncFutures<T, D> {
     protected List<Future<T>> futures;
     private long timeout = 0;
 
+    @SuppressWarnings("unchecked")
     AsyncFutures(Async async, List<Future<T>> futures) {
         this.async = async;
         this.futures = futures;
@@ -50,6 +51,7 @@ public class AsyncFutures<T, D> {
         return this;
     }
 
+    @SuppressWarnings("unchecked")
     protected void futuresAccept(List<Future<T>> list, Consumer consumer) {
         for (Future<T> future : list) {
             try {

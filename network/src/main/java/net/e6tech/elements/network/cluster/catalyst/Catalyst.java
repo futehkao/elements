@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-@SuppressWarnings({"squid:S00119", "squid:S1700"})
+@SuppressWarnings({"unchecked", "squid:S00119", "squid:S1700"})
 public class Catalyst<Re extends Reactor> {
     private Registry registry;
     private long waitTime = 30000L;

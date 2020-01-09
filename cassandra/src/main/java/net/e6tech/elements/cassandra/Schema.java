@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-@SuppressWarnings({"squid:S00115", "squid:S3776"})
+@SuppressWarnings({"unchecked", "squid:S00115", "squid:S3776"})
 public class Schema {
 
     private static Cache<String, List<String>> scriptCache = CacheBuilder.newBuilder()

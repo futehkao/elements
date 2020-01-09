@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
+@SuppressWarnings("unchecked")
 public abstract class CommonBehavior<S extends CommonBehavior, T> extends AbstractBehavior<T> {
 
     private static Cache<Class, List<MessageBuilder>> cache = CacheBuilder.newBuilder()

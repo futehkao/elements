@@ -214,6 +214,7 @@ public class ClusterNode implements Initializable {
             memberListeners.forEach(listener -> listener.memberDown(member.member().address().toString()));
         }
 
+        @SuppressWarnings("unchecked")
         @Typed
         public void postStop(PostStop postStop) {
             cluster.subscriptions().tell(new Unsubscribe(getContext().getSelf()));

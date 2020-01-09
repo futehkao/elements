@@ -34,6 +34,7 @@ public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
     private long timeout = 5000L;
     private String name = "galaxy";
 
+    @SuppressWarnings("unchecked")
     public Guardian boot(Config config, WorkerPoolConfig workerPoolConfig) {
         Object monitor = new Object();
         Behavior<WorkEvents> pool = WorkerPool.newPool(this, workerPoolConfig);

@@ -160,7 +160,7 @@ public class Transformer<T, E> {
         return this;
     }
 
-    @SuppressWarnings("squid:S3776")
+    @SuppressWarnings({"unchecked", "squid:S3776"})
     public Transformer<T, E> forEachNewOrExisting(BiConsumer<E, T> newItems, BiConsumer<E, T> existing) {
         Inspector extractedInspector = null;
 

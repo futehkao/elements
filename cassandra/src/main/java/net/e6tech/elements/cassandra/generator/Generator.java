@@ -118,6 +118,7 @@ public abstract class Generator {
             dataNames.put(dataType, (Class) type);
     }
 
+    @SuppressWarnings("unchecked")
     public Object getDataValue(String type, String value) {
         Class cls = dataNames.get(type);
         if (UUID.class.equals(cls)) {

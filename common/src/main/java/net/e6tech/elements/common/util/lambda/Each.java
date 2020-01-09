@@ -22,6 +22,7 @@ import java.util.Optional;
  * This is for iterating through object but want to keep state during iterating
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class Each<T, U> {
     private T value;
     private U state;

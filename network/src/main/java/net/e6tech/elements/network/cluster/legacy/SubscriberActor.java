@@ -41,6 +41,7 @@ class SubscriberActor extends AbstractActor {
         mediator.tell(new DistributedPubSubMediator.Subscribe(topic, getSelf()), getSelf());
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public AbstractActor.Receive createReceive() {
         return receiveBuilder()

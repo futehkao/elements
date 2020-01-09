@@ -69,6 +69,7 @@ public class DefaultBroadcast implements Broadcast {
         unsubscribe(topic.getName(), subscriber);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void publish(String topic, Serializable object) {
         threadPool.execute(()-> {

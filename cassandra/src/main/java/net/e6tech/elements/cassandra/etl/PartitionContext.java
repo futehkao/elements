@@ -83,6 +83,7 @@ public class PartitionContext extends ETLContext {
         preparedStatements.clear();
     }
 
+    @SuppressWarnings("unchecked")
     public PartitionContext run(Class<? extends PartitionStrategy> cls ) {
         try {
             PartitionStrategy strategy = cls.getDeclaredConstructor().newInstance();

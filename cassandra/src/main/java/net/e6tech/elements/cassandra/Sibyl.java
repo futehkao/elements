@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
+@SuppressWarnings("unchecked")
 public abstract class Sibyl {
 
     private static Cache<String, Prepared> preparedStatementCache = CacheBuilder.newBuilder()

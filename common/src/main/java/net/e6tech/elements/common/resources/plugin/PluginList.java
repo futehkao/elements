@@ -19,6 +19,7 @@ package net.e6tech.elements.common.resources.plugin;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.function.Predicate;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class PluginList<T> implements PluginFactory {
 
     private List list = new ArrayList<>();
@@ -35,7 +37,12 @@ public class PluginList<T> implements PluginFactory {
 
     @Override
     public PluginList<T> create(PluginManager pluginManager) {
-        PluginList<T> copy = new PluginList<>();
+        PluginList<T> copy = null;
+        try {
+            copy = getClass().getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
         copy.pluginManager = pluginManager;
         copy.list = list;
         return copy;

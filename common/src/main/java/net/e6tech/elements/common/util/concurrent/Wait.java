@@ -145,6 +145,7 @@ public class Wait<K, V> {
         return entry.queue.peek();
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T peekUserData(K key) {
         Entry<V> entry = table.get(key);
         if (entry == null)

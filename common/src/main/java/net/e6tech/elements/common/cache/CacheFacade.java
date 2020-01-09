@@ -31,6 +31,7 @@ import java.util.function.Consumer;
  * {@code new CacheFacade&lt;K,V&gt;("name") {}}
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public abstract class CacheFacade<K, V> {
     protected CacheConfiguration configuration;
     protected String name;

@@ -47,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class Interceptor {
     private static final String HANDLER_FIELD = "handler";
 

@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class Statement<T> {
     Where<T> where;
     From<T, T> from;

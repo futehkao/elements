@@ -42,7 +42,7 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S3776", "squid:S00117", "squid:S00116", "squid:S00100"})
+@SuppressWarnings({"unchecked", "squid:S3776", "squid:S00117", "squid:S00116", "squid:S00100"})
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();

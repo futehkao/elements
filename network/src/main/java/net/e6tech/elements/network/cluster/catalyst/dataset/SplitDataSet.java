@@ -40,6 +40,7 @@ public class SplitDataSet <E> implements DataSet<E> {
         addAll(map.values());
     }
 
+    @SuppressWarnings("all")
     public SplitDataSet(Function<E, Object> keyFunc, E ... entries) {
         if (entries != null) {
             Map<Object, Collection<E>> map = new HashMap<>(entries.length);

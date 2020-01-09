@@ -44,6 +44,7 @@ public class AsyncPrepared<D> extends Async<AsyncResultSet, D> {
         return new AsyncResultSetFutures<>(this, futures);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public AsyncResultSetFutures<D> getResult() {
         return (AsyncResultSetFutures) super.getResult();

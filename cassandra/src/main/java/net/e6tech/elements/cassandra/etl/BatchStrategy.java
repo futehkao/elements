@@ -24,6 +24,7 @@ public interface BatchStrategy<S, C extends ETLContext> extends Strategy<C> {
 
     int load(C context, List<S> source);
 
+    @SuppressWarnings("unchecked")
     default int run(C context) {
         int importedCount = 0;
         List batchResults = null;

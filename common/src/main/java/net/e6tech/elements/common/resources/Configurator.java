@@ -26,6 +26,7 @@ import java.util.function.Function;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class Configurator {
     Map configuration = new HashMap();
 

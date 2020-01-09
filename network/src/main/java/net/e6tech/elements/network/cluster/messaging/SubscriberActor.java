@@ -51,6 +51,7 @@ public class SubscriberActor extends CommonBehavior<SubscriberActor, MessagingEv
                 }).build());
     }
 
+    @SuppressWarnings("unchecked")
     @Typed
     private void publish(MessagingEvents.Publish publish) {
         getContext().getSystem().dispatchers().lookup(DispatcherSelector.defaultDispatcher())

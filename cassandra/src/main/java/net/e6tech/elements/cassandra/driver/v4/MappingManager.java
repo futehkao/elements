@@ -44,6 +44,7 @@ public class MappingManager {
             this.keyspace = session.getKeyspace().map(CqlIdentifier::asInternal).orElse(null);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Mapper<T> getMapper(Class<T> cls) {
         MapperBuilder builder = builders.computeIfAbsent(cls, key -> {
             MapperBuilder b = new MapperBuilder();
@@ -52,6 +53,7 @@ public class MappingManager {
         return builder.getMapper();
     }
 
+    @SuppressWarnings("unchecked")
     private class MapperBuilder<T> {
         protected Map<Object, Object> customState;
         private LazyReference<Mapper<T>> cache;

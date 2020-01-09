@@ -25,6 +25,7 @@ public class M<T, R extends Comparable> implements Serializable {
 
     private Func<T, R> function;
 
+    @SuppressWarnings("unchecked")
     public M() {
         this(Comparator.naturalOrder());
     }

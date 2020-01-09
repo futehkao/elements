@@ -39,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("unchecked")
 public class MapperImpl<T> extends DaoBase implements Mapper<T> {
 
     private static final Logger LOG = Logger.getLogger();

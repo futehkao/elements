@@ -172,6 +172,7 @@ public class Inspector {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public PrimaryKey getPrimaryKey(Object object) {
         try {
             List list = new ArrayList();

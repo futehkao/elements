@@ -178,6 +178,7 @@ public class RegistryTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void asyncVM2() throws Exception {
         ClusterNode clusterNode = create(2552);

@@ -64,7 +64,7 @@ public class Accessors<T extends Accessor> {
                     if (Modifier.isStrict(field.getModifiers()))
                         continue;
                     T t = fieldFactory.apply(field);
-                    if (t != null)
+                    if (t != null && !map.containsKey(t.getName()))
                         map.put(t.getName(), t);
                 }
                 cls = cls.getSuperclass();

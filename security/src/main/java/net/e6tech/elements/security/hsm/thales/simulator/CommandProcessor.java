@@ -35,6 +35,7 @@ public class CommandProcessor<T extends Command> {
 
     private T command;
 
+    @SuppressWarnings("unchecked")
     public static CommandProcessor forCommand(Command command) {
         Class<? extends CommandProcessor> cls = processors.get(command.getClass());
         try {

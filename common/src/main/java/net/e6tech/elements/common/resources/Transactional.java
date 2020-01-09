@@ -137,6 +137,7 @@ public interface Transactional {
         commit(classes, consumer);
     }
 
+    @SuppressWarnings("unchecked")
     default <E extends Exception> void commit(Class[] classes, ConsumerWithException<Object[], E> consumer) {
         Resources resources = open();
         resources.submit(r -> {
@@ -153,6 +154,7 @@ public interface Transactional {
         commit(classes, function);
     }
 
+    @SuppressWarnings("unchecked")
     default <R, E extends Exception> R commit(Class[] classes, FunctionWithException<Object[], R, E> function) {
         Resources resources = open();
         resources.submit(r -> {

@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public abstract class Calculate {
 
     Class dataType;

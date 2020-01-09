@@ -225,6 +225,7 @@ public class CXFServer implements Initializable, Startable {
         this.serverEngineClass = serverEngineClass;
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T getServerEngineData() {
         return (T) serverEngineData;
     }
@@ -233,6 +234,7 @@ public class CXFServer implements Initializable, Startable {
         this.serverEngineData = serverEngineData;
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T computeServerEngineData(Supplier<T> supplier) {
         if (serverEngineData == null)
             setServerEngineData(supplier.get());
@@ -245,6 +247,7 @@ public class CXFServer implements Initializable, Startable {
             controllers.add(controller);
     }
 
+    @SuppressWarnings("unchecked")
     public void initialize(Resources resources){
         initialized = true;
         if (resources != null) {

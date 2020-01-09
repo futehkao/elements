@@ -174,6 +174,7 @@ public class Job implements Initializable, Startable, LaunchListener {
         return false;
     }
 
+    @SuppressWarnings("unchecked")
     private void init() {
         try {
             if (target instanceof  Class) {
@@ -219,6 +220,7 @@ public class Job implements Initializable, Startable, LaunchListener {
         // do nothing
     }
 
+    @SuppressWarnings("unchecked")
     protected JobDetail newJobDetail() {
         Class jobClass = (this.concurrent ? ConcurrentRunner.class : NonConcurrentRunner.class);
         JobDetailImpl jobDetail = new JobDetailImpl();

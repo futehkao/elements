@@ -35,6 +35,7 @@ import java.util.concurrent.Executors;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class EhcacheProvider implements CacheProvider {
 
     private static ExecutorService executorService = Executors.newSingleThreadExecutor(r -> new Thread(r, "EhcacheProviderCleaner"));

@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Tags.Common
 public class ObjectConverterTest {
     @Test
+    @SuppressWarnings("unchecked")
     public void convert() throws Exception {
         ObjectConverter converter = new ObjectConverter();
         List<Long> list = new ArrayList<>();

@@ -30,7 +30,7 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.*;
 import java.util.*;
 
-@SuppressWarnings({"squid:S1192", "squid:S3776", "squid:S1168"})
+@SuppressWarnings({"unchecked","squid:S1192", "squid:S3776", "squid:S1168"})
 public class ObjectConfig {
     public static final ObjectMapper mapper;
     private static final String RESOLVER_START = "^";

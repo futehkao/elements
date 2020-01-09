@@ -55,7 +55,7 @@ public interface Module {
         }
     });
 
-    @SuppressWarnings("squid:CommentedOutCodeLine")
+    @SuppressWarnings({"unchecked","squid:CommentedOutCodeLine"})
     LoadingCache<Class<?>, Type[]> bindTypes = CacheBuilder.newBuilder()
             .maximumSize(10000)
             .initialCapacity(100)

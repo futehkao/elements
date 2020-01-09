@@ -37,6 +37,7 @@ import java.util.*;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class RestfulProxy {
 
     private RestfulClient client;

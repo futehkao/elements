@@ -28,6 +28,7 @@ import java.util.List;
  */
 public class JaxWSTest {
 
+    @SuppressWarnings("deprecation")
     @Test
     public void test() throws Exception {
 

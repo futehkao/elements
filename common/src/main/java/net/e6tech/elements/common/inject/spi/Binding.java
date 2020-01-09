@@ -37,6 +37,7 @@ class Binding {
         this.implementation = implementation;
     }
 
+    @SuppressWarnings("unchecked")
     public Binding getInstance(Injector injector) {
         if (implementation != null) {
             try {

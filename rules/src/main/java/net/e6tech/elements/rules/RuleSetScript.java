@@ -61,6 +61,7 @@ public abstract class RuleSetScript extends AbstractScriptBase<RuleSet> {
         });
     }
 
+    @SuppressWarnings("unchecked")
     protected void traverse(Rule parent, Object obj) {
         if (obj instanceof List) {
             List list = (List) obj;

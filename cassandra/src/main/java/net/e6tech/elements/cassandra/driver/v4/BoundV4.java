@@ -45,6 +45,7 @@ public class BoundV4 extends Wrapper<BoundStatement> implements Bound {
         return this;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> Bound setList(String name, List<T> v) {
         Class type = null;
@@ -59,6 +60,7 @@ public class BoundV4 extends Wrapper<BoundStatement> implements Bound {
         return this;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> Bound setSet(String name, Set<T> v) {
         Class type = null;
@@ -74,6 +76,7 @@ public class BoundV4 extends Wrapper<BoundStatement> implements Bound {
         return this;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <K, V> Bound setMap(String name, Map<K, V> v) {
         Class keyType = null;

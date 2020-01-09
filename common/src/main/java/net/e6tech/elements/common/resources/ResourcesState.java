@@ -27,6 +27,7 @@ import java.util.concurrent.Callable;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 class ResourcesState {
 
     private static final List<ResourceProvider> emptyResourceProviders = Collections.unmodifiableList(new ArrayList<>());

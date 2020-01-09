@@ -50,6 +50,7 @@ public class Segments<E> {
         return remaining;
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Segments<T> from(DataSet<T> dataSet) {
         return dependents.computeIfAbsent(dataSet, d -> d.segment(catalyst));
     }

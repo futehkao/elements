@@ -124,6 +124,7 @@ public class AllocationMonitor {
         long startTime;
         long expiredTime;
 
+        @SuppressWarnings("unchecked")
         public AllocationReference(long timeout, Object referent, ReferenceQueue q, AllocationListener listener) {
             super(referent, q);
             expiredTime = System.currentTimeMillis() + timeout;

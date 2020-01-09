@@ -42,6 +42,7 @@ public class PartitionOrderByMap<T extends PartitionOrderBy> {
         return sibyl.getInspector(cls);
     }
 
+    @SuppressWarnings("unchecked")
     public PartitionOrderByMap<T> addAll(Collection<T> objects) {
         for (T object : objects) {
             List<T> list = partitionMap.computeIfAbsent((Comparable) getInspector(sourceClass).getPartitionKey(object, 0), key -> new ArrayList<>());

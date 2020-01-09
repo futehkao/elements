@@ -42,6 +42,7 @@ public class Async<T, D> {
         result = createResult();
     }
 
+    @SuppressWarnings("unchecked")
     protected AsyncFutures<T, D> createResult() {
         return new AsyncResultSetFutures(this, futures);
     }
@@ -97,6 +98,7 @@ public class Async<T, D> {
         futuresData = tmp;
     }
 
+    @SuppressWarnings("unchecked")
     public Async<T, D> inExecutionOrder() {
         return this.inExecutionOrder((Consumer) null);
     }

@@ -52,6 +52,7 @@ import java.util.function.Function;
  *
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class RegistryImpl implements Registry {
 
     private static String path = "registry";

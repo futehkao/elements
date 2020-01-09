@@ -61,6 +61,7 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
 
     public UnitOfWork configurable() { return  this; }
 
+    @SuppressWarnings("unchecked")
     public <T extends Resources> T open() {
         if (resources != null && resources.isOpen())
             return (T) resources;

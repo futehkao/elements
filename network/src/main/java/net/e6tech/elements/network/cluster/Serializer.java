@@ -101,6 +101,7 @@ public class Serializer extends SerializerWithStringManifest {
 
     // "fromBinary" deserializes the given array,
     // using the type hint
+    @SuppressWarnings("unchecked")
     @Override
     public Object fromBinary(byte[] bytes, String manifest) {
         Kryo kryo = pool.obtain();
@@ -153,6 +154,7 @@ public class Serializer extends SerializerWithStringManifest {
             return this.system;
         }
 
+        @SuppressWarnings("unchecked")
         public void write(final Kryo kryo, final Output output, final akka.actor.typed.ActorRef obj) {
             String str = actorRefResolver.toSerializationFormat(obj);
             output.writeString(str);

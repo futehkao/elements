@@ -301,7 +301,9 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     }
 
     protected void onOpen(Resources resources, String alias, EntityManagerConfig config) {
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = resources.getInstance(EntityManagerBuilder.class, () -> (r, a, f) -> f.createEntityManager())
+                .build(resources, alias, emf);
+
         if (config.monitor()) {
             EntityManagerMonitor entityManagerMonitor = new EntityManagerMonitor(alias, threadPool, this,
                     resources,
@@ -311,12 +313,14 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
                     .put(alias, entityManagerMonitor);
         }
 
-        EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources, em, getEntityManagerListener(), getQueryListener());
+        EntityManagerInvocationHandler emHandler = new EntityManagerInvocationHandler(resources,
+                em, alias, this, config,
+                getEntityManagerListener(), getQueryListener());
         emHandler.setLongTransaction(config.longTransaction());
         emHandler.setIgnoreInitialLongTransactions(ignoreInitialLongTransactions);
 
         EntityManager proxy = (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
-                new Class[]{EntityManager.class}, emHandler);
+                new Class[]{EntityManager.class, EntityManagerInfo.class}, emHandler);
 
         // first come first win unless it is the DEFAULT
         if (!resources.hasInstance(EntityManager.class)) {

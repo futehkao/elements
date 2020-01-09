@@ -22,6 +22,7 @@ import java.lang.reflect.Constructor;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public interface LoggerExtension {
 
     Logger logger(LogLevel level);

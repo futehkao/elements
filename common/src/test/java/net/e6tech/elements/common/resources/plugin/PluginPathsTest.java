@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class PluginPathsTest {
 
     @Test
+    @SuppressWarnings("unchecked")
     public void equalsTest() {
         PluginPaths p1 = PluginPaths.of(PluginPath.of(String.class, "A").and(Long.class, "1"))
                 .add(PluginPath.of(Iterable.class, "S").and(Long.class, "2"));

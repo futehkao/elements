@@ -81,6 +81,7 @@ public class JsonMarshaller<R> implements Marshaller<R> {
         return "";
     }
 
+    @SuppressWarnings("unchecked")
     public void errorResponseClass(Class errorResponseClass) {
         this.errorResponseClass = errorResponseClass;
     }

@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * based on order by id.
  *
  */
+@SuppressWarnings("unchecked")
 public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends PartitionStrategy<S, PartitionOrderByContext> {
 
     /**

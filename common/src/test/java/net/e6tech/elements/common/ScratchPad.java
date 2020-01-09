@@ -59,6 +59,7 @@ public class ScratchPad {
 
 
     @Test
+    @SuppressWarnings("unchecked")
     void disruptor() throws Exception {
         // ThreadPool
         ExecutorService pool = Executors.newCachedThreadPool();

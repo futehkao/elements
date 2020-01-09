@@ -66,6 +66,7 @@ public class Response implements Serializable {
         this.headerFields = headerFields;
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T read(Class<T> cls) throws IOException {
         if (result == null || cls.isAssignableFrom(String.class))
             return (T) result;

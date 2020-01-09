@@ -92,6 +92,7 @@ public abstract class Codec<T> extends TypeCodec<T> {
         return getInnerCodec().format(udtValue);
     }
 
+    @SuppressWarnings("unchecked")
     public T deserialize(UDTValue udtValue) {
         T t = null;
         try {
@@ -166,6 +167,7 @@ public abstract class Codec<T> extends TypeCodec<T> {
         private ParameterizedType parameterizedType;
         private Mapping mapping;
 
+        @SuppressWarnings("unchecked")
         MappingDescriptor(Mapping mapping, String columnName, PropertyDescriptor descriptor) {
             this.mapping = mapping;
             this.columnName = columnName;
@@ -250,6 +252,7 @@ public abstract class Codec<T> extends TypeCodec<T> {
             return descriptor;
         }
 
+        @SuppressWarnings("unchecked")
         <U> U get(Object target) {
             try {
                 return (U) descriptor.getReadMethod().invoke(target);

@@ -48,6 +48,7 @@ public class PrimaryKey {
         return keys;
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T get(int i) {
         return (T) keys[i];
     }

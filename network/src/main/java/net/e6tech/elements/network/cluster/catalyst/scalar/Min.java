@@ -23,6 +23,7 @@ import java.util.Comparator;
 @SuppressWarnings("squid:S00119")
 public class Min<Re extends Reactor, T, R extends Comparable> extends Scalar<Re, T, R,R> {
 
+    @SuppressWarnings("unchecked")
     public Min() {
         this(Comparator.naturalOrder());
     }

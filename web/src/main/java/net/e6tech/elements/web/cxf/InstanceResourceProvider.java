@@ -49,6 +49,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
     private CXFServer server;
     private Map<Signature, Map<Class<? extends Annotation>, Annotation>> annotations;
 
+    @SuppressWarnings("unchecked")
     InstanceResourceProvider(JaxRSServer server, Class resourceClass, Object prototype, Module module, ResourcesFactory factory, Observer observer) {
         super(resourceClass);
         this.server = server;

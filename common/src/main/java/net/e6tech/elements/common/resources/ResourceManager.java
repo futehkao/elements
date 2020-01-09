@@ -47,6 +47,7 @@ import java.util.function.Consumer;
  * Secondarily, it is used to bind interfaces or abstract classes to concrete classes.
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class ResourceManager extends AbstractScriptShell implements ResourcePool {
 
     private static Logger logger = Logger.getLogger();

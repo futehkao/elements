@@ -49,6 +49,7 @@ public class Destination  extends CommonBehavior<Destination, MessagingEvents> {
                         }).build());
     }
 
+    @SuppressWarnings("unchecked")
     @Typed
     private void send(MessagingEvents.Send send) {
         getContext().getSystem().dispatchers().lookup(DispatcherSelector.defaultDispatcher())

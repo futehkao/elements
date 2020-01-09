@@ -68,6 +68,7 @@ public class PartitionOrderByContext extends PartitionContext {
         endIds.clear();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public PartitionOrderByContext run(Class<? extends PartitionStrategy> cls ) {
         if (PartitionOrderByStrategy.class.isAssignableFrom(cls)) {

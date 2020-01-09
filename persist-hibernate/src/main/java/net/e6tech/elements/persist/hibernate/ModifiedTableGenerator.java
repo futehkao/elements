@@ -709,6 +709,7 @@ public class ModifiedTableGenerator implements PersistentIdentifierGenerator, Co
 		}
 	}
 
+	@SuppressWarnings( "deprecation" )
 	@Override
 	public String[] sqlCreateStrings(Dialect dialect) throws HibernateException {
 		return new String[] {
@@ -719,6 +720,7 @@ public class ModifiedTableGenerator implements PersistentIdentifierGenerator, Co
 		};
 	}
 
+	@SuppressWarnings( "deprecation" )
 	@Override
 	public String[] sqlDropStrings(Dialect dialect) throws HibernateException {
 		return new String[] { dialect.getDropTableString( renderedTableName ) };

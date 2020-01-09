@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-@SuppressWarnings("squid:S3776")
+@SuppressWarnings({"unchecked", "squid:S3776"})
 public class Interfaces {
 
     private Interfaces() {
@@ -36,6 +36,7 @@ public class Interfaces {
         return head.getSourceType(n);
     }
 
+    @SuppressWarnings("unchecked")
     private static TypeInfo getGenericType(Class cls, Class intf) {
         if (!intf.isInterface())
             throw new IllegalArgumentException(intf.getName() + " is not an interface");

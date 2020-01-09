@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 public class NotificationListenerTest {
 
     @Test
+    @SuppressWarnings("unchecked")
     public void notificationClass() throws Exception {
         Class<? extends Notification>[] types = (new TestNotificationListener()).getNotificationTypes();
         for (Class cls : types) System.out.println(cls);

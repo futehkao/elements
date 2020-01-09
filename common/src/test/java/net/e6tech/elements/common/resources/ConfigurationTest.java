@@ -174,6 +174,7 @@ public class ConfigurationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void simpleYaml() {
         Yaml yaml = new Yaml();
         Iterable<Object> iter = yaml.loadAll(test1);

@@ -16,11 +16,15 @@
 
 package net.e6tech.sample.entity;
 
+import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.persist.EntityManagerBuilder;
 import net.e6tech.elements.persist.EntityManagerConfig;
+import net.e6tech.elements.persist.EntityManagerInfo;
 import net.e6tech.elements.persist.criteria.Select;
 import net.e6tech.sample.BaseCase;
 import net.e6tech.sample.Tags;
+import org.hibernate.internal.SessionImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class PersistenceTest extends BaseCase {
 
     private Employee employee;
+    private Employee employee2;
     private Department department;
 
     @BeforeEach
@@ -50,16 +55,29 @@ public class PersistenceTest extends BaseCase {
         employee.setHireDate("20160101");
         employee.setAdditionalInfo("info-" + System.currentTimeMillis());
 
+        employee2 = new Employee();
+        employee2.setFirstName("First" + System.currentTimeMillis());
+        employee2.setLastName("Last" + System.currentTimeMillis());
+        employee2.setGender('M');
+        employee2.setBirthDate("19701101");
+        employee2.setHireDate("20160101");
+        employee2.setAdditionalInfo("info-" + System.currentTimeMillis());
+
         department = new Department();
         department.setName("Test");
     }
 
     @Test
-    void testOtherPersistence() {
+    void otherPersistence() {
         provision.open()
                 .annotate(EntityManagerConfig.class, EntityManagerConfig::names, new String[] {"default", "sample-rw"})
                 .accept(EntityManager.class, Resources.class,  (em, res) -> {
                     assertNotNull(res.getMapVariable(EntityManager.class).get("sample-rw"));
+                    EntityManagerInfo info = (EntityManagerInfo) res.getMapVariable(EntityManager.class).get("sample-rw");
+                    assertNotNull(info.getAlias());
+                    assertNotNull(info.getResources());
+                    assertNotNull(info.getProvider());
+                    assertNotNull(info.getConfig());
                     EntityManager emDefault = res.getMapVariable(EntityManager.class).get("default");
                     assertTrue(em == emDefault);
                 });
@@ -90,22 +108,26 @@ public class PersistenceTest extends BaseCase {
 
 
     @Test
-    void testInsert() {
-        provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
+    void insert() {
+        provision.open().accept(EntityManager.class, Resources.class,  (em, res) -> {
+            SessionImpl session = em.unwrap(SessionImpl.class);
+            session.setJdbcBatchSize(20);
             em.persist(employee);
+            em.persist(employee2);
+            em.flush();
         });
 
-        provision.open().commit(EntityManager.class, (em) -> {
+        provision.open().accept(EntityManager.class, (em) -> {
             Employee e = em.find(Employee.class, employee.getId());
             assertTrue(e != null);
         });
 
         employee.setId(null);
-        provision.open().commit(EntityManager.class, (em) -> {
+        provision.open().accept(EntityManager.class, (em) -> {
             em.persist(employee);
         });
 
-        provision.open().commit(EntityManager.class, (em) -> {
+        provision.open().accept(EntityManager.class, (em) -> {
             Employee e = em.find(Employee.class, employee.getId());
             assertTrue(e != null);
             e.setHireDate("20170401");
@@ -130,32 +152,43 @@ public class PersistenceTest extends BaseCase {
             }
         });
 
-        int size = provision.open().commit(EntityManager.class, (em) -> {
+        int size = provision.open().apply(EntityManager.class, (em) -> {
             em.persist(employee);
             Department d = em.find(Department.class, department.getId());
             d.getEmployees().add(employee);
             return d.getEmployees().size();
         });
 
-        provision.open().commit(EntityManager.class, (em) -> {
+        provision.open().accept(EntityManager.class, (em) -> {
             Department d = em.find(Department.class, department.getId());
             assertTrue(d.getEmployees().size() == size);
         });
     }
 
     @Test
-    void testIsNull() {
-        provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
+    void isNull() {
+        provision.open().accept(EntityManager.class, Resources.class,  (em, res) -> {
             employee.setAdditionalInfo(null);
             em.persist(employee);
         });
 
-        provision.open().commit(EntityManager.class, Resources.class,  (em, res) -> {
+        provision.open().accept(EntityManager.class, Resources.class,  (em, res) -> {
             List<Employee> list = Select.create(em, Employee.class)
                     .where(new Employee() {{
                         setAdditionalInfo(null);
                     }}).getResultList();
             assertTrue(list.size() > 0);
+        });
+    }
+
+    @Test
+    void entityManagerInfo() {
+        provision.open().accept(EntityManager.class, em -> {
+            EntityManagerInfo info = (EntityManagerInfo) em;
+            assertNotNull(info.getAlias());
+            assertNotNull(info.getResources());
+            assertNotNull(info.getProvider());
+            assertNotNull(info.getConfig());
         });
     }
 }

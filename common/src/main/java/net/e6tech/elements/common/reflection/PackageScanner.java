@@ -112,6 +112,7 @@ public class PackageScanner {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static Class[] toClasses(ImmutableSet<ClassPath.ClassInfo> set) {
         List<Class> classes = new ArrayList();
         for (ClassPath.ClassInfo info : set) {

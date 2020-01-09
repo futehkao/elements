@@ -43,6 +43,7 @@ class DestinationActor extends AbstractActor {
         mediator.tell(new DistributedPubSubMediator.Put(getSelf()), getSelf());
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public AbstractActor.Receive createReceive() {
         return receiveBuilder()

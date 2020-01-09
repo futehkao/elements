@@ -107,6 +107,7 @@ public class KeyServer {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @POST
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)

@@ -39,7 +39,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 
-@SuppressWarnings("squid:S3776")
+@SuppressWarnings({"unchecked", "squid:S3776"})
 public class Bootstrap extends GroovyObjectSupport {
     private static final String LINE_SEPARATOR = "***********************************************************";
     private static Logger logger = Logger.getLogger();

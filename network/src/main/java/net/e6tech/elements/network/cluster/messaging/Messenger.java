@@ -35,6 +35,7 @@ import java.util.Map;
 
 import static net.e6tech.elements.network.cluster.messaging.MessagingEvents.*;
 
+@SuppressWarnings("unchecked")
 public class Messenger extends CommonBehavior<Messenger, MessagingEvents> {
 
     private static final String SUBSCRIBER_PREFIX = "subscriber-";

@@ -111,7 +111,7 @@ public interface InvocationEvents extends Serializable {
             kryo.writeObject(out, timeout);
         }
 
-        @SuppressWarnings("squid:S2674")
+        @SuppressWarnings({"unchecked", "squid:S2674"})
         public void read(Kryo kryo, Input in) {
             byte[] buffer = kryo.readObjectOrNull(in, byte[].class);
             reference = kryo.readObjectOrNull(in, RegisterReference.class);
@@ -134,6 +134,7 @@ public interface InvocationEvents extends Serializable {
             out.writeObject(sender);
         }
 
+        @SuppressWarnings("unchecked")
         private void readObject(java.io.ObjectInputStream in)
                 throws IOException, ClassNotFoundException {
             sender = (ActorRef) in.readObject();

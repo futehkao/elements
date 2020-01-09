@@ -38,6 +38,7 @@ import java.util.function.Function;
 /**
  * This class is used to extract Java bean methods or fields that are annotated.
  */
+@SuppressWarnings("unchecked")
 public class Annotated<R, A extends Annotation> {
     private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 

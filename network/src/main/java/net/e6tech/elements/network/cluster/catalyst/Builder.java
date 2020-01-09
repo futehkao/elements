@@ -22,7 +22,7 @@ import net.e6tech.elements.network.cluster.catalyst.scalar.Scalar;
 import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 import net.e6tech.elements.network.cluster.catalyst.transform.Transform;
 
-@SuppressWarnings("squid:S00119")
+@SuppressWarnings({"unchecked", "squid:S00119"})
 public class Builder<Re extends Reactor, T, R> {
     private Catalyst<Re> catalyst;
     private DataSet<T> dataSet;

@@ -27,6 +27,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tags.Common
+@SuppressWarnings("unchecked")
 public class ObjectConfigTest {
 
     public Map load(String configStr) {

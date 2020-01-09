@@ -98,6 +98,7 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
         return new AsyncImpl<>(this, service);
     }
 
+    @SuppressWarnings("unchecked")
     public <T extends ExecutorService> T unwrap() {
         return (T) executorService;
     }
