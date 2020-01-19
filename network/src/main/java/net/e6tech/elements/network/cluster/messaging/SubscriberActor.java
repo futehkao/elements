@@ -18,6 +18,7 @@ package net.e6tech.elements.network.cluster.messaging;
 
 import akka.actor.ActorRef;
 import akka.actor.typed.DispatcherSelector;
+import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
@@ -28,12 +29,13 @@ import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
 
-public class SubscriberActor extends CommonBehavior<SubscriberActor, MessagingEvents> {
+public class SubscriberActor extends CommonBehavior<MessagingEvents> {
 
     private Subscriber subscriber;
     private String topic;
 
-    public SubscriberActor(String topic, Subscriber subscriber) {
+    public SubscriberActor(ActorContext<MessagingEvents> context, String topic, Subscriber subscriber) {
+        super(context);
         this.subscriber = subscriber;
         this.topic = topic;
     }
@@ -45,8 +47,8 @@ public class SubscriberActor extends CommonBehavior<SubscriberActor, MessagingEv
 
         getContext().spawnAnonymous(Behaviors.receive(DistributedPubSubMediator.SubscribeAck.class)
                 .onMessage(DistributedPubSubMediator.SubscribeAck.class,
-                        (ctx, msg) -> {
-                            ctx.getSystem().log().info("subscribed to " + msg.toString());
+                        msg -> {
+                            // ctx.getSystem().log().info("subscribed to " + msg.toString());
                             return Behaviors.same();
                 }).build());
     }

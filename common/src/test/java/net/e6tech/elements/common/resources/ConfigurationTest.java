@@ -17,13 +17,12 @@
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.logging.Logger;
+import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import java.util.Map;
 import java.util.Properties;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**

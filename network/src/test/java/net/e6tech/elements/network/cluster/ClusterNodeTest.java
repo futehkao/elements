@@ -23,21 +23,15 @@ import net.e6tech.elements.network.cluster.catalyst.Reactor;
 import net.e6tech.elements.network.cluster.invocation.Registry;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-
 @SuppressWarnings("squid:S2925")
 public class ClusterNodeTest {
 
     public static ClusterNode create(int port) {
-        String userDir = System.getProperty("user.dir");
-        File file = new File(userDir + "/src/test/resources/akka.conf");
         Config config = ConfigFactory.parseString(
-                "akka { remote { \n " +
-                        "netty.tcp.port=" + port + "\n" +
-                        "artery.canonical.port=" + port + "\n" +
-                        "} }"
-        )
-                .withFallback(ConfigFactory.parseFile(file));
+                "akka.remote.netty.tcp.port = " + port + "\n" +
+                        "akka.remote.artery.canonical.port = " + port + "\n" +
+                        "akka.cluster.seed-nodes = [\"akka://ClusterSystem@127.0.0.1:2551\", \"akka://ClusterSystem@127.0.0.1:2552\"]"
+        );
 
         // Create an Akka system
         Genesis genesis = new Genesis();
@@ -61,7 +55,6 @@ public class ClusterNodeTest {
         });
         return node;
     }
-
 
     @Test
     public void vm1() throws Exception {
@@ -87,7 +80,7 @@ public class ClusterNodeTest {
         });
 
         Thread.sleep(2000L);
-        node.getBroadcast().publish("test", "Hello world!");
+        node.getBroadcast().publish("test", "Hello world 2!");
         Thread.sleep(2000L);
     }
 }

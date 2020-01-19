@@ -17,7 +17,6 @@
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.inject.Inject;
-import net.e6tech.elements.common.util.datastructure.Pair;
 
 /**
  * Created by futeh.

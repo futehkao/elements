@@ -40,7 +40,7 @@ public class RegistryImpl implements Registry {
     private static String path = "registry";
     public static final String REGISTRY_DISPATCHER = "registry-dispatcher";
     private Guardian guardian;
-    private Registrar registrar;
+    private ActorRef<InvocationEvents> registrar;
     private ExecutionContextExecutor dispatcher;
     private long timeout = ClusterNode.DEFAULT_TIME_OUT;
     private List<RouteListener> listeners = Collections.synchronizedList(new ArrayList<>());
@@ -91,23 +91,16 @@ public class RegistryImpl implements Registry {
         this.guardian = guardian;
         dispatcher = guardian.getContext().getExecutionContext();
         // Create an Akka system
-        registrar = new Registrar(this);
-        guardian.childActor(registrar).withName(getPath()).spawn();
+        registrar = guardian.childActor(Registrar.class).withName(getPath()).spawn(ctx -> new Registrar(ctx, this));
     }
 
     public void shutdown() {
-        registrar.stop();
+        guardian.talk(registrar).stop();
     }
 
     public Collection routes(String path) {
-        try {
-            InvocationEvents.Response response = (InvocationEvents.Response)  registrar.ask(ref -> new InvocationEvents.Routes(ref, path), timeout)
-                    .toCompletableFuture()
-                    .get();
-            return (Collection) response.getValue();
-        } catch (Exception e) {
-            throw new SystemException(e);
-        }
+        return (Collection) guardian.talk(registrar, timeout).demand(InvocationEvents.Response.class,
+                ref -> new InvocationEvents.Routes(ref, path)).getValue();
     }
 
     public Collection routes(String qualifier, Class interfaceClass) {
@@ -133,7 +126,7 @@ public class RegistryImpl implements Registry {
     @SuppressWarnings("unchecked")
     @Override
     public <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function) {
-        return registrar.ask(ref -> new InvocationEvents.Registration(ref, path,  (BiFunction<ActorRef, Object[], Object>)function), timeout);
+        return guardian.talk(registrar, timeout).ask(ref -> new InvocationEvents.Registration(ref, path,  (BiFunction<ActorRef, Object[], Object>)function));
     }
 
     @Override
@@ -215,8 +208,7 @@ public class RegistryImpl implements Registry {
     }
 
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout) {
-        return arguments ->
-                registrar.ask(ref -> new InvocationEvents.Request(ref, path, timeout, arguments), timeout);
+        return arguments -> guardian.talk(registrar).ask(ref -> new InvocationEvents.Request(ref, path, timeout, arguments));
     }
 
     public <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass) {

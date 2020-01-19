@@ -19,6 +19,7 @@ package net.e6tech.elements.common.actor.typed.worker;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.Terminated;
+import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Guardian;
@@ -32,7 +33,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 @SuppressWarnings("unchecked")
-public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
+public class WorkerPool extends CommonBehavior<WorkEvents> {
 
     private boolean cleanupScheduled = false;
     private Set<ActorRef<WorkEvents>> workers = new LinkedHashSet<>();
@@ -40,16 +41,16 @@ public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
     private LinkedList<Task> waiting = new LinkedList<>();
     protected WorkerPoolConfig config = new WorkerPoolConfig();
 
-    public static Behavior<WorkEvents> newPool(Guardian guardian, WorkerPoolConfig config) {
-        return Behaviors.setup(ctx -> {
-            WorkerPool instance = new WorkerPool();
-            instance.setup(guardian, ctx);
-            Reflection.copyInstance(instance.config, config);
-            for (int i = 0; i < instance.config.getInitialCapacity(); i++) {
-                instance.newWorker();
-            }
-            return instance;
-        });
+    public WorkerPool(ActorContext<WorkEvents> context, WorkerPoolConfig config) {
+        super(context);
+        Reflection.copyInstance(this.config, config);
+    }
+
+    public void setup(Guardian guardian) {
+        super.setup(guardian);
+        for (int i = 0; i < config.getInitialCapacity(); i++) {
+            newWorker();
+        }
     }
 
     @SuppressWarnings("squid:S2175")
@@ -93,7 +94,7 @@ public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
     }
 
     private void newWorker() {
-        ActorRef<WorkEvents> worker = childActor(new Worker(getSelf())).spawn();
+        ActorRef<WorkEvents> worker = childActor(Worker.class).spawn(ctx -> new Worker(ctx, getSelf()));
         workers.add(worker);
         getContext().watch(worker);
         idle(worker);
@@ -124,7 +125,6 @@ public class WorkerPool extends CommonBehavior<WorkerPool, WorkEvents> {
         ActorRef self = getSelf();
         getContext().scheduleOnce(interval, self, new WorkEvents.Cleanup());
         cleanupScheduled = true;
-
     }
 
     private class Task {

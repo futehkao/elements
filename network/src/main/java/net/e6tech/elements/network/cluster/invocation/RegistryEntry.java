@@ -18,13 +18,15 @@ package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
+import akka.actor.typed.javadsl.ActorContext;
 import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Typed;
 
-public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvents.Request> {
+public class RegistryEntry extends CommonBehavior<InvocationEvents.Request> {
     private InvocationEvents.Registration registration;
 
-    public RegistryEntry(InvocationEvents.Registration registration) {
+    public RegistryEntry(ActorContext<InvocationEvents.Request> context, InvocationEvents.Registration registration) {
+        super(context);
         this.registration = registration;
     }
 
@@ -42,19 +44,19 @@ public class RegistryEntry extends CommonBehavior<RegistryEntry, InvocationEvent
         final ActorRef sender = request.getSender();
         final ActorRef self = getSelf();
         try {
-            getGuardian().async(() -> {
-                try {
-                    Object ret = registration.getFunction().apply(self, request.arguments());
-                    sender.tell(new InvocationEvents.Response(self, ret));
-                } catch (Exception ex) {
-                    sender.tell(new Status.Failure(ex));
-                }
-            }, request.getTimeout());
+            talk().timeout(request.getTimeout())
+                    .async(() -> {
+                        try {
+                            Object ret = registration.getFunction().apply(self, request.arguments());
+                            sender.tell(new InvocationEvents.Response(self, ret));
+                        } catch (Exception ex) {
+                            sender.tell(new Status.Failure(ex));
+                        }
+                    });
         } catch (RuntimeException ex) {
             Throwable throwable = ex.getCause();
             if (throwable == null) throwable = ex;
             sender.tell(new Status.Failure(throwable));
         }
     }
-
 }

@@ -69,6 +69,12 @@ configuration:
       AppenderRef:
         - ref: Console
 
+    - name: akka.actor.typed.ActorSystem
+      level: info
+      additivity: false
+      AppenderRef:
+        - ref: Console
+
     root:
       level: warn
       AppenderRef:

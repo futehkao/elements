@@ -22,58 +22,63 @@ import akka.actor.typed.Props;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 
-import java.util.function.BiConsumer;
+import java.util.function.Function;
 
-public class Spawn<S extends CommonBehavior<S, T>, T> {
+public class Spawn<T, B extends CommonBehavior<T>> {
 
     private String name;
-    private CommonBehavior parent;
-    private S behavior;
+    private CommonBehavior<?> parent;
+    private Guardian guardian;
     private Props props;
-    private BiConsumer<ActorContext<T>, S> setup;
 
-    public Spawn(CommonBehavior parent, S behavior) {
+    public Spawn(CommonBehavior<?> parent, Guardian guardian) {
         this.parent = parent;
-        this.behavior = behavior;
+        this.guardian = guardian;
     }
 
-    public Spawn<S, T> withProps(Props props) {
+    public Spawn<T, B> withProps(Props props) {
         this.props = props;
         return this;
     }
 
-    public Spawn<S, T> withName(String name) {
+    public Spawn<T, B> withName(String name) {
         this.name = name;
         return this;
     }
 
-    public Spawn<S, T> whenSetup(BiConsumer<ActorContext<T>, S> consumer) {
-        this.setup = consumer;
-        return this;
+    public B spawnNow(Function<ActorContext<T>, B> factory) {
+        ActorRef<T> ref = spawn(factory);
+        ExtensionEvents.ExtensionsResponse extensions = guardian.talk(ref, ExtensionEvents.class).demand(sender -> new ExtensionEvents.Extensions(sender));
+        return (B) extensions.getOwner();
     }
 
-    @SuppressWarnings("unchecked")
-    public ActorRef<T> spawn() {
-        ActorContext context = parent.getContext();
+    /**
+     * Note, the factory is called in a separated thread.  Akka retrieves messages from its mailbox
+     * and process the spawn message.
+     * @param factory factory to create a Behavior instance
+     * @return
+     */
+    public ActorRef<T> spawn(Function<ActorContext<T>, B> factory) {
+        ActorContext<?> context = parent.getContext();
         if (name != null) {
             if (props != null)
-                return context.spawn(setup(), name, props);
+                return context.spawn(setup(factory), name, props);
             else
-                return context.spawn(setup(), name);
+                return context.spawn(setup(factory), name);
         } else {
             if (props != null)
-                return context.spawnAnonymous(setup(), props);
+                return context.spawnAnonymous(setup(factory), props);
             else
-                return context.spawnAnonymous(setup());
+                return context.spawnAnonymous(setup(factory));
         }
     }
 
-    Behavior<T> setup() {
+    protected Behavior<T> setup(Function<ActorContext<T>, B> factory) {
         return Behaviors.<T>setup(
                 ctx -> {
-                    behavior.setup(parent.getGuardian(), ctx);
-                    if (setup != null)
-                        setup.accept(ctx, behavior);
+                    akka.japi.function.Function<ActorContext<T>, B> f = (c) -> factory.apply(c);
+                    B behavior = f.apply(ctx);
+                    behavior.setup(guardian);
                     return behavior;
                 });
     }

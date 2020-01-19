@@ -20,9 +20,32 @@ public class VerifyARQC extends Command {
 
     @Override
     protected String doProcess() throws CommandException {
-        if ("0".equals(getField(1)) // legacy MasterCard
-                || "2".equals(getField(1))) { // EMV 4.1
+        if ("0".equals(getField(1))) { // legacy MasterCard
             MasterCardARQC mc = new MasterCardARQC(simulator);
+            return mc.imk(new AKB(getField(2)))
+                    .derivationType(Integer.valueOf(getField(1)))
+                    .pan(getField(3))
+                    .cardSequence(getField(4))
+                    .diversification(getField(5))
+                    .arqc(getField(6))
+                    .dataBlock(getField(7))
+                    .arc(getField(8))
+                    .failureCode(length() > 9 ? getField(9) : null)
+                    .process();
+        } else if ("1".equals(getField(1))) { // VISA (ICC MK for ARPC calculation), CVN (Cryptogram Version Number): 10
+            VisaCVN10ARQC mc = new VisaCVN10ARQC(simulator);
+            return mc.imk(new AKB(getField(2)))
+                    .derivationType(Integer.valueOf(getField(1)))
+                    .pan(getField(3))
+                    .cardSequence(getField(4))
+                    .diversification(getField(5))
+                    .arqc(getField(6))
+                    .dataBlock(getField(7))
+                    .arc(getField(8))
+                    .failureCode(length() > 9 ? getField(9) : null)
+                    .process();
+        } else if ("2".equals(getField(1))) { // EMV 4.1, VISA (Derived session key for ARPC calculation), CVN (Cryptogram Version Number): 18
+            VisaCVN18ARQC mc = new VisaCVN18ARQC(simulator);
             return mc.imk(new AKB(getField(2)))
                     .derivationType(Integer.valueOf(getField(1)))
                     .pan(getField(3))

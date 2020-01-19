@@ -21,6 +21,7 @@ import akka.actor.Status;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
+import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Adapter;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.pubsub.DistributedPubSub;
@@ -36,7 +37,7 @@ import java.util.Map;
 import static net.e6tech.elements.network.cluster.messaging.MessagingEvents.*;
 
 @SuppressWarnings("unchecked")
-public class Messenger extends CommonBehavior<Messenger, MessagingEvents> {
+public class Messenger extends CommonBehavior<MessagingEvents> {
 
     private static final String SUBSCRIBER_PREFIX = "subscriber-";
     private static final String DESTINATION_PREFIX = "destination-";
@@ -45,6 +46,10 @@ public class Messenger extends CommonBehavior<Messenger, MessagingEvents> {
     private akka.actor.ActorRef mediator;
     private Map<String, Map<Subscriber, ActorRef>> subscribers = new HashMap<>();
     private Map<String, ActorRef> destinations = new HashMap<>();
+
+    public Messenger(ActorContext<MessagingEvents> context) {
+        super(context);
+    }
 
     @Override
     public void initialize() {
@@ -70,9 +75,9 @@ public class Messenger extends CommonBehavior<Messenger, MessagingEvents> {
     private void subscribe(Subscribe event) {
         Map<Subscriber, ActorRef> map = subscribers.computeIfAbsent(event.topic, topic -> new HashMap<>());
         map.computeIfAbsent(event.subscriber,
-                sub -> childActor(new SubscriberActor(event.topic, event.subscriber))
+                sub -> childActor(SubscriberActor.class)
                 .withName(SUBSCRIBER_PREFIX + event.topic + System.identityHashCode(event.subscriber))
-                .spawn());
+                .spawn(ctx -> new SubscriberActor(ctx, event.topic, event.subscriber)));
     }
 
     @Typed
@@ -81,7 +86,7 @@ public class Messenger extends CommonBehavior<Messenger, MessagingEvents> {
         if (map != null) {
             ActorRef child = map.get(event.subscriber);
             if (child != null) {
-                mediator.tell(new DistributedPubSubMediator.Unsubscribe(event.topic, Adapter.toUntyped(child)), untypedRef());
+                mediator.tell(new DistributedPubSubMediator.Unsubscribe(event.topic, Adapter.toClassic(child)), untypedRef());
                 child.tell(PoisonPill.getInstance());
                 map.remove(event.subscriber);
             }
@@ -93,9 +98,9 @@ public class Messenger extends CommonBehavior<Messenger, MessagingEvents> {
         if (destinations.get(event.destination) != null) {
             event.getSender().tell(new Status.Failure(new NotAvailableException("Service not available.")));
         } else {
-            ActorRef dest = childActor(new Destination(event.subscriber))
+            ActorRef dest = this.childActor(Destination.class)
                     .withName(DESTINATION_PREFIX + event.destination)
-                    .spawn();
+                    .spawn(ctx -> new Destination(ctx, event.subscriber));
             destinations.put(event.destination, dest);
         }
         return Behaviors.same();

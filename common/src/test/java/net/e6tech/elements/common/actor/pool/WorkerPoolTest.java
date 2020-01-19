@@ -16,9 +16,6 @@
 
 package net.e6tech.elements.common.actor.pool;
 
-import akka.actor.typed.ActorRef;
-import akka.actor.typed.javadsl.AskPattern;
-import akka.pattern.Patterns;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.resources.Resources;
 import org.junit.jupiter.api.Test;

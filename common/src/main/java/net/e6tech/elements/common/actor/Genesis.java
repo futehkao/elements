@@ -16,12 +16,17 @@
 
 package net.e6tech.elements.common.actor;
 
+import com.google.common.io.ByteStreams;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.resources.*;
+import net.e6tech.elements.common.util.SystemException;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
 
@@ -35,6 +40,8 @@ public class Genesis implements Initializable {
     private Guardian guardian;
     private WorkerPoolConfig workPoolConfig = new WorkerPoolConfig();
     private long timeout = 5000L;
+    private String profile = "remote";
+    private Config config;
 
     public long getTimeout() {
         return timeout;
@@ -52,17 +59,32 @@ public class Genesis implements Initializable {
         this.workPoolConfig = workPoolConfig;
     }
 
+    public String getProfile() {
+        return profile;
+    }
+
+    public void setProfile(String profile) {
+        this.profile = profile;
+    }
+
+    public Config getConfig() {
+        return config;
+    }
+
     @Override
     public void initialize(Resources resources) {
         if (name == null)
             throw new IllegalStateException("name is null");
-        // Create an Akka system
+
         Config config = null;
+
+        // Create an Akka system
         if (configuration != null) {
             config = ConfigFactory.parseString(configuration);
         } else {
             config = ConfigFactory.defaultApplication();
         }
+
         initialize(config);
 
         if (resources != null) {
@@ -75,7 +97,20 @@ public class Genesis implements Initializable {
         if (name == null)
             throw new IllegalStateException("name is null");
 
-        Config config = (cfg != null) ? cfg : ConfigFactory.defaultApplication();
+        config = (cfg != null) ? cfg : ConfigFactory.defaultApplication();
+
+        if (profile != null) {
+            if (!profile.endsWith(".conf"))
+                profile += ".conf";
+            String path = Genesis.class.getPackage().getName().replace('.', '/');
+            try (InputStream in = Genesis.class.getClassLoader().getResourceAsStream(path + "/" + profile)) {
+                byte[] bytes = ByteStreams.toByteArray(in);
+                String classPathConfig = new String(bytes, StandardCharsets.UTF_8);
+                config = config.withFallback(ConfigFactory.parseString(classPathConfig));
+            } catch (IOException e) {
+                throw new SystemException(e);
+            }
+        }
 
         if (!config.hasPath(WORKER_POOL_DISPATCHER)) {
             config = config.withFallback(ConfigFactory.parseString(
@@ -93,11 +128,9 @@ public class Genesis implements Initializable {
                             "}"
             ));
         }
+
         // Create an Akka system
-        guardian = new Guardian();
-        guardian.setName(getName());
-        guardian.setTimeout(getTimeout());
-        guardian.boot(config, workPoolConfig);
+        guardian = Guardian.create(getName(), getTimeout(), config, workPoolConfig);
     }
 
     public Guardian getGuardian() {
@@ -125,7 +158,8 @@ public class Genesis implements Initializable {
     }
 
     public void terminate() {
-        guardian.getSystem().terminate();
+        if (guardian != null)
+            guardian.terminate();
     }
 
     public CompletionStage<Void> async(Runnable runnable) {
@@ -133,7 +167,7 @@ public class Genesis implements Initializable {
     }
 
     public CompletionStage<Void> async(Runnable runnable, long timeout) {
-        return guardian.async(runnable, timeout);
+        return guardian.talk(timeout).async(runnable);
     }
 
     public <R> CompletionStage<R> async(Callable<R> callable) {
@@ -141,6 +175,6 @@ public class Genesis implements Initializable {
     }
 
     public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
-        return guardian.async(callable, timeout);
+        return guardian.talk(timeout).async(callable);
     }
 }

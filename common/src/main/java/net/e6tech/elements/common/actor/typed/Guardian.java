@@ -17,59 +17,64 @@
 package net.e6tech.elements.common.actor.typed;
 
 import akka.actor.typed.*;
+import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import com.typesafe.config.Config;
-import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPool;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
-public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
+@SuppressWarnings("unchecked")
+public class Guardian extends CommonBehavior<Void> {
+    private static final Logger logger = Logger.getLogger();
 
-    private akka.actor.typed.ActorRef<WorkEvents> workerPool;
+    private WorkerPool workerPool;
     private long timeout = 5000L;
     private String name = "galaxy";
 
-    @SuppressWarnings("unchecked")
-    public Guardian boot(Config config, WorkerPoolConfig workerPoolConfig) {
-        Object monitor = new Object();
-        Behavior<WorkEvents> pool = WorkerPool.newPool(this, workerPoolConfig);
-        Behavior<SpawnProtocol> main = Behaviors.setup(
-                context -> {
-                    setup(this, context);
-                    synchronized (monitor) {
-                        monitor.notifyAll();
-                    }
-                    return SpawnProtocol.behavior();
-                });
-
-       ActorSystem<SpawnProtocol> system = ActorSystem.create(main, name, config);
-
+    public static Guardian create(String name, long timeout, Config config, WorkerPoolConfig workerPoolConfig) {
+        // Create an Akka system
+        long start = System.currentTimeMillis();
+        Behavior<Void> main = Behaviors.setup(
+                context -> new Guardian(context, name, timeout, workerPoolConfig));
+        ActorSystem<ExtensionEvents> sys = (ActorSystem) ActorSystem.create(main, name, config);
         try {
-            // start the worker pool actor
-            CompletionStage<ActorRef<WorkEvents>> stage = AskPattern.ask(system, // cannot use guardian.getSystem() because context is not set yet
-                    replyTo -> new SpawnProtocol.Spawn(pool, workerPoolConfig.getName(), Props.empty(), replyTo),
-                    java.time.Duration.ofSeconds(timeout), system.scheduler());
-            stage.whenComplete((ref, throwable) -> workerPool = ref);
+            ExtensionEvents.ExtensionsResponse extensions = getExtensions(sys, timeout, sys.scheduler());
+            // ask sys to give back an instance of Guardian
+           Guardian guardian = (Guardian) extensions.getOwner();
+           logger.info("Staring Guardian in {}ms", System.currentTimeMillis() - start);
+           return guardian;
         } catch (Exception e) {
             throw new SystemException(e);
         }
+    }
 
-        synchronized (monitor) {
-            while (getContext() == null) {
-                try {
-                    monitor.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
+    private static <REQ, RES> RES demand(RecipientRef recipient, Function<ActorRef<RES>, REQ> messageFactory,
+                                         long timeout, Scheduler scheduler) {
+        CompletionStage<RES> stage = AskPattern.ask((RecipientRef<REQ>)recipient, sender -> messageFactory.apply(sender),
+                java.time.Duration.ofMillis(timeout), scheduler);
+        try {
+            return stage.toCompletableFuture().get();
+        } catch (Exception e) {
+            throw new SystemException(e);
         }
+    }
 
-        return this;
+    private static ExtensionEvents.ExtensionsResponse getExtensions(RecipientRef<ExtensionEvents> recipient, long timeout, Scheduler scheduler) {
+        return demand(recipient, ExtensionEvents.Extensions::new, timeout, scheduler);
+    }
+
+    protected Guardian(ActorContext<Void> context, String name, long timeout, WorkerPoolConfig workerPoolConfig) {
+        super(context);
+        setName(name);
+        setTimeout(timeout);
+        setup(this);
+        workerPool = childActor(WorkerPool.class).withName(workerPoolConfig.getName()).spawnNow(ctx -> new WorkerPool(ctx, workerPoolConfig));
     }
 
     public long getTimeout() {
@@ -88,22 +93,16 @@ public class Guardian extends CommonBehavior<Guardian, SpawnProtocol> {
         this.name = name;
     }
 
-    public CompletionStage<Void> async(Runnable runnable) {
-        return async(runnable, timeout);
+    public WorkerPool getWorkerPool() {
+        return workerPool;
     }
 
-    public CompletionStage<Void> async(Runnable runnable, long timeout) {
-        return AskPattern.ask(workerPool, ref -> new WorkEvents.RunnableTask(ref, runnable),
-                java.time.Duration.ofMillis(timeout), getSystem().scheduler());
+    public <T> void tell(ActorRef recipient, T msg) {
+        recipient.tell(msg);
     }
 
-    public <R> CompletionStage<R> async(Callable<R> callable) {
-        return async(callable, timeout);
+    public void terminate() {
+        if (getSystem() != null)
+            getSystem().terminate();
     }
-
-    public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
-        return AskPattern.ask(workerPool, ref -> new WorkEvents.CallableTask(ref, callable),
-                java.time.Duration.ofMillis(timeout), getSystem().scheduler());
-    }
-
 }

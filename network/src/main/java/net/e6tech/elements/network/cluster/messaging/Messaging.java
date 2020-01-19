@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.network.cluster.messaging;
 
+import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.common.subscribe.Subscriber;
@@ -28,7 +29,8 @@ import java.io.Serializable;
  */
 public class Messaging implements Broadcast {
 
-    private Messenger messenger;
+    private Guardian guardian;
+    private ActorRef<MessagingEvents> messenger;
     private String name = "messaging";
     private long timeout = ClusterNode.DEFAULT_TIME_OUT;
     public String getName() {
@@ -48,19 +50,19 @@ public class Messaging implements Broadcast {
     }
 
     public void start(Guardian guardian) {
-        messenger = new Messenger();
-        guardian.childActor(messenger).withName(name).spawn();
+        this.guardian = guardian;
+        messenger = guardian.childActor(Messenger.class).withName(name).spawn(Messenger::new);
     }
 
     public void shutdown() {
-        if (messenger != null) {
-            messenger.stop();
+        if (guardian != null) {
+            guardian.talk(messenger).stop();
         }
     }
 
     @Override
     public void subscribe(String topic, Subscriber subscriber) {
-        messenger.ask(ref -> new MessagingEvents.Subscribe(topic, subscriber), timeout);
+        guardian.talk(messenger).tell(new MessagingEvents.Subscribe(topic, subscriber));
     }
 
     @Override
@@ -70,7 +72,7 @@ public class Messaging implements Broadcast {
 
     @Override
     public void unsubscribe(String topic, Subscriber subscriber) {
-        messenger.ask(ref -> new MessagingEvents.Unsubscribe(topic, subscriber), timeout);
+        guardian.talk(messenger).tell(new MessagingEvents.Unsubscribe(topic, subscriber));
     }
 
     @Override
@@ -80,7 +82,7 @@ public class Messaging implements Broadcast {
 
     @Override
     public void publish(String topic, Serializable object) {
-        messenger.ask(ref -> new MessagingEvents.Publish(topic, object), timeout);
+        guardian.talk(messenger).tell(new MessagingEvents.Publish(topic, object));
     }
 
     @Override
@@ -89,11 +91,10 @@ public class Messaging implements Broadcast {
     }
 
     public void destination(String destination, Subscriber subscriber) {
-        messenger.ask(ref -> new MessagingEvents.NewDestination(ref, destination, subscriber), timeout);
+        guardian.talk(messenger).ask(ref -> new MessagingEvents.NewDestination(ref, destination, subscriber));
     }
 
     public void send(String destination, Serializable object) {
-        messenger.ask(ref ->  new MessagingEvents.Send(destination, object), timeout);
+        guardian.talk(messenger).tell(new MessagingEvents.Send(destination, object));
     }
-
 }

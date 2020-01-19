@@ -25,7 +25,7 @@ hibernateCacheUseSecondLevelCache = true
 clusterName = 'h3_cluster'
 clusterHost = '127.0.0.1'
 clusterPort = 2552
-clusterSeeds = "[\"akka.tcp://${clusterName}@${clusterHost}:${clusterPort}\"]"
+clusterSeeds = "[\"akka://${clusterName}@${clusterHost}:${clusterPort}\"]"
 logConfigFile = "$__dir/log4j2.yaml"
 
 // setting System properties

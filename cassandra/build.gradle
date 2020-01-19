@@ -22,7 +22,13 @@ dependencies {
     compile "org.ow2.asm:asm-commons:${asmVersion}"
     compile "org.ow2.asm:asm-analysis:${asmVersion}"
     compile "org.ow2.asm:asm-util:${asmVersion}"
+
+    compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
+        exclude group: 'org.ow2.asm'
+    }
+
     compile("com.datastax.cassandra:cassandra-driver-mapping:${cassandraDriverVersion}") {
+        exclude group: 'com.github.jnr'
         exclude group: 'org.ow2.asm'
     }
 

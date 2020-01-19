@@ -83,14 +83,14 @@ class RegistryEntryActor extends AbstractActor {
                     final ActorRef sender = getSender();
                     final ActorRef self = getSelf();
                     try {
-                        guardian.async(() -> {
+                        guardian.talk(message.getTimeout()).async(() -> {
                             try {
                                 Object ret = registration.function().apply(Adapter.toTyped(self), message.arguments());
                                 sender.tell(new Events.Response(ret, self), self);
                             } catch (Exception ex) {
                                 sender.tell(new Status.Failure(ex), self);
                             }
-                        }, message.getTimeout());
+                        });
                     } catch (RuntimeException ex) {
                         Throwable throwable = ex.getCause();
                         if (throwable == null) throwable = ex;

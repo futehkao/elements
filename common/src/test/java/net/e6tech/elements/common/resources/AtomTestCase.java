@@ -17,9 +17,9 @@
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.launch.LaunchController;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**

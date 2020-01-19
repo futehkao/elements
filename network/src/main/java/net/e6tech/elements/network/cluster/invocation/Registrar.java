@@ -21,6 +21,7 @@ import akka.actor.Status;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.DispatcherSelector;
 import akka.actor.typed.Terminated;
+import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.GroupRouter;
 import akka.actor.typed.javadsl.Routers;
@@ -37,14 +38,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static net.e6tech.elements.network.cluster.invocation.InvocationEvents.*;
 
-public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
+public class Registrar extends CommonBehavior<InvocationEvents> {
 
     private Map<String, ActorRef<InvocationEvents.Request>> routes = new HashMap<>(); // key is the context@method
     private Map<String, Set<ActorRef<InvocationEvents.Request>>> actors = new ConcurrentHashMap<>();
     private Map<ActorRef<InvocationEvents.Request>, String> actorKeys = new ConcurrentHashMap<>();
     private RegistryImpl registry;
 
-    public Registrar(RegistryImpl registry) {
+    public Registrar(ActorContext<InvocationEvents> context, RegistryImpl registry) {
+        super(context);
         this.registry = registry;
     }
 
@@ -52,7 +54,10 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
     @Typed
     private void registration(Registration registration) {
         String dispatcher;
-        ExecutionContextExecutor executor = getContext().getSystem().dispatchers().lookup(DispatcherSelector.fromConfig(RegistryImpl.REGISTRY_DISPATCHER));
+        ExecutionContextExecutor executor = getContext()
+                .getSystem()
+                .dispatchers()
+                .lookup(DispatcherSelector.fromConfig(RegistryImpl.REGISTRY_DISPATCHER));
         if (executor != null) {
             dispatcher = RegistryImpl.REGISTRY_DISPATCHER;
         } else {
@@ -65,18 +70,31 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
                 ctx -> {
                     // Subscribe to Receptionist using key
                     ctx.getSystem().receptionist().tell(Receptionist.subscribe(key, ctx.getSelf().narrow()));
+
+                    // watch for Receptionist.Listing and modify actors and actorKeys
+                    // need to be synchronized because the method terminated also modify actors and actorKeys.
                     return Behaviors.receive(Object.class)
                             .onMessage(Receptionist.Listing.class,
-                                    (c, msg) -> {
-                                        Set<ActorRef<InvocationEvents.Request>> set = actors.getOrDefault(registration.getPath(), Collections.emptySet());
-                                        for (ActorRef<InvocationEvents.Request> ref : msg.getServiceInstances(key)) {
-                                            if (!set.contains(ref)) {
-                                                getContext().watch(ref); // watch for Terminated event
-                                                actorKeys.put(ref, registration.getPath());
-                                                registry.onAnnouncement(registration.getPath());
+                                    msg -> {
+                                        synchronized (actors) {
+                                            Set<ActorRef<InvocationEvents.Request>> set = actors.getOrDefault(registration.getPath(), Collections.emptySet());
+                                            // remove from actorKeys because actors with registration.getPath() will be replaced with a new list
+                                            for (ActorRef<InvocationEvents.Request> ref : set) {
+                                                actorKeys.remove(ref);
                                             }
+
+                                            // record new actors from msg.getServiceInstance
+                                            // for each record, we need to save in actorKeys because the previous step to clear those
+                                            // actors from actorKeys.
+                                            for (ActorRef<InvocationEvents.Request> ref : msg.getServiceInstances(key)) {
+                                                actorKeys.put(ref, registration.getPath());
+                                                if (!set.contains(ref)) {
+                                                    getContext().watch(ref); // watch for Terminated event
+                                                    registry.onAnnouncement(registration.getPath());
+                                                }
+                                            }
+                                            actors.put(registration.getPath(), new LinkedHashSet<>(msg.getServiceInstances(key)));
                                         }
-                                        actors.put(registration.getPath(), new LinkedHashSet<>(msg.getServiceInstances(key)));
                                         return Behaviors.same();
                                     })
                             .build();
@@ -84,10 +102,11 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
         ));
 
         // spawn a RegistryEntry and register it with Receptionist using key
-        childActor(new RegistryEntry(registration))
+        ActorRef<InvocationEvents.Request> registryEntry = this.childActor(RegistryEntry.class)
                 .withProps(DispatcherSelector.fromConfig(dispatcher))
-                .whenSetup((ctx, child) -> getSystem().receptionist().tell(Receptionist.register(key, child.getSelf())))
-                .spawn();
+                //.afterSetup(child -> getSystem().receptionist().tell(Receptionist.register(key, child.getSelf())))
+                .spawn(ctx -> new RegistryEntry(ctx, registration));
+        getSystem().receptionist().tell(Receptionist.register(key, registryEntry));
 
         routes.computeIfAbsent(registration.getPath(),
                 k -> {
@@ -112,14 +131,20 @@ public class Registrar extends CommonBehavior<Registrar, InvocationEvents> {
     @Typed
     private void terminated(Terminated terminated) {
         ActorRef actor = terminated.getRef();
-        String key = actorKeys.get(actor);
-        if (key != null) {
-            Set<ActorRef<InvocationEvents.Request>> set =  actors.get(key);
-            if (set != null) {
-                set.remove(actor);
-                registry.onTerminated(key, actor);
+        String key;
+        synchronized (actors) {
+            key = actorKeys.get(actor);
+            if (key != null) {
+                Set<ActorRef<InvocationEvents.Request>> set = actors.get(key);
+                if (set != null) {
+                    set.remove(actor);
+                }
             }
+            actorKeys.remove(actor);
         }
+
+        if (key != null)
+            registry.onTerminated(key, actor);
     }
 
     @SuppressWarnings("unchecked")

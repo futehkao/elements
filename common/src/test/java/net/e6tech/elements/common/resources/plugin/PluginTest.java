@@ -19,12 +19,9 @@ package net.e6tech.elements.common.resources.plugin;
 import net.e6tech.elements.common.resources.ResourceManager;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**

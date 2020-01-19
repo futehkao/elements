@@ -38,6 +38,7 @@ dependencies {
     compile ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}") {
         exclude group: 'org.glassfish.jaxb', module: 'jaxb-runtime' // from common
     }
+    compile group: 'org.slf4j', name: 'jcl-over-slf4j', version: "${slf4jVersion}"
     compile "org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}"
     compile "org.apache.cxf:cxf-rt-transports-local:${cxfVersion}"
     compile "org.apache.cxf:cxf-rt-transports-http:${cxfVersion}"

@@ -27,26 +27,26 @@ import java.util.Arrays;
 @SuppressWarnings({"squid:S2278", "squid:S1192"})
 class MasterCardARQC {
 
-    private static final String ALGORITHM = "DESede";
+    protected static final String ALGORITHM = "DESede";
 
-    private String pan;
-    private String cardSequence = "00";
-    private String diversification;
-    private AtallaSimulator simulator;
-    private AKB imk;
-    private SecretKey iccMasterKey;
-    private SecretKey leftSessionKey;
-    private SecretKey rightSessionKey;
-    private SecretKey sessionKey;
-    private String sessionKeyCheckDigit;
-    private String arqc;
-    private String arc;
-    private String failureCode;
-    private String dataBlock;
-    private int derivationType = 0;  // 0 - legacy master, 2 - emv 4.1
-    private String computedARQC;
+    protected String pan;
+    protected String cardSequence = "00";
+    protected String diversification;
+    protected AtallaSimulator simulator;
+    protected AKB imk;
+    protected SecretKey iccMasterKey;
+    protected SecretKey leftSessionKey;
+    protected SecretKey rightSessionKey;
+    protected SecretKey sessionKey;
+    protected String sessionKeyCheckDigit;
+    protected String arqc;
+    protected String arc;
+    protected String failureCode;
+    protected String dataBlock;
+    protected int derivationType = 0;  // 0 - legacy master, 2 - emv 4.1
+    protected String computedARQC;
 
-    MasterCardARQC(AtallaSimulator simulator) {
+    public MasterCardARQC(AtallaSimulator simulator) {
         this.simulator = simulator;
     }
 
@@ -183,8 +183,12 @@ class MasterCardARQC {
         }
     }
 
-    private String computeARQC() throws CommandException {
+    protected String computeARQC() throws CommandException {
         byte[] bytes = Hex.toBytes(dataBlock);
+        return computeCryptogram(bytes);
+    }
+
+    protected String computeCryptogram(byte[] bytes) throws CommandException {
         if (bytes.length % 8 != 0 || bytes.length == 0)
             throw new CommandException(7, new IllegalArgumentException("data block is not multiple of 8 bytes"));
 
@@ -212,7 +216,7 @@ class MasterCardARQC {
         }
     }
 
-    private String computeARPC(String code) throws CommandException {
+    protected String computeARPC(String code) throws CommandException {
         byte[] bytes = Hex.toBytes(arqc);
         byte[] codeBytes = Hex.toBytes(code);
         byte[] arcBytes = new byte[bytes.length];

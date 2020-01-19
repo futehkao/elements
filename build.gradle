@@ -1,3 +1,41 @@
+ext.elementsVersion = '2.5.19'
+ext.junitPlatformLauncherVersion = '1.5.2'
+ext.junitJupiterVersion = '5.5.2'
+ext.snakeyamlVersion = '1.25'
+ext.simplejndiVersion = '0.11.4.1'
+ext.findbugsVersion = '3.0.2'
+ext.lmaxDisruptorVerions = '3.4.2'
+ext.slf4jVersion = '1.7.30'
+ext.groovyVersion = '2.5.8'
+ext.guavaVerions = '28.2-jre'
+ext.akkaVersion = '2.6.1'
+ext.akkaScalaVersion = '2.13'
+ext.aeronVersion = '1.24.0'
+ext.kryoVersion = '5.0.0-RC4'
+ext.bytebuddyVersion = '1.10.6'
+ext.ehcacheVersion = '3.8.1'
+ext.javaCacheApiVerison = '1.1.1'
+ext.jacksonVersion = '2.10.0'
+ext.jettyVersion = '9.4.25.v20191220'
+ext.tomcatVersion = '9.0.30'
+ext.tomcatLog4jVersion = '9.0.0.M6'
+ext.log4jVersion = '2.13.0'
+ext.cxfVersion = '3.3.4'
+ext.asmVersion = '7.2'
+ext.javaxWsRsApiVersion = '2.1.6'
+ext.cassandraDriverVersion = '3.7.2'
+ext.cassandraDriver4Version = '4.3.1'
+ext.opendmkVersion = '1.0-b02'
+ext.simplejmxVersion = '1.17'
+ext.quartzVersion = '2.3.1'
+ext.hikariVersion = '3.4.1'
+ext.mariadbClientVersion = '2.5.3'
+ext.javaeeApiVersion = '8.0.1'
+ext.hibernateVersion = '5.4.4.Final'  // note 5.4.6 - 5.4.8 have major stack overflow issues
+ext.bouncycastleVersion = '1.64'
+ext.jaxbVersion = '2.3.0'
+ext.jaxbRuntime = '2.3.2'
+ext.jnrffiVersion = '2.1.11'  // datastax 3.7.2
 
 allprojects {
     group 'net.e6tech'
@@ -17,15 +55,15 @@ allprojects {
 }
 
 dependencies {
-    testCompile("org.junit.jupiter:junit-jupiter-api:5.0.3")
-    testCompile("org.junit.platform:junit-platform-launcher:1.0.3")
-    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.0.3")
+    testCompile("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
+    testCompile("org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}")
+    testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
 }
 
 subprojects {
 
     group 'net.e6tech'
-    version '2.5.18'
+    version "${elementsVersion}"
 
     apply plugin: 'groovy'
     apply plugin: 'java'
@@ -117,41 +155,3 @@ subprojects {
         }
     }
 }
-
-ext.junitPlatformLauncherVersion = '1.4.1'
-ext.junitJupiterVersion = '5.4.1'
-ext.snakeyamlVersion = '1.25'
-ext.simplejndiVersion = '0.11.4.1'
-ext.findbugsVersion = '3.0.2'
-ext.lmaxDisruptorVerions = '3.4.2'
-ext.slf4jVersion = '1.7.26'
-ext.groovyVersion = '2.5.8'
-ext.guavaVerions = '28.1-jre'
-ext.akkaVersion = '2.5.25'
-ext.akkaScalaVersion = '2.13'
-ext.kryoVersion = '5.0.0-RC4'
-ext.bytebuddyVersion = '1.10.1'
-ext.ehcacheVersion = '3.8.1'
-ext.javaCacheApiVerison = '1.1.1'
-ext.jacksonVersion = '2.10.0'
-ext.jettyVersion = '9.4.21.v20190926'
-ext.tomcatVersion = '9.0.27'
-ext.tomcatLog4jVersion = '9.0.0.M6'
-ext.log4jVersion = '2.12.0'
-ext.cxfVersion = '3.3.3'
-ext.asmVersion = '7.2'
-ext.javaxWsRsApiVersion = '2.1.5'
-ext.dropwizardMetricsVersion = '4.0.6'
-ext.cassandraDriverVersion = '3.7.2'
-ext.cassandraDriver4Version = '4.2.0'
-ext.opendmkVersion = '1.0-b02'
-ext.simplejmxVersion = '1.17'
-ext.quartzVersion = '2.3.1'
-ext.hikariVersion = '3.4.1'
-ext.mariadbClientVersion = '2.5.1'
-ext.javaeeApiVersion = '8.0.1'
-ext.hibernateVersion = '5.4.4.Final'  // note 5.4.6 - 5.4.8 have major stack overflow issues
-ext.bouncycastleVersion = '1.64'
-ext.jaxbVersion = '2.3.0'
-ext.jaxbRuntime = '2.3.2'
-ext.jnrffiVersion = '2.1.10'

@@ -21,6 +21,7 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.Terminated;
+import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
@@ -40,24 +41,18 @@ import net.e6tech.elements.network.cluster.invocation.Registry;
 import net.e6tech.elements.network.cluster.invocation.RegistryImpl;
 import net.e6tech.elements.network.cluster.messaging.Messaging;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ClusterNode implements Initializable {
 
     public static final long DEFAULT_TIME_OUT = 10000L;
 
     private String name;
-    private String configuration;
     private Genesis genesis;
-    private ActorRef<ClusterEvent.ClusterDomainEvent> membership;
-    private Map<Address, Member> members = new HashMap<>();
+    private Membership membership;
     private Messaging broadcast;
     private Registry registry;
-    private Class<? extends Registry> registryClass;
-    private List<MemberListener> memberListeners = new ArrayList<>();
+    private Class<? extends Registry> registryClass = RegistryImpl.class;
     private boolean started = false;
     private long timeout = DEFAULT_TIME_OUT;
 
@@ -81,14 +76,6 @@ public class ClusterNode implements Initializable {
         this.name = name;
     }
 
-    public String getConfiguration() {
-        return configuration;
-    }
-
-    public void setConfiguration(String configuration) {
-        this.configuration = configuration;
-    }
-
     public Genesis getGenesis() {
         return genesis;
     }
@@ -107,7 +94,27 @@ public class ClusterNode implements Initializable {
     }
 
     public Map<Address, Member> getMembers() {
-        return members;
+        try {
+            return membership.talk(MemberEvents.class).demand(MemberEvents.Members::new);
+        } catch (Exception ex) {
+            return Collections.emptyMap();
+        }
+    }
+
+    public List<MemberListener> getListeners() {
+        try {
+            return membership.talk(MemberEvents.class).demand(MemberEvents.Listeners::new);
+        } catch (Exception ex) {
+            return Collections.emptyList();
+        }
+    }
+
+    public void addMemberListener(MemberListener listener) {
+        membership.talk(MemberEvents.class).tell(new MemberEvents.AddListener(listener));
+    }
+
+    public void removeMemberListener(MemberListener listener) {
+        membership.talk(MemberEvents.class).tell(new MemberEvents.RemoveListener(listener));
     }
 
     public Class<? extends Registry> getRegistryClass() {
@@ -122,10 +129,10 @@ public class ClusterNode implements Initializable {
         if (genesis == null) {
             genesis = new Genesis();
             genesis.setName(getName());
-            genesis.setConfiguration(getConfiguration());
             genesis.setTimeout(getTimeout());
             genesis.initialize(resources);
         }
+
         initialize(genesis);
     }
 
@@ -133,7 +140,6 @@ public class ClusterNode implements Initializable {
         this.genesis = genesis;
         setName(genesis.getName());
         setTimeout(genesis.getTimeout());
-        setConfiguration(genesis.getConfiguration());
         start();
     }
 
@@ -142,7 +148,7 @@ public class ClusterNode implements Initializable {
             return;
 
         if (membership == null)
-            membership = genesis.getGuardian().childActor(new Membership()).spawn();
+            membership = genesis.getGuardian().childActor(Membership.class).spawnNow(Membership::new);
 
         if (broadcast == null) {
             broadcast = new Messaging();
@@ -150,12 +156,8 @@ public class ClusterNode implements Initializable {
         }
 
         if (registry == null) {
-            Class<? extends Registry> rc = getRegistryClass();
-            if (rc == null)
-                rc = RegistryImpl.class;
-
             try {
-                registry = rc.getDeclaredConstructor().newInstance();
+                registry = getRegistryClass().getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 throw new SystemException(e);
             }
@@ -168,21 +170,29 @@ public class ClusterNode implements Initializable {
     }
 
     public void shutdown() {
-        genesis.getGuardian().stop(membership);
+        membership.talk().stop();
         broadcast.shutdown();
         registry.shutdown();
         genesis.terminate();
-        members.clear();
         started = false;
     }
 
     // listener to cluster events
-    class Membership extends CommonBehavior<Membership, ClusterEvent.ClusterDomainEvent> {
-        Cluster cluster;
+    static class Membership extends CommonBehavior<ClusterEvent.ClusterDomainEvent> {
+        private Map<Address, Member> members = new HashMap<>();
+        private List<MemberListener> memberListeners = new ArrayList<>();
 
+        public Membership(ActorContext<ClusterEvent.ClusterDomainEvent> context) {
+            super(context);
+        }
+
+        /**
+         * Tells akka Cluster that this Membership want to subscribe to ClusterEvent.ClusterDomainEvent
+         */
         @Override
         public void initialize() {
-            cluster = Cluster.get(getContext().getSystem());
+            addExtension((ctx, owner) -> new MembershipExtension(ctx, members, memberListeners));
+            Cluster cluster = Cluster.get(getContext().getSystem());
             cluster.subscriptions().tell(new Subscribe<>(getContext().getSelf(), ClusterEvent.ClusterDomainEvent.class));
         }
 
@@ -217,12 +227,75 @@ public class ClusterNode implements Initializable {
         @SuppressWarnings("unchecked")
         @Typed
         public void postStop(PostStop postStop) {
+            Cluster cluster = Cluster.get(getContext().getSystem());
             cluster.subscriptions().tell(new Unsubscribe(getContext().getSelf()));
         }
 
         @Typed
         public Behavior<ClusterEvent.ClusterDomainEvent> terminated(Terminated terminated) {
             return Behaviors.stopped();
+        }
+    }
+
+    static class MembershipExtension extends CommonBehavior<MemberEvents> {
+        private Map<Address, Member> members;
+        private List<MemberListener> memberListeners;
+
+        protected MembershipExtension(ActorContext<MemberEvents> context, Map<Address, Member> members, List<MemberListener> memberListeners) {
+            super(context);
+            this.members = members;
+            this.memberListeners = memberListeners;
+        }
+
+        @Typed
+        public void members(MemberEvents.Members members) {
+            members.sender.tell(new HashMap<>(this.members));
+        }
+
+        @Typed
+        public void listeners(MemberEvents.Listeners listeners) {
+            listeners.sender.tell(new ArrayList<>(this.memberListeners));
+        }
+
+        @Typed
+        public void addListener(MemberEvents.AddListener add) {
+            memberListeners.add(add.listener);
+        }
+
+        @Typed
+        public void removeListener(MemberEvents.RemoveListener remove) {
+            memberListeners.remove(remove.listener);
+        }
+    }
+
+    interface MemberEvents {
+
+        class Members implements MemberEvents {
+            ActorRef<Map<Address, Member>> sender;
+            public Members(ActorRef<Map<Address, Member>> sender) {
+                this.sender = sender;
+            }
+        }
+
+        class Listeners implements MemberEvents {
+            ActorRef<List<MemberListener>> sender;
+            public Listeners(ActorRef<List<MemberListener>> sender) {
+                this.sender = sender;
+            }
+        }
+
+        class AddListener implements MemberEvents {
+            MemberListener listener;
+            public AddListener(MemberListener listener) {
+                this.listener = listener;
+            }
+        }
+
+        class RemoveListener implements MemberEvents {
+            MemberListener listener;
+            public RemoveListener(MemberListener listener) {
+                this.listener = listener;
+            }
         }
     }
 

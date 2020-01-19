@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import net.e6tech.elements.common.resources.*
-import static org.junit.jupiter.api.Assertions.assertTrue
 
+import net.e6tech.elements.common.resources.AtomTestSample
+import net.e6tech.elements.common.resources.AtomTestSample2
+
+import static org.junit.jupiter.api.Assertions.assertTrue
 
 // use by ProvisionTestCase
 

@@ -16,10 +16,17 @@
 
 package net.e6tech.sample.cluster;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.notification.NotificationCenter;
 import net.e6tech.elements.network.cluster.ClusterNode;
 import net.e6tech.sample.BaseCase;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.
@@ -28,6 +35,7 @@ import org.junit.jupiter.api.Test;
 public class ClusterTest extends BaseCase {
     @Test
     public void broadcast() throws Exception {
+        ConfigFactory.defaultApplication();
         ClusterNode cluster = provision.getBean(ClusterNode.class);
         NotificationCenter center = provision.getResourceManager().getNotificationCenter();
         center.subscribe("test", (notice) -> {
@@ -36,6 +44,8 @@ public class ClusterTest extends BaseCase {
 
         Thread.sleep(2000L);
         center.publish("test", "Hello world!");
-        Thread.sleep(2000L);
+        Config config = cluster.getGenesis().getConfig();
+        assertEquals(config.getStringList("akka.cluster.seed-nodes").get(0), "akka://h3_cluster@127.0.0.1:2552");
+        assertEquals(config.getString("akka.remote.artery.canonical.hostname"), "127.0.0.1");
     }
 }

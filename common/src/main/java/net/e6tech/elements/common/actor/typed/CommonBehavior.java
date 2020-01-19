@@ -16,10 +16,7 @@
 
 package net.e6tech.elements.common.actor.typed;
 
-import akka.actor.PoisonPill;
-import akka.actor.typed.ActorRef;
-import akka.actor.typed.ActorSystem;
-import akka.actor.typed.Behavior;
+import akka.actor.typed.*;
 import akka.actor.typed.javadsl.*;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -28,15 +25,14 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
+import java.util.*;
+import java.util.function.BiFunction;
 
 @SuppressWarnings("unchecked")
-public abstract class CommonBehavior<S extends CommonBehavior, T> extends AbstractBehavior<T> {
+/**
+ * Base Behavior class.  T is the Message class that this Behavior response to
+ */
+public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
 
     private static Cache<Class, List<MessageBuilder>> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
@@ -44,26 +40,88 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
             .maximumSize(500)
             .build();
 
-    private ActorContext<T> context;
     private Guardian guardian;
+    protected List<BiFunction<ActorContext, CommonBehavior, CommonBehavior>> extensionFactories = new ArrayList<>(); // event class to factory
+    protected Map<Class, CommonBehavior> extensions = new LinkedHashMap<>(); // event classes
+
+    protected CommonBehavior(ActorContext<T> context) {
+        super(context);
+    }
+
+    protected <U extends CommonBehavior> CommonBehavior<T> addExtension(BiFunction<ActorContext, CommonBehavior<T>, U> factory) {
+        extensionFactories.add((BiFunction) factory);
+        return this;
+    }
+
+    public void setup(Guardian guardian) {
+        this.guardian = guardian;
+        initialize();
+    }
+
+    protected void initialize() {
+    }
+
+    @Typed
+    private void extensions(ExtensionEvents.Extensions event) {
+        final ActorRef sender = event.getSender();
+        sender.tell(new ExtensionEvents.ExtensionsResponse(getSelf(), this, new LinkedHashMap<>(extensions)));
+    }
+
+    private void saveEventClass(Class cls, CommonBehavior implementation) {
+        // deduce event class
+        Class c = cls;
+        Class eventClass = null;
+        while (true) {
+            try {
+                eventClass = Reflection.getParametrizedType(c, 0);
+                if (eventClass != null)
+                    break;
+            } catch (Exception ex) {
+                // ok
+            }
+            if (c.equals(CommonBehavior.class))
+                break;
+            c = c.getSuperclass();
+        }
+        if (eventClass != null && !extensions.containsKey(eventClass))
+            extensions.put(eventClass, implementation);
+    }
 
     @Override
     public Receive<T> createReceive() {
         ReceiveBuilder builder =  newReceiveBuilder();
 
+        // deduce event class
         Class cls = getClass();
-
+        saveEventClass(cls, this);
         Set<String> events = new HashSet<>();
-        while (!cls.equals(CommonBehavior.class)) {
-            builder = build(builder, cls, events);
+        while (true) {
+            builder = build(this, builder, cls, events);
+            if (cls.equals(CommonBehavior.class))
+                break;
             cls = cls.getSuperclass();
         }
+
+        // build events for extension classes
+        for (BiFunction<ActorContext, CommonBehavior, CommonBehavior> factory : extensionFactories) {
+            CommonBehavior extension = factory.apply(getContext(), this);
+            cls = extension.getClass();
+            saveEventClass(cls, extension);
+            while (true) {
+                builder = build(extension, builder, cls, events);
+                if (cls.equals(CommonBehavior.class))
+                    break;
+                cls = cls.getSuperclass();
+            }
+        }
+        extensionFactories.clear();
+        extensionFactories = null;
 
         return builder.build();
     }
 
     @SuppressWarnings("squid:S3776")
-    private ReceiveBuilder build(ReceiveBuilder builder, Class cls, Set<String> events) {
+    private ReceiveBuilder build(CommonBehavior target, ReceiveBuilder builder, Class cls, Set<String> events) {
         List<MessageBuilder> list = cache.getIfPresent(cls);
         if (list == null) {
             list = new ArrayList<>();
@@ -71,17 +129,16 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
                 Annotation typed = method.getAnnotation(Typed.class);
                 if (typed == null)
                     continue;
-                Class paramType = Reflection.getParametrizedType(getClass(), 1);
                 if (method.getParameterCount() == 1
                         && (Behavior.class.isAssignableFrom(method.getReturnType()) || void.class.equals(method.getReturnType()))) {
                     method.setAccessible(true);
                     boolean behavior = Behavior.class.isAssignableFrom(method.getReturnType());
-                    boolean onMessage = paramType.isAssignableFrom(method.getParameterTypes()[0]);
-                    if (onMessage) {
-                        list.add(new OnMessage(method, behavior));
-                    } else {
+                    if (Signal.class.isAssignableFrom(method.getParameterTypes()[0])) {
                         list.add(new OnSignal(method, behavior));
+                    } else {
+                        list.add(new OnMessage(method, behavior));
                     }
+
                 } else {
                     throw new SystemException("Invalid method signature for method " + method);
                 }
@@ -93,27 +150,47 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
             if (events.contains(mb.signature()))
                 continue;
             events.add(mb.signature());
-            builder = mb.build(builder, this);
+            builder = mb.build(builder, target);
         }
 
         return builder;
     }
 
-    public ActorContext<T> getContext() {
-        return context;
-    }
-
-    public void setup(Guardian guardian, ActorContext<T> context) {
-        this.guardian = guardian;
-        this.context = context;
-        initialize();
-    }
-
     public ActorSystem<Void> getSystem() {
-        return context.getSystem();
+        return getContext().getSystem();
     }
 
-    public Guardian getGuardian() {
+    public Talk<T> talk() {
+        return new Talk<>(getGuardian(), getSelf());
+    }
+
+    public <U> Talk<U> talk(Class<U> cls) {
+        return new Talk<U>(getGuardian(), getSelf().unsafeUpcast());
+    }
+
+    public Talk<T> talk(long timeout) {
+        return talk().timeout(timeout);
+    }
+
+    public <U> Talk<U> talk(ActorRef<U> recipient) {
+        return new Talk<>(getGuardian(), recipient);
+    }
+
+    public <U> Talk<U> talk(ActorRef<U> recipient, long timeout) {
+        return new Talk<>(getGuardian(), recipient).timeout(timeout);
+    }
+
+    public <U, V> Talk<V> talk(ActorRef<U> recipient, Class<V> cls) {
+        ActorRef<V> ref = recipient.unsafeUpcast();
+        return new Talk<V>(getGuardian(), ref);
+    }
+
+    public <U, V> Talk<V> talk(ActorRef<U> recipient, Class<V> cls, long timeout) {
+        ActorRef<V> ref = recipient.unsafeUpcast();
+        return new Talk<>(getGuardian(), ref).timeout(timeout);
+    }
+
+    protected Guardian getGuardian() {
         return guardian;
     }
 
@@ -121,39 +198,20 @@ public abstract class CommonBehavior<S extends CommonBehavior, T> extends Abstra
         return getContext().getSelf();
     }
 
-    protected void initialize() {
+    public Scheduler getScheduler() {
+        return getSystem().scheduler();
     }
 
-    public <X extends CommonBehavior<X, Y>, Y> Spawn<X, Y> childActor(X child) {
-        return new Spawn<>(this, child);
-    }
-
-    public <U> CompletionStage<U> ask(Function<ActorRef<U>, T> message,
-                                  long timeoutMillis) {
-        return AskPattern.ask(context.getSelf(), message::apply,
-                java.time.Duration.ofMillis(timeoutMillis), context.getSystem().scheduler());
-    }
-
-    public S tell(T msg) {
-        context.getSelf().tell(msg);
-        return (S) this;
-    }
-
-    public <U> void stop(ActorRef<U> child) {
-        context.stop(child);
-    }
-
-    public void stop() {
-        AskPattern.ask((ActorRef) getSelf(), ref -> PoisonPill.getInstance(),
-                java.time.Duration.ofSeconds(10), context.getSystem().scheduler());
+    public <B extends CommonBehavior<M>, M> Spawn<M, B> childActor(Class<B> commonBehaviorClass) {
+        return new Spawn<>(this, getGuardian());
     }
 
     public akka.actor.ActorRef untypedRef() {
-        return Adapter.toUntyped(getSelf());
+        return Adapter.toClassic(getSelf());
     }
 
     public akka.actor.ActorContext untypedContext() {
-        return Adapter.toUntyped(getContext());
+        return Adapter.toClassic(getContext());
     }
 
     public akka.actor.ActorRef actorOf(akka.actor.Props props, String name) {

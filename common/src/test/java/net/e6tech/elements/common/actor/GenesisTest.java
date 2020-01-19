@@ -31,6 +31,7 @@ public class GenesisTest {
     public void runnable() throws Exception {
         Genesis genesis = new Genesis();
         genesis.setName("Genesis");
+        genesis.setProfile("local");
         genesis.initialize((Resources) null);
 
         for (int i = 0; i < 100; i++){
