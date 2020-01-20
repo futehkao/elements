@@ -26,13 +26,13 @@ public interface WorkEvents {
 
     class IdleWorker implements WorkEvents, Serializable {
         private static final long serialVersionUID = 3494669944533209616L;
-        private ActorRef worker;
+        private ActorRef<WorkEvents> worker;
 
-        public IdleWorker(ActorRef worker) {
+        public IdleWorker(ActorRef<WorkEvents> worker) {
             this.worker = worker;
         }
 
-        public ActorRef getWorker() {
+        public ActorRef<WorkEvents> getWorker() {
             return worker;
         }
     }

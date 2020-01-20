@@ -45,8 +45,9 @@ public interface ExtensionEvents {
             this.extensions = extensions;
         }
 
-        public CommonBehavior getOwner() {
-            return owner;
+        @SuppressWarnings("unchecked")
+        public <T extends CommonBehavior> T getOwner() {
+            return (T) owner;
         }
 
         public Map<Class, CommonBehavior> getExtensions() {

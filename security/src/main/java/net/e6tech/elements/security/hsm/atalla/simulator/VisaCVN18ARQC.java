@@ -18,9 +18,6 @@ package net.e6tech.elements.security.hsm.atalla.simulator;
 
 import net.e6tech.elements.security.Hex;
 
-import javax.crypto.Cipher;
-import java.security.GeneralSecurityException;
-
 @SuppressWarnings({"squid:S2278", "squid:S1192"})
 /*
     For VISA, CVN (Cryptogram Version Number) = 18, similar to MasterCard
@@ -33,6 +30,7 @@ class VisaCVN18ARQC extends MasterCardARQC {
         super(simulator);
     }
 
+    @Override
     protected String computeARPC(String code) throws CommandException {
         byte[] arqcBytes = Hex.toBytes(arqc);
         byte[] codeBytes = Hex.toBytes(code);

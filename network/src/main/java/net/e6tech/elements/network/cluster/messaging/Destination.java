@@ -45,8 +45,8 @@ public class Destination extends CommonBehavior<MessagingEvents> {
 
         getContext().spawnAnonymous(Behaviors.receive(DistributedPubSubMediator.SubscribeAck.class)
                 .onMessage(DistributedPubSubMediator.SubscribeAck.class,
-                        (msg) -> {
-                            // ctx.getSystem().log().info("subscribing to " + msg.toString());
+                        msg -> {
+                            getSystem().log().info("subscribing to {}", msg.toString());
                             return Behaviors.same();
                         }).build());
     }

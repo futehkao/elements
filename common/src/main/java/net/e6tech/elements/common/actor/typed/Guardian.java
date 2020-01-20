@@ -21,13 +21,14 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import com.typesafe.config.Config;
+import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPool;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 
 @SuppressWarnings("unchecked")
 public class Guardian extends CommonBehavior<Void> {
@@ -46,7 +47,7 @@ public class Guardian extends CommonBehavior<Void> {
         try {
             ExtensionEvents.ExtensionsResponse extensions = getExtensions(sys, timeout, sys.scheduler());
             // ask sys to give back an instance of Guardian
-           Guardian guardian = (Guardian) extensions.getOwner();
+           Guardian guardian = extensions.getOwner();
            logger.info("Staring Guardian in {}ms", System.currentTimeMillis() - start);
            return guardian;
         } catch (Exception e) {
@@ -54,19 +55,14 @@ public class Guardian extends CommonBehavior<Void> {
         }
     }
 
-    private static <REQ, RES> RES demand(RecipientRef recipient, Function<ActorRef<RES>, REQ> messageFactory,
-                                         long timeout, Scheduler scheduler) {
-        CompletionStage<RES> stage = AskPattern.ask((RecipientRef<REQ>)recipient, sender -> messageFactory.apply(sender),
+    private static ExtensionEvents.ExtensionsResponse getExtensions(RecipientRef<ExtensionEvents> recipient, long timeout, Scheduler scheduler) {
+        CompletionStage<ExtensionEvents.ExtensionsResponse> stage = AskPattern.ask(recipient, ExtensionEvents.Extensions::new,
                 java.time.Duration.ofMillis(timeout), scheduler);
         try {
             return stage.toCompletableFuture().get();
         } catch (Exception e) {
             throw new SystemException(e);
         }
-    }
-
-    private static ExtensionEvents.ExtensionsResponse getExtensions(RecipientRef<ExtensionEvents> recipient, long timeout, Scheduler scheduler) {
-        return demand(recipient, ExtensionEvents.Extensions::new, timeout, scheduler);
     }
 
     protected Guardian(ActorContext<Void> context, String name, long timeout, WorkerPoolConfig workerPoolConfig) {
@@ -93,12 +89,12 @@ public class Guardian extends CommonBehavior<Void> {
         this.name = name;
     }
 
-    public WorkerPool getWorkerPool() {
-        return workerPool;
+    public CompletionStage<Void> async(Runnable runnable, long timeout) {
+        return workerPool.talk(timeout).ask(ref -> new WorkEvents.RunnableTask(ref, runnable));
     }
 
-    public <T> void tell(ActorRef recipient, T msg) {
-        recipient.tell(msg);
+    public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
+        return workerPool.talk(timeout).ask(ref -> new WorkEvents.CallableTask(ref, callable));
     }
 
     public void terminate() {

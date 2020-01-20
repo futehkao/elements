@@ -25,36 +25,34 @@ import net.e6tech.elements.common.actor.typed.Typed;
 @SuppressWarnings("unchecked")
 public class Worker extends CommonBehavior<WorkEvents> {
 
-    private ActorRef pool;
+    private ActorRef<WorkEvents> pool;
 
-    public Worker(ActorContext<WorkEvents> context, ActorRef pool) {
+    public Worker(ActorContext<WorkEvents> context, ActorRef<WorkEvents> pool) {
         super(context);
         this.pool = pool;
     }
 
     @Typed
     private void run(WorkEvents.RunnableTask message) {
-        ActorRef self = getSelf();
         try {
             message.getRunnable().run();
             message.getSender().tell(new WorkEvents.Response());
         } catch (Exception th) {
             message.getSender().tell(new Status.Failure(th));
         } finally {
-            pool.tell(new WorkEvents.IdleWorker(self));
+            pool.tell(new WorkEvents.IdleWorker(getSelf()));
         }
    }
 
    @Typed
     private void call(WorkEvents.CallableTask message) {
-        ActorRef self = getSelf();
         try {
             Object ret = message.getCallable().call();
             message.getSender().tell(new WorkEvents.Response(ret));
         } catch (Exception th) {
             message.getSender().tell(new Status.Failure(th));
         } finally {
-            pool.tell(new WorkEvents.IdleWorker(self));
+            pool.tell(new WorkEvents.IdleWorker(getSelf()));
         }
     }
 }

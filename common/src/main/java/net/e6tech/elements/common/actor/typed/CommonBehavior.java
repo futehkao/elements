@@ -28,7 +28,7 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.BiFunction;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "squid:S1172"})
 /**
  * Base Behavior class.  T is the Message class that this Behavior response to
  */
@@ -48,7 +48,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
         super(context);
     }
 
-    protected <U extends CommonBehavior> CommonBehavior<T> addExtension(BiFunction<ActorContext, CommonBehavior<T>, U> factory) {
+    protected <U extends CommonBehavior<?>> CommonBehavior<T> addExtension(BiFunction<ActorContext, CommonBehavior<T>, U> factory) {
         extensionFactories.add((BiFunction) factory);
         return this;
     }
@@ -71,7 +71,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
         // deduce event class
         Class c = cls;
         Class eventClass = null;
-        while (true) {
+        while (!c.equals(CommonBehavior.class)) {
             try {
                 eventClass = Reflection.getParametrizedType(c, 0);
                 if (eventClass != null)
@@ -79,8 +79,6 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
             } catch (Exception ex) {
                 // ok
             }
-            if (c.equals(CommonBehavior.class))
-                break;
             c = c.getSuperclass();
         }
         if (eventClass != null && !extensions.containsKey(eventClass))
@@ -165,7 +163,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
     }
 
     public <U> Talk<U> talk(Class<U> cls) {
-        return new Talk<U>(getGuardian(), getSelf().unsafeUpcast());
+        return new Talk<>(getGuardian(), getSelf().unsafeUpcast());
     }
 
     public Talk<T> talk(long timeout) {
@@ -182,7 +180,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
 
     public <U, V> Talk<V> talk(ActorRef<U> recipient, Class<V> cls) {
         ActorRef<V> ref = recipient.unsafeUpcast();
-        return new Talk<V>(getGuardian(), ref);
+        return new Talk<>(getGuardian(), ref);
     }
 
     public <U, V> Talk<V> talk(ActorRef<U> recipient, Class<V> cls, long timeout) {

@@ -76,16 +76,16 @@ public class Genesis implements Initializable {
         if (name == null)
             throw new IllegalStateException("name is null");
 
-        Config config = null;
+        Config conf = null;
 
         // Create an Akka system
         if (configuration != null) {
-            config = ConfigFactory.parseString(configuration);
+            conf = ConfigFactory.parseString(configuration);
         } else {
-            config = ConfigFactory.defaultApplication();
+            conf = ConfigFactory.defaultApplication();
         }
 
-        initialize(config);
+        initialize(conf);
 
         if (resources != null) {
             final ResourceManager resourceManager = resources.getResourceManager();

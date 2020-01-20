@@ -55,6 +55,7 @@ public class Accessors<T extends Accessor> {
         analyzedDescriptors(targetClass, descriptorFactory);
     }
 
+    @SuppressWarnings("squid:S3776")
     private void analyzeFields(Class targetClass, Function<Field, T> fieldFactory) {
         Class cls = targetClass;
         if (fieldFactory != null) {

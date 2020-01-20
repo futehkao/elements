@@ -48,7 +48,7 @@ public class SubscriberActor extends CommonBehavior<MessagingEvents> {
         getContext().spawnAnonymous(Behaviors.receive(DistributedPubSubMediator.SubscribeAck.class)
                 .onMessage(DistributedPubSubMediator.SubscribeAck.class,
                         msg -> {
-                            // ctx.getSystem().log().info("subscribed to " + msg.toString());
+                            getSystem().log().info("subscribed to {}", msg.toString());
                             return Behaviors.same();
                 }).build());
     }

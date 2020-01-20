@@ -40,7 +40,7 @@ public class RegistryImpl implements Registry {
     private static String path = "registry";
     public static final String REGISTRY_DISPATCHER = "registry-dispatcher";
     private Guardian guardian;
-    private ActorRef<InvocationEvents> registrar;
+    private Registrar registrar;
     private ExecutionContextExecutor dispatcher;
     private long timeout = ClusterNode.DEFAULT_TIME_OUT;
     private List<RouteListener> listeners = Collections.synchronizedList(new ArrayList<>());
@@ -91,15 +91,15 @@ public class RegistryImpl implements Registry {
         this.guardian = guardian;
         dispatcher = guardian.getContext().getExecutionContext();
         // Create an Akka system
-        registrar = guardian.childActor(Registrar.class).withName(getPath()).spawn(ctx -> new Registrar(ctx, this));
+        registrar = guardian.childActor(Registrar.class).withName(getPath()).spawnNow(ctx -> new Registrar(ctx, this));
     }
 
     public void shutdown() {
-        guardian.talk(registrar).stop();
+        registrar.talk().stop();
     }
 
     public Collection routes(String path) {
-        return (Collection) guardian.talk(registrar, timeout).demand(InvocationEvents.Response.class,
+        return (Collection) registrar.talk(timeout).askAndWait(InvocationEvents.Response.class,
                 ref -> new InvocationEvents.Routes(ref, path)).getValue();
     }
 
@@ -126,7 +126,7 @@ public class RegistryImpl implements Registry {
     @SuppressWarnings("unchecked")
     @Override
     public <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function) {
-        return guardian.talk(registrar, timeout).ask(ref -> new InvocationEvents.Registration(ref, path,  (BiFunction<ActorRef, Object[], Object>)function));
+        return registrar.talk(timeout).ask(ref -> new InvocationEvents.Registration(ref, path,  (BiFunction<ActorRef, Object[], Object>)function));
     }
 
     @Override
@@ -208,7 +208,7 @@ public class RegistryImpl implements Registry {
     }
 
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout) {
-        return arguments -> guardian.talk(registrar).ask(ref -> new InvocationEvents.Request(ref, path, timeout, arguments));
+        return arguments -> registrar.talk().ask(ref -> new InvocationEvents.Request(ref, path, timeout, arguments));
     }
 
     public <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass) {

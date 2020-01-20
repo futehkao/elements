@@ -46,6 +46,7 @@ public class WorkerPool extends CommonBehavior<WorkEvents> {
         Reflection.copyInstance(this.config, config);
     }
 
+    @Override
     public void setup(Guardian guardian) {
         super.setup(guardian);
         for (int i = 0; i < config.getInitialCapacity(); i++) {
@@ -81,7 +82,7 @@ public class WorkerPool extends CommonBehavior<WorkEvents> {
     private void newCallable(WorkEvents.CallableTask event) {
         if (!idleWorkers.isEmpty()) {
             Iterator<ActorRef<WorkEvents>> iterator = idleWorkers.iterator();
-            ActorRef worker = iterator.next();
+            ActorRef<WorkEvents> worker = iterator.next();
             iterator.remove();
             worker.tell(event);
         } else if (workers.size() < config.getMaxCapacity()) {
@@ -105,7 +106,7 @@ public class WorkerPool extends CommonBehavior<WorkEvents> {
         idle(event.getWorker());
     }
 
-    private void idle(ActorRef worker) {
+    private void idle(ActorRef<WorkEvents> worker) {
         if (!waiting.isEmpty()) {
             WorkerPool.Task task = waiting.removeFirst();
             worker.tell(task.getWork());
@@ -122,16 +123,15 @@ public class WorkerPool extends CommonBehavior<WorkEvents> {
         if (config.getIdleTimeout() == 0)
             return;
         final Duration interval = Duration.ofMillis(config.getIdleTimeout());
-        ActorRef self = getSelf();
-        getContext().scheduleOnce(interval, self, new WorkEvents.Cleanup());
+        getContext().scheduleOnce(interval, getSelf(), new WorkEvents.Cleanup());
         cleanupScheduled = true;
     }
 
     private class Task {
         ActorRef sender;
-        Object work;
+        WorkEvents work;
 
-        public Task(ActorRef sender, Object work) {
+        public Task(ActorRef sender, WorkEvents work) {
             this.sender = sender;
             this.work = work;
         }
@@ -140,7 +140,7 @@ public class WorkerPool extends CommonBehavior<WorkEvents> {
             return sender;
         }
 
-        public Object getWork() {
+        public WorkEvents getWork() {
             return work;
         }
     }

@@ -43,6 +43,7 @@ import net.e6tech.elements.network.cluster.messaging.Messaging;
 
 import java.util.*;
 
+@SuppressWarnings("unchecked")
 public class ClusterNode implements Initializable {
 
     public static final long DEFAULT_TIME_OUT = 10000L;
@@ -95,7 +96,7 @@ public class ClusterNode implements Initializable {
 
     public Map<Address, Member> getMembers() {
         try {
-            return membership.talk(MemberEvents.class).demand(MemberEvents.Members::new);
+            return membership.talk(MemberEvents.class).askAndWait(MemberEvents.Members::new);
         } catch (Exception ex) {
             return Collections.emptyMap();
         }
@@ -103,7 +104,7 @@ public class ClusterNode implements Initializable {
 
     public List<MemberListener> getListeners() {
         try {
-            return membership.talk(MemberEvents.class).demand(MemberEvents.Listeners::new);
+            return membership.talk(MemberEvents.class).askAndWait(MemberEvents.Listeners::new);
         } catch (Exception ex) {
             return Collections.emptyList();
         }

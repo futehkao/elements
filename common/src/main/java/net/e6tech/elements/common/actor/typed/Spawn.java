@@ -48,8 +48,8 @@ public class Spawn<T, B extends CommonBehavior<T>> {
 
     public B spawnNow(Function<ActorContext<T>, B> factory) {
         ActorRef<T> ref = spawn(factory);
-        ExtensionEvents.ExtensionsResponse extensions = guardian.talk(ref, ExtensionEvents.class).demand(sender -> new ExtensionEvents.Extensions(sender));
-        return (B) extensions.getOwner();
+        ExtensionEvents.ExtensionsResponse extensions = guardian.talk(ref, ExtensionEvents.class).askAndWait(ExtensionEvents.Extensions::new);
+        return extensions.getOwner();
     }
 
     /**
@@ -76,7 +76,7 @@ public class Spawn<T, B extends CommonBehavior<T>> {
     protected Behavior<T> setup(Function<ActorContext<T>, B> factory) {
         return Behaviors.<T>setup(
                 ctx -> {
-                    akka.japi.function.Function<ActorContext<T>, B> f = (c) -> factory.apply(c);
+                    akka.japi.function.Function<ActorContext<T>, B> f = factory::apply;
                     B behavior = f.apply(ctx);
                     behavior.setup(guardian);
                     return behavior;

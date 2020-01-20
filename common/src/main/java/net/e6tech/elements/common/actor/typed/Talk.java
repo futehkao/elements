@@ -19,13 +19,13 @@ package net.e6tech.elements.common.actor.typed;
 import akka.actor.PoisonPill;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.javadsl.AskPattern;
-import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
+@SuppressWarnings({"squid:S1172", "squid:S00119"})
 public class Talk<T> {
     private long timeout;
     private Guardian guardian;
@@ -47,17 +47,11 @@ public class Talk<T> {
                 java.time.Duration.ofMillis(timeout), guardian.getScheduler());
     }
 
-    public <RES> RES demand(Class<RES> retClass, Function<ActorRef<RES>, T> msgFactory) {
-        CompletionStage<RES> stage = AskPattern.ask(recipient, msgFactory::apply,
-                java.time.Duration.ofMillis(timeout), guardian.getScheduler());
-        try {
-            return stage.toCompletableFuture().get();
-        } catch (Exception e) {
-            throw new SystemException(e);
-        }
+    public <RES> RES askAndWait(Class<RES> retClass, Function<ActorRef<RES>, T> msgFactory) {
+        return askAndWait(msgFactory);
     }
 
-    public <RES> RES demand(Function<ActorRef<RES>, T> msgFactory) {
+    public <RES> RES askAndWait(Function<ActorRef<RES>, T> msgFactory) {
         CompletionStage<RES> stage = AskPattern.ask(recipient, msgFactory::apply,
                 java.time.Duration.ofMillis(timeout), guardian.getScheduler());
         try {
@@ -79,10 +73,10 @@ public class Talk<T> {
     }
 
     public CompletionStage<Void> async(Runnable runnable) {
-        return guardian.getWorkerPool().talk(timeout).ask(ref -> new WorkEvents.RunnableTask(ref, runnable));
+        return guardian.async(runnable, timeout);
     }
 
     public <R> CompletionStage<R> async(Callable<R> callable) {
-        return guardian.getWorkerPool().talk(timeout).ask(ref -> new WorkEvents.CallableTask(ref, callable));
+        return guardian.async(callable, timeout);
     }
 }

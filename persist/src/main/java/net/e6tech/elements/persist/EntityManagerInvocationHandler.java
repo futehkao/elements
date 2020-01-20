@@ -24,11 +24,8 @@ import javax.persistence.Query;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * Created by futeh.
