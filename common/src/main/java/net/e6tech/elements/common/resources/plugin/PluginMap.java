@@ -62,6 +62,10 @@ public class PluginMap<K, V> implements PluginFactory {
         return map.remove(key);
     }
 
+    public Map<K, Object> plugins() {
+        return map;
+    }
+
     @SuppressWarnings("squid:S3776")
     public Map<K, V> map() {
         return pluginManager.getResources().configurator().computeIfAbsent(pluginPath.path(),

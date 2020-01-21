@@ -56,7 +56,7 @@ public class Spawn<T, B extends CommonBehavior<T,B>> {
      * Note, the factory is called in a separated thread.  Akka retrieves messages from its mailbox
      * and process the spawn message.
      * @param factory factory to create a Behavior instance
-     * @return
+     * @return ActorRef<T></T>
      */
     public ActorRef<T> spawn(Function<ActorContext<T>, B> factory) {
         ActorContext<?> context = parent.getContext();

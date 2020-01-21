@@ -69,6 +69,10 @@ public class PluginList<T> implements PluginFactory {
         }
     }
 
+    public List plugins() {
+        return list;
+    }
+
     @SuppressWarnings("squid:S3776")
     public List<T> list() {
         return pluginManager.getResources().configurator().computeIfAbsent(pluginPath.path(),
