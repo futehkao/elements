@@ -74,7 +74,7 @@ public class Spawn<T, B extends CommonBehavior<T,B>> {
     }
 
     protected Behavior<T> setup(Function<ActorContext<T>, B> factory) {
-        return Behaviors.<T>setup(
+        return Behaviors.setup(
                 ctx -> {
                     akka.japi.function.Function<ActorContext<T>, B> f = factory::apply;
                     B behavior = f.apply(ctx);
