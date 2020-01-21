@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
  */
 @SuppressWarnings("unchecked")
 public class Interceptor {
-    private static final String HANDLER_FIELD = "handler";
+    static final String HANDLER_FIELD = "handler";
 
     private static Interceptor instance = new Interceptor();
 
@@ -59,7 +59,7 @@ public class Interceptor {
     private int maximumSize = 1000;
     private long expiration = 60 * 60 * 1000L; // one hour
     private Cache<Class, Class> proxyClasses;
-    private Cache<Class, Class> singletonClasses;
+    Cache<Class, Class> singletonClasses;
     private Cache<Class, AnonymousDescriptor> anonymousClasses;
 
     public static Interceptor getInstance() {
@@ -109,7 +109,7 @@ public class Interceptor {
         anonymousClasses = createCache();
     }
 
-    private <T> Class<? extends T> loadClass(DynamicType.Unloaded<T> unloaded, Class<T> cls, ClassLoader classLoader) {
+    <T> Class<? extends T> loadClass(DynamicType.Unloaded<T> unloaded, Class<T> cls, ClassLoader classLoader) {
         DynamicType.Loaded<T> loaded;
         try {
             if (classLoader != null) {
@@ -168,37 +168,19 @@ public class Interceptor {
         }
     }
 
+    public <T> SingletonClassBuilder<T> singletonClassBuilder(Class<T> cls, T singleton) {
+        return new SingletonClassBuilder<>(this, cls, singleton);
+    }
+
     /*
      * Create a class that returns a singleton.  When new instance of the class is created, all operations, except
      * for finalize, are delegated to the singleton.
      */
     public <T> Class<T> newSingletonClass(Class<T> cls, T singleton) {
-        return newSingletonClass(cls, singleton, null, null);
+        return singletonClassBuilder(cls, singleton).build();
     }
 
-    public <T> Class<T> newSingletonClass(Class<T> cls, T singleton, InterceptorListener listener, ClassLoader classLoader) {
-        if (singleton == null)
-            throw new IllegalArgumentException("target cannot be null");
-        try {
-            Class proxyClass = singletonClasses.get(cls,
-                    () -> loadClass(newSingletonBuilder(cls).make(), cls, classLoader));
-            Field field = proxyClass.getDeclaredField(HANDLER_FIELD);
-            field.setAccessible(true);
-            InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
-                    proxyClass,
-                    singleton,
-                    ctx -> ctx.invoke(singleton),
-                    listener);
-            field.set(null, wrapper);
-            return proxyClass;
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        } catch (Exception e) {
-            throw new SystemException(e);
-        }
-    }
-
-    private <T> DynamicType.Builder<T> newSingletonBuilder(Class<T> cls) {
+    <T> DynamicType.Builder<T> newSingletonBuilder(Class<T> cls) {
         return new ByteBuddy()
                 .subclass(cls)
                 .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.named("finalize").and(ElementMatchers.hasParameters(ElementMatchers.none())))))
@@ -287,6 +269,7 @@ public class Interceptor {
                                 return Primitives.defaultValue(ctx.getMethod().getReturnType());
                             }
                             },
+                        null,
                         null);
                 field.set(null, wrapper);
 
@@ -327,6 +310,10 @@ public class Interceptor {
         }
     }
 
+    public <T> InterceptorBuilder<T> interceptorBuilder(T instance, InterceptorHandler handler) {
+        return new InterceptorBuilder<>(this, instance, handler);
+    }
+
     /**
      * Creates an interceptor for an instance.  All calls for the interceptor, except for methods declared in Object, are
      * forwarded to the handler.
@@ -336,19 +323,11 @@ public class Interceptor {
      * @return an instance of interceptor
      */
     public <T> T newInterceptor(T instance, InterceptorHandler handler) {
-        return newInterceptor(instance, handler, null, null);
+        return interceptorBuilder(instance, handler).build();
     }
 
-    public <T> T newInterceptor(T instance, InterceptorHandler handler, ClassLoader classLoader) {
-        return newInterceptor(instance, handler, null, classLoader);
-    }
-
-    public <T> T newInterceptor(T instance, InterceptorHandler handler, InterceptorListener listener, ClassLoader classLoader) {
-        Class proxyClass = createInstanceClass(instance.getClass(), classLoader);
-        T proxyObject = newObject(proxyClass);
-        InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this, proxyClass, instance, handler, listener);
-        ((HandlerAccessor) proxyObject).setHandler(wrapper);
-        return proxyObject;
+    public <T> InstanceBuilder<T> instanceBuilder(Class<T> cls, InterceptorHandler handler) {
+        return new InstanceBuilder<>(this, cls, handler);
     }
 
     /**
@@ -358,32 +337,11 @@ public class Interceptor {
      * @param <T> type of instance
      * @return byte enhanced instance.
      */
-    public <T> T newInstance(Class cls, InterceptorHandler handler) {
-        return newInstance(cls, handler, null, null);
+    public <T> T newInstance(Class<T> cls, InterceptorHandler handler) {
+        return instanceBuilder(cls, handler).build();
     }
 
-    public <T> T newInstance(Class cls, InterceptorHandler handler, InterceptorListener listener) {
-        return newInstance(cls, handler, listener, null);
-    }
-
-    public <T> T newInstance(Class cls, InterceptorHandler handler, InterceptorListener listener, ClassLoader classLoader) {
-        Class proxyClass = createInstanceClass(cls, classLoader);
-        T proxyObject = newObject(proxyClass);
-        InterceptorHandlerWrapper wrapper = null;
-        try {
-            Object target = null;
-            if (!cls.isInterface())
-                target = cls.getDeclaredConstructor().newInstance();
-            wrapper = new InterceptorHandlerWrapper(this, proxyClass, target, handler, listener);
-        } catch (Exception e) {
-            throw new SystemException(e);
-        }
-        wrapper.targetClass = cls;
-        ((HandlerAccessor) proxyObject).setHandler(wrapper);
-        return proxyObject;
-    }
-
-    private Class createInstanceClass(Class cls, ClassLoader classLoader) {
+    Class createInstanceClass(Class cls, ClassLoader classLoader) {
         try {
             return proxyClasses.get(cls, () -> {
                 DynamicType.Unloaded unloaded =
@@ -401,16 +359,6 @@ public class Interceptor {
         }
     }
 
-    private <T> T newObject(Class proxyClass) {
-        T proxyObject;
-        try {
-            proxyObject = (T) proxyClass.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-            throw new SystemException(e);
-        }
-        return proxyObject;
-    }
-
     public static boolean isProxyObject(Object proxyObject) {
         return proxyObject instanceof HandlerAccessor;
     }
@@ -421,8 +369,7 @@ public class Interceptor {
         }
         InterceptorHandlerWrapper wrapper = (InterceptorHandlerWrapper) ((HandlerAccessor) proxyObject).getHandler();
         wrapper = new InterceptorHandlerWrapper(wrapper); // make a copy
-        Interceptor interceptor = wrapper.interceptor;
-        T cloneProxy = interceptor.newObject(wrapper.proxyClass);
+        T cloneProxy = (T) wrapper.newObject.newObject(wrapper.proxyClass);
         ((HandlerAccessor) cloneProxy).setHandler(wrapper);
         return cloneProxy;
     }
@@ -480,19 +427,21 @@ public class Interceptor {
         void setHandler(Handler handler);
     }
 
-    private static class InterceptorHandlerWrapper implements Handler {
+    static class InterceptorHandlerWrapper implements Handler {
         InterceptorHandler handler;
         InterceptorListener listener;
         Object target;
         Class targetClass;
         Class proxyClass;
         Interceptor interceptor;
+        NewObject newObject;
 
         InterceptorHandlerWrapper(Interceptor interceptor,
                                          Class proxyClass,
                                          Object target,
                                          InterceptorHandler handler,
-                                         InterceptorListener listener) {
+                                         InterceptorListener listener,
+                                         NewObject newObject) {
             this.interceptor = interceptor;
             this.proxyClass = proxyClass;
             this.handler = handler;
@@ -500,6 +449,9 @@ public class Interceptor {
             this.target = target;
             if (target != null)
                 targetClass = target.getClass();
+            this.newObject = newObject;
+            if (this.newObject == null)
+                this.newObject = AbstractBuilder.defaultNewObject;
         }
 
         InterceptorHandlerWrapper(InterceptorHandlerWrapper copy) {
@@ -509,6 +461,7 @@ public class Interceptor {
             this.listener = copy.listener;
             this.target = copy.target;
             this.targetClass = copy.targetClass;
+            this.newObject = copy.newObject;
         }
 
         public Object handle(MethodHandle methodHandle, Method method, @RuntimeType  Object[] arguments) throws Throwable {

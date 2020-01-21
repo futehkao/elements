@@ -159,7 +159,7 @@ public class Genesis implements Initializable {
 
     public void terminate() {
         if (guardian != null)
-            guardian.terminate();
+            guardian.getSystem().terminate();
     }
 
     public CompletionStage<Void> async(Runnable runnable) {

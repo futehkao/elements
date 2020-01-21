@@ -104,12 +104,15 @@ public class RestfulProxy {
 
     public  <T> T newProxy(Class<T> serviceClass, InterceptorListener listener) {
         client.setPrinter(printer);
-        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, null, printer), listener);
+        return interceptor.instanceBuilder(serviceClass, new InvocationHandler(this, serviceClass, null, printer))
+                .listener(listener).build();
     }
 
     public  <T> T newProxy(Class<T> serviceClass, Presentation presentation, InterceptorListener listener) {
         client.setPrinter(printer);
-        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, presentation, printer), listener);
+        return interceptor.instanceBuilder(serviceClass, new InvocationHandler(this, serviceClass, presentation, printer))
+                .listener(listener)
+                .build();
     }
 
     public Map<String, String> getRequestProperties() {

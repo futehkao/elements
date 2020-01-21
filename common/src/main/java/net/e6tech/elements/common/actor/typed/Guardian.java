@@ -31,7 +31,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings("unchecked")
-public class Guardian extends CommonBehavior<Void> {
+public class Guardian extends CommonBehavior<Void, Guardian> {
     private static final Logger logger = Logger.getLogger();
 
     private WorkerPool workerPool;
@@ -70,7 +70,8 @@ public class Guardian extends CommonBehavior<Void> {
         setName(name);
         setTimeout(timeout);
         setup(this);
-        workerPool = childActor(WorkerPool.class).withName(workerPoolConfig.getName()).spawnNow(ctx -> new WorkerPool(ctx, workerPoolConfig));
+        workerPool = childActor(WorkerPool.class).withName(workerPoolConfig.getName())
+                .spawnNow(ctx -> new WorkerPool(ctx, workerPoolConfig));
     }
 
     public long getTimeout() {
@@ -95,10 +96,5 @@ public class Guardian extends CommonBehavior<Void> {
 
     public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
         return workerPool.talk(timeout).ask(ref -> new WorkEvents.CallableTask(ref, callable));
-    }
-
-    public void terminate() {
-        if (getSystem() != null)
-            getSystem().terminate();
     }
 }

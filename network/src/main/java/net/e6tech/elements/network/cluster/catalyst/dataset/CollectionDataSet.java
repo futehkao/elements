@@ -29,6 +29,7 @@ public class CollectionDataSet<E> implements DataSet<E> {
     private Collection<E> dataSet;
     private int splitFactor = 1;
 
+    @SafeVarargs
     public CollectionDataSet(E ... entries) {
         if (entries != null) {
             dataSet = Arrays.asList(entries);

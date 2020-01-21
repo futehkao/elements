@@ -22,7 +22,7 @@ import akka.actor.typed.javadsl.ActorContext;
 import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Typed;
 
-public class RegistryEntry extends CommonBehavior<InvocationEvents.Request> {
+public class RegistryEntry extends CommonBehavior<InvocationEvents.Request, RegistryEntry> {
     private InvocationEvents.Registration registration;
 
     public RegistryEntry(ActorContext<InvocationEvents.Request> context, InvocationEvents.Registration registration) {

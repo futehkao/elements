@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static net.e6tech.elements.network.cluster.invocation.InvocationEvents.*;
 
-public class Registrar extends CommonBehavior<InvocationEvents> {
+public class Registrar extends CommonBehavior<InvocationEvents, Registrar> {
 
     private Map<String, ActorRef<InvocationEvents.Request>> routes = new HashMap<>(); // key is the context@method
     private Map<String, Set<ActorRef<InvocationEvents.Request>>> actors = new ConcurrentHashMap<>();

@@ -24,14 +24,14 @@ import akka.actor.typed.javadsl.Behaviors;
 
 import java.util.function.Function;
 
-public class Spawn<T, B extends CommonBehavior<T>> {
+public class Spawn<T, B extends CommonBehavior<T,B>> {
 
     private String name;
-    private CommonBehavior<?> parent;
+    private CommonBehavior<?,?> parent;
     private Guardian guardian;
     private Props props;
 
-    public Spawn(CommonBehavior<?> parent, Guardian guardian) {
+    public Spawn(CommonBehavior<?,?> parent, Guardian guardian) {
         this.parent = parent;
         this.guardian = guardian;
     }

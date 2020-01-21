@@ -29,7 +29,7 @@ import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
 
-public class SubscriberActor extends CommonBehavior<MessagingEvents> {
+public class SubscriberActor extends CommonBehavior<MessagingEvents, SubscriberActor> {
 
     private Subscriber subscriber;
     private String topic;

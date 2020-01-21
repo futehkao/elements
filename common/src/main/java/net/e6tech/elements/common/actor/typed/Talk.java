@@ -42,17 +42,17 @@ public class Talk<T> {
         return this;
     }
 
-    public <RES> CompletionStage<RES> ask(Function<ActorRef<RES>, T> msgFactory) {
+    public <Res> CompletionStage<Res> ask(Function<ActorRef<Res>, T> msgFactory) {
         return AskPattern.ask(recipient, msgFactory::apply,
                 java.time.Duration.ofMillis(timeout), guardian.getScheduler());
     }
 
-    public <RES> RES askAndWait(Class<RES> retClass, Function<ActorRef<RES>, T> msgFactory) {
+    public <Res> Res askAndWait(Class<Res> retClass, Function<ActorRef<Res>, T> msgFactory) {
         return askAndWait(msgFactory);
     }
 
-    public <RES> RES askAndWait(Function<ActorRef<RES>, T> msgFactory) {
-        CompletionStage<RES> stage = AskPattern.ask(recipient, msgFactory::apply,
+    public <Res> Res askAndWait(Function<ActorRef<Res>, T> msgFactory) {
+        CompletionStage<Res> stage = AskPattern.ask(recipient, msgFactory::apply,
                 java.time.Duration.ofMillis(timeout), guardian.getScheduler());
         try {
             return stage.toCompletableFuture().get();

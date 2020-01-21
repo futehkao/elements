@@ -56,7 +56,7 @@ public class Where<T> extends Handler {
 
     public Where(EntityManager entityManager, CriteriaBuilder builder, CriteriaQuery query, Path path) {
         super(entityManager, builder, query, path);
-        template = Handler.interceptor.newInstance(path.getJavaType(), this);
+        template = (T) Handler.interceptor.newInstance(path.getJavaType(), this);
     }
 
     public Map<Pair, Function> getConverters() {

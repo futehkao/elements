@@ -33,7 +33,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 @SuppressWarnings("unchecked")
-public class WorkerPool extends CommonBehavior<WorkEvents> {
+public class WorkerPool extends CommonBehavior<WorkEvents, WorkerPool> {
 
     private boolean cleanupScheduled = false;
     private Set<ActorRef<WorkEvents>> workers = new LinkedHashSet<>();

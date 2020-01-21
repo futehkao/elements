@@ -46,7 +46,7 @@ public interface ExtensionEvents {
         }
 
         @SuppressWarnings("unchecked")
-        public <T extends CommonBehavior> T getOwner() {
+        public <T extends CommonBehavior<?,?>> T getOwner() {
             return (T) owner;
         }
 

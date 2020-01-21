@@ -41,6 +41,7 @@ public class SplitDataSet <E> implements DataSet<E> {
     }
 
     @SuppressWarnings("all")
+    @SafeVarargs
     public SplitDataSet(Function<E, Object> keyFunc, E ... entries) {
         if (entries != null) {
             Map<Object, Collection<E>> map = new HashMap<>(entries.length);

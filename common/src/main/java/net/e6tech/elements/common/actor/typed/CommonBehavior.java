@@ -32,7 +32,7 @@ import java.util.function.BiFunction;
 /**
  * Base Behavior class.  T is the Message class that this Behavior response to
  */
-public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
+public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends AbstractBehavior<T> {
 
     private static Cache<Class, List<MessageBuilder>> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
@@ -48,9 +48,9 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
         super(context);
     }
 
-    protected <U extends CommonBehavior<?>> CommonBehavior<T> addExtension(BiFunction<ActorContext, CommonBehavior<T>, U> factory) {
+    protected <U extends CommonBehavior<?, ?>> B addExtension(BiFunction<ActorContext, CommonBehavior<T,?>, U> factory) {
         extensionFactories.add((BiFunction) factory);
-        return this;
+        return (B) this;
     }
 
     public void setup(Guardian guardian) {
@@ -127,14 +127,12 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
                 Annotation typed = method.getAnnotation(Typed.class);
                 if (typed == null)
                     continue;
-                if (method.getParameterCount() == 1
-                        && (Behavior.class.isAssignableFrom(method.getReturnType()) || void.class.equals(method.getReturnType()))) {
+                if (method.getParameterCount() == 1) {
                     method.setAccessible(true);
-                    boolean behavior = Behavior.class.isAssignableFrom(method.getReturnType());
                     if (Signal.class.isAssignableFrom(method.getParameterTypes()[0])) {
-                        list.add(new OnSignal(method, behavior));
+                        list.add(new OnSignal(method));
                     } else {
-                        list.add(new OnMessage(method, behavior));
+                        list.add(new OnMessage(method));
                     }
 
                 } else {
@@ -200,7 +198,7 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
         return getSystem().scheduler();
     }
 
-    public <B extends CommonBehavior<M>, M> Spawn<M, B> childActor(Class<B> commonBehaviorClass) {
+    public <C extends CommonBehavior<M, C>, M> Spawn<M, C> childActor(Class<C> commonBehaviorClass) {
         return new Spawn<>(this, getGuardian());
     }
 
@@ -225,9 +223,9 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
         protected Method method;
         private String signature;
 
-        MessageBuilder(Method method, boolean behavior) {
+        MessageBuilder(Method method) {
+            this.behavior = Behavior.class.isAssignableFrom(method.getReturnType());
             this.method = method;
-            this.behavior = behavior;
             StringBuilder builder = new StringBuilder();
             builder.append(method.getName());
             builder.append("(");
@@ -252,8 +250,8 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
     }
 
     static class OnMessage extends MessageBuilder {
-        OnMessage(Method method, boolean behavior) {
-            super(method, behavior);
+        OnMessage(Method method) {
+            super(method);
         }
 
         @Override
@@ -267,8 +265,8 @@ public abstract class CommonBehavior<T> extends AbstractBehavior<T> {
     }
 
     static class OnSignal extends MessageBuilder {
-        OnSignal(Method method, boolean behavior) {
-            super(method, behavior);
+        OnSignal(Method method) {
+            super(method);
         }
 
         @Override

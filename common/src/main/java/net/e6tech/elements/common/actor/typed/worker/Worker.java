@@ -23,7 +23,7 @@ import net.e6tech.elements.common.actor.typed.CommonBehavior;
 import net.e6tech.elements.common.actor.typed.Typed;
 
 @SuppressWarnings("unchecked")
-public class Worker extends CommonBehavior<WorkEvents> {
+public class Worker extends CommonBehavior<WorkEvents, Worker> {
 
     private ActorRef<WorkEvents> pool;
 

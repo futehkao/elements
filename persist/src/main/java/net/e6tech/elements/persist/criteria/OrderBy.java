@@ -39,9 +39,10 @@ public class OrderBy<T> extends Handler {
     List<Order> orderByList = new ArrayList<>();
     T template;
 
+    @SuppressWarnings("unchecked")
     public OrderBy(EntityManager entityManager, CriteriaBuilder builder, CriteriaQuery query, Path path) {
         super(entityManager, builder, query, path);
-        template = interceptor.newInstance(path.getJavaType(), this);
+        template = (T) interceptor.newInstance(path.getJavaType(), this);
     }
 
     public T getTemplate() {

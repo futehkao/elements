@@ -179,7 +179,7 @@ public class ClusterNode implements Initializable {
     }
 
     // listener to cluster events
-    static class Membership extends CommonBehavior<ClusterEvent.ClusterDomainEvent> {
+    static class Membership extends CommonBehavior<ClusterEvent.ClusterDomainEvent, Membership> {
         private Map<Address, Member> members = new HashMap<>();
         private List<MemberListener> memberListeners = new ArrayList<>();
 
@@ -238,7 +238,7 @@ public class ClusterNode implements Initializable {
         }
     }
 
-    static class MembershipExtension extends CommonBehavior<MemberEvents> {
+    static class MembershipExtension extends CommonBehavior<MemberEvents, MembershipExtension> {
         private Map<Address, Member> members;
         private List<MemberListener> memberListeners;
 
