@@ -18,10 +18,10 @@ package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
-import net.e6tech.elements.common.actor.typed.Trait;
+import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
 
-public class RegistryEntry extends Trait<InvocationEvents.Request, RegistryEntry> {
+public class RegistryEntry extends Receptor<InvocationEvents.Request, RegistryEntry> {
     private InvocationEvents.Registration registration;
 
     public RegistryEntry(InvocationEvents.Registration registration) {

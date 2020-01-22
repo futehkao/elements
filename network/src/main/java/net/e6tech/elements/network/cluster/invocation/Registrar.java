@@ -27,7 +27,7 @@ import akka.actor.typed.javadsl.Routers;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import net.e6tech.elements.common.actor.Genesis;
-import net.e6tech.elements.common.actor.typed.Trait;
+import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import scala.concurrent.ExecutionContextExecutor;
@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static net.e6tech.elements.network.cluster.invocation.InvocationEvents.*;
 
-public class Registrar extends Trait<InvocationEvents, Registrar> {
+public class Registrar extends Receptor<InvocationEvents, Registrar> {
 
     private Map<String, ActorRef<InvocationEvents.Request>> routes = new HashMap<>(); // key is the context@method
     private Map<String, Set<ActorRef<InvocationEvents.Request>>> actors = new ConcurrentHashMap<>();

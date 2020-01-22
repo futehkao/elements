@@ -23,13 +23,13 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 
 
-public class Spawn<T, B extends Trait<T,B>> {
+public class Spawn<T, B extends Receptor<T,B>> {
 
     private String name;
-    private Trait<?,?> parent;
+    private Receptor<?,?> parent;
     private Props props;
 
-    public Spawn(Trait<?,?> parent) {
+    public Spawn(Receptor<?,?> parent) {
         this.parent = parent;
     }
 

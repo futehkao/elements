@@ -25,7 +25,7 @@ import akka.actor.typed.javadsl.Adapter;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
-import net.e6tech.elements.common.actor.typed.Trait;
+import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import net.e6tech.elements.common.subscribe.Subscriber;
@@ -36,7 +36,7 @@ import java.util.Map;
 import static net.e6tech.elements.network.cluster.messaging.MessagingEvents.*;
 
 @SuppressWarnings("unchecked")
-public class Messenger extends Trait<MessagingEvents, Messenger> {
+public class Messenger extends Receptor<MessagingEvents, Messenger> {
 
     private static final String SUBSCRIBER_PREFIX = "subscriber-";
     private static final String DESTINATION_PREFIX = "destination-";

@@ -29,22 +29,22 @@ public interface ExtensionEvents {
     }
 
     class ExtensionsResponse implements ExtensionEvents {
-        private Trait owner;
-        private Map<Class, Trait> extensions;
+        private Receptor owner;
+        private Map<Class, Receptor> extensions;
         private ActorRef responder;
 
-        public ExtensionsResponse(ActorRef responder, Trait owner, Map<Class, Trait> extensions) {
+        public ExtensionsResponse(ActorRef responder, Receptor owner, Map<Class, Receptor> extensions) {
             this.responder = responder;
             this.owner = owner;
             this.extensions = extensions;
         }
 
         @SuppressWarnings("unchecked")
-        public <T extends Trait<?,?>> T getOwner() {
+        public <T extends Receptor<?,?>> T getOwner() {
             return (T) owner;
         }
 
-        public Map<Class, Trait> getExtensions() {
+        public Map<Class, Receptor> getExtensions() {
             return extensions;
         }
 

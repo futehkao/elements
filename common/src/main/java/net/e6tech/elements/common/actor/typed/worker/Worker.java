@@ -18,11 +18,11 @@ package net.e6tech.elements.common.actor.typed.worker;
 
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
-import net.e6tech.elements.common.actor.typed.Trait;
+import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
 
 @SuppressWarnings("unchecked")
-public class Worker extends Trait<WorkEvents, Worker> {
+public class Worker extends Receptor<WorkEvents, Worker> {
 
     private ActorRef<WorkEvents> pool;
 

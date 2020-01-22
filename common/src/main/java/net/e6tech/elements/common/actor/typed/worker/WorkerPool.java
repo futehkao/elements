@@ -21,7 +21,7 @@ import akka.actor.typed.Behavior;
 import akka.actor.typed.Terminated;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
-import net.e6tech.elements.common.actor.typed.Trait;
+import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.reflection.Reflection;
@@ -33,7 +33,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 @SuppressWarnings("unchecked")
-public class WorkerPool extends Trait<WorkEvents, WorkerPool> {
+public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
 
     private boolean cleanupScheduled = false;
     private Set<ActorRef<WorkEvents>> workers = new LinkedHashSet<>();

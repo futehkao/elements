@@ -30,7 +30,7 @@ import akka.cluster.typed.Subscribe;
 import akka.cluster.typed.Unsubscribe;
 import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.actor.typed.Ask;
-import net.e6tech.elements.common.actor.typed.Trait;
+import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
@@ -181,7 +181,7 @@ public class ClusterNode implements Initializable {
     // listener to cluster events
     // NOTE Both Membership and MembershipExtension share the same ActorContext and, therfore,
     // they're thread-safe when accessing members and memberListeners
-    public static class Membership extends Trait<ClusterEvent.ClusterDomainEvent, Membership> {
+    public static class Membership extends Receptor<ClusterEvent.ClusterDomainEvent, Membership> {
         private Map<Address, Member> members = new HashMap<>();
         private List<MemberListener> memberListeners = new ArrayList<>();
         private MembershipExtension extension;
@@ -195,7 +195,7 @@ public class ClusterNode implements Initializable {
          */
         @Override
         protected void initialize() {
-            extension = addExtension(new MembershipExtension(members, memberListeners)).asSender();
+            extension = addExtension(new MembershipExtension(members, memberListeners)).virtualize();
             Cluster cluster = Cluster.get(getContext().getSystem());
             cluster.subscriptions().tell(new Subscribe<>(getContext().getSelf(), ClusterEvent.ClusterDomainEvent.class));
         }
@@ -241,7 +241,7 @@ public class ClusterNode implements Initializable {
         }
     }
 
-    public static class MembershipExtension extends Trait<MemberEvents, MembershipExtension> {
+    public static class MembershipExtension extends Receptor<MemberEvents, MembershipExtension> {
         private Map<Address, Member> members;
         private List<MemberListener> memberListeners;
 

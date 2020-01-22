@@ -31,7 +31,7 @@ import java.util.*;
 import java.util.function.BiConsumer;
 
 @SuppressWarnings({"unchecked", "squid:S1172"})
-public abstract class Trait<T, B extends Trait<T, B>> {
+public abstract class Receptor<T, R extends Receptor<T, R>> {
 
     private static Cache<Class, List<MessageBuilder>> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
@@ -42,14 +42,14 @@ public abstract class Trait<T, B extends Trait<T, B>> {
     private Guardian guardian;
     private AbstractBehavior<T> behavior;
 
-    protected List<Trait> extensionFactories = new ArrayList<>(); // event class to factory
-    protected Map<Class, Trait> extensions = new LinkedHashMap<>(); // event classes
+    protected List<Receptor> addedExtensions = new ArrayList<>(); // contains a list of extensions that has not been set up.
+    protected Map<Class, Receptor> extensions = new LinkedHashMap<>(); // event classes
 
-    public Trait() {
+    public Receptor() {
     }
 
-    protected <U extends Trait> U addExtension(U trait) {
-        extensionFactories.add(trait);
+    protected <U extends Receptor> U addExtension(U trait) {
+        addedExtensions.add(trait);
         return trait;
     }
 
@@ -58,15 +58,15 @@ public abstract class Trait<T, B extends Trait<T, B>> {
         behavior = new AbstractBehavior<T>(context) {
             @Override
             public Receive<T> createReceive() {
-                return Trait.this.createReceive();
+                return Receptor.this.createReceive();
             }
         };
         initialize();
         return behavior;
     }
 
-    public B asSender() {
-        return Interceptor.getInstance().interceptorBuilder((B) this,
+    public R virtualize() {
+        return Interceptor.getInstance().interceptorBuilder((R) this,
                 frame -> {
                     if (frame.getMethod().getAnnotation(Typed.class) != null
                     && frame.getArguments().length > 0) {
@@ -109,11 +109,11 @@ public abstract class Trait<T, B extends Trait<T, B>> {
         return new ExtensionEvents.ExtensionsResponse(getSelf(), this, new LinkedHashMap<>(extensions));
     }
 
-    private void saveEventClass(Class cls, Trait implementation) {
+    private void saveEventClass(Class cls, Receptor implementation) {
         // deduce event class
         Class c = cls;
         Class eventClass = null;
-        while (!c.equals(Trait.class)) {
+        while (!c.equals(Receptor.class)) {
             try {
                 eventClass = Reflection.getParametrizedType(c, 0);
                 if (eventClass != null)
@@ -136,31 +136,31 @@ public abstract class Trait<T, B extends Trait<T, B>> {
         Set<String> events = new HashSet<>();
         while (true) {
             builder = build(this, builder, cls, events);
-            if (cls.equals(Trait.class))
+            if (cls.equals(Receptor.class))
                 break;
             cls = cls.getSuperclass();
         }
 
         // build events for extension classes
-        for (Trait extension : extensionFactories) {
+        for (Receptor extension : addedExtensions) {
             extension.setup(getContext(), getGuardian());
             cls = extension.getClass();
             saveEventClass(cls, extension);
             while (true) {
                 builder = build(extension, builder, cls, events);
-                if (cls.equals(Trait.class))
+                if (cls.equals(Receptor.class))
                     break;
                 cls = cls.getSuperclass();
             }
         }
-        extensionFactories.clear();
-        extensionFactories = null;
+        addedExtensions.clear();
+        addedExtensions = null;
 
         return builder.build();
     }
 
     @SuppressWarnings("squid:S3776")
-    private ReceiveBuilder build(Trait target, ReceiveBuilder builder, Class cls, Set<String> events) {
+    private ReceiveBuilder build(Receptor target, ReceiveBuilder builder, Class cls, Set<String> events) {
         List<MessageBuilder> list = cache.getIfPresent(cls);
         if (list == null) {
             list = new ArrayList<>();
@@ -243,7 +243,7 @@ public abstract class Trait<T, B extends Trait<T, B>> {
         return getSystem().scheduler();
     }
 
-    public <C extends Trait<M, C>, M> Spawn<M, C> childActor(Class<C> commonBehaviorClass) {
+    public <C extends Receptor<M, C>, M> Spawn<M, C> childActor(Class<C> commonBehaviorClass) {
         return new Spawn<>(this);
     }
 
@@ -295,7 +295,7 @@ public abstract class Trait<T, B extends Trait<T, B>> {
     }
 
     static class OnMessage extends MessageBuilder {
-        private static BiConsumer NO_OP = (arg, ret) -> {};
+        private static BiConsumer<Object, Object> NO_OP = (arg, ret) -> {};
 
         OnMessage(Method method) {
             super(method);
@@ -303,9 +303,9 @@ public abstract class Trait<T, B extends Trait<T, B>> {
 
         @Override
         public ReceiveBuilder build(ReceiveBuilder builder, Object target) {
-            BiConsumer consumer = NO_OP;
+            BiConsumer<Object, Object> consumer = NO_OP;
             if (method.getParameterTypes().length > 0 && !method.getReturnType().equals(void.class) && !method.getReturnType().equals(Void.class)) {
-                Class argType = method.getParameterTypes()[0];
+                Class<?> argType = method.getParameterTypes()[0];
                 if (Ask.class.isAssignableFrom(argType)){
                     consumer = (arg, ret) -> {
                         ActorRef sender = ((Ask) arg).getSender();
@@ -330,7 +330,7 @@ public abstract class Trait<T, B extends Trait<T, B>> {
                     };
                 }
             }
-            BiConsumer responder = consumer;
+            BiConsumer<Object, Object> responder = consumer;
             return builder.onMessage(method.getParameterTypes()[0],
                     m -> {
                         Object ret = method.invoke(target, m);

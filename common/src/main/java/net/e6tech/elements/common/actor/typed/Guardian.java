@@ -34,7 +34,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings("unchecked")
-public class Guardian extends Trait<Void, Guardian> {
+public class Guardian extends Receptor<Void, Guardian> {
     private static final Logger logger = Logger.getLogger();
 
     private WorkerPool workerPool;
