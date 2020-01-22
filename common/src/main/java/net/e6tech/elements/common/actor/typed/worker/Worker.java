@@ -18,17 +18,15 @@ package net.e6tech.elements.common.actor.typed.worker;
 
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
-import akka.actor.typed.javadsl.ActorContext;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Trait;
 import net.e6tech.elements.common.actor.typed.Typed;
 
 @SuppressWarnings("unchecked")
-public class Worker extends CommonBehavior<WorkEvents, Worker> {
+public class Worker extends Trait<WorkEvents, Worker> {
 
     private ActorRef<WorkEvents> pool;
 
-    public Worker(ActorContext<WorkEvents> context, ActorRef<WorkEvents> pool) {
-        super(context);
+    public Worker(ActorRef<WorkEvents> pool) {
         this.pool = pool;
     }
 

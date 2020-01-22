@@ -18,15 +18,13 @@ package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.Status;
 import akka.actor.typed.ActorRef;
-import akka.actor.typed.javadsl.ActorContext;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Trait;
 import net.e6tech.elements.common.actor.typed.Typed;
 
-public class RegistryEntry extends CommonBehavior<InvocationEvents.Request, RegistryEntry> {
+public class RegistryEntry extends Trait<InvocationEvents.Request, RegistryEntry> {
     private InvocationEvents.Registration registration;
 
-    public RegistryEntry(ActorContext<InvocationEvents.Request> context, InvocationEvents.Registration registration) {
-        super(context);
+    public RegistryEntry(InvocationEvents.Registration registration) {
         this.registration = registration;
     }
 

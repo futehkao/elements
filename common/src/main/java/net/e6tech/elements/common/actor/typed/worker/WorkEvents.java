@@ -17,6 +17,7 @@
 package net.e6tech.elements.common.actor.typed.worker;
 
 import akka.actor.typed.ActorRef;
+import net.e6tech.elements.common.actor.typed.Ask;
 
 import java.io.Serializable;
 import java.util.concurrent.Callable;
@@ -41,18 +42,13 @@ public interface WorkEvents {
         private static final long serialVersionUID = 1391045696378516373L;
     }
 
-    class RunnableTask implements WorkEvents, Serializable {
+    class RunnableTask extends Ask implements WorkEvents, Serializable {
         private static final long serialVersionUID = -8279583557717048047L;
         private Runnable runnable;
-        private ActorRef sender;
 
         public RunnableTask(ActorRef sender, Runnable runnable) {
-            this.sender = sender;
+            setSender(sender);
             this.runnable = runnable;
-        }
-
-        public ActorRef getSender() {
-            return sender;
         }
 
         public Runnable getRunnable() {
@@ -60,18 +56,14 @@ public interface WorkEvents {
         }
     }
 
-    class CallableTask implements WorkEvents, Serializable {
+    class CallableTask extends Ask implements WorkEvents, Serializable {
         private static final long serialVersionUID = -5567603118967175000L;
         private Callable callable;
         private ActorRef sender;
 
         public CallableTask(ActorRef sender, Callable callable) {
-            this.sender = sender;
+            setSender(sender);
             this.callable = callable;
-        }
-
-        public ActorRef getSender() {
-            return sender;
         }
 
         public Callable getCallable() {

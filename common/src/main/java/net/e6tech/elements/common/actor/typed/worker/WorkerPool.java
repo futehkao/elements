@@ -21,7 +21,7 @@ import akka.actor.typed.Behavior;
 import akka.actor.typed.Terminated;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Trait;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.reflection.Reflection;
@@ -33,7 +33,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 @SuppressWarnings("unchecked")
-public class WorkerPool extends CommonBehavior<WorkEvents, WorkerPool> {
+public class WorkerPool extends Trait<WorkEvents, WorkerPool> {
 
     private boolean cleanupScheduled = false;
     private Set<ActorRef<WorkEvents>> workers = new LinkedHashSet<>();
@@ -41,17 +41,17 @@ public class WorkerPool extends CommonBehavior<WorkEvents, WorkerPool> {
     private LinkedList<Task> waiting = new LinkedList<>();
     protected WorkerPoolConfig config = new WorkerPoolConfig();
 
-    public WorkerPool(ActorContext<WorkEvents> context, WorkerPoolConfig config) {
-        super(context);
+    public WorkerPool(WorkerPoolConfig config) {
         Reflection.copyInstance(this.config, config);
     }
 
     @Override
-    public void setup(Guardian guardian) {
-        super.setup(guardian);
+    public Behavior<WorkEvents> setup(ActorContext<WorkEvents> ctx, Guardian guardian) {
+        super.setup(ctx, guardian);
         for (int i = 0; i < config.getInitialCapacity(); i++) {
             newWorker();
         }
+        return getBehavior();
     }
 
     @SuppressWarnings("squid:S2175")
@@ -95,7 +95,7 @@ public class WorkerPool extends CommonBehavior<WorkEvents, WorkerPool> {
     }
 
     private void newWorker() {
-        ActorRef<WorkEvents> worker = childActor(Worker.class).spawn(ctx -> new Worker(ctx, getSelf()));
+        ActorRef<WorkEvents> worker = childActor(Worker.class).spawn(new Worker(getSelf()));
         workers.add(worker);
         getContext().watch(worker);
         idle(worker);

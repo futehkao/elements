@@ -51,7 +51,7 @@ public class Messaging implements Broadcast {
 
     public void start(Guardian guardian) {
         this.guardian = guardian;
-        messenger = guardian.childActor(Messenger.class).withName(name).spawn(Messenger::new);
+        messenger = guardian.childActor(Messenger.class).withName(name).spawn(new Messenger());
     }
 
     public void shutdown() {

@@ -21,14 +21,13 @@ import akka.actor.Status;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.DispatcherSelector;
 import akka.actor.typed.Terminated;
-import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.GroupRouter;
 import akka.actor.typed.javadsl.Routers;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import net.e6tech.elements.common.actor.Genesis;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Trait;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import scala.concurrent.ExecutionContextExecutor;
@@ -38,15 +37,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static net.e6tech.elements.network.cluster.invocation.InvocationEvents.*;
 
-public class Registrar extends CommonBehavior<InvocationEvents, Registrar> {
+public class Registrar extends Trait<InvocationEvents, Registrar> {
 
     private Map<String, ActorRef<InvocationEvents.Request>> routes = new HashMap<>(); // key is the context@method
     private Map<String, Set<ActorRef<InvocationEvents.Request>>> actors = new ConcurrentHashMap<>();
     private Map<ActorRef<InvocationEvents.Request>, String> actorKeys = new ConcurrentHashMap<>();
     private RegistryImpl registry;
 
-    public Registrar(ActorContext<InvocationEvents> context, RegistryImpl registry) {
-        super(context);
+    public Registrar(RegistryImpl registry) {
         this.registry = registry;
     }
 
@@ -105,7 +103,7 @@ public class Registrar extends CommonBehavior<InvocationEvents, Registrar> {
         ActorRef<InvocationEvents.Request> registryEntry = this.childActor(RegistryEntry.class)
                 .withProps(DispatcherSelector.fromConfig(dispatcher))
                 //.afterSetup(child -> getSystem().receptionist().tell(Receptionist.register(key, child.getSelf())))
-                .spawn(ctx -> new RegistryEntry(ctx, registration));
+                .spawn(new RegistryEntry(registration));
         getSystem().receptionist().tell(Receptionist.register(key, registryEntry));
 
         routes.computeIfAbsent(registration.getPath(),

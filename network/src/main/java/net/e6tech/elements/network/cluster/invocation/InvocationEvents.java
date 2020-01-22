@@ -21,6 +21,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoSerializable;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import net.e6tech.elements.common.actor.typed.Ask;
 import net.e6tech.elements.common.util.CompressionSerializer;
 import net.e6tech.elements.common.util.SystemException;
 
@@ -47,19 +48,14 @@ public interface InvocationEvents extends Serializable {
         }
     }
 
-    class Registration implements InvocationEvents {
+    class Registration extends Ask implements InvocationEvents {
         private RegisterReference reference;
         private BiFunction<ActorRef, Object[], Object> function;
-        private ActorRef sender;
 
         public Registration(ActorRef sender, String path, BiFunction<ActorRef, Object[], Object> function) {
             this.reference = new RegisterReference(path);
             this.function = function;
-            this.sender = sender;
-        }
-
-        public ActorRef getSender() {
-            return sender;
+            setSender(sender);
         }
 
         public BiFunction<ActorRef, Object[], Object> getFunction() {
@@ -71,26 +67,21 @@ public interface InvocationEvents extends Serializable {
         }
     }
 
-    class Request implements InvocationEvents, KryoSerializable {
+    class Request extends Ask implements InvocationEvents, KryoSerializable {
         private static final long serialVersionUID = -264975294117974773L;
         private transient RegisterReference reference;
         private transient Object[] arguments;
-        private ActorRef<InvocationEvents.Response> sender;
         private long timeout;
 
         public Request(ActorRef<InvocationEvents.Response> sender, String path, long timeout, Object[] arguments)  {
-            this.sender = sender;
             this.reference = new RegisterReference(path);
             this.arguments = arguments;
             this.timeout = timeout;
+            setSender(sender);
         }
 
         public Object[] arguments() {
             return arguments;
-        }
-
-        public ActorRef getSender() {
-            return sender;
         }
 
         public long getTimeout() {
@@ -107,7 +98,7 @@ public interface InvocationEvents extends Serializable {
             }
             kryo.writeObjectOrNull(out, payload, byte[].class);
             kryo.writeObjectOrNull(out, reference, RegisterReference.class);
-            kryo.writeObjectOrNull(out, sender, ActorRef.class);
+            kryo.writeObjectOrNull(out, getSender(), ActorRef.class);
             kryo.writeObject(out, timeout);
         }
 
@@ -115,7 +106,7 @@ public interface InvocationEvents extends Serializable {
         public void read(Kryo kryo, Input in) {
             byte[] buffer = kryo.readObjectOrNull(in, byte[].class);
             reference = kryo.readObjectOrNull(in, RegisterReference.class);
-            sender = kryo.readObjectOrNull(in, ActorRef.class);
+            setSender(kryo.readObjectOrNull(in, ActorRef.class));
             timeout = kryo.readObject(in, Long.class);
             try {
                 arguments = CompressionSerializer.fromBytes(buffer);
@@ -128,16 +119,18 @@ public interface InvocationEvents extends Serializable {
                 throws IOException {
             CompressionSerializer serializer = new CompressionSerializer();
             byte[] payload = serializer.toBytes(arguments);
-            out.writeInt(payload.length);
             out.write(payload);
+            out.writeInt(payload.length);
             out.writeObject(reference);
-            out.writeObject(sender);
+            out.writeObject(getSender());
+            out.writeLong(timeout);
         }
 
         @SuppressWarnings("unchecked")
         private void readObject(java.io.ObjectInputStream in)
                 throws IOException, ClassNotFoundException {
-            sender = (ActorRef) in.readObject();
+            timeout = in.readLong();
+            setSender((ActorRef) in.readObject());
             reference = (RegisterReference) in.readObject();
             int size = in.readInt();
             byte[] buffer = new byte[size];
@@ -168,17 +161,12 @@ public interface InvocationEvents extends Serializable {
         }
     }
 
-    class Routes implements InvocationEvents {
-        private ActorRef sender;
+    class Routes extends Ask implements InvocationEvents {
         private RegisterReference reference;
 
         public Routes(ActorRef sender, String path) {
-            this.sender = sender;
             this.reference = new RegisterReference(path);
-        }
-
-        public ActorRef getSender() {
-            return sender;
+            setSender(sender);
         }
 
         public String getPath() {

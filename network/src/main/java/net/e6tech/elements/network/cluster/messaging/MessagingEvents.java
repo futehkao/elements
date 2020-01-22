@@ -17,6 +17,7 @@
 package net.e6tech.elements.network.cluster.messaging;
 
 import akka.actor.typed.ActorRef;
+import net.e6tech.elements.common.actor.typed.Ask;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
@@ -28,9 +29,6 @@ public interface MessagingEvents extends Serializable {
         private static final long serialVersionUID = 7295040545418105218L;
         String topic;
         Subscriber subscriber;
-
-        public Subscribe() {
-        }
 
         public Subscribe(String topic, Subscriber subscriber) {
             this.topic = topic;
@@ -68,14 +66,13 @@ public interface MessagingEvents extends Serializable {
         }
     }
 
-    class NewDestination implements MessagingEvents {
+    class NewDestination extends Ask implements MessagingEvents {
         private static final long serialVersionUID = -227499564362523104L;
         String destination;
         Subscriber subscriber;
-        ActorRef sender;
 
         public NewDestination(ActorRef sender, String destination, Subscriber subscriber) {
-            this.sender = sender;
+            setSender(sender);
             this.destination = destination;
             this.subscriber = subscriber;
         }
@@ -88,9 +85,6 @@ public interface MessagingEvents extends Serializable {
             return subscriber;
         }
 
-        public ActorRef getSender() {
-            return sender;
-        }
     }
 
     class RemoveDestination implements MessagingEvents{

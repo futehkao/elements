@@ -16,23 +16,22 @@
 
 package net.e6tech.elements.common.actor.typed;
 
+import akka.actor.Status;
 import akka.actor.typed.*;
 import akka.actor.typed.javadsl.*;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.function.BiFunction;
+import java.util.function.BiConsumer;
 
 @SuppressWarnings({"unchecked", "squid:S1172"})
-/**
- * Base Behavior class.  T is the Message class that this Behavior response to
- */
-public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends AbstractBehavior<T> {
+public abstract class Trait<T, B extends Trait<T, B>> {
 
     private static Cache<Class, List<MessageBuilder>> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
@@ -41,37 +40,80 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
             .build();
 
     private Guardian guardian;
-    protected List<BiFunction<ActorContext, CommonBehavior, CommonBehavior>> extensionFactories = new ArrayList<>(); // event class to factory
-    protected Map<Class, CommonBehavior> extensions = new LinkedHashMap<>(); // event classes
+    private AbstractBehavior<T> behavior;
 
-    protected CommonBehavior(ActorContext<T> context) {
-        super(context);
+    protected List<Trait> extensionFactories = new ArrayList<>(); // event class to factory
+    protected Map<Class, Trait> extensions = new LinkedHashMap<>(); // event classes
+
+    public Trait() {
     }
 
-    protected <U extends CommonBehavior<?, ?>> B addExtension(BiFunction<ActorContext, CommonBehavior<T,?>, U> factory) {
-        extensionFactories.add((BiFunction) factory);
-        return (B) this;
+    protected <U extends Trait> U addExtension(U trait) {
+        extensionFactories.add(trait);
+        return trait;
     }
 
-    public void setup(Guardian guardian) {
+    public Behavior<T> setup(ActorContext<T> context, Guardian guardian) {
         this.guardian = guardian;
+        behavior = new AbstractBehavior<T>(context) {
+            @Override
+            public Receive<T> createReceive() {
+                return Trait.this.createReceive();
+            }
+        };
         initialize();
+        return behavior;
+    }
+
+    public B asSender() {
+        return Interceptor.getInstance().interceptorBuilder((B) this,
+                frame -> {
+                    if (frame.getMethod().getAnnotation(Typed.class) != null
+                    && frame.getArguments().length > 0) {
+                        Object arg = frame.getArguments()[0];
+                        if (!frame.getMethod().getReturnType().equals(void.class) && !frame.getMethod().getReturnType().equals(Void.class)) {
+                            return this.talk().askAndWait(sender -> {
+
+                                if (arg instanceof Ask)
+                                    ((Ask) arg).setSender(sender);
+                                else if (arg instanceof Asking)
+                                    ((Asking) arg).setSender(sender);
+                                else
+                                    throw new SystemException("Event " + arg.getClass() + " is not a subclass of Ask nor does it implement Asking.");
+
+                                return (T) arg;
+                            });
+                        } else {
+                            this.talk().tell((T) arg);
+                            return null;
+                        }
+                    } else {
+                        return frame.invoke();
+                    }
+                }).build();
+    }
+
+    public Behavior<T> create() {
+        return behavior;
+    }
+
+    public Behavior<T> getBehavior() {
+        return behavior;
     }
 
     protected void initialize() {
     }
 
     @Typed
-    private void extensions(ExtensionEvents.Extensions event) {
-        final ActorRef sender = event.getSender();
-        sender.tell(new ExtensionEvents.ExtensionsResponse(getSelf(), this, new LinkedHashMap<>(extensions)));
+    public ExtensionEvents.ExtensionsResponse extensions(ExtensionEvents.Extensions event) {
+        return new ExtensionEvents.ExtensionsResponse(getSelf(), this, new LinkedHashMap<>(extensions));
     }
 
-    private void saveEventClass(Class cls, CommonBehavior implementation) {
+    private void saveEventClass(Class cls, Trait implementation) {
         // deduce event class
         Class c = cls;
         Class eventClass = null;
-        while (!c.equals(CommonBehavior.class)) {
+        while (!c.equals(Trait.class)) {
             try {
                 eventClass = Reflection.getParametrizedType(c, 0);
                 if (eventClass != null)
@@ -85,9 +127,8 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
             extensions.put(eventClass, implementation);
     }
 
-    @Override
-    public Receive<T> createReceive() {
-        ReceiveBuilder builder =  newReceiveBuilder();
+    protected Receive<T> createReceive() {
+        ReceiveBuilder builder =  behavior.newReceiveBuilder();
 
         // deduce event class
         Class cls = getClass();
@@ -95,19 +136,19 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
         Set<String> events = new HashSet<>();
         while (true) {
             builder = build(this, builder, cls, events);
-            if (cls.equals(CommonBehavior.class))
+            if (cls.equals(Trait.class))
                 break;
             cls = cls.getSuperclass();
         }
 
         // build events for extension classes
-        for (BiFunction<ActorContext, CommonBehavior, CommonBehavior> factory : extensionFactories) {
-            CommonBehavior extension = factory.apply(getContext(), this);
+        for (Trait extension : extensionFactories) {
+            extension.setup(getContext(), getGuardian());
             cls = extension.getClass();
             saveEventClass(cls, extension);
             while (true) {
                 builder = build(extension, builder, cls, events);
-                if (cls.equals(CommonBehavior.class))
+                if (cls.equals(Trait.class))
                     break;
                 cls = cls.getSuperclass();
             }
@@ -119,7 +160,7 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
     }
 
     @SuppressWarnings("squid:S3776")
-    private ReceiveBuilder build(CommonBehavior target, ReceiveBuilder builder, Class cls, Set<String> events) {
+    private ReceiveBuilder build(Trait target, ReceiveBuilder builder, Class cls, Set<String> events) {
         List<MessageBuilder> list = cache.getIfPresent(cls);
         if (list == null) {
             list = new ArrayList<>();
@@ -150,6 +191,10 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
         }
 
         return builder;
+    }
+
+    public ActorContext<T> getContext() {
+        return behavior.getContext();
     }
 
     public ActorSystem<Void> getSystem() {
@@ -198,8 +243,8 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
         return getSystem().scheduler();
     }
 
-    public <C extends CommonBehavior<M, C>, M> Spawn<M, C> childActor(Class<C> commonBehaviorClass) {
-        return new Spawn<>(this, getGuardian());
+    public <C extends Trait<M, C>, M> Spawn<M, C> childActor(Class<C> commonBehaviorClass) {
+        return new Spawn<>(this);
     }
 
     public akka.actor.ActorRef untypedRef() {
@@ -242,7 +287,7 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
             signature = builder.toString();
         }
 
-        abstract ReceiveBuilder build(ReceiveBuilder builder, Behavior target);
+        abstract ReceiveBuilder build(ReceiveBuilder builder, Object target);
 
         String signature() {
             return signature;
@@ -250,16 +295,47 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
     }
 
     static class OnMessage extends MessageBuilder {
+        private static BiConsumer NO_OP = (arg, ret) -> {};
+
         OnMessage(Method method) {
             super(method);
         }
 
         @Override
-        public ReceiveBuilder build(ReceiveBuilder builder, Behavior target) {
+        public ReceiveBuilder build(ReceiveBuilder builder, Object target) {
+            BiConsumer consumer = NO_OP;
+            if (method.getParameterTypes().length > 0 && !method.getReturnType().equals(void.class) && !method.getReturnType().equals(Void.class)) {
+                Class argType = method.getParameterTypes()[0];
+                if (Ask.class.isAssignableFrom(argType)){
+                    consumer = (arg, ret) -> {
+                        ActorRef sender = ((Ask) arg).getSender();
+                        if (sender != null) {
+                            try {
+                                sender.tell(ret);
+                            } catch (Exception th) {
+                                sender.tell(new Status.Failure(th));
+                            }
+                        }
+                    };
+                } else if (Asking.class.isAssignableFrom(argType)) {
+                    consumer = (arg, ret) -> {
+                        ActorRef sender = ((Asking) arg).getSender();
+                        if (sender != null) {
+                            try {
+                                sender.tell(ret);
+                            } catch (Exception th) {
+                                sender.tell(new Status.Failure(th));
+                            }
+                        }
+                    };
+                }
+            }
+            BiConsumer responder = consumer;
             return builder.onMessage(method.getParameterTypes()[0],
                     m -> {
                         Object ret = method.invoke(target, m);
-                        return (behavior) ? (Behavior) ret : Behaviors.same();
+                        responder.accept(m, ret);
+                        return (behavior) ? ret : Behaviors.same();
                     });
         }
     }
@@ -270,11 +346,11 @@ public abstract class CommonBehavior<T, B extends CommonBehavior<T, B>> extends 
         }
 
         @Override
-        public ReceiveBuilder build(ReceiveBuilder builder, Behavior target) {
+        public ReceiveBuilder build(ReceiveBuilder builder, Object target) {
             return builder.onSignal(method.getParameterTypes()[0],
                     m -> {
                         Object ret = method.invoke(target, m);
-                        return (behavior) ? (Behavior) ret : Behaviors.same();
+                        return (behavior) ? ret : Behaviors.same();
                     });
         }
     }

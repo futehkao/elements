@@ -18,24 +18,25 @@ package net.e6tech.elements.network.cluster.messaging;
 
 import akka.actor.ActorRef;
 import akka.actor.typed.DispatcherSelector;
-import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Trait;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
 
-public class SubscriberActor extends CommonBehavior<MessagingEvents, SubscriberActor> {
+public class SubscriberActor extends Trait<MessagingEvents, SubscriberActor> {
 
     private Subscriber subscriber;
     private String topic;
 
-    public SubscriberActor(ActorContext<MessagingEvents> context, String topic, Subscriber subscriber) {
-        super(context);
+    public SubscriberActor() {
+    }
+
+    public SubscriberActor(String topic, Subscriber subscriber) {
         this.subscriber = subscriber;
         this.topic = topic;
     }

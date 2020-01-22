@@ -22,35 +22,29 @@ import java.util.Map;
 
 public interface ExtensionEvents {
 
-    class Extensions implements ExtensionEvents {
-        private ActorRef<ExtensionsResponse> sender;  // event class to extension class
-
+    class Extensions extends Ask implements ExtensionEvents {
         public Extensions(ActorRef<ExtensionsResponse> sender) {
-            this.sender = sender;
-        }
-
-        public ActorRef<ExtensionsResponse> getSender() {
-            return sender;
+            setSender(sender);
         }
     }
 
     class ExtensionsResponse implements ExtensionEvents {
-        private CommonBehavior owner;
-        private Map<Class, CommonBehavior> extensions;
+        private Trait owner;
+        private Map<Class, Trait> extensions;
         private ActorRef responder;
 
-        public ExtensionsResponse(ActorRef responder, CommonBehavior owner, Map<Class, CommonBehavior> extensions) {
+        public ExtensionsResponse(ActorRef responder, Trait owner, Map<Class, Trait> extensions) {
             this.responder = responder;
             this.owner = owner;
             this.extensions = extensions;
         }
 
         @SuppressWarnings("unchecked")
-        public <T extends CommonBehavior<?,?>> T getOwner() {
+        public <T extends Trait<?,?>> T getOwner() {
             return (T) owner;
         }
 
-        public Map<Class, CommonBehavior> getExtensions() {
+        public Map<Class, Trait> getExtensions() {
             return extensions;
         }
 

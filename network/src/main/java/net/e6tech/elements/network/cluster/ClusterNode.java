@@ -21,7 +21,6 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.Terminated;
-import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.ClusterEvent;
 import akka.cluster.Member;
@@ -30,7 +29,8 @@ import akka.cluster.typed.Cluster;
 import akka.cluster.typed.Subscribe;
 import akka.cluster.typed.Unsubscribe;
 import net.e6tech.elements.common.actor.Genesis;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Ask;
+import net.e6tech.elements.common.actor.typed.Trait;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
@@ -96,7 +96,7 @@ public class ClusterNode implements Initializable {
 
     public Map<Address, Member> getMembers() {
         try {
-            return membership.talk(MemberEvents.class).askAndWait(MemberEvents.Members::new);
+            return membership.getExtension().members(new MemberEvents.Members());
         } catch (Exception ex) {
             return Collections.emptyMap();
         }
@@ -104,7 +104,7 @@ public class ClusterNode implements Initializable {
 
     public List<MemberListener> getListeners() {
         try {
-            return membership.talk(MemberEvents.class).askAndWait(MemberEvents.Listeners::new);
+            return membership.getExtension().listeners(new MemberEvents.Listeners());
         } catch (Exception ex) {
             return Collections.emptyList();
         }
@@ -149,7 +149,7 @@ public class ClusterNode implements Initializable {
             return;
 
         if (membership == null)
-            membership = genesis.getGuardian().childActor(Membership.class).spawnNow(Membership::new);
+            membership = genesis.getGuardian().childActor(Membership.class).spawnNow(new Membership());
 
         if (broadcast == null) {
             broadcast = new Messaging();
@@ -179,20 +179,23 @@ public class ClusterNode implements Initializable {
     }
 
     // listener to cluster events
-    static class Membership extends CommonBehavior<ClusterEvent.ClusterDomainEvent, Membership> {
+    // NOTE Both Membership and MembershipExtension share the same ActorContext and, therfore,
+    // they're thread-safe when accessing members and memberListeners
+    public static class Membership extends Trait<ClusterEvent.ClusterDomainEvent, Membership> {
         private Map<Address, Member> members = new HashMap<>();
         private List<MemberListener> memberListeners = new ArrayList<>();
+        private MembershipExtension extension;
 
-        public Membership(ActorContext<ClusterEvent.ClusterDomainEvent> context) {
-            super(context);
+        public MembershipExtension getExtension() {
+            return extension;
         }
 
         /**
          * Tells akka Cluster that this Membership want to subscribe to ClusterEvent.ClusterDomainEvent
          */
         @Override
-        public void initialize() {
-            addExtension((ctx, owner) -> new MembershipExtension(ctx, members, memberListeners));
+        protected void initialize() {
+            extension = addExtension(new MembershipExtension(members, memberListeners)).asSender();
             Cluster cluster = Cluster.get(getContext().getSystem());
             cluster.subscriptions().tell(new Subscribe<>(getContext().getSelf(), ClusterEvent.ClusterDomainEvent.class));
         }
@@ -238,24 +241,26 @@ public class ClusterNode implements Initializable {
         }
     }
 
-    static class MembershipExtension extends CommonBehavior<MemberEvents, MembershipExtension> {
+    public static class MembershipExtension extends Trait<MemberEvents, MembershipExtension> {
         private Map<Address, Member> members;
         private List<MemberListener> memberListeners;
 
-        protected MembershipExtension(ActorContext<MemberEvents> context, Map<Address, Member> members, List<MemberListener> memberListeners) {
-            super(context);
+        public MembershipExtension() {
+        }
+
+        protected MembershipExtension(Map<Address, Member> members, List<MemberListener> memberListeners) {
             this.members = members;
             this.memberListeners = memberListeners;
         }
 
         @Typed
-        public void members(MemberEvents.Members members) {
-            members.sender.tell(new HashMap<>(this.members));
+        public Map<Address, Member> members(MemberEvents.Members members) {
+            return new HashMap<>(this.members);
         }
 
         @Typed
-        public void listeners(MemberEvents.Listeners listeners) {
-            listeners.sender.tell(new ArrayList<>(this.memberListeners));
+        public List<MemberListener> listeners(MemberEvents.Listeners listeners) {
+            return new ArrayList<>(this.memberListeners);
         }
 
         @Typed
@@ -271,17 +276,21 @@ public class ClusterNode implements Initializable {
 
     interface MemberEvents {
 
-        class Members implements MemberEvents {
-            ActorRef<Map<Address, Member>> sender;
+        class Members extends Ask implements MemberEvents {
+            public Members() {
+            }
+
             public Members(ActorRef<Map<Address, Member>> sender) {
-                this.sender = sender;
+                setSender(sender);
             }
         }
 
-        class Listeners implements MemberEvents {
-            ActorRef<List<MemberListener>> sender;
+        class Listeners extends Ask implements MemberEvents {
+            public Listeners() {
+            }
+
             public Listeners(ActorRef<List<MemberListener>> sender) {
-                this.sender = sender;
+                setSender(sender);
             }
         }
 

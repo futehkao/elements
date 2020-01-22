@@ -21,12 +21,11 @@ import akka.actor.Status;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
-import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Adapter;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
-import net.e6tech.elements.common.actor.typed.CommonBehavior;
+import net.e6tech.elements.common.actor.typed.Trait;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.resources.NotAvailableException;
 import net.e6tech.elements.common.subscribe.Subscriber;
@@ -37,7 +36,7 @@ import java.util.Map;
 import static net.e6tech.elements.network.cluster.messaging.MessagingEvents.*;
 
 @SuppressWarnings("unchecked")
-public class Messenger extends CommonBehavior<MessagingEvents, Messenger> {
+public class Messenger extends Trait<MessagingEvents, Messenger> {
 
     private static final String SUBSCRIBER_PREFIX = "subscriber-";
     private static final String DESTINATION_PREFIX = "destination-";
@@ -46,10 +45,6 @@ public class Messenger extends CommonBehavior<MessagingEvents, Messenger> {
     private akka.actor.ActorRef mediator;
     private Map<String, Map<Subscriber, ActorRef>> subscribers = new HashMap<>();
     private Map<String, ActorRef> destinations = new HashMap<>();
-
-    public Messenger(ActorContext<MessagingEvents> context) {
-        super(context);
-    }
 
     @Override
     public void initialize() {
@@ -77,7 +72,7 @@ public class Messenger extends CommonBehavior<MessagingEvents, Messenger> {
         map.computeIfAbsent(event.subscriber,
                 sub -> childActor(SubscriberActor.class)
                 .withName(SUBSCRIBER_PREFIX + event.topic + System.identityHashCode(event.subscriber))
-                .spawn(ctx -> new SubscriberActor(ctx, event.topic, event.subscriber)));
+                .spawn(new SubscriberActor(event.topic, event.subscriber)));
     }
 
     @Typed
@@ -100,7 +95,7 @@ public class Messenger extends CommonBehavior<MessagingEvents, Messenger> {
         } else {
             ActorRef dest = this.childActor(Destination.class)
                     .withName(DESTINATION_PREFIX + event.destination)
-                    .spawn(ctx -> new Destination(ctx, event.subscriber));
+                    .spawn((new Destination(event.subscriber)));
             destinations.put(event.destination, dest);
         }
         return Behaviors.same();

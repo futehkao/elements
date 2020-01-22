@@ -16,7 +16,10 @@
 
 package net.e6tech.elements.common.actor.typed;
 
-import akka.actor.typed.*;
+import akka.actor.typed.ActorSystem;
+import akka.actor.typed.Behavior;
+import akka.actor.typed.RecipientRef;
+import akka.actor.typed.Scheduler;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
@@ -31,7 +34,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings("unchecked")
-public class Guardian extends CommonBehavior<Void, Guardian> {
+public class Guardian extends Trait<Void, Guardian> {
     private static final Logger logger = Logger.getLogger();
 
     private WorkerPool workerPool;
@@ -42,14 +45,14 @@ public class Guardian extends CommonBehavior<Void, Guardian> {
         // Create an Akka system
         long start = System.currentTimeMillis();
         Behavior<Void> main = Behaviors.setup(
-                context -> new Guardian(context, name, timeout, workerPoolConfig));
+                context -> new Guardian().bootstrap(context, name, timeout, workerPoolConfig));
         ActorSystem<ExtensionEvents> sys = (ActorSystem) ActorSystem.create(main, name, config);
         try {
             ExtensionEvents.ExtensionsResponse extensions = getExtensions(sys, timeout, sys.scheduler());
             // ask sys to give back an instance of Guardian
-           Guardian guardian = extensions.getOwner();
-           logger.info("Staring Guardian in {}ms", System.currentTimeMillis() - start);
-           return guardian;
+            Guardian guardian = extensions.getOwner();
+            logger.info("Staring Guardian in {}ms", System.currentTimeMillis() - start);
+            return guardian;
         } catch (Exception e) {
             throw new SystemException(e);
         }
@@ -65,13 +68,13 @@ public class Guardian extends CommonBehavior<Void, Guardian> {
         }
     }
 
-    protected Guardian(ActorContext<Void> context, String name, long timeout, WorkerPoolConfig workerPoolConfig) {
-        super(context);
+    protected Behavior<Void> bootstrap(ActorContext<Void> context, String name, long timeout, WorkerPoolConfig workerPoolConfig) {
         setName(name);
         setTimeout(timeout);
-        setup(this);
+        setup(context, this);
         workerPool = childActor(WorkerPool.class).withName(workerPoolConfig.getName())
-                .spawnNow(ctx -> new WorkerPool(ctx, workerPoolConfig));
+                .spawnNow(new WorkerPool(workerPoolConfig));
+        return getBehavior();
     }
 
     public long getTimeout() {
