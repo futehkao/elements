@@ -65,6 +65,7 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
         return behavior;
     }
 
+    @SuppressWarnings("squid:S3776")
     public R virtualize() {
         return Interceptor.getInstance().interceptorBuilder((R) this,
                 frame -> {
@@ -295,12 +296,13 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
     }
 
     static class OnMessage extends MessageBuilder {
-        private static BiConsumer<Object, Object> NO_OP = (arg, ret) -> {};
+        private static final BiConsumer<Object, Object> NO_OP = (arg, ret) -> {};
 
         OnMessage(Method method) {
             super(method);
         }
 
+        @SuppressWarnings("squid:S3776")
         @Override
         public ReceiveBuilder build(ReceiveBuilder builder, Object target) {
             BiConsumer<Object, Object> consumer = NO_OP;
