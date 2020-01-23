@@ -18,19 +18,14 @@ package net.e6tech.elements.common.actor.typed.worker;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
-import akka.actor.typed.Terminated;
 import akka.actor.typed.javadsl.ActorContext;
-import akka.actor.typed.javadsl.Behaviors;
-import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Guardian;
+import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.reflection.Reflection;
 
 import java.time.Duration;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.Set;
+import java.util.*;
 
 @SuppressWarnings("unchecked")
 public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
@@ -40,6 +35,10 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
     private Set<ActorRef<WorkEvents>> idleWorkers = new LinkedHashSet<>();
     private LinkedList<Task> waiting = new LinkedList<>();
     protected WorkerPoolConfig config = new WorkerPoolConfig();
+
+    // for proxy
+    public WorkerPool() {
+    }
 
     public WorkerPool(WorkerPoolConfig config) {
         Reflection.copyInstance(this.config, config);
@@ -54,12 +53,12 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
         return getBehavior();
     }
 
-    @SuppressWarnings("squid:S2175")
     @Typed
-    private Behavior<WorkEvents> terminated(Terminated event) {
-        workers.remove(event.ref());
-        idleWorkers.remove(event.ref());
-        return Behaviors.same();
+    public WorkEvents.StatusResponse status(WorkEvents.Status message) {
+        WorkEvents.StatusResponse response = new WorkEvents.StatusResponse();
+        response.setIdleCount(idleWorkers.size());
+        response.setWorkerCount(workers.size());
+        return response;
     }
 
     @Typed
@@ -97,7 +96,6 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
     private void newWorker() {
         ActorRef<WorkEvents> worker = childActor(Worker.class).spawn(new Worker(getSelf()));
         workers.add(worker);
-        getContext().watch(worker);
         idle(worker);
     }
 
@@ -108,23 +106,48 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
 
     private void idle(ActorRef<WorkEvents> worker) {
         if (!waiting.isEmpty()) {
+            // there are tasks waiting.  Instead of idle this work, make it do work.
             WorkerPool.Task task = waiting.removeFirst();
             worker.tell(task.getWork());
         } else {
             idleWorkers.add(worker);
-            cleanup(new WorkEvents.Cleanup());
+            scheduleCleanup(new WorkEvents.ScheduleCleanup());
         }
     }
 
     @Typed
-    private void cleanup(WorkEvents.Cleanup message) {
+    private void scheduleCleanup(WorkEvents.ScheduleCleanup message) {
         if (cleanupScheduled)
             return;
         if (config.getIdleTimeout() == 0)
             return;
+        if (idleWorkers.size() <= config.getInitialCapacity())
+            return;
         final Duration interval = Duration.ofMillis(config.getIdleTimeout());
         getContext().scheduleOnce(interval, getSelf(), new WorkEvents.Cleanup());
         cleanupScheduled = true;
+    }
+
+    @Typed
+    private void cleanup(WorkEvents.Cleanup message) {
+        int count = idleWorkers.size() - config.getInitialCapacity();
+        Iterator<ActorRef<WorkEvents>> iterator = idleWorkers.iterator();
+        List<ActorRef<WorkEvents>> stopList = new ArrayList<>(count);
+
+        // collect workers to be stopped
+        for (int i = 0; i < count; i++) {
+            ActorRef worker = iterator.next();
+            iterator.remove();
+            stopList.add(worker);
+        }
+
+        // removed them from workers and then send stop
+        for (ActorRef<WorkEvents> worker : stopList) {
+            workers.remove(worker);
+            idleWorkers.remove(worker);
+            getContext().stop(worker);
+        }
+        cleanupScheduled = false;
     }
 
     private class Task {

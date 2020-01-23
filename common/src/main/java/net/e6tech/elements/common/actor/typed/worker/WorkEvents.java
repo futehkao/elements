@@ -24,7 +24,6 @@ import java.util.concurrent.Callable;
 
 @SuppressWarnings("squid:S1948")
 public interface WorkEvents {
-
     class IdleWorker implements WorkEvents, Serializable {
         private static final long serialVersionUID = 3494669944533209616L;
         private ActorRef<WorkEvents> worker;
@@ -38,8 +37,42 @@ public interface WorkEvents {
         }
     }
 
-    class Cleanup implements WorkEvents, Serializable {
+    class ScheduleCleanup implements WorkEvents, Serializable {
         private static final long serialVersionUID = 1391045696378516373L;
+    }
+
+    class Cleanup implements WorkEvents, Serializable {
+        private static final long serialVersionUID = 1754051340286965211L;
+    }
+
+    class Status extends Ask implements WorkEvents, Serializable {
+        public Status() {
+        }
+
+        public Status(ActorRef actorRef) {
+            setSender(actorRef);
+        }
+    }
+
+    class StatusResponse implements Serializable {
+        private int idleCount;
+        private int workerCount;
+
+        public int getIdleCount() {
+            return idleCount;
+        }
+
+        public void setIdleCount(int idleCount) {
+            this.idleCount = idleCount;
+        }
+
+        public int getWorkerCount() {
+            return workerCount;
+        }
+
+        public void setWorkerCount(int workerCount) {
+            this.workerCount = workerCount;
+        }
     }
 
     class RunnableTask extends Ask implements WorkEvents, Serializable {
@@ -59,7 +92,6 @@ public interface WorkEvents {
     class CallableTask extends Ask implements WorkEvents, Serializable {
         private static final long serialVersionUID = -5567603118967175000L;
         private Callable callable;
-        private ActorRef sender;
 
         public CallableTask(ActorRef sender, Callable callable) {
             setSender(sender);

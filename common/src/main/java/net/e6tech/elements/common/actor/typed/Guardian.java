@@ -77,6 +77,10 @@ public class Guardian extends Receptor<Void, Guardian> {
         return getBehavior();
     }
 
+    public WorkerPool getWorkerPool() {
+        return workerPool.virtualize();
+    }
+
     public long getTimeout() {
         return timeout;
     }
