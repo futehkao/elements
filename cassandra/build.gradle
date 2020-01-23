@@ -22,6 +22,7 @@ dependencies {
     compile "org.ow2.asm:asm-commons:${asmVersion}"
     compile "org.ow2.asm:asm-analysis:${asmVersion}"
     compile "org.ow2.asm:asm-util:${asmVersion}"
+    compile "org.reactivestreams:reactive-streams:${reactiveStreamsVersion}"
 
     compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
         exclude group: 'org.ow2.asm'
@@ -32,7 +33,9 @@ dependencies {
         exclude group: 'org.ow2.asm'
     }
 
-    compile("com.datastax.oss:java-driver-mapper-processor:${cassandraDriver4Version}")
+    compile("com.datastax.oss:java-driver-mapper-processor:${cassandraDriver4Version}") {
+        exclude group: 'org.slf4j'
+    }
 
     // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: '4.1.0'
 
