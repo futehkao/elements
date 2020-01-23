@@ -208,7 +208,7 @@ public class RegistryImpl implements Registry {
     }
 
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout) {
-        return arguments -> registrar.talk().ask(ref -> new InvocationEvents.Request(ref, path, timeout, arguments));
+        return arguments -> registrar.talk(timeout).ask(ref -> new InvocationEvents.Request(ref, path, timeout, arguments));
     }
 
     public <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass) {
