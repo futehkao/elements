@@ -21,7 +21,9 @@ import akka.actor.typed.*;
 import akka.actor.typed.javadsl.*;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.Interceptor;
+import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 
@@ -29,6 +31,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 @SuppressWarnings({"unchecked", "squid:S1172"})
 public abstract class Receptor<T, R extends Receptor<T, R>> {
@@ -37,6 +40,12 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
             .concurrencyLevel(32)
             .initialCapacity(128)
             .maximumSize(500)
+            .build();
+
+    private static Cache<Method, BiFunction> interceptorCache = CacheBuilder.newBuilder()
+            .concurrencyLevel(64)
+            .initialCapacity(128)
+            .maximumSize(10000)
             .build();
 
     private Guardian guardian;
@@ -65,33 +74,13 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
         return behavior;
     }
 
-    @SuppressWarnings("squid:S3776")
     public R virtualize() {
-        return Interceptor.getInstance().interceptorBuilder((R) this,
-                frame -> {
-                    if (frame.getMethod().getAnnotation(Typed.class) != null
-                    && frame.getArguments().length > 0) {
-                        Object arg = frame.getArguments()[0];
-                        if (!frame.getMethod().getReturnType().equals(void.class) && !frame.getMethod().getReturnType().equals(Void.class)) {
-                            return this.talk().askAndWait(sender -> {
+        long timeout = (getGuardian() != null) ? getGuardian().getTimeout() :  Guardian.DEFAULT_TIME_OUT;
+        return Interceptor.getInstance().interceptorBuilder((R) this, new ReceptorInterceptorHandler(timeout)).build();
+    }
 
-                                if (arg instanceof Ask)
-                                    ((Ask) arg).setSender(sender);
-                                else if (arg instanceof Asking)
-                                    ((Asking) arg).setSender(sender);
-                                else
-                                    throw new SystemException("Event " + arg.getClass() + " is not a subclass of Ask nor does it implement Asking.");
-
-                                return (T) arg;
-                            });
-                        } else {
-                            this.talk().tell((T) arg);
-                            return null;
-                        }
-                    } else {
-                        return frame.invoke();
-                    }
-                }).build();
+    public R virtualize(long timeout) {
+        return Interceptor.getInstance().interceptorBuilder((R) this, new ReceptorInterceptorHandler(timeout)).build();
     }
 
     public Behavior<T> create() {
@@ -354,6 +343,76 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
                         Object ret = method.invoke(target, m);
                         return (behavior) ? ret : Behaviors.same();
                     });
+        }
+    }
+
+    class ReceptorInterceptorHandler implements InterceptorHandler {
+        private long timeout;
+        private Receptor enclosing;
+
+        ReceptorInterceptorHandler(long timeout) {
+            this.timeout = timeout;
+            enclosing = Receptor.this;
+        }
+
+        public long getTimeout() {
+            return timeout;
+        }
+
+        public void setTimeout(long timeout) {
+            this.timeout = timeout;
+        }
+
+        private Talk talk() {
+            return enclosing.talk(timeout);
+        }
+
+        @Override
+        public Object invoke(CallFrame frame) {
+
+            BiFunction<ReceptorInterceptorHandler, CallFrame, Object> biFunction = interceptorCache.getIfPresent(frame.getMethod());
+
+            if (biFunction != null) {
+               // do nothing
+            } else if (frame.getMethod().getAnnotation(Typed.class) != null
+                    && frame.getMethod().getParameterTypes().length > 0) {
+
+                Class argType = frame.getMethod().getParameterTypes()[0];
+                if (!frame.getMethod().getReturnType().equals(void.class) && !frame.getMethod().getReturnType().equals(Void.class)) {
+                    if (Ask.class.isAssignableFrom(argType)) {
+                        biFunction = (handler, f) ->
+                            handler.talk().askAndWait(sender -> {
+                                Object arg = f.getArguments()[0];
+                                ((Ask) arg).setSender((ActorRef) sender);
+                                return arg;
+                            });
+                    } else if (Asking.class.isAssignableFrom(argType)) {
+                        biFunction = (handler, f) ->
+                                handler.talk().askAndWait(sender -> {
+                                    Object arg = f.getArguments()[0];
+                                    ((Asking) arg).setSender((ActorRef) sender);
+                                    return arg;
+                                });
+                    } else {
+                        biFunction = (handler, f) -> {
+                            throw new SystemException("Event " + f.getMethod().getParameterTypes()[0] + " is not a subclass of Ask nor does it implement Asking.");
+                        };
+                    }
+                } else {
+                    // tell, no need to wait for response because method declared as returning void.
+                    biFunction = (handler, f) -> {
+                        Object arg = f.getArguments()[0];
+                        handler.talk().tell(arg);
+                        return null;
+                    };
+                }
+                interceptorCache.put(frame.getMethod(), biFunction);
+            } else {
+                biFunction = (handler, f) -> f.invoke();
+                interceptorCache.put(frame.getMethod(), biFunction);
+            }
+
+            return biFunction.apply(this, frame);
         }
     }
 }

@@ -42,7 +42,7 @@ public class RegistryEntry extends Receptor<InvocationEvents.Request, RegistryEn
         final ActorRef sender = request.getSender();
         final ActorRef self = getSelf();
         try {
-            talk().timeout(request.getTimeout())
+            talk(request.getTimeout())
                     .async(() -> {
                         try {
                             Object ret = registration.getFunction().apply(self, request.arguments());

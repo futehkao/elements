@@ -37,8 +37,10 @@ import java.util.concurrent.CompletionStage;
 public class Guardian extends Receptor<Void, Guardian> {
     private static final Logger logger = Logger.getLogger();
 
+    public static final long DEFAULT_TIME_OUT = 5000L;
+
     private WorkerPool workerPool;
-    private long timeout = 5000L;
+    private long timeout = DEFAULT_TIME_OUT;
     private String name = "galaxy";
 
     public static Guardian create(String name, long timeout, Config config, WorkerPoolConfig workerPoolConfig) {
