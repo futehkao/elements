@@ -21,6 +21,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.SystemException;
 
@@ -34,6 +35,7 @@ import java.util.concurrent.CompletionStage;
  * Created by futeh.
  */
 public class Genesis implements Initializable {
+    private static Logger logger = Logger.getLogger();
     public static final String WORKER_POOL_DISPATCHER = "worker-pool-dispatcher";
     private String name;
     private String configuration;
@@ -42,6 +44,9 @@ public class Genesis implements Initializable {
     private long timeout = 5000L;
     private String profile = "remote";
     private Config config;
+
+    public Genesis() {
+    }
 
     public long getTimeout() {
         return timeout;
@@ -71,6 +76,17 @@ public class Genesis implements Initializable {
         return config;
     }
 
+    public Genesis(Provision provision, WorkerPoolConfig workerPoolConfig) {
+        if (provision.getBean(Guardian.class) == null) {
+            setName(getClass().getSimpleName() + workerPoolConfig.hashCode());
+            setProfile("local");
+            setWorkPoolConfig(workerPoolConfig);
+            initialize((Resources) null);
+            provision.getResourceManager().addResourceProvider(ResourceProvider.wrap(getClass().getSimpleName(), (OnShutdown) this::shutdown));
+            getGuardian().setEmbedded(true);
+        }
+    }
+
     @Override
     public void initialize(Resources resources) {
         if (name == null)
@@ -90,6 +106,8 @@ public class Genesis implements Initializable {
         if (resources != null) {
             final ResourceManager resourceManager = resources.getResourceManager();
             resourceManager.addResourceProvider(ResourceProvider.wrap("Genesis", (OnShutdown) this::shutdown));
+            if (guardian != null)
+                resourceManager.registerBean(guardian.getName(), guardian);
         }
     }
 
@@ -139,6 +157,11 @@ public class Genesis implements Initializable {
 
     public void shutdown() {
         guardian.getSystem().terminate();
+        try {
+            guardian.getSystem().getWhenTerminated().toCompletableFuture().get();
+        } catch (Exception e) {
+            logger.warn("Error during shutdown", e);
+        }
     }
 
     public String getName() {

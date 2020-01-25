@@ -696,7 +696,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         }
     }
 
-    protected void cleanup() {
+    public void cleanup() {
         try {
             for (ResourceProvider resourceProvider : state.getResourceProviders()) {
                 resourceProvider.onClosed(this);

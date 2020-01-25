@@ -34,9 +34,11 @@ public class Worker extends Receptor<WorkEvents, Worker> {
     private void run(WorkEvents.RunnableTask message) {
         try {
             message.getRunnable().run();
-            message.getSender().tell(new WorkEvents.Response());
+            if (message.getSender() != null)
+                message.getSender().tell(new WorkEvents.Response());
         } catch (Exception th) {
-            message.getSender().tell(new Status.Failure(th));
+            if (message.getSender() != null)
+                message.getSender().tell(new Status.Failure(th));
         } finally {
             pool.tell(new WorkEvents.IdleWorker(getSelf()));
         }
@@ -46,9 +48,11 @@ public class Worker extends Receptor<WorkEvents, Worker> {
     private void call(WorkEvents.CallableTask message) {
         try {
             Object ret = message.getCallable().call();
-            message.getSender().tell(new WorkEvents.Response(ret));
+            if (message.getSender() != null)
+                message.getSender().tell(new WorkEvents.Response(ret));
         } catch (Exception th) {
-            message.getSender().tell(new Status.Failure(th));
+            if (message.getSender() != null)
+                message.getSender().tell(new Status.Failure(th));
         } finally {
             pool.tell(new WorkEvents.IdleWorker(getSelf()));
         }

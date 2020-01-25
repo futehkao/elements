@@ -19,6 +19,7 @@ package net.e6tech.elements.web.cxf;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
+import net.e6tech.elements.common.logging.LogLevel;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ClassSignature;
 import net.e6tech.elements.common.reflection.MethodSignature;
@@ -169,7 +170,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                 }
                 server.recordFailure(frame.getMethod(), methods);
                 abort = true;
-                JaxRSServer.getLogger().debug(th.getMessage(), th);
+                server.getProvision().log(JaxRSServer.getLogger(), LogLevel.DEBUG, th.getMessage(), th);
                 server.handleException(message, frame, th);
             } finally {
                 if (uowOpen) {

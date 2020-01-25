@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.web.cxf;
 
+import net.e6tech.elements.common.logging.LogLevel;
 import net.e6tech.elements.common.util.datastructure.Pair;
 import org.apache.cxf.io.CachedOutputStream;
 import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
@@ -71,7 +72,7 @@ class SharedResourceProvider extends SingletonResourceProvider {
                     if (cloneObserver != null)
                         cloneObserver.onException(th);
                     server.recordFailure(frame.getMethod(), methods);
-                    JaxRSServer.getLogger().debug(th.getMessage(), th);
+                    server.getProvision().log(JaxRSServer.getLogger(), LogLevel.DEBUG, th.getMessage(), th);
                     server.handleException(m, frame, th);
                 }
                 return null;

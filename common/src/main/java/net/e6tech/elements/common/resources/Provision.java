@@ -49,6 +49,15 @@ public class Provision {
         suppressLogging = true;
     }
 
+    public void suppressLogging(Runnable runnable) {
+        try {
+            suppressLogging = true;
+            runnable.run();
+        } finally {
+            resumeLogging();
+        }
+    }
+
     public void resumeLogging() {
         suppressLogging = false;
     }

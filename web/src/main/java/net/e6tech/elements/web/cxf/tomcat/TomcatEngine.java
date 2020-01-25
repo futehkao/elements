@@ -16,7 +16,10 @@
 
 package net.e6tech.elements.web.cxf.tomcat;
 
+import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
+import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.web.cxf.CXFServer;
 import net.e6tech.elements.web.cxf.JaxRSServlet;
@@ -35,6 +38,7 @@ import java.net.URL;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 /**
  * This class is design to start CXFServer using Tomcat.
@@ -51,6 +55,9 @@ public class TomcatEngine implements ServerEngine {
     private int minSpareThreads = 10;
     private int maxConnections = 10000;
     private String baseDir;
+    private Provision provision;
+    private boolean useActorThreadPool = true;
+    private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
 
     public int getMaxThreads() {
         return maxThreads;
@@ -84,6 +91,33 @@ public class TomcatEngine implements ServerEngine {
         this.baseDir = baseDir;
     }
 
+    public Provision getProvision() {
+        return provision;
+    }
+
+    public WorkerPoolConfig getWorkerPoolConfig() {
+        return workerPoolConfig;
+    }
+
+    public void setWorkerPoolConfig(WorkerPoolConfig workerPoolConfig) {
+        this.workerPoolConfig = workerPoolConfig;
+    }
+
+    @Inject(optional = true)
+    public void setProvision(Provision provision) {
+        this.provision = provision;
+    }
+
+    public boolean isUseActorThreadPool() {
+        return useActorThreadPool;
+    }
+
+    @Inject(optional = true)
+
+    public void setUseActorThreadPool(boolean useActorThreadPool) {
+        this.useActorThreadPool = useActorThreadPool;
+    }
+
     @Override
     public void start(CXFServer cxfServer, ServerController<?> controller) {
         List<Tomcat> tomcats = cxfServer.computeServerEngineData(LinkedList::new);
@@ -108,6 +142,12 @@ public class TomcatEngine implements ServerEngine {
 
         try {
             Connector connector = createConnector(cxfServer, controller.getURL());
+            if (provision != null && useActorThreadPool) {
+                TomcatActorExecutor executor = provision.newInstance(TomcatActorExecutor.class);
+                executor.setWorkerPoolConfig(getWorkerPoolConfig());
+                executor.start();
+                connector.getProtocolHandler().setExecutor(executor);
+            }
             connector.setPort(controller.getURL().getPort());
             tomcat.setConnector(connector);
             tomcat.start();
@@ -121,25 +161,32 @@ public class TomcatEngine implements ServerEngine {
         Iterator<Tomcat> iterator = tomcats.iterator();
         while (iterator.hasNext()) {
             Tomcat tomcat = iterator.next();
+            Executor executor = null;
             try {
+                executor = tomcat.getConnector().getProtocolHandler().getExecutor();
                 tomcat.stop();
                 tomcat.destroy();
-                iterator.remove();
             } catch (Exception ex) {
                 StringBuilder builder = new StringBuilder();
                 for (Container container : tomcat.getHost().findChildren()) {
                     if (container instanceof Context) {
-                        builder.append(" " +((Context) container).getPath());
+                        builder.append(" " + ((Context) container).getPath());
                     }
                 }
-                logger.warn("Cannot stop Tomcat{}", builder);
+                logger.warn("Cannot stop Tomcat for path{} - {}: {}", builder, ex.getMessage(), ex.getCause().getMessage());
+            } finally {
+                if (executor instanceof TomcatActorExecutor) {
+                    ((TomcatActorExecutor) executor).stop();
+                }
             }
+            iterator.remove();
         }
+
     }
 
     @SuppressWarnings("squid:S3776")
     protected Connector createConnector(CXFServer cxfServer, URL url) {
-        Connector connector = new Connector("HTTP/1.1");
+        Connector connector = new Connector("org.apache.coyote.http11.Http11Nio2Protocol");
         connector.setPort(url.getPort());
         connector.setAttribute("maxThreads", maxThreads);  // default 200
         connector.setAttribute("maxConnections", maxConnections); // default 10000

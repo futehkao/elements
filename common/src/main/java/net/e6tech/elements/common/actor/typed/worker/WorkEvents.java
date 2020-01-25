@@ -57,6 +57,8 @@ public interface WorkEvents {
     class StatusResponse implements Serializable {
         private int idleCount;
         private int workerCount;
+        private int busyCount;
+        private int waitCount;
 
         public int getIdleCount() {
             return idleCount;
@@ -73,11 +75,31 @@ public interface WorkEvents {
         public void setWorkerCount(int workerCount) {
             this.workerCount = workerCount;
         }
+
+        public int getBusyCount() {
+            return busyCount;
+        }
+
+        public void setBusyCount(int busyCount) {
+            this.busyCount = busyCount;
+        }
+
+        public int getWaitCount() {
+            return waitCount;
+        }
+
+        public void setWaitCount(int waitCount) {
+            this.waitCount = waitCount;
+        }
     }
 
     class RunnableTask extends Ask implements WorkEvents, Serializable {
         private static final long serialVersionUID = -8279583557717048047L;
         private Runnable runnable;
+
+        public RunnableTask(Runnable runnable) {
+            this.runnable = runnable;
+        }
 
         public RunnableTask(ActorRef sender, Runnable runnable) {
             setSender(sender);
@@ -92,6 +114,10 @@ public interface WorkEvents {
     class CallableTask extends Ask implements WorkEvents, Serializable {
         private static final long serialVersionUID = -5567603118967175000L;
         private Callable callable;
+
+        public CallableTask(Callable callable) {
+           this.callable = callable;
+        }
 
         public CallableTask(ActorRef sender, Callable callable) {
             setSender(sender);

@@ -18,6 +18,7 @@ package net.e6tech.elements.common.actor.typed.worker;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
+import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.ActorContext;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.Receptor;
@@ -33,8 +34,10 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
     private boolean cleanupScheduled = false;
     private Set<ActorRef<WorkEvents>> workers = new LinkedHashSet<>();
     private Set<ActorRef<WorkEvents>> idleWorkers = new LinkedHashSet<>();
+    private Set<ActorRef<WorkEvents>> busyWorkers = new LinkedHashSet<>();
     private LinkedList<Task> waiting = new LinkedList<>();
     protected WorkerPoolConfig config = new WorkerPoolConfig();
+    private boolean stopped = true;
 
     // for proxy
     public WorkerPool() {
@@ -44,12 +47,25 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
         Reflection.copyInstance(this.config, config);
     }
 
+    public void join() {
+        synchronized (this) {
+            while (!stopped) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
     @Override
     public Behavior<WorkEvents> setup(ActorContext<WorkEvents> ctx, Guardian guardian) {
         super.setup(ctx, guardian);
         for (int i = 0; i < config.getInitialCapacity(); i++) {
             newWorker();
         }
+        stopped = false;
         return getBehavior();
     }
 
@@ -58,15 +74,18 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
         WorkEvents.StatusResponse response = new WorkEvents.StatusResponse();
         response.setIdleCount(idleWorkers.size());
         response.setWorkerCount(workers.size());
+        response.setBusyCount(busyWorkers.size());
+        response.setWaitCount(waiting.size());
         return response;
     }
 
     @Typed
-    private void newRunnable(WorkEvents.RunnableTask event) {
+    public void execute(WorkEvents.RunnableTask event) {
         if (!idleWorkers.isEmpty()) {
             Iterator<ActorRef<WorkEvents>> iterator = idleWorkers.iterator();
             ActorRef worker = iterator.next();
             iterator.remove();
+            busyWorkers.add(worker);
             worker.tell(event);
         } else if (workers.size() < config.getMaxCapacity()) {
             // put in waiting list.  When a work becomes idled, it will be picked up
@@ -78,11 +97,12 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
     }
 
     @Typed
-    private void newCallable(WorkEvents.CallableTask event) {
+    public void execute(WorkEvents.CallableTask event) {
         if (!idleWorkers.isEmpty()) {
             Iterator<ActorRef<WorkEvents>> iterator = idleWorkers.iterator();
             ActorRef<WorkEvents> worker = iterator.next();
             iterator.remove();
+            busyWorkers.add(worker);
             worker.tell(event);
         } else if (workers.size() < config.getMaxCapacity()) {
             // put in waiting list.  When a work becomes idled, it will be picked up
@@ -108,8 +128,10 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
         if (!waiting.isEmpty()) {
             // there are tasks waiting.  Instead of idle this work, make it do work.
             WorkerPool.Task task = waiting.removeFirst();
+            busyWorkers.add(worker);
             worker.tell(task.getWork());
         } else {
+            busyWorkers.remove(worker);
             idleWorkers.add(worker);
             scheduleCleanup(new WorkEvents.ScheduleCleanup());
         }
@@ -148,6 +170,14 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
             getContext().stop(worker);
         }
         cleanupScheduled = false;
+    }
+
+    @Typed
+    void stopped(PostStop message) {
+        stopped = true;
+        synchronized (this) {
+            notifyAll();
+        }
     }
 
     private class Task {

@@ -221,7 +221,7 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
         return new Talk<>(getGuardian(), ref).timeout(timeout);
     }
 
-    protected Guardian getGuardian() {
+    public Guardian getGuardian() {
         return guardian;
     }
 

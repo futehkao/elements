@@ -21,6 +21,7 @@ public class WorkerPoolConfig {
     private int maxCapacity = Integer.MAX_VALUE;  // ie unlimited
     private long idleTimeout = 10000L;
     private String name = "WorkerPool";
+    private String dispatcher;
 
     public String getName() {
         return name;
@@ -52,5 +53,13 @@ public class WorkerPoolConfig {
 
     public void setIdleTimeout(long idleTimeout) {
         this.idleTimeout = idleTimeout;
+    }
+
+    public String getDispatcher() {
+        return dispatcher;
+    }
+
+    public void setDispatcher(String dispatcher) {
+        this.dispatcher = dispatcher;
     }
 }

@@ -16,9 +16,11 @@
 
 package net.e6tech.elements.web.cxf.jetty;
 
+import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.JavaKeyStore;
 import net.e6tech.elements.security.SelfSignedCert;
@@ -57,6 +59,10 @@ public class JettyEngine implements ServerEngine {
     private static Logger logger = Logger.getLogger();
 
     private QueuedThreadPool queuedThreadPool;
+    private boolean useActorThreadPool = true;
+    private Provision provision;
+    private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
+    private JettyActorExecutor executor;
 
     public QueuedThreadPool getQueuedThreadPool() {
         return queuedThreadPool;
@@ -65,6 +71,31 @@ public class JettyEngine implements ServerEngine {
     @Inject(optional = true)
     public void setQueuedThreadPool(QueuedThreadPool queuedThreadPool) {
         this.queuedThreadPool = queuedThreadPool;
+    }
+
+    public Provision getProvision() {
+        return provision;
+    }
+
+    @Inject(optional = true)
+    public void setProvision(Provision provision) {
+        this.provision = provision;
+    }
+
+    public boolean isUseActorThreadPool() {
+        return useActorThreadPool;
+    }
+
+    public void setUseActorThreadPool(boolean useActorThreadPool) {
+        this.useActorThreadPool = useActorThreadPool;
+    }
+
+    public WorkerPoolConfig getWorkerPoolConfig() {
+        return workerPoolConfig;
+    }
+
+    public void setWorkerPoolConfig(WorkerPoolConfig workerPoolConfig) {
+        this.workerPoolConfig = workerPoolConfig;
     }
 
     @SuppressWarnings("squid:CommentedOutCodeLine")
@@ -96,17 +127,39 @@ public class JettyEngine implements ServerEngine {
         }
 
         servers.add(server);
-        if (queuedThreadPool != null) {
-            Destination dest = server.getDestination();
-            if (dest instanceof JettyHTTPDestination) {
-                JettyHTTPDestination jetty = (JettyHTTPDestination) dest;
-                if (jetty.getEngine() instanceof JettyHTTPServerEngine) {
-                    JettyHTTPServerEngine engine = (JettyHTTPServerEngine) jetty.getEngine();
-                    engine.setThreadPool(queuedThreadPool);
-                }
+
+        // set up thread pool
+        Destination dest = server.getDestination();
+        JettyHTTPServerEngine engine = null;
+        if (dest instanceof JettyHTTPDestination) {
+            JettyHTTPDestination jetty = (JettyHTTPDestination) dest;
+            if (jetty.getEngine() instanceof JettyHTTPServerEngine) {
+                engine = (JettyHTTPServerEngine) jetty.getEngine();
             }
         }
+
+        // need to start before swapping out thread pool.
+        // The server doesn't like it if otherwise.
         server.start();
+
+        if (engine != null) {
+            startThreadPool(engine);
+        }
+    }
+
+    private void startThreadPool(JettyHTTPServerEngine engine) {
+        if (queuedThreadPool != null) {
+            engine.setThreadPool(queuedThreadPool);
+        } else if (useActorThreadPool && provision != null) {
+            try {
+                executor = provision.newInstance(JettyActorExecutor.class);
+                executor.setWorkerPoolConfig(getWorkerPoolConfig());
+                executor.start();
+                engine.setThreadPool(executor);
+            } catch (Exception ex) {
+                logger.warn("Cannot start ActorThreadPool", ex);
+            }
+        }
     }
 
     public void stop(CXFServer cxfServer) {
@@ -123,6 +176,13 @@ public class JettyEngine implements ServerEngine {
                 iterator.remove();
             } catch (Exception ex) {
                 logger.warn("Cannot stop Jetty {}", server.getDestination().getAddress().getAddress().getValue());
+            }
+        }
+        if (executor != null) {
+            try {
+                executor.stop();
+            } catch (Exception e) {
+                //
             }
         }
     }

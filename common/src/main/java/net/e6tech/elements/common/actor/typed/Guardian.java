@@ -16,19 +16,18 @@
 
 package net.e6tech.elements.common.actor.typed;
 
-import akka.actor.typed.ActorSystem;
-import akka.actor.typed.Behavior;
-import akka.actor.typed.RecipientRef;
-import akka.actor.typed.Scheduler;
+import akka.actor.typed.*;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import com.typesafe.config.Config;
+import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPool;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
+import scala.concurrent.ExecutionContextExecutor;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
@@ -42,6 +41,29 @@ public class Guardian extends Receptor<Void, Guardian> {
     private WorkerPool workerPool;
     private long timeout = DEFAULT_TIME_OUT;
     private String name = "galaxy";
+    private boolean embedded = false;
+
+    public Props dispatcher(String dispatcher) {
+        String lookup = dispatcher;
+        ExecutionContextExecutor executor = null;
+        if (lookup != null) {
+            executor = getSystem()
+                    .dispatchers()
+                    .lookup(DispatcherSelector.fromConfig(lookup));
+        }
+
+        if (executor == null) {
+            executor = getSystem()
+                    .dispatchers()
+                    .lookup(DispatcherSelector.fromConfig(Genesis.WORKER_POOL_DISPATCHER));
+            lookup = Genesis.WORKER_POOL_DISPATCHER;
+        }
+
+        Props props = Props.empty();
+        if (executor != null)
+            props = props.withNext(DispatcherSelector.fromConfig(lookup));
+        return props;
+    }
 
     public static Guardian create(String name, long timeout, Config config, WorkerPoolConfig workerPoolConfig) {
         // Create an Akka system
@@ -74,9 +96,19 @@ public class Guardian extends Receptor<Void, Guardian> {
         setName(name);
         setTimeout(timeout);
         setup(context, this);
+
         workerPool = childActor(WorkerPool.class).withName(workerPoolConfig.getName())
+                .withProps(dispatcher(workerPoolConfig.getDispatcher()))
                 .spawnNow(new WorkerPool(workerPoolConfig));
         return getBehavior();
+    }
+
+    public boolean isEmbedded() {
+        return embedded;
+    }
+
+    public void setEmbedded(boolean embedded) {
+        this.embedded = embedded;
     }
 
     public WorkerPool getWorkerPool() {
