@@ -46,7 +46,6 @@ class VisaCVN18ARQC extends MasterCardARQC {
         for (int i = arqcBytes.length + codeBytes.length + 1; i < arcBytesLength; i++)
             arcBytes[i] = (byte) 0x00;
 
-        String cryptogram = computeCryptogram(arcBytes).substring(0, 8); // 4 bytes only
-        return cryptogram;
+        return computeCryptogram(arcBytes).substring(0, 8); // 4 bytes only
     }
 }

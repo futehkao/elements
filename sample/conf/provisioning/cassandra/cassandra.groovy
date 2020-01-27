@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import net.e6tech.elements.cassandra.driver.v3.SessionProviderV3
 import net.e6tech.elements.cassandra.driver.v4.SessionProviderV4
 import net.e6tech.elements.cassandra.Schema
 

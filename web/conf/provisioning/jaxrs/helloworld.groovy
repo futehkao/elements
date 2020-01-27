@@ -45,7 +45,7 @@ akka.remote.artery.canonical.hostname = 127.0.0.1
 atom("serverEngine") {
     configuration = """
     engine:
-        maxThread: 200
+        maxThreads: 200
         baseDir: $__dir/../../../web/tomcat
 """
     engine = serverEngineClass

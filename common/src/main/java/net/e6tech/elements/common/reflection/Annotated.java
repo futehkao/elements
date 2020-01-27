@@ -32,6 +32,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -46,6 +47,7 @@ public class Annotated<R, A extends Annotation> {
             .maximumSize(1000)
             .initialCapacity(100)
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Pair<Class<?>, Class<? extends Annotation>>, Annotated>() {
                 public Annotated load(Pair<Class<?>, Class<? extends Annotation>> pair)  {
                     return new Annotated(pair.key(), pair.value());
@@ -58,6 +60,7 @@ public class Annotated<R, A extends Annotation> {
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .maximumSize(1000)
             .initialCapacity(16)
+            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build();
 
     public Annotated(Class<R> clazz, Class<A> annotationClass) {

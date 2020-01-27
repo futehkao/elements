@@ -25,6 +25,7 @@ import net.e6tech.elements.common.util.SystemException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class PackageScanner {
     private int concurrencyLevel = 32;
@@ -67,16 +68,19 @@ public class PackageScanner {
                 .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
                 .initialCapacity(initialCapacity)
                 .maximumSize(maximumSize)
+                .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
                 .build();
         topLevel = CacheBuilder.newBuilder()
                 .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
                 .initialCapacity(initialCapacity)
                 .maximumSize(maximumSize)
+                .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
                 .build();
         classPathCache = CacheBuilder.newBuilder()
                 .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
                 .initialCapacity(initialCapacity)
                 .maximumSize(maximumSize)
+                .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
                 .build();
     }
 
@@ -105,6 +109,7 @@ public class PackageScanner {
                             .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
                             .initialCapacity(initialCapacity)
                             .maximumSize(maximumSize)
+                            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
                             .build());
             return cache.get(packageName, () -> toClasses(classPath.getTopLevelClasses(packageName)));
         } catch (ExecutionException e) {

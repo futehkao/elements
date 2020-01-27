@@ -47,14 +47,12 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
         Reflection.copyInstance(this.config, config);
     }
 
-    public void join() {
-        synchronized (this) {
-            while (!stopped) {
-                try {
-                    wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+    public synchronized void join() {
+        while (!stopped) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -173,11 +171,9 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
     }
 
     @Typed
-    void stopped(PostStop message) {
+    synchronized void stopped(PostStop message) {
         stopped = true;
-        synchronized (this) {
-            notifyAll();
-        }
+        notifyAll();
     }
 
     private class Task {

@@ -111,8 +111,7 @@ class VisaCVN10ARQC extends MasterCardARQC {
             bytes = cipher.doFinal(bytes);
             cipher.init(Cipher.ENCRYPT_MODE, leftSessionKey);
             bytes = cipher.doFinal(bytes);
-            String cryptogram = Hex.toString(cipher.doFinal(bytes));
-            return cryptogram;
+            return Hex.toString(cipher.doFinal(bytes));
         } catch(GeneralSecurityException e) {
             throw new CommandException(6, e);
         }

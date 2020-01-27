@@ -56,8 +56,8 @@ public class Interceptor {
     private static ThreadLocal<Object> anonymousThreadLocal = new ThreadLocal<>();
 
     private int initialCapacity = 100;
-    private int maximumSize = 1000;
-    private long expiration = 60 * 60 * 1000L; // one hour
+    private int maximumSize = 2000;
+    private long expiration = 180 * 60 * 1000L; // three hours
     private Cache<Class, Class> proxyClasses;
     Cache<Class, Class> singletonClasses;
     private Cache<Class, AnonymousDescriptor> anonymousClasses;

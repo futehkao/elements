@@ -30,7 +30,6 @@ import net.e6tech.elements.cassandra.driver.Wrapper;
 import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.common.resources.Resources;
-import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.TextBuilder;
 
 import java.net.InetSocketAddress;
@@ -43,16 +42,7 @@ public class SessionProviderV4 extends SessionProvider {
     private CqlSession session;
     private Map<String, Object> driverOptions = new LinkedHashMap<>();
     private MappingManager mappingManager;
-    private boolean v3Annotation = false;
     private String namingConvention;
-
-    public boolean isV3Annotation() {
-        return v3Annotation;
-    }
-
-    public void setV3Annotation(boolean v3Annotation) {
-        this.v3Annotation = v3Annotation;
-    }
 
     public String getNamingConvention() {
         return namingConvention;
@@ -90,19 +80,11 @@ public class SessionProviderV4 extends SessionProvider {
 
     @Override
     protected void initGenerator() {
-        if (isV3Annotation()) {
-            try {
-                generator = (Generator) getClass().getClassLoader().loadClass("net.e6tech.elements.cassandra.driver.v3.GeneratorV3").getDeclaredConstructor().newInstance();
-            } catch (Exception e) {
-                throw new SystemException(e);
-            }
-        } else {
-            GeneratorV4 gen = new GeneratorV4();
-            if (getNamingConvention() != null) {
-                gen.setNamingConvention(NamingConvention.valueOf(getNamingConvention()));
-            }
-            generator = gen;
+        GeneratorV4 gen = new GeneratorV4();
+        if (getNamingConvention() != null) {
+            gen.setNamingConvention(NamingConvention.valueOf(getNamingConvention()));
         }
+        generator = gen;
     }
 
     @Override
@@ -148,7 +130,7 @@ public class SessionProviderV4 extends SessionProvider {
 
     @Override
     protected void postInit() {
-        // nothing to do her.
+        // nothing to do here.
     }
 
     @Override

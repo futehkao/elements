@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.actor;
+package net.e6tech.elements.common.actor.concurrent;
 
+import net.e6tech.elements.common.actor.Genesis;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPool;
@@ -27,7 +28,7 @@ import java.util.concurrent.Executor;
 public class ActorExecutor implements Executor {
 
     private WorkerPool workerPool;
-    private boolean running = false;
+    private boolean running;
     private Provision provision;
     private WorkerPoolConfig workerPoolConfig;
 
@@ -37,11 +38,11 @@ public class ActorExecutor implements Executor {
         this.running = false;
     }
 
-    public boolean isRunning() {
+    public synchronized boolean isRunning() {
         return running;
     }
 
-    public void start() {
+    public synchronized void start() {
         if (running)
             return;
         Guardian guardian = new Genesis(provision, workerPoolConfig).getGuardian();
@@ -59,7 +60,7 @@ public class ActorExecutor implements Executor {
         running = true;
     }
 
-    public void stop() {
+    public synchronized void stop() {
         if (workerPool != null && running) {
             if (workerPool.getGuardian().isEmbedded()) {
                 workerPool.getSystem().terminate();
@@ -70,7 +71,7 @@ public class ActorExecutor implements Executor {
         }
     }
 
-    public void join() {
+    public synchronized void join() {
         if (workerPool != null)
             workerPool.join();
     }

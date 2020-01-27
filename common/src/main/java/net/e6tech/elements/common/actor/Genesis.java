@@ -77,12 +77,16 @@ public class Genesis implements Initializable {
     }
 
     public Genesis(Provision provision, WorkerPoolConfig workerPoolConfig) {
-        if (provision.getBean(Guardian.class) == null) {
-            setName(getClass().getSimpleName() + workerPoolConfig.hashCode());
+        if (provision == null || provision.getBean(Guardian.class) == null) {
+            WorkerPoolConfig wpc = workerPoolConfig;
+            if (workerPoolConfig == null)
+                wpc = new WorkerPoolConfig();
+            setName(getClass().getSimpleName() + wpc.hashCode());
             setProfile("local");
-            setWorkPoolConfig(workerPoolConfig);
+            setWorkPoolConfig(wpc);
             initialize((Resources) null);
-            provision.getResourceManager().addResourceProvider(ResourceProvider.wrap(getClass().getSimpleName(), (OnShutdown) this::shutdown));
+            if (provision != null)
+                provision.getResourceManager().addResourceProvider(ResourceProvider.wrap(getClass().getSimpleName(), (OnShutdown) this::shutdown));
             getGuardian().setEmbedded(true);
         }
     }

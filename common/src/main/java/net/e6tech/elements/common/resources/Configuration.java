@@ -358,7 +358,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
             }
 
             if (!applicableKeys.isEmpty()) {
-                logger.warn("object {} do not have properties: {}", object.getClass(), applicableKeys);
+                logger.warn("object {} does not have properties: {}", object.getClass(), applicableKeys);
             }
 
             // recurse into fields
@@ -539,7 +539,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
             }
 
             if (!applicableKeys.isEmpty()) {
-                logger.warn("object {} do not have properties: {}", object.getClass().getName(), applicableKeys);
+                logger.warn("object {} does not have properties: {}", object.getClass().getName(), applicableKeys);
             }
 
         } catch (Exception e) {

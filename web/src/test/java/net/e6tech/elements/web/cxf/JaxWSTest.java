@@ -15,8 +15,10 @@ limitations under the License.
 */
 package net.e6tech.elements.web.cxf;
 
-import org.apache.cxf.interceptor.LoggingInInterceptor;
-import org.apache.cxf.interceptor.LoggingOutInterceptor;
+import org.apache.cxf.ext.logging.LoggingFeature;
+import org.apache.cxf.ext.logging.event.LogEvent;
+import org.apache.cxf.ext.logging.event.LogEventSender;
+import org.apache.cxf.ext.logging.event.LogMessageFormatter;
 import org.apache.cxf.jaxws.JaxWsProxyFactoryBean;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +30,6 @@ import java.util.List;
  */
 public class JaxWSTest {
 
-    @SuppressWarnings("deprecation")
     @Test
     public void test() throws Exception {
 
@@ -42,8 +43,11 @@ public class JaxWSTest {
         server.start();
 
         JaxWsProxyFactoryBean factory = new JaxWsProxyFactoryBean();
-        factory.getInInterceptors().add(new LoggingInInterceptor());
-        factory.getOutInterceptors().add(new LoggingOutInterceptor());
+        LoggingFeature feature = new LoggingFeature();
+        DefaultLogEventSender sender = new DefaultLogEventSender();
+        feature.setInSender(sender);
+        feature.setOutSender(sender);
+        factory.getFeatures().add(feature);
         factory.setServiceClass(HelloWorld.class);
         factory.setAddress("http://localhost:9000/helloWorld");
         HelloWorld client = (HelloWorld) factory.create();
@@ -51,4 +55,17 @@ public class JaxWSTest {
         String reply = client.sayHi("HI");
         System.out.println("Server said: " + reply);
     }
+
+    private class DefaultLogEventSender implements LogEventSender {
+
+        @Override
+        public void send(LogEvent event) {
+            System.out.println(getLogMessage(event));
+        }
+
+        private String getLogMessage(LogEvent event) {
+            return LogMessageFormatter.format(event);
+        }
+    }
+
 }

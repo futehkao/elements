@@ -18,13 +18,12 @@ import net.e6tech.elements.web.cxf.JaxRSServer
 atom("serverEngine") {
     configuration = """
     engine:
-        maxThread: 200
+        maxThreads: 200
         baseDir: $__dir/../../../web/tomcat
 """
     engine = serverEngineClass
     rebind engine
 }
-
 
 atom("helloworld") {
     configuration =  """

@@ -23,7 +23,6 @@ import net.e6tech.elements.cassandra.driver.cql.AsyncResultSet;
 import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.cassandra.etl.ETLContext;
 import net.e6tech.elements.cassandra.etl.Strategy;
-import net.e6tech.elements.cassandra.generator.Codec;
 import net.e6tech.elements.cassandra.generator.Generator;
 import net.e6tech.elements.cassandra.generator.IndexGenerator;
 import net.e6tech.elements.cassandra.generator.TableGenerator;
@@ -120,20 +119,6 @@ public class Schema {
 
     public SessionProvider getProvider(Resources resources) {
         return resources.getInstance(SessionProvider.class);
-    }
-
-    public void createCodecs(String keyspace, String userType, Class<? extends Codec> codec) {
-        provision.open().accept(Resources.class, resources -> {
-            String cql = getProvider(resources).getGenerator().createCodecs(keyspace, userType, codec);
-            try {
-                resources.getInstance(Session.class).execute(keyspace, cql);
-                logger.info("Created UDT type {} for class {}", userType, codec);
-            } catch (Exception ex) {
-                logger.info("Syntax error in creating table for {}", codec);
-                logger.info(cql);
-                throw ex;
-            }
-        });
     }
 
     private  <A extends Annotation> Class[] scanClasses(Class<A> annotationClass, String ... packageNames) {

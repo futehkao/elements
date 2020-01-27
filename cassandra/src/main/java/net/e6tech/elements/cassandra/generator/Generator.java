@@ -102,12 +102,6 @@ public abstract class Generator {
         return gen;
     }
 
-    public String createCodecs(String keyspace, String userType, Class<? extends Codec> codecClass) {
-        CodecGenerator gen = new CodecGenerator(this, userType, codecClass);
-        gen.setKeyspace(keyspace);
-        return gen.generate();
-    }
-
     public String getDataType(Type type) {
         return dataTypes.get(type);
     }

@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.web.cxf.tomcat;
 
-import net.e6tech.elements.common.actor.ActorExecutor;
+import net.e6tech.elements.common.actor.concurrent.ActorExecutor;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Provision;

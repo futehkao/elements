@@ -28,6 +28,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by futeh.
@@ -39,6 +40,7 @@ public interface Module {
             .maximumSize(10000)
             .initialCapacity(100)
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .expireAfterWrite(360 * 60 * 1000L,TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Class<?>, String[]>() {
         public String[] load(Class<?> cls)  {
             Objects.requireNonNull(cls);
@@ -60,6 +62,7 @@ public interface Module {
             .maximumSize(10000)
             .initialCapacity(100)
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .expireAfterWrite(360 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Class<?>, Type[]>() {
         public Type[] load(Class<?> cls)  {
             Objects.requireNonNull(cls);

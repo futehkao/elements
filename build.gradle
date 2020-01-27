@@ -15,7 +15,7 @@ ext.kryoVersion = '5.0.0-RC4'
 ext.bytebuddyVersion = '1.10.6'
 ext.ehcacheVersion = '3.8.1'
 ext.javaCacheApiVerison = '1.1.1'
-ext.jacksonVersion = '2.10.0'
+ext.jacksonVersion = '2.10.1'
 ext.jettyVersion = '9.4.25.v20191220'
 ext.tomcatVersion = '9.0.30'
 ext.tomcatLog4jVersion = '9.0.0.M6'
@@ -23,7 +23,6 @@ ext.log4jVersion = '2.13.0'
 ext.cxfVersion = '3.3.4'
 ext.asmVersion = '7.2'
 ext.javaxWsRsApiVersion = '2.1.6'
-ext.cassandraDriverVersion = '3.7.2'
 ext.cassandraDriver4Version = '4.4.0'
 ext.reactiveStreamsVersion = '1.0.3'
 ext.opendmkVersion = '1.0-b02'
@@ -36,7 +35,7 @@ ext.hibernateVersion = '5.4.4.Final'  // note 5.4.6 - 5.4.8 have major stack ove
 ext.bouncycastleVersion = '1.64'
 ext.jaxbVersion = '2.3.0'
 ext.jaxbRuntime = '2.3.2'
-ext.jnrffiVersion = '2.1.11'  // datastax 3.7.2
+ext.jnrffiVersion = '2.1.11'  // cassandra and akka cluster typed
 
 allprojects {
     group 'net.e6tech'

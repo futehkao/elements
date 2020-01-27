@@ -32,6 +32,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -75,6 +76,7 @@ public class Reflection {
             .maximumSize(10000)
             .initialCapacity(500)
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Method, PropertyDescriptor>() {
                 public PropertyDescriptor load(Method method) throws IntrospectionException {
                     String name = method.getName();
@@ -109,6 +111,7 @@ public class Reflection {
             .maximumSize(10000)
             .initialCapacity(500)
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Pair<Class, String>, PropertyDescriptor>() {
                 @Override
                 public PropertyDescriptor load(Pair<Class, String> key) throws Exception {
@@ -129,6 +132,7 @@ public class Reflection {
             .maximumSize(10000)
             .initialCapacity(100)
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Class, Type[]>() {
                 @Override
                 public Type[] load(Class clazz) throws Exception {

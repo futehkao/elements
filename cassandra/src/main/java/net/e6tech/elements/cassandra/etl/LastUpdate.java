@@ -16,15 +16,13 @@
 
 package net.e6tech.elements.cassandra.etl;
 
-import com.datastax.driver.mapping.annotations.PartitionKey;
-import com.datastax.driver.mapping.annotations.Table;
+import net.e6tech.elements.cassandra.annotations.PartitionKey;
+import net.e6tech.elements.cassandra.annotations.Table;
 
 @Table(name = "last_update")
-@net.e6tech.elements.cassandra.annotations.Table(name = "last_update")
 @SuppressWarnings("squid:S1700")
 public class LastUpdate {
     @PartitionKey
-    @net.e6tech.elements.cassandra.annotations.PartitionKey
     private String extractor;
     private String lastUpdate;  // could be last modified time or creation hour
     private String dataType;

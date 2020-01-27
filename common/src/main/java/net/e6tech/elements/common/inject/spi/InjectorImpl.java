@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -50,6 +51,7 @@ public class InjectorImpl implements Injector {
             .maximumSize(10000)
             .initialCapacity(200)
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .expireAfterWrite(360 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Class<?>, List<InjectionPoint>>() {
         public List<InjectionPoint> load(Class<?> instanceClass)  {
             List<InjectionPoint> points = injectionProperties(instanceClass);

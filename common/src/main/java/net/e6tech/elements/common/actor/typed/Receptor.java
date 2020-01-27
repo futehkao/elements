@@ -30,6 +30,7 @@ import net.e6tech.elements.common.util.SystemException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
@@ -39,13 +40,22 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
     private static Cache<Class, List<MessageBuilder>> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
             .initialCapacity(128)
-            .maximumSize(500)
+            .maximumSize(1000)
+            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
+            .build();
+
+    private static Cache<Method, BiConsumer> eventCache = CacheBuilder.newBuilder()
+            .concurrencyLevel(64)
+            .initialCapacity(128)
+            .maximumSize(10000)
+            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build();
 
     private static Cache<Method, BiFunction> interceptorCache = CacheBuilder.newBuilder()
             .concurrencyLevel(64)
             .initialCapacity(128)
             .maximumSize(10000)
+            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build();
 
     private Guardian guardian;
@@ -294,32 +304,37 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
         @SuppressWarnings("squid:S3776")
         @Override
         public ReceiveBuilder build(ReceiveBuilder builder, Object target) {
-            BiConsumer<Object, Object> consumer = NO_OP;
-            if (method.getParameterTypes().length > 0 && !method.getReturnType().equals(void.class) && !method.getReturnType().equals(Void.class)) {
-                Class<?> argType = method.getParameterTypes()[0];
-                if (Ask.class.isAssignableFrom(argType)){
-                    consumer = (arg, ret) -> {
-                        ActorRef sender = ((Ask) arg).getSender();
-                        if (sender != null) {
-                            try {
-                                sender.tell(ret);
-                            } catch (Exception th) {
-                                sender.tell(new Status.Failure(th));
+            BiConsumer<Object, Object> consumer = eventCache.getIfPresent(method);
+
+            if (consumer == null) {
+                consumer = NO_OP;
+                if (method.getParameterTypes().length > 0 && !method.getReturnType().equals(void.class) && !method.getReturnType().equals(Void.class)) {
+                    Class<?> argType = method.getParameterTypes()[0];
+                    if (Ask.class.isAssignableFrom(argType)) {
+                        consumer = (arg, ret) -> {
+                            ActorRef sender = ((Ask) arg).getSender();
+                            if (sender != null) {
+                                try {
+                                    sender.tell(ret);
+                                } catch (Exception th) {
+                                    sender.tell(new Status.Failure(th));
+                                }
                             }
-                        }
-                    };
-                } else if (Asking.class.isAssignableFrom(argType)) {
-                    consumer = (arg, ret) -> {
-                        ActorRef sender = ((Asking) arg).getSender();
-                        if (sender != null) {
-                            try {
-                                sender.tell(ret);
-                            } catch (Exception th) {
-                                sender.tell(new Status.Failure(th));
+                        };
+                    } else if (Asking.class.isAssignableFrom(argType)) {
+                        consumer = (arg, ret) -> {
+                            ActorRef sender = ((Asking) arg).getSender();
+                            if (sender != null) {
+                                try {
+                                    sender.tell(ret);
+                                } catch (Exception th) {
+                                    sender.tell(new Status.Failure(th));
+                                }
                             }
-                        }
-                    };
+                        };
+                    }
                 }
+                eventCache.put(method, consumer);
             }
             BiConsumer<Object, Object> responder = consumer;
             return builder.onMessage(method.getParameterTypes()[0],
