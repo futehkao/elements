@@ -56,7 +56,7 @@ public class TomcatEngine implements ServerEngine {
     private int maxConnections = 10000;
     private String baseDir;
     private Provision provision;
-    private boolean useActorThreadPool = true;
+    private boolean useActorThreadPool = false;
     private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
 
     public int getMaxThreads() {

@@ -59,7 +59,7 @@ public class JettyEngine implements ServerEngine {
     private static Logger logger = Logger.getLogger();
 
     private QueuedThreadPool queuedThreadPool;
-    private boolean useActorThreadPool = true;
+    private boolean useActorThreadPool = false;
     private Provision provision;
     private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
     private JettyActorExecutor executor;

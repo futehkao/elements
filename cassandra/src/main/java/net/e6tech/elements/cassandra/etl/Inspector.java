@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Inspector {
     private Generator generator;
     private Class sourceClass;
-    private boolean initialized = false;
+    private volatile boolean initialized = false;
     private TimeUnit timeUnit;
     private List<ColumnAccessor> partitionKeys = new LinkedList<>();
     private List<ColumnAccessor> clusteringKeys = new LinkedList<>();
@@ -59,12 +59,22 @@ public class Inspector {
         return timeUnit;
     }
 
-    public void addPartitionKey(ColumnAccessor descriptor) {
+    public synchronized void addPartitionKey(ColumnAccessor descriptor) {
+        Iterator<ColumnAccessor> iterator = partitionKeys.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().position == descriptor.position)
+                iterator.remove();
+        }
         partitionKeys.add(descriptor);
         Collections.sort(partitionKeys, Comparator.comparingInt(p -> p.position));
     }
 
-    public void addClusteringKey(ColumnAccessor descriptor) {
+    public synchronized void addClusteringKey(ColumnAccessor descriptor) {
+        Iterator<ColumnAccessor> iterator = clusteringKeys.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().position == descriptor.position)
+                iterator.remove();
+        }
         clusteringKeys.add(descriptor);
         Collections.sort(clusteringKeys, Comparator.comparingInt(p -> p.position));
     }
@@ -112,7 +122,7 @@ public class Inspector {
         return (Comparable) checkpoints.get(n).get(object);
     }
 
-    public void setCheckpoint(Object object, int n, Comparable value) {
+    public synchronized void setCheckpoint(Object object, int n, Comparable value) {
         if (checkpoints.size() <= n)
             return;
         checkpoints.get(n).set(object, value);
@@ -229,7 +239,7 @@ public class Inspector {
     }
 
     @SuppressWarnings({"squid:S3776", "squid:S135"})
-    public void initialize() {
+    public synchronized void initialize() {
         if (initialized)
             return;
         initialized = true;
