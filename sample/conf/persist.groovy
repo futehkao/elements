@@ -68,6 +68,27 @@ class Listener implements InvocationListener {
     }
 }
 
+atom("persist")
+        .settings([
+                unitName: 'sample',
+                txTimout: entityManagerTxTimeout,
+                monitorTransaction: entityManagerMonitorTransaction,
+                longTransaction: entityManagerLongTransaction,
+                providerName: 'default',
+                dataSourceName: 'dataSource',
+                beanName: 'entityManagerProvider'])
+        .from("$__dir/persist_prototype")
+        .build() {
+            postInit {
+                // testing if EntityManager can be created correctly
+                open({ resources ->
+                    EntityManager em = resources.getInstance(EntityManager)
+                    resources.abort()
+                })
+            }
+        }
+
+/*
 atom("persist") {
 
     configuration = """
@@ -105,5 +126,7 @@ atom("persist") {
         })
     }
 }
+
+ */
 
 

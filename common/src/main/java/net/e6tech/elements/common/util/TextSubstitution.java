@@ -40,7 +40,6 @@ import static java.util.Locale.ENGLISH;
 public class TextSubstitution {
 
     private Map<String, Var> variables = new LinkedHashMap<>();
-    private Map<String, Var> declared = new LinkedHashMap<>();
     private String template;
 
     // NOTE.  If template ever gets modified, parseVariableNames needs to be called.
@@ -64,11 +63,6 @@ public class TextSubstitution {
 
     public String getTemplate() {
         return template;
-    }
-
-    public TextSubstitution declare(String var) {
-        declared.put(var, new Var(var));
-        return this;
     }
 
     public String build(Object binding) {
@@ -154,13 +148,8 @@ public class TextSubstitution {
                 trailingSpaces = key.substring(index);
 
             String[] tokens = key.split("\\.");
-            Var var = declared.get(tokens[0]);
-            if (var == null) {
-                var = new Var(expression);
-            } else {
-                var = new Var(var); // essentially clone var.
-            }
 
+            Var var = new Var(expression);
             var.leading = leadingSpaces;
             var.trailing = trailingSpaces;
             var.defaultValue = defVal;
