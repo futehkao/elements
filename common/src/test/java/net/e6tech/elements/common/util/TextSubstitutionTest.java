@@ -183,6 +183,17 @@ public class TextSubstitutionTest {
     }
 
     @Test
+    public void escape2() {
+        String text = "${a::+b}";
+        TextSubstitution sub = new TextSubstitution(text);
+        Map<String, Object> map = new HashMap<>();
+        String output = sub.build(map);
+        System.out.println(output);
+        assertTrue(output.equals("+b"));
+    }
+
+
+    @Test
     public void predicate() {
         String text = "${${x} := A ?B:C}";
         TextSubstitution sub = new TextSubstitution(text);
@@ -225,14 +236,14 @@ public class TextSubstitutionTest {
 
     @Test
     public void moreTest() {
-        String  template = "Purchase${location:+ at }${location}";
+        String  template = "Purchase${location:+ at ${location}}";
         TextSubstitution sub = new TextSubstitution(template);
         Map<String, Object> map = new HashMap<>();
         map.put("location", "112 Main St.");
         String output = sub.build(map);
         assertTrue(output.equals("Purchase at 112 Main St."));
 
-        template = "Reversal${reversed.memo:+ - }${reversed.memo}";
+        template = "Reversal${reversed.memo:+ - ${reversed.memo}}";
         sub = new TextSubstitution(template);
         map = new HashMap<>();
         map.put("reversed", new X());

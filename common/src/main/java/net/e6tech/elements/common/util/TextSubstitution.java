@@ -45,8 +45,8 @@ import static java.util.Locale.ENGLISH;
  *     map.put("b", "name");
  *     String output = sub.build(map);
  *
- *
  *  ${var:default} expands to default if var not defined, to var if var is defined.
+ *  ${var::default} same as above.  The extra ':' is to escape special characters like +, - and =
  *  ${var:+default} expands to "" if var is not defined, to default if var is defined.
  *  ${var:-default} expands to default if var not defined, to "" if var is defined.
  *  ${var:=predicate?match:not-match} expands to match if value of var equals to predicate, else not-match
@@ -151,6 +151,12 @@ public class TextSubstitution {
             } else if (strategy == null && text.codePointAt(cursor) == ':' && cursor < max - 1 && text.codePointAt(cursor + 1) == '=') {
                 key = text.substring(pos, cursor);
                 strategy = ":=";
+                strategyIndex = cursor + 2;
+                cursor += 2;
+            } else if (strategy == null && text.codePointAt(cursor) == ':' && cursor < max - 1 && text.codePointAt(cursor + 1) == ':') {
+                // this is for something like ${a::+b}.  The +, or other special characters, is part of default value.
+                key = text.substring(pos, cursor);
+                strategy = ":";
                 strategyIndex = cursor + 2;
                 cursor += 2;
             } else if (strategy == null && text.codePointAt(cursor) == ':') {
