@@ -38,9 +38,7 @@ public class TextSubstitutionTest {
         TextSubstitution sub = new TextSubstitution(text);
         Map<String, Object> map = new HashMap<>();
         map.put("x", new X());
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("  X"));
+        assertTrue(sub.build(map).equals("  X"));
     }
 
     @Test
@@ -52,9 +50,7 @@ public class TextSubstitutionTest {
         map.put("a", "x");
         map.put("b", "name");
         map.put("X", "Y");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("Y"));
+        assertTrue(sub.build(map).equals("Y"));
     }
 
     @Test
@@ -64,9 +60,7 @@ public class TextSubstitutionTest {
         Map<String, Object> map = new HashMap<>();
         map.put("x", new X());
         map.put("a", "x");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("ABC X"));
+        assertTrue(sub.build(map).equals("ABC X"));
     }
 
     @Test
@@ -76,9 +70,7 @@ public class TextSubstitutionTest {
         Map<String, Object> map = new HashMap<>();
         map.put("x", new X());
         map.put("a", "x");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals(" X X"));
+        assertTrue(sub.build(map).equals(" X X"));
     }
 
     @Test
@@ -89,9 +81,7 @@ public class TextSubstitutionTest {
         map.put("x", new X());
         map.put("a", "x");
         map.put("b", "name");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals(" X X"));
+        assertTrue(sub.build(map).equals(" X X"));
     }
 
     @Test
@@ -102,9 +92,7 @@ public class TextSubstitutionTest {
         map.put("x", new X());
         map.put("a", "x");
         map.put("b", "name");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals(" X X"));
+        assertTrue(sub.build(map).equals(" X X"));
     }
 
     @Test
@@ -116,9 +104,7 @@ public class TextSubstitutionTest {
         map.put("a", "x");
         map.put("b", "name");
         map.put("X", "Y");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("Y X"));
+        assertTrue(sub.build(map).equals("Y X"));
     }
 
     @Test
@@ -129,9 +115,7 @@ public class TextSubstitutionTest {
         map.put("a", "x");
         map.put("b", "name");
         map.put("name", "Y");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("Y"));
+        assertTrue(sub.build(map).equals("Y"));
     }
 
     @Test
@@ -142,9 +126,7 @@ public class TextSubstitutionTest {
         map.put("b", "name");
         map.put("name", "Y");
         map.put("Y", "Z");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("Z"));
+        assertTrue(sub.build(map).equals("Z"));
     }
 
     @Test
@@ -157,18 +139,7 @@ public class TextSubstitutionTest {
         map.put("b", "name");
         Map<String, Object> auxillary = new HashMap<>();
         auxillary.put("z", "Z");
-        String output = sub.build(map, auxillary);
-        System.out.println(output);
-        assertTrue(output.equals(" X X"));
-    }
-
-    @Test
-    public void basicObject() {
-        String text = "${ a }${b} ${name}";
-        TextSubstitution sub = new TextSubstitution(text);
-        String output = sub.build(new X());
-        System.out.println(output);
-        assertTrue(output.equals(" A  X"));
+        assertTrue(sub.build(map).equals(" X X"));
     }
 
     @Test
@@ -177,9 +148,7 @@ public class TextSubstitutionTest {
         TextSubstitution sub = new TextSubstitution(text);
         Map<String, Object> map = new HashMap<>();
         map.put("name", "My name");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("${:a }My name"));
+        assertTrue(sub.build(map).equals("${:a }My name"));
     }
 
     @Test
@@ -187,27 +156,21 @@ public class TextSubstitutionTest {
         String text = "${a::+b}";
         TextSubstitution sub = new TextSubstitution(text);
         Map<String, Object> map = new HashMap<>();
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("+b"));
+        assertTrue(sub.build(map).equals("+b"));
     }
 
 
     @Test
-    public void predicate() {
+    public void ternary() {
         String text = "${${x} := A ?B:C}";
         TextSubstitution sub = new TextSubstitution(text);
         Map<String, Object> map = new HashMap<>();
         map.put("x", "y");
         map.put("y", "A");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("B"));
+        assertTrue(sub.build(map).equals("B"));
 
         map.remove("y");
-        output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("C"));
+        assertTrue(sub.build(map).equals("C"));
     }
 
     @Test
@@ -216,22 +179,14 @@ public class TextSubstitutionTest {
         TextSubstitution sub = new TextSubstitution(text);
         Map<String, Object> map = new HashMap<>();
         map.put("name", "My name");
-        String output = sub.build(map);
-        System.out.println(output);
-        assertTrue(output.equals("a My name"));
+        assertTrue(sub.build(map).equals("a My name"));
     }
 
     @Test
-    public void minusDefault() {
-        String text = "Parameter value ${1} for parameter named ${0} is invalid${2:+: }${2}.";
+    public void basicObject() {
+        String text = "${ a }${b} ${name} ${y.name}";
         TextSubstitution sub = new TextSubstitution(text);
-        Map<String, Object> map = new HashMap<>();
-        map.put("0", "NAME");
-        map.put("1", "NULL");
-        map.put("2", "NULL");
-        String output = sub.build(map);
-        System.out.println(output);
-
+        assertTrue(sub.build(new X()).equals(" A  X Y"));
     }
 
     @Test
@@ -266,10 +221,13 @@ public class TextSubstitutionTest {
     }
 
     private static class X {
-        public String getName() {
-            return "X";
-        }
+        public String getName() { return "X"; }
         public String getA() { return "A"; }
-        public String getMemo() { return "memo";}
+        public String getMemo() { return "memo"; }
+        public Y getY() { return new Y();}
+    }
+
+    private static class Y {
+        public String getName() { return "Y";}
     }
 }

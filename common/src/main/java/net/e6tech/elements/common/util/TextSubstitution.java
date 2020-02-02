@@ -305,13 +305,7 @@ public class TextSubstitution {
                 } else if (":-".equals(strategy)) {
                     return value;
                 } else if (":=".equals(strategy)) {
-                    int p = value.indexOf('?');
-                    if (p < 0)
-                        throw new SystemException("Invalid := expression, missing '?'");
-                    int c = value.indexOf(':', p);
-                    if (c < 0)
-                        throw new SystemException("Invalid := expression, missing ':' after '?'");
-                    return value.substring(c + 1).trim();
+                    return parseTernary(null, value);
                 } else if (":".equals(strategy)) {
                     return value;
                 }
@@ -323,24 +317,28 @@ public class TextSubstitution {
                 } else if (":-".equals(strategy)) {
                     return "";
                 } else if (":=".equals(strategy)) {
-                    int p = value.indexOf('?');
-                    if (p < 0)
-                        throw new SystemException("Invalid := expression, missing '?'");
-                    String predicate = value.substring(0, p).trim();
-                    int c = value.indexOf(':', p);
-                    if (c < 0)
-                        throw new SystemException("Invalid := expression, missing ':' after '?'");
-                    String match = value.substring(p + 1, c);
-                    String not = value.substring(c + 1);
-                    if (result.toString().equals(predicate)) {
-                        return match;
-                    } else {
-                        return not;
-                    }
+                    return parseTernary(result.toString(), value);
                 } else if (":".equals(strategy)) {
                     return  leading + result.toString() + trailing;
                 }
                 return leading + result.toString() + trailing;
+            }
+        }
+
+        private String parseTernary(String result, String value) {
+            int p = value.indexOf('?');
+            if (p < 0)
+                throw new SystemException("Invalid := expression, missing '?'");
+            String predicate = value.substring(0, p).trim();
+            int c = value.indexOf(':', p);
+            if (c < 0)
+                throw new SystemException("Invalid := expression, missing ':' after '?'");
+            String match = value.substring(p + 1, c);
+            String not = value.substring(c + 1);
+            if (result != null && result.equals(predicate)) {
+                return match;
+            } else {
+                return not;
             }
         }
     }
