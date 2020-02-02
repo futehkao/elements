@@ -180,7 +180,11 @@ public class PluginManager {
                 inject(plugin, args);
             } else {
                 T prototype = (T) lookup;
-                if (prototype.isPrototype()) {
+                if (prototype instanceof Prototype) {
+                    plugin = (T) ((Prototype) prototype).newInstance();
+                    plugin.initialize(pluginPath);
+                    inject(plugin, args);
+                } else if (prototype.isPrototype()) {
                     try {
                         plugin = (T) prototype.getClass().getDeclaredConstructor().newInstance();
                         Reflection.copyInstance(plugin, prototype);
@@ -190,6 +194,7 @@ public class PluginManager {
                         throw new SystemException(e);
                     }
                 } else {
+                    // this is a singleton, no need to initialize and inject.
                     plugin = prototype;
                 }
             }

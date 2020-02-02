@@ -23,30 +23,46 @@ import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.util.Locale.ENGLISH;
 
 /**
- * Created by futeh.
+ * Created by futeh.<br><br>
+ *
+ * This class is used for substitute variables in text.  It supports nested expressions like
+ * <pre>"${${a}.${b}:+ ${${a}.${b}}} ${x.name}"</pre>
+ * <br>
+ * However, in general, one should not go crazy with it.<br>
+ * <br>
+ * An example of it usage:
+ * <pre>
+ *     String text = "${${a}.${b}:+ ${${a}.${b}}} ${x.name}";
+ *     TextSubstitution sub = new TextSubstitution(text);
+ *     Map<String, Object> map = new HashMap<>();
+ *     map.put("x", new X());
+ *     map.put("a", "x");
+ *     map.put("b", "name");
+ *     String output = sub.build(map);
+ *
  *
  *  ${var:default} expands to default if var not defined, to var if var is defined.
- *  ${var:+default}  expands to "" if var is not defined, to default if var is defined.
+ *  ${var:+default} expands to "" if var is not defined, to default if var is defined.
  *  ${var:-default} expands to default if var not defined, to "" if var is defined.
+ *  ${var:=predicate?match:not-match} expands to match if value of var equals to predicate, else not-match
+ *     example: "${key := A ?B:C}";  the spaces after the '?' are important.
+ *  </pre>
  */
 public class TextSubstitution {
 
-    private Map<String, Var> variables = new LinkedHashMap<>();
+    private Map<String, Var> variables;
     private String template;
 
     // NOTE.  If template ever gets modified, parseVariableNames needs to be called.
 
     public TextSubstitution(String template) {
         this.template = template;
-        parseVariableNames(template);
+        variables = parseVariableNames(template);
     }
 
     public TextSubstitution(Reader reader) throws IOException {
@@ -57,7 +73,7 @@ public class TextSubstitution {
             builder.append(buffer, 0, len);
         }
         this.template = builder.toString();
-        parseVariableNames(template);
+        variables = parseVariableNames(template);
         reader.close();
     }
 
@@ -66,97 +82,122 @@ public class TextSubstitution {
     }
 
     public String build(Object binding) {
+        return build(binding, Collections.emptyMap());
+    }
+
+    public String build(Object binding, Map<String, Object> auxillary) {
         if (template == null)
             return "";
         String text = template;
         for (Map.Entry<String, Var> entry : variables.entrySet()) {
             Var var = entry.getValue();
-            text = replaceVariable(entry.getKey(), var.build(binding), text);
+            text = replaceVariable(entry.getKey(), var.build(binding, auxillary), text);
         }
+
+        text = text.replace("\\$", "$");
         return text;
     }
 
-    private String replaceVariable(String key, String value, String text) {
+    private static String replaceVariable(String key, String value, String text) {
         return text.replace("${" + key + "}", value);
     }
 
-    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135", "squid:S3776"})
-    private void parseVariableNames(String text) {
-        variables.clear();
-        List<String> expressions = new LinkedList<>();
-        int pos = 0;
+    private static void parse(String text, List<Var> varList) {
         int max = text.length();
-        while (pos < max) {
-            pos = text.indexOf("${", pos);
-            if (pos == -1)
-                break;
-            int end = text.indexOf('}', pos + 2);
-            if (end == -1)
-                break;
-            String name = text.substring(pos + 2, end);
-            expressions.add(name);
-            pos = end + 1;
+        int pos = 0;
+        int prev = -1;
+        while (pos < max - 1) {
+            if (pos > 0)
+                prev = text.codePointAt(pos - 1);
+            if (prev != '\\' && text.codePointAt(pos) == '$' && text.codePointAt(pos + 1) == '{') {
+                int start = pos + 2;
+                Var var = parseVar(text, start);
+                varList.add(var);
+                pos = start + var.text.length() + 1; // +1 for '}'
+            } else {
+                pos ++;
+            }
+        }
+    }
+
+    @SuppressWarnings("squid:S3776")
+    private static Var parseVar(String text, int pos) {
+        int max = text.length();
+        String key = null;
+        String strategy = null;
+        int cursor = pos;
+        int strategyIndex = -1;
+        int prev = -1;
+        while (cursor < max) {
+            if (cursor > pos)
+                prev = text.codePointAt(cursor - 1);
+
+            if (prev != '\\' && text.codePointAt(cursor) == '$' && cursor < max - 1 && text.codePointAt(cursor + 1) == '{') {
+                // we got nested express
+                cursor = skipNested(text, cursor + 2);
+            } else if (text.codePointAt(cursor) == '}') {
+                return newVar(text.substring(pos, cursor), key, strategy,
+                        (strategyIndex >= 0) ? text.substring(strategyIndex, cursor) : "");
+            } else if (strategy == null && text.codePointAt(cursor) == ':' && cursor < max - 1 && text.codePointAt(cursor + 1) == '+') {
+                key = text.substring(pos, cursor);
+                strategy = ":+";
+                strategyIndex = cursor + 2;
+                cursor += 2;
+            } else if (strategy == null && text.codePointAt(cursor) == ':' && cursor < max - 1 && text.codePointAt(cursor + 1) == '-') {
+                key = text.substring(pos, cursor);
+                strategy = ":-";
+                strategyIndex = cursor + 2;
+                cursor += 2;
+            } else if (strategy == null && text.codePointAt(cursor) == ':' && cursor < max - 1 && text.codePointAt(cursor + 1) == '=') {
+                key = text.substring(pos, cursor);
+                strategy = ":=";
+                strategyIndex = cursor + 2;
+                cursor += 2;
+            } else if (strategy == null && text.codePointAt(cursor) == ':') {
+                key = text.substring(pos, cursor);
+                strategy = ":";
+                strategyIndex = cursor + 1;
+                cursor ++;
+            } else {
+                cursor++;
+            }
         }
 
-        for (String expression : expressions) {
-            String key = expression;
-            String defVal = null;
-            String strategy = null;
-            if (expression.contains(":+")) {
-                int index = expression.indexOf(":+");
-                if (index >= 0) {
-                    key = expression.substring(0, index).trim();
-                    defVal = expression.substring(index + 2);
-                    strategy = ":+";
-                }
-            } else if (expression.contains(":-")) {
-                int index = expression.indexOf(":-");
-                if (index >= 0) {
-                    key = expression.substring(0, index).trim();
-                    defVal = expression.substring(index + 2);
-                    strategy = ":-";
-                }
-            } else if (expression.contains(":")) {
-                int index = expression.indexOf(':');
-                if (index >= 0) {
-                    key = expression.substring(0, index).trim();
-                    defVal = expression.substring(index + 1);
-                    strategy = ":";
-                }
+        return newVar(text.substring(pos, max), key, strategy,
+                (strategyIndex >= 0) ? text.substring(strategyIndex, max) : "");
+    }
+
+    private static Var newVar(String text, String key, String strategy, String defaultValue) {
+        Var variable = new Var(text, key == null ? text : key);
+        variable.strategy = strategy;
+        variable.defaultValue = defaultValue;
+        return variable;
+    }
+
+    private static int skipNested(String text, int pos) {
+        int max = text.length();
+        int cursor = pos;
+        while (cursor < max) {
+            if (text.codePointAt(cursor) == '$' && cursor < max - 1 && text.codePointAt(cursor + 1) == '{') {
+                cursor = skipNested(text, cursor + 2);
+            } else if (text.codePointAt(cursor) == '}') {
+               return cursor + 1;
+            } else {
+                cursor++;
             }
-
-            // computing leading white spaces. only matter for expressions without ':' or ':+'
-            int index = 0;
-            for (int i = 0; i < key.length(); i++) {
-                if (!Character.isWhitespace(key.codePointAt(i))) {
-                    index = i;
-                    break;
-                }
-            }
-            String leadingSpaces = key.substring(0, index);
-
-            // computing trailing white spaces. only matter for expressions without ':' or ':+'
-            index = key.length();
-            for (int i = key.length() - 1; i >=0 ; i--) {
-                if (!Character.isWhitespace(key.codePointAt(i))) {
-                    index = i + 1;
-                    break;
-                }
-            }
-            String trailingSpaces = "";
-            if (index < key.length())
-                trailingSpaces = key.substring(index);
-
-            String[] tokens = key.split("\\.");
-
-            Var var = new Var(expression);
-            var.leading = leadingSpaces;
-            var.trailing = trailingSpaces;
-            var.defaultValue = defVal;
-            var.strategy = strategy;
-            var.path = tokens;
-            variables.put(expression, var);
         }
+        return max;
+    }
+
+    private static Map<String, Var> parseVariableNames(String text) {
+        Map<String, Var> variables = new LinkedHashMap<>();
+        List<Var> varList = new LinkedList<>();
+        parse(text, varList);
+
+        for (Var v : varList) {
+            variables.put(v.text, v);
+        }
+        return variables;
     }
 
     public static String capitalize(String name) {
@@ -167,57 +208,68 @@ public class TextSubstitution {
     }
 
     private static class Var {
-        String name;
-        String leading;
-        String trailing;
-        String defaultValue;
+        String text;
+        String key;
         String strategy;
-        String[] path;
+        String defaultValue;
 
-        Var(String name) {
-            this.name = name;
-        }
+        private String leading;
+        private String trailing;
+        private String[] path;
 
-        Var(Var var) {
-            this.name = var.name;
-            this.leading = var.leading;
-            this.trailing = var.trailing;
-            this.defaultValue = var.defaultValue;
-            this.strategy = var.strategy;
-            this.path = var.path;
-        }
+        Var(String text, String key) {
+            this.text = text;
+            this.key = key;
 
-        public String getName() {
-            return name;
-        }
+            // computing leading white spaces. only matter for expressions without ':' or ':+'
+            int index = 0;
+            for (int i = 0; i < key.length(); i++) {
+                if (!Character.isWhitespace(key.codePointAt(i))) {
+                    index = i;
+                    break;
+                }
+            }
+            leading = key.substring(0, index);
 
-        public void setName(String name) {
-            this.name = name;
-        }
+            // computing trailing white spaces. only matter for expressions without ':' or ':+'
+            index = key.length();
+            for (int i = key.length() - 1; i >= 0 ; i--) {
+                if (!Character.isWhitespace(key.codePointAt(i))) {
+                    index = i + 1;
+                    break;
+                }
+            }
 
-        public String getDefaultValue() {
-            return defaultValue;
-        }
+            trailing = "";
+            if (index < key.length())
+                trailing = key.substring(index);
+            path = key.split("\\.");
 
-        public void setDefaultValue(String defaultValue) {
-            this.defaultValue = defaultValue;
         }
 
         @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135", "squid:S1141", "squid:S134", "squid:S3776"})
-        public String build(Object object) {
+        String build(Object object, Map<String, Object> auxillary) {
+            String[] components = path;
+            if (key.contains("${")) {
+                components = new TextSubstitution(key).build(object, auxillary).split("\\.");
+            }
+
             Object result = object;
             PropertyDescriptor desc;
-            for (String comp : path) {
+            for (String comp : components) {
                 comp = comp.trim();
-                if (comp.isEmpty()) {
+                if (comp.isEmpty()) { // skip empty path component
                     result = null;
                     continue;
                 }
                 try {
                     if (result == null)
                         break;
+
                     if (result instanceof Map) {
                         result = ((Map) result).get(comp);
+                        if (result == null)
+                            result = auxillary.get(comp);
                     } else {
                         try {
                             desc = new PropertyDescriptor(comp, result.getClass(), "is" + capitalize(comp), null);
@@ -226,6 +278,8 @@ public class TextSubstitution {
                             Logger.suppress(ex);
                             result = null;
                         }
+                        if (result == null)
+                            result = auxillary.get(comp);
                     }
                 } catch (Exception e) {
                     Logger.suppress(e);
@@ -233,24 +287,52 @@ public class TextSubstitution {
                 }
             }
 
+            String value = defaultValue;
+            if (value.contains("${")) {
+                value = new TextSubstitution(defaultValue).build(object, auxillary);
+            }
+
             if (result == null) {
                 // variable not defined
                 if (":+".equals(strategy)) {
                     return "";
                 } else if (":-".equals(strategy)) {
-                    return (defaultValue == null) ? "" : defaultValue;
+                    return value;
+                } else if (":=".equals(strategy)) {
+                    int p = value.indexOf('?');
+                    if (p < 0)
+                        throw new SystemException("Invalid := expression, missing '?'");
+                    int c = value.indexOf(':', p);
+                    if (c < 0)
+                        throw new SystemException("Invalid := expression, missing ':' after '?'");
+                    return value.substring(c + 1).trim();
                 } else if (":".equals(strategy)) {
-                    return (defaultValue == null) ? "" : defaultValue;
+                    return value;
                 }
                 return "";
             } else {
                 // variable is defined
                 if (":+".equals(strategy)) {
-                    return defaultValue;
+                    return value;
                 } else if (":-".equals(strategy)) {
                     return "";
+                } else if (":=".equals(strategy)) {
+                    int p = value.indexOf('?');
+                    if (p < 0)
+                        throw new SystemException("Invalid := expression, missing '?'");
+                    String predicate = value.substring(0, p).trim();
+                    int c = value.indexOf(':', p);
+                    if (c < 0)
+                        throw new SystemException("Invalid := expression, missing ':' after '?'");
+                    String match = value.substring(p + 1, c);
+                    String not = value.substring(c + 1);
+                    if (result.toString().equals(predicate)) {
+                        return match;
+                    } else {
+                        return not;
+                    }
                 } else if (":".equals(strategy)) {
-                    return result.toString();
+                    return  leading + result.toString() + trailing;
                 }
                 return leading + result.toString() + trailing;
             }
