@@ -76,6 +76,10 @@ public class Scripting {
         return script;
     }
 
+    public void shutdown() {
+        engine.shutdown();
+    }
+
     public boolean containsKey(String key) {
         return engine.containsKey(key);
     }
@@ -142,7 +146,7 @@ public class Scripting {
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S2093", "squid:S3776", "squid:S2139"})
     // script is the full path name
-    private Object eval(String script, boolean topLevel) throws ScriptException {
+    private Object internalExec(String script, boolean topLevel) throws ScriptException {
         String prevRootDir = null;
         String prevRootFile = null;
         if (topLevel) {
@@ -218,6 +222,10 @@ public class Scripting {
 
     public Object eval(String script) {
         return engine.eval(script);
+    }
+
+    public Object eval(String script, boolean shouldCache) {
+        return engine.eval(script, shouldCache);
     }
 
     public boolean isRunnable(Object obj) {
@@ -345,7 +353,7 @@ public class Scripting {
         for (String p : paths) {
             if (!silent)
                 logger.info("Executing script: {}", p);
-            Object val = eval(p, topLevel);
+            Object val = internalExec(p, topLevel);
             if (val != null)
                 ret = val;
         }
@@ -383,6 +391,14 @@ public class Scripting {
             }
             shell = new GroovyShell(loader, binding, compilerConfig);
 
+        }
+
+        public void shutdown() {
+            try {
+                shell.getClassLoader().close();
+            } catch (IOException e) {
+                throw new SystemException(e);
+            }
         }
 
         public boolean containsKey(String key) {
@@ -469,6 +485,22 @@ public class Scripting {
             Script previous = (Script) get(__SCRIPT);
             try {
                 Script script = shell.parse(scriptText);
+                put(__SCRIPT, script);
+                return script.run();
+            } finally {
+                if (previous != null)
+                    put(__SCRIPT, previous);
+                else
+                    remove(__SCRIPT);
+            }
+        }
+
+        public Object eval(String scriptText, boolean shouldCache) {
+            Script previous = (Script) get(__SCRIPT);
+            try {
+                GroovyCodeSource codeSource = new GroovyCodeSource(scriptText, "Scripting_Eval.groovy", GroovyShell.DEFAULT_CODE_BASE);
+                Class cls = shell.getClassLoader().parseClass(codeSource, shouldCache);
+                Script script = InvokerHelper.createScript(cls, shell.getContext());
                 put(__SCRIPT, script);
                 return script.run();
             } finally {

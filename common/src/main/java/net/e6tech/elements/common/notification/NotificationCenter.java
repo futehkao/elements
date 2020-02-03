@@ -21,6 +21,7 @@ import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -89,7 +90,7 @@ public class NotificationCenter implements Broadcast {
         if (list != null)
             listeners.addAll(list);
 
-        return list;
+        return list == null ? Collections.emptyList() : list;
     }
 
     // ***************************************************************************************

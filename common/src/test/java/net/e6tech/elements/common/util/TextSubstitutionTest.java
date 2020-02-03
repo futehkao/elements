@@ -139,7 +139,7 @@ public class TextSubstitutionTest {
         map.put("b", "name");
         Map<String, Object> auxillary = new HashMap<>();
         auxillary.put("z", "Z");
-        assertTrue(sub.build(map).equals(" X X"));
+        assertTrue(sub.build(map, auxillary).equals(" X X"));
     }
 
     @Test
@@ -172,6 +172,50 @@ public class TextSubstitutionTest {
         map.remove("y");
         assertTrue(sub.build(map).equals("C"));
     }
+
+    private static final long MEGABYTE = 1024L * 1024L;
+
+    public static long bytesToMegabytes(long bytes) {
+        return bytes / MEGABYTE;
+    }
+
+    @Test
+    public void script() {
+        String text = "${name:^ def tmp = 0; for (int i = 0; i < 10; i++) tmp ++; 'hello world, ' + it + tmp; }";
+        TextSubstitution sub = new TextSubstitution(text);
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", "Futeh");
+        assertTrue(sub.build(map).equals("hello world, Futeh10"));
+
+        String text2 = "${name:^ def tmp = 0; for (int i = 0; i < 10; i++) tmp ++; 'Hello World, ' + it + tmp; }";
+        TextSubstitution sub2 = new TextSubstitution(text2);
+
+        Runtime runtime = Runtime.getRuntime();
+        // Run the garbage collector
+        runtime.gc();
+        // Calculate the used memory
+        memory();
+
+        for (int i = 0; i < 10000; i++) {
+            sub.build(map);
+            if (i == 0) {
+                assertTrue(sub.build(map).equals("hello world, Futeh10"));
+                assertTrue(sub2.build(map).equals("Hello World, Futeh10"));
+            }
+            sub2.build(map);
+        }
+
+        runtime.gc();
+        memory();
+
+    }
+
+    private void memory() {
+        Runtime runtime = Runtime.getRuntime();
+        long memory = runtime.totalMemory() - runtime.freeMemory();
+        System.out.println("Used memory is bytes: " + memory);
+    }
+
 
     @Test
     public void undefined() {

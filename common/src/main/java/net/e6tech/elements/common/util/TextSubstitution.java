@@ -17,7 +17,9 @@ limitations under the License.
 
 package net.e6tech.elements.common.util;
 
+import groovy.lang.Closure;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.ResourceManager;
 
 import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
@@ -53,10 +55,14 @@ import static java.util.Locale.ENGLISH;
  *     example: "${key := A ?B:C}";  the spaces after the '?' are important.
  *  </pre>
  */
+@SuppressWarnings("unchecked")
 public class TextSubstitution {
+
+    private static DefaultScriptable defaultScript = new DefaultScriptable();
 
     private Map<String, Var> variables;
     private String template;
+    private Scriptable script = defaultScript;
 
     // NOTE.  If template ever gets modified, parseVariableNames needs to be called.
 
@@ -81,6 +87,11 @@ public class TextSubstitution {
         return template;
     }
 
+    public TextSubstitution withScriptable(Scriptable script) {
+        this.script = script;
+        return this;
+    }
+
     public String build(Object binding) {
         return build(binding, Collections.emptyMap());
     }
@@ -98,11 +109,11 @@ public class TextSubstitution {
         return text;
     }
 
-    private static String replaceVariable(String key, String value, String text) {
+    private String replaceVariable(String key, String value, String text) {
         return text.replace("${" + key + "}", value);
     }
 
-    private static void parse(String text, List<Var> varList) {
+    private void parse(String text, List<Var> varList) {
         int max = text.length();
         int pos = 0;
         int prev = -1;
@@ -121,7 +132,7 @@ public class TextSubstitution {
     }
 
     @SuppressWarnings("squid:S3776")
-    private static Var parseVar(String text, int pos) {
+    private Var parseVar(String text, int pos) {
         int max = text.length();
         String key = null;
         String strategy = null;
@@ -153,6 +164,12 @@ public class TextSubstitution {
                 strategy = ":=";
                 strategyIndex = cursor + 2;
                 cursor += 2;
+            } else if (strategy == null && text.codePointAt(cursor) == ':' && cursor < max - 1 && text.codePointAt(cursor + 1) == '^') {
+                // this is for something like ${a::+b}.  The +, or other special characters, is part of default value.
+                key = text.substring(pos, cursor);
+                strategy = ":^";
+                strategyIndex = cursor + 2;
+                cursor += 2;
             } else if (strategy == null && text.codePointAt(cursor) == ':' && cursor < max - 1 && text.codePointAt(cursor + 1) == ':') {
                 // this is for something like ${a::+b}.  The +, or other special characters, is part of default value.
                 key = text.substring(pos, cursor);
@@ -173,7 +190,7 @@ public class TextSubstitution {
                 (strategyIndex >= 0) ? text.substring(strategyIndex, max) : "");
     }
 
-    private static Var newVar(String text, String key, String strategy, String defaultValue) {
+    private Var newVar(String text, String key, String strategy, String defaultValue) {
         Var variable = new Var(text, key == null ? text : key);
         variable.strategy = strategy;
         variable.defaultValue = defaultValue;
@@ -195,15 +212,15 @@ public class TextSubstitution {
         return max;
     }
 
-    private static Map<String, Var> parseVariableNames(String text) {
-        Map<String, Var> variables = new LinkedHashMap<>();
+    private Map<String, Var> parseVariableNames(String text) {
+        Map<String, Var> vars = new LinkedHashMap<>();
         List<Var> varList = new LinkedList<>();
         parse(text, varList);
 
         for (Var v : varList) {
-            variables.put(v.text, v);
+            vars.put(v.text, v);
         }
-        return variables;
+        return vars;
     }
 
     public static String capitalize(String name) {
@@ -213,7 +230,7 @@ public class TextSubstitution {
         return name.substring(0, 1).toUpperCase(ENGLISH) + name.substring(1);
     }
 
-    private static class Var {
+    private class Var {
         String text;
         String key;
         String strategy;
@@ -250,7 +267,6 @@ public class TextSubstitution {
             if (index < key.length())
                 trailing = key.substring(index);
             path = key.split("\\.");
-
         }
 
         @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S135", "squid:S1141", "squid:S134", "squid:S3776"})
@@ -305,7 +321,9 @@ public class TextSubstitution {
                 } else if (":-".equals(strategy)) {
                     return value;
                 } else if (":=".equals(strategy)) {
-                    return parseTernary(null, value);
+                    return ternary(null, value);
+                } else if (":^".equals(strategy)) {
+                    return scripting(result, value);
                 } else if (":".equals(strategy)) {
                     return value;
                 }
@@ -317,7 +335,9 @@ public class TextSubstitution {
                 } else if (":-".equals(strategy)) {
                     return "";
                 } else if (":=".equals(strategy)) {
-                    return parseTernary(result.toString(), value);
+                    return ternary(result.toString(), value);
+                } else if (":^".equals(strategy)) {
+                    return scripting(result, value);
                 } else if (":".equals(strategy)) {
                     return  leading + result.toString() + trailing;
                 }
@@ -325,7 +345,7 @@ public class TextSubstitution {
             }
         }
 
-        private String parseTernary(String result, String value) {
+        private String ternary(String result, String value) {
             int p = value.indexOf('?');
             if (p < 0)
                 throw new SystemException("Invalid := expression, missing '?'");
@@ -340,6 +360,36 @@ public class TextSubstitution {
             } else {
                 return not;
             }
+        }
+
+        private String scripting(Object result, String value) {
+            if (script == null) {
+                return "";
+            } else {
+                return script.eval(result, value);
+            }
+        }
+    }
+
+    @FunctionalInterface
+    public interface Scriptable {
+        String eval(Object result, String value);
+    }
+
+    public static class DefaultScriptable implements Scriptable {
+        private ResourceManager resourceManager = new ResourceManager();
+
+        public synchronized ResourceManager getResourceManager() {
+            return resourceManager;
+        }
+
+        public synchronized void setResourceManager(ResourceManager resourceManager) {
+            this.resourceManager = resourceManager;
+        }
+
+        public String eval(Object result, String value) {
+            Closure<String> closure = (Closure<String>) resourceManager.getScripting().eval("{ it ->" + value + " }", true);
+            return "" + closure.call(result);
         }
     }
 }

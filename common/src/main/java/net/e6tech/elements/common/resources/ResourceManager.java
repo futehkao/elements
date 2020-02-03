@@ -730,7 +730,15 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             if (!silent)
                 logger.info("{} is down.", rp.getDescription());
         });
-        resourceManagers.remove(name);
+        if (name != null)
+            resourceManagers.remove(name);
+
+        try {
+            getScripting().shutdown();
+            pluginManager.getPluginClassLoader().close();
+        } catch (Exception e) {
+            // don't care at this point.
+        }
     }
 
     Map<Class, ClassInjectionInfo> getInjections() {
