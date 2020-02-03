@@ -53,6 +53,7 @@ import static java.util.Locale.ENGLISH;
  *  ${var:-default} expands to default if var not defined, to "" if var is defined.
  *  ${var:=predicate?match:not-match} expands to match if value of var equals to predicate, else not-match
  *     example: "${key := A ?B:C}";  the spaces after the '?' are important.
+ *  ${var:^script} executes the script with value of var and returns a string from the execution.
  *  </pre>
  */
 @SuppressWarnings("unchecked")
