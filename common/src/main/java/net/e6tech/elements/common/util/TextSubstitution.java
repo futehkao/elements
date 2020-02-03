@@ -58,11 +58,11 @@ import static java.util.Locale.ENGLISH;
 @SuppressWarnings("unchecked")
 public class TextSubstitution {
 
-    private static DefaultScriptable defaultScript = new DefaultScriptable();
+    private static DefaultScriptable defaultScriptable = new DefaultScriptable();
 
     private Map<String, Var> variables;
     private String template;
-    private Scriptable script = defaultScript;
+    private Scriptable script = defaultScriptable;
 
     // NOTE.  If template ever gets modified, parseVariableNames needs to be called.
 
@@ -81,6 +81,10 @@ public class TextSubstitution {
         this.template = builder.toString();
         variables = parseVariableNames(template);
         reader.close();
+    }
+
+    public static DefaultScriptable defaultScriptable() {
+        return defaultScriptable;
     }
 
     public String getTemplate() {
