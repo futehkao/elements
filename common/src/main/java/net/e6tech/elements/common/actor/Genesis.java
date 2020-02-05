@@ -88,6 +88,11 @@ public class Genesis implements Initializable {
             if (provision != null)
                 provision.getResourceManager().addResourceProvider(ResourceProvider.wrap(getClass().getSimpleName(), (OnShutdown) this::shutdown));
             getGuardian().setEmbedded(true);
+        } else {
+            guardian = provision.getBean(Guardian.class);
+            setName(guardian.getName());
+            if (workerPoolConfig != null)
+                setWorkPoolConfig(workerPoolConfig);
         }
     }
 

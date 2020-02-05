@@ -41,7 +41,7 @@ import static java.util.Locale.ENGLISH;
  * <pre>
  *     String text = "${${a}.${b}:+ ${${a}.${b}}} ${x.name}";
  *     TextSubstitution sub = new TextSubstitution(text);
- *     Map<String, Object> map = new HashMap<>();
+ *     Map&lt;String, Object&gt; map = new HashMap&lt;&gt;();
  *     map.put("x", new X());
  *     map.put("a", "x");
  *     map.put("b", "name");

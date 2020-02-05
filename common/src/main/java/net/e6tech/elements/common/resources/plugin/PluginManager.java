@@ -39,7 +39,7 @@ import java.util.Optional;
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134"})
+@SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "unchecked"})
 public class PluginManager {
 
     private static final String DEFAULT_PLUGIN = "defaultPlugin";
@@ -170,49 +170,49 @@ public class PluginManager {
 
         // at this point lookup cannot be null
 
-        T plugin;
-        if (lookup instanceof Class) {
-            plugin = createInstance(pluginPath, (Class<T>) lookup, args);
-        } else {
-            if (lookup instanceof PluginFactory) {
-                plugin = ((PluginFactory) lookup).create(this);
-                plugin.initialize(pluginPath);
-                inject(plugin, args);
-            } else {
-                T prototype = (T) lookup;
-                if (prototype instanceof Prototype) {
-                    plugin = (T) ((Prototype) prototype).newInstance();
-                    plugin.initialize(pluginPath);
-                    inject(plugin, args);
-                } else if (prototype.isPrototype()) {
-                    try {
-                        plugin = (T) prototype.getClass().getDeclaredConstructor().newInstance();
-                        Reflection.copyInstance(plugin, prototype);
-                        plugin.initialize(pluginPath);
-                        inject(plugin, args);
-                    } catch (Exception e) {
-                        throw new SystemException(e);
-                    }
-                } else {
-                    // this is a singleton, no need to initialize and inject.
-                    plugin = prototype;
-                }
-            }
-        }
+        T plugin = createInstance(pluginPath, lookup, args);
 
         return Optional.of(plugin);
     }
 
-    public <T> T createInstance(PluginPath pluginPath, Class<T> cls, Object ... args) {
-        try {
-            T plugin = cls.getDeclaredConstructor().newInstance();
-            if (plugin instanceof Plugin)
-                ((Plugin)plugin).initialize(pluginPath);
+    public <T extends Plugin> T createInstance(PluginPath pluginPath, Object obj, Object ... args) {
+        if (obj == null)
+            return null;
+
+        T plugin;
+        if (obj instanceof Class) {
+            try {
+                plugin =  (T) ((Class)obj).getDeclaredConstructor().newInstance();
+                plugin.initialize(pluginPath);
+                inject(plugin, args);
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
+        } else if (obj instanceof PluginFactory) {
+            plugin = ((PluginFactory) obj).create(this);
+            plugin.initialize(pluginPath);
             inject(plugin, args);
-            return plugin;
-        } catch (Exception e) {
-            throw new SystemException(e);
+        } else {
+            T prototype = (T) obj;
+            if (prototype instanceof Prototype) {
+                plugin = (T) ((Prototype) prototype).newInstance();
+                plugin.initialize(pluginPath);
+                inject(plugin, args);
+            } else if (prototype.isPrototype()) {
+                try {
+                    plugin = (T) prototype.getClass().getDeclaredConstructor().newInstance();
+                    Reflection.copyInstance(plugin, prototype);
+                    plugin.initialize(pluginPath);
+                    inject(plugin, args);
+                } catch (Exception e) {
+                    throw new SystemException(e);
+                }
+            } else {
+                // this is a singleton, no need to initialize and inject.
+                plugin = prototype;
+            }
         }
+        return plugin;
     }
 
     @SuppressWarnings("squid:S3776")

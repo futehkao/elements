@@ -48,6 +48,16 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
     }
 
     public synchronized void join() {
+        while (!busyWorkers.isEmpty()) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    public synchronized void stopped() {
         while (!stopped) {
             try {
                 wait();
@@ -131,6 +141,11 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
         } else {
             busyWorkers.remove(worker);
             idleWorkers.add(worker);
+            if (busyWorkers.isEmpty()) {
+                synchronized (this) {
+                    notifyAll();
+                }
+            }
             scheduleCleanup(new WorkEvents.ScheduleCleanup());
         }
     }
