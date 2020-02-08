@@ -33,13 +33,14 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "unchecked"})
+@SuppressWarnings({ "squid:S134", "unchecked"})
 public class PluginManager {
 
     private static final String DEFAULT_PLUGIN = "defaultPlugin";
@@ -144,10 +145,21 @@ public class PluginManager {
         return Optional.ofNullable(lookup);
     }
 
-    @SuppressWarnings({"unchecked" ,"squid:S3776"})
+    public Map<PluginPath, Object> startsWith(PluginPaths<?> paths) {
+        Map<PluginPath, Object> map = new LinkedHashMap<>();
+
+        for (PluginPath path : paths.getPaths()) {
+            for (Map.Entry<PluginPath, Object> entry : plugins.entrySet()) {
+                if (entry.getKey().startsWith(path) && !map.containsKey(entry.getKey()))
+                    map.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return map;
+    }
+
     public <T extends Plugin> Optional<T> get(PluginPaths<T> paths, Object ... args) {
         Object lookup = null;
-        PluginPath pluginPath = null;
+        PluginPath<T> pluginPath = null;
 
         // look up from paths
         for (PluginPath path : paths.getPaths()) {
@@ -160,11 +172,6 @@ public class PluginManager {
 
         // if still null, look up from default plugin
         if (lookup == null) {
-            // get default plugin
-            Optional defaultPlugin = getDefaultPlugin(paths.getType());
-            if (!defaultPlugin.isPresent())
-                return Optional.empty();
-            lookup = defaultPlugin.get();
             pluginPath = PluginPath.of(paths.getType(), DEFAULT_PLUGIN);
         }
 
@@ -175,42 +182,67 @@ public class PluginManager {
         return Optional.of(plugin);
     }
 
-    public <T extends Plugin> T createInstance(PluginPath pluginPath, Object obj, Object ... args) {
-        if (obj == null)
+    public <T extends Plugin> T createInstance(PluginPath<T> pluginPath, Object obj, Object ... args) {
+        if (obj == null && pluginPath == null)
             return null;
+
+        if (obj == null) {
+            // get default plugin
+            Optional defaultPlugin = getDefaultPlugin(pluginPath.getType());
+            if (!defaultPlugin.isPresent())
+                return null;
+            obj = defaultPlugin.get();
+            pluginPath = PluginPath.of(pluginPath.getType(), DEFAULT_PLUGIN);
+        }
 
         T plugin;
         if (obj instanceof Class) {
+            plugin = createFromClass(pluginPath, (Class) obj, args);
+        } else if (obj instanceof PluginFactory) {
+            plugin = createFromFactory(pluginPath, (PluginFactory) obj, args);
+        } else {
+            plugin = createFromInstance(pluginPath, obj, args);
+        }
+        return plugin;
+    }
+
+    private  <T extends Plugin> T createFromClass(PluginPath<T> pluginPath, Class cls, Object ... args) {
+        try {
+            T plugin =  (T) cls.getDeclaredConstructor().newInstance();
+            plugin.initialize(pluginPath);
+            inject(plugin, args);
+            return plugin;
+        } catch (Exception e) {
+            throw new SystemException(e);
+        }
+    }
+
+    private  <T extends Plugin> T createFromFactory(PluginPath<T> pluginPath, PluginFactory factory, Object ... args) {
+        T plugin = factory.create(this);
+        plugin.initialize(pluginPath);
+        inject(plugin, args);
+        return plugin;
+    }
+
+    private  <T extends Plugin> T createFromInstance(PluginPath<T> pluginPath, Object obj, Object ... args) {
+        T plugin;
+        T prototype = (T) obj;
+        if (prototype instanceof Prototype) {
+            plugin = (T) ((Prototype) prototype).newInstance();
+            plugin.initialize(pluginPath);
+            inject(plugin, args);
+        } else if (prototype.isPrototype()) {
             try {
-                plugin =  (T) ((Class)obj).getDeclaredConstructor().newInstance();
+                plugin = (T) prototype.getClass().getDeclaredConstructor().newInstance();
+                Reflection.copyInstance(plugin, prototype);
                 plugin.initialize(pluginPath);
                 inject(plugin, args);
             } catch (Exception e) {
                 throw new SystemException(e);
             }
-        } else if (obj instanceof PluginFactory) {
-            plugin = ((PluginFactory) obj).create(this);
-            plugin.initialize(pluginPath);
-            inject(plugin, args);
         } else {
-            T prototype = (T) obj;
-            if (prototype instanceof Prototype) {
-                plugin = (T) ((Prototype) prototype).newInstance();
-                plugin.initialize(pluginPath);
-                inject(plugin, args);
-            } else if (prototype.isPrototype()) {
-                try {
-                    plugin = (T) prototype.getClass().getDeclaredConstructor().newInstance();
-                    Reflection.copyInstance(plugin, prototype);
-                    plugin.initialize(pluginPath);
-                    inject(plugin, args);
-                } catch (Exception e) {
-                    throw new SystemException(e);
-                }
-            } else {
-                // this is a singleton, no need to initialize and inject.
-                plugin = prototype;
-            }
+            // this is a singleton, no need to initialize and inject.
+            plugin = prototype;
         }
         return plugin;
     }

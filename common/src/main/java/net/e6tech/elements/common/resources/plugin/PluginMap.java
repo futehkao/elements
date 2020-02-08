@@ -25,10 +25,10 @@ import java.util.Map;
  * Created by futeh.
  */
 @SuppressWarnings("unchecked")
-public class PluginMap<K, V> implements PluginFactory {
+public class PluginMap<K, V extends Plugin> implements PluginFactory {
 
     private Map<K, Object> map = new LinkedHashMap<>();
-    private PluginPath pluginPath;
+    private PluginPath<V> pluginPath;
     private PluginManager pluginManager;
 
     @Override

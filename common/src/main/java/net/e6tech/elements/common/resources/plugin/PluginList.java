@@ -27,7 +27,7 @@ import java.util.function.Predicate;
  * Created by futeh.
  */
 @SuppressWarnings("unchecked")
-public class PluginList<T> implements PluginFactory {
+public class PluginList<T extends Plugin> implements PluginFactory {
 
     private List list = new ArrayList<>();
     private PluginPath<T> pluginPath;

@@ -149,4 +149,25 @@ public class PluginPath<T> {
         return false;
     }
 
+    public boolean startsWith(PluginPath p) {
+        List<PluginPath> l1 = list();
+        List<PluginPath> l2 = p.list();
+
+        if (l1.size() < l2.size())
+            return false;
+
+        for (int i = 0; i < l2.size(); i++) {
+            PluginPath p1 = l1.get(i);
+            PluginPath p2 = l2.get(i);
+            if (p1 != null && p2 != null) {
+                if (!(Objects.equals(p1.name, p2.name) && Objects.equals(p1.type, p2.type)))
+                    return false;
+            } else if (p1 != p2 ) { // if only one of them is null
+                return false;
+            }
+        }
+
+        return true;
+    }
+
 }

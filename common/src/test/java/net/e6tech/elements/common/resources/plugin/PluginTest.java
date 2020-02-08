@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Created by futeh.
@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class PluginTest {
 
     @Test
-    public void loadJars() throws Exception {
+    void loadJars() throws Exception {
         PluginManager manager = new PluginManager(new ResourceManager());
         manager.loadPlugins(new String[] { "./src/test/test-plugins/plugin-test.jar" } );
         Plugin plugin = (Plugin) manager.getPluginClassLoader().loadClass("net.e6tech.elements.common.resources.plugin.SimplePlugin").newInstance();
@@ -39,7 +39,7 @@ public class PluginTest {
     }
 
     @Test
-    public void loadJars2() throws Exception {
+    void loadJars2() throws Exception {
         PluginManager manager = new PluginManager(new ResourceManager());
         manager.loadPlugins(new String[] { "./src/test/test-plugins/*" } );
         Plugin plugin = (Plugin) manager.getPluginClassLoader().loadClass("net.e6tech.elements.common.resources.plugin.SimplePlugin").newInstance();
@@ -47,7 +47,7 @@ public class PluginTest {
     }
 
     @Test
-    public void defaultPlugin() {
+    void defaultPlugin() {
         PluginManager manager = new PluginManager(new ResourceManager());
         manager.add(PluginPath.of(PluginTest.class, "1").and(PluginX.class), new DefaultPluginX("1"));
 
@@ -60,7 +60,7 @@ public class PluginTest {
     }
 
     @Test
-    public void paths() {
+    void paths() {
         PluginManager manager = new PluginManager(new ResourceManager());
         manager.add(PluginPath.of(PluginTest.class, "1").and(PluginX.class), new DefaultPluginX("1"));
 
@@ -78,8 +78,26 @@ public class PluginTest {
         assertTrue(manager.get(paths).get().name().equals("1"));
     }
 
-    public static interface PluginX extends Plugin {
-        static Class defaultPlugin = DefaultPluginX.class;
+    @Test
+    void startsWith() {
+        PluginManager manager = new PluginManager(new ResourceManager());
+        PluginPath<PluginX> p1 = PluginPath.of(PluginTest.class, "1").and(String.class, "2").and(PluginX.class);
+        PluginPath<String> p2 = PluginPath.of(PluginTest.class, "1").and(String.class, "2");
+        PluginPath<AnotherPlugin> p3 = PluginPath.of(PluginTest.class, "1").and(String.class, "2").and(AnotherPlugin.class);
+        assertTrue(p1.startsWith(p2));
+
+        p2 = PluginPath.of(PluginTest.class, "1").and(String.class, "3");
+        assertTrue(!p1.startsWith(p2));
+
+        manager.add(p1, new DefaultPluginX("1"));
+        manager.add(p3, new AnotherPlugin());
+
+        p2 = PluginPath.of(PluginTest.class, "1").and(String.class, "2");
+        assertEquals(manager.startsWith(PluginPaths.of(p2)).size(), 2);
+    }
+
+    public interface PluginX extends Plugin {
+        Class defaultPlugin = DefaultPluginX.class;
 
         String name();
     }
@@ -98,6 +116,9 @@ public class PluginTest {
         public String name() {
             return name;
         }
+    }
+
+    public static class AnotherPlugin implements Plugin {
     }
 
     @Test
