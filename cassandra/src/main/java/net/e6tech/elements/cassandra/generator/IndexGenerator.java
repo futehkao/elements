@@ -39,6 +39,42 @@ public class IndexGenerator extends AbstractGenerator{
         LinkedList<Class> classHierarchy = analyze(entityClass);
         Set<String> transientNames = new HashSet<>(50);
 
+        for (PropertyDescriptor desc : Introspector.getBeanInfo(entityClass).getPropertyDescriptors()) {
+            Method method = null;
+            if (desc.getReadMethod() != null)
+                method = desc.getReadMethod();
+
+            if (method == null)
+                throw new IllegalArgumentException("Entity class does not have a get method for property " + desc.getName());
+            if (!desc.getName().equals("class")) {
+                if (generator.isTransient(desc)) {
+                    transientNames.add(desc.getName());
+                    continue;
+                }
+
+                if (transientNames.contains(desc.getName()))
+                    continue;
+
+                generator.partitionKeyIndex(desc, pk -> {
+                    partitionKeys.add(generator.getColumnName(desc));
+                    partitionKeys.add(desc.getName());
+                });
+
+                if (partitionKeys.contains(desc.getName())
+                        || partitionKeys.contains(generator.getColumnName(desc)))
+                    continue;
+
+                /*
+                Checkpoint checkpoint = method.getAnnotation(Checkpoint.class);
+                if (checkpoint != null) {
+                    implicitIndexes.remove(generator.getColumnName(column, method));
+                    String columnName = implicitIndexes2.get(desc.getName());
+                    implicitIndexes.remove(columnName);
+                    implicitIndexes.put(generator.getColumnName(column, method), checkpoint);
+                } */
+            }
+        }
+
         for (Class cls : classHierarchy) {
             Indexes indexList = (Indexes) cls.getAnnotation(Indexes.class);
             if (indexList != null) {
@@ -62,56 +98,17 @@ public class IndexGenerator extends AbstractGenerator{
                     continue;
                 }
 
-                int pk = generator.partitionKeyIndex(field);
-                if (pk >= 0) {
+                if (generator.partitionKeyIndex(field, pk -> {
                     partitionKeys.add(generator.getColumnName(field));
                     partitionKeys.add(field.getName());
+                }))
                     continue;
-                }
 
                 /*
                 Checkpoint checkpoint = field.getAnnotation(Checkpoint.class);
                 if (checkpoint != null) {
                     implicitIndexes.put(generator.getColumnName(column, field), checkpoint);
                     implicitIndexes2.put(field.getName(), generator.getColumnName(column, field));
-                } */
-            }
-        }
-
-        for (PropertyDescriptor desc : Introspector.getBeanInfo(entityClass).getPropertyDescriptors()) {
-            Method method = null;
-            if (desc.getReadMethod() != null)
-                method = desc.getReadMethod();
-
-            if (method == null)
-                throw new IllegalArgumentException("Entity class does not have a get method for property " + desc.getName());
-            if (!desc.getName().equals("class")) {
-                if (generator.isTransient(desc)) {
-                    transientNames.add(desc.getName());
-                    continue;
-                }
-
-                if (transientNames.contains(desc.getName()))
-                    continue;
-
-                int pk = generator.partitionKeyIndex(desc);
-                if (pk >= 0) {
-                    partitionKeys.add(generator.getColumnName(desc));
-                    partitionKeys.add(desc.getName());
-                    continue;
-                }
-
-                if (partitionKeys.contains(desc.getName())
-                    || partitionKeys.contains(generator.getColumnName(desc)))
-                    continue;
-
-                /*
-                Checkpoint checkpoint = method.getAnnotation(Checkpoint.class);
-                if (checkpoint != null) {
-                    implicitIndexes.remove(generator.getColumnName(column, method));
-                    String columnName = implicitIndexes2.get(desc.getName());
-                    implicitIndexes.remove(columnName);
-                    implicitIndexes.put(generator.getColumnName(column, method), checkpoint);
                 } */
             }
         }

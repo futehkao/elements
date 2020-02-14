@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2020 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,33 +18,42 @@ package net.e6tech.elements.cassandra.generator;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 
-public class KeyColumn {
-    private int position;
+public class ColumnInfo {
     private String name;
+    private Type type;
     private Field field;
     private PropertyDescriptor propertyDescriptor;
 
-    public KeyColumn(String name, int position, PropertyDescriptor descriptor, Field field) {
+    public ColumnInfo(String name, Type type, PropertyDescriptor descriptor, Field field) {
         this.name = name;
-        this.position = position;
+        this.type = type;
         this.propertyDescriptor = descriptor;
         this.field = field;
-    }
-
-    public int getPosition() {
-        return position;
     }
 
     public String getName() {
         return name;
     }
 
+    public Type getType() {
+        return type;
+    }
+
     public Field getField() {
         return field;
     }
 
+    void setField(Field field) {
+        this.field = field;
+    }
+
     public PropertyDescriptor getPropertyDescriptor() {
         return propertyDescriptor;
+    }
+
+    void setPropertyDescriptor(PropertyDescriptor propertyDescriptor) {
+        this.propertyDescriptor = propertyDescriptor;
     }
 }

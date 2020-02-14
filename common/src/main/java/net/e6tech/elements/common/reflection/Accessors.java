@@ -45,14 +45,15 @@ public class Accessors<T extends Accessor> {
 
     public static Accessors<Accessor> simple(Class cls) {
         return new Accessors<>(cls,
-                DEFAULT_FIELD_ACCESSOR_FACTORY,
-                DEFAULT_PROPERTY_ACCESSOR_FACTORY);
+                DEFAULT_PROPERTY_ACCESSOR_FACTORY,
+                DEFAULT_FIELD_ACCESSOR_FACTORY);
     }
 
-    public Accessors(Class targetClass, Function<Field, T> fieldFactory,
-                     BiFunction<PropertyDescriptor, T, T> descriptorFactory)  {
-        analyzeFields(targetClass, fieldFactory);
+    public Accessors(Class targetClass,
+                     BiFunction<PropertyDescriptor, T, T> descriptorFactory,
+                     Function<Field, T> fieldFactory)  {
         analyzedDescriptors(targetClass, descriptorFactory);
+        analyzeFields(targetClass, fieldFactory);
     }
 
     @SuppressWarnings("squid:S3776")
@@ -78,6 +79,8 @@ public class Accessors<T extends Accessor> {
         if (descriptorFactory != null) {
             try {
                 for (PropertyDescriptor desc : Introspector.getBeanInfo(targetClass).getPropertyDescriptors()) {
+                    if (desc.getName().equals("class"))
+                        continue;
                     T t = map.get(desc.getName());
                     String name = (t == null) ? null : t.getName();
                     t = descriptorFactory.apply(desc, t);

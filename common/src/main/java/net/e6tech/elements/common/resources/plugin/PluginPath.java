@@ -23,6 +23,7 @@ import java.util.Objects;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class PluginPath<T> {
     PluginPath parent;
     private Class<T> type;

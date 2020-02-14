@@ -16,8 +16,11 @@
 
 package net.e6tech.elements.cassandra.generator;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.cassandra.annotations.TimeBased;
 import net.e6tech.elements.common.reflection.Accessor;
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.beans.IntrospectionException;
@@ -35,12 +38,17 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.function.IntConsumer;
 
 @SuppressWarnings("squid:S1192")
 public abstract class Generator {
-
+    private static final String NULL_KEYSPACE = "";
     private Map<String, Class> dataNames = new HashMap<>();
     private Map<Type, String> dataTypes = new HashMap<>();
+    private Map<String, Cache<Class, TableGenerator>> tables = new ConcurrentHashMap<>();
 
     public Generator() {
         dataTypes.put(Boolean.class, "boolean");
@@ -84,15 +92,30 @@ public abstract class Generator {
         dataNames.put("date", LocalDate.class);
     }
 
-    public TableGenerator createTable(String keyspace, Class cls) {
-        TableGenerator gen = null;
+    public TableGenerator getTable(String keyspace, Class cls) {
+        String s = (keyspace == null) ? NULL_KEYSPACE : keyspace.trim();
+        Cache<Class, TableGenerator> generators = tables.computeIfAbsent(s,
+                space -> CacheBuilder.newBuilder()
+                        .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+                        .initialCapacity(200)
+                        .expireAfterAccess(600, TimeUnit.SECONDS)
+                        .maximumSize(1000)
+                        .build());
         try {
-            gen = new TableGenerator(this, cls);
-            gen.setKeyspace(keyspace);
-        } catch (IntrospectionException e) {
+            return generators.get(cls, () -> {
+                TableGenerator gen;
+                try {
+                    gen = new TableGenerator(this, cls);
+                    String ks = (keyspace == null) ? null : keyspace.trim();
+                    gen.setKeyspace(ks);
+                } catch (IntrospectionException e) {
+                    throw new SystemException(e);
+                }
+                return gen;
+            });
+        } catch (ExecutionException e) {
             throw new SystemException(e);
         }
-        return gen;
     }
 
     public IndexGenerator createIndexes(String keyspace, Class cls) throws IntrospectionException {
@@ -146,13 +169,13 @@ public abstract class Generator {
 
     public abstract String getColumnName(PropertyDescriptor descriptor);
 
-    public abstract int partitionKeyIndex(AccessibleObject field);
+    public abstract boolean partitionKeyIndex(AccessibleObject field, IntConsumer consumer);
 
-    public abstract int partitionKeyIndex(PropertyDescriptor descriptor);
+    public abstract boolean partitionKeyIndex(PropertyDescriptor descriptor, IntConsumer consumer);
 
-    public abstract int clusteringColumnIndex(AccessibleObject field);
+    public abstract boolean clusteringColumnIndex(AccessibleObject field, IntConsumer consumer);
 
-    public abstract int clusteringColumnIndex(PropertyDescriptor descriptor);
+    public abstract boolean clusteringColumnIndex(PropertyDescriptor descriptor, IntConsumer consumer);
 
     public abstract boolean isTransient(AccessibleObject field);
 

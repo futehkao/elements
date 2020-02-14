@@ -145,13 +145,17 @@ public class Accessor {
         return name;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "squid:S1141"})
     public Object get(Object target) {
         try {
-            if (lambdaGetter != null)
-                return lambdaGetter.apply(target);
-            else
-                return getter.invoke(target);
+            if (lambdaGetter != null) {
+                try {
+                    return lambdaGetter.apply(target);
+                } catch (NoClassDefFoundError ex) {
+                    lambdaGetter = null;
+                }
+            }
+            return getter.invoke(target);
         } catch (InvocationTargetException e) {
             throw new SystemException(e.getTargetException());
         } catch (Throwable e) {
@@ -159,13 +163,20 @@ public class Accessor {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "squid:S1141"})
     public void set(Object target, Object value) {
         try {
-            if (lambdaSetter != null)
+            if (lambdaSetter != null) {
                 lambdaSetter.accept(target, value);
-            else
-                setter.invoke(target, value);
+                try {
+                    lambdaSetter.accept(target, value);
+                    return;
+                } catch (NoClassDefFoundError ex) {
+                    lambdaSetter = null;
+                }
+            }
+
+            setter.invoke(target, value);
         } catch (InvocationTargetException e) {
             throw new SystemException(e.getTargetException());
         } catch (Throwable e) {

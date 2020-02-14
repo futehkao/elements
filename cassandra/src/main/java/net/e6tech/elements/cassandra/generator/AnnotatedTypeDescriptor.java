@@ -37,10 +37,17 @@ public class AnnotatedTypeDescriptor implements TypeDescriptor {
         columnName = generator.getColumnName(field);
     }
 
-    public AnnotatedTypeDescriptor(Generator generator, PropertyDescriptor descriptor, AnnotatedTypeDescriptor parent) {
+    public AnnotatedTypeDescriptor(Generator generator, PropertyDescriptor descriptor) {
         this.generator = generator;
         this.descriptor = descriptor;
         columnName = generator.getColumnName(descriptor);
+    }
+
+    public AnnotatedTypeDescriptor getParent() {
+        return parent;
+    }
+
+    public void setParent(AnnotatedTypeDescriptor parent) {
         this.parent = parent;
     }
 

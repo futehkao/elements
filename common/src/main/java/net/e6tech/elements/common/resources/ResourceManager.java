@@ -120,6 +120,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return nullableVar("bootstrap");
     }
 
+    public ClassLoader getPluginClassLoader() {
+        return getPluginManager().getPluginClassLoader();
+    }
+
     private void selfInit(Properties properties) {
         String logDir = properties.getProperty(LOG_DIR_ABBREV);
         if (logDir != null)

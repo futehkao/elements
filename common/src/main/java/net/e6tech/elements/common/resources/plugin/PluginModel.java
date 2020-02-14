@@ -16,11 +16,14 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
+import net.e6tech.elements.common.resources.InstanceNotFoundException;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 @SuppressWarnings("unchecked")
 public interface PluginModel {
@@ -116,6 +119,51 @@ public interface PluginModel {
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             throw new SystemException(e);
         }
+    }
+
+    /**
+     * Returns a plugin and bind it with resources
+     * @param cls Plugin class
+     * @param args arguments
+     * @param <P> Plugin
+     * @return Plugin
+     */
+    default <P extends Plugin> P requirePlugin(Class<P> cls, Object ... args) {
+        return getPlugin(cls, args).orElseThrow(() -> new InstanceNotFoundException());
+    }
+
+    /**
+     * plugin specified by cls must exist.
+     */
+    default <P extends Plugin> P acceptPlugin(Class<P> cls, Consumer<P> consumer, Object ... args) {
+        P plugin = requirePlugin(cls, args);
+        consumer.accept(plugin);
+        return plugin;
+    }
+
+    /**
+     * plugin specified by cls must exist.
+     */
+    default <P extends Plugin, R> R applyPlugin(Class<P> cls, Function<P, R> function, Object ... args) {
+        P plugin = requirePlugin(cls, args);
+        return function.apply(plugin);
+    }
+
+    /**
+     * If plugin exists, consumer.accept is called
+     */
+    default <P extends Plugin> Optional<P> ifPlugin(Class<P> cls, Consumer<P> consumer, Object ... args) {
+        Optional<P> optional = getPlugin(cls, args);
+        optional.ifPresent(consumer);
+        return optional;
+    }
+
+    /**
+     * If plugin exists, function.apply is called.  The result is returned.
+     */
+    default <P extends Plugin, R> Optional<R> mapPlugin(Class<P> cls, Function<P, R> function, Object ... args) {
+        Optional<P> optional = getPlugin(cls, args);
+        return optional.map(function);
     }
 
     default Optional<PluginModel> parent() {

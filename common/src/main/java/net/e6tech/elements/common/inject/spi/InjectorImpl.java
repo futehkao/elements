@@ -245,7 +245,7 @@ public class InjectorImpl implements Injector {
             }
         }
 
-        @SuppressWarnings({"unchecked", "squid:S3776"})
+        @SuppressWarnings({"unchecked", "squid:S3776", "squid:S1141"})
         InjectionAttempt inject(InjectorImpl injector, Object target) {
             Type t = getType();
             Optional<Binding> opt = injector.privateGetNamedInstance(t, name);
@@ -260,10 +260,16 @@ public class InjectorImpl implements Injector {
                     if (property.length() > 0 && value != null) {
                         value = Reflection.getProperty(value, property);
                     }
-                    if (lambdaSetter != null)
-                        lambdaSetter.accept(target, value);
-                    else
+                    if (lambdaSetter != null) {
+                        try {
+                            lambdaSetter.accept(target, value);
+                        } catch (NoClassDefFoundError ex) {
+                            lambdaSetter = null;
+                            setter.invoke(target, value);
+                        }
+                    } else {
                         setter.invoke(target, value);
+                    }
                 } catch (InvocationTargetException e) {
                     throw new SystemException(e.getTargetException());
                 } catch (Throwable e) {

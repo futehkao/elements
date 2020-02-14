@@ -22,97 +22,42 @@ import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.common.logging.Logger;
 
 import java.beans.IntrospectionException;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class TableGenerator extends AbstractGenerator {
 
     private static Logger logger = Logger.getLogger();
-
+    private TableAnalyzer analyzer;
     private Map<String, ColumnGenerator> columnGenerators = new LinkedHashMap<>();
-    private List<KeyColumn> clusterKeys = new ArrayList<>();
-    private List<KeyColumn> partitionKeys = new ArrayList<>();
 
-    @SuppressWarnings({"squid:S3776", "squid:S135"})
     TableGenerator(Generator generator, Class entityClass) throws IntrospectionException {
         super(generator);
-        LinkedList<Class> classHierarchy = analyze(entityClass);
-        Map<String, String> columnGenerators2 = new LinkedHashMap<>();
-        Set<String> transientNames = new HashSet<>(50);
-
-        for (Class cls : classHierarchy) {
-            Field[] fields = cls.getDeclaredFields();
-            for (Field field : fields) {
-                if (Modifier.isStatic(field.getModifiers()))
-                    continue;
-                if (generator.isTransient(field)) {
-                    transientNames.add(field.getName());
-                    continue;
+        analyze(entityClass);
+        analyzer = new TableAnalyzer(generator, entityClass);
+        analyzer.getColumns().forEach((columnName, column) -> {
+            if (column.getPropertyDescriptor() != null) {
+                AnnotatedTypeDescriptor typeDescriptor = new AnnotatedTypeDescriptor(generator, column.getPropertyDescriptor());
+                if (column.getField() != null) {
+                    typeDescriptor.setParent(new AnnotatedTypeDescriptor(generator, column.getField()));
                 }
-
-                int pk = generator.partitionKeyIndex(field);
-                if (pk >= 0)
-                    partitionKeys.add(new KeyColumn(generator.getColumnName(field), pk));
-                int cc = generator.clusteringColumnIndex(field);
-                if (cc >= 0)
-                    clusterKeys.add(new KeyColumn(generator.getColumnName(field), cc));
-                ColumnGenerator fieldGen = new ColumnGenerator(generator, field.getGenericType(), new AnnotatedTypeDescriptor(generator, field));
-                columnGenerators.put(generator.getColumnName(field), fieldGen);
-                columnGenerators2.put(field.getName(), generator.getColumnName(field));
+                columnGenerators.put(columnName, new ColumnGenerator(generator, column.getPropertyDescriptor(), column.getType(), typeDescriptor));
+            } else {
+                columnGenerators.put(columnName, new ColumnGenerator(generator, column.getField(), column.getField().getGenericType(), new AnnotatedTypeDescriptor(generator, column.getField())));
             }
-        }
-
-        for (PropertyDescriptor desc : Introspector.getBeanInfo(entityClass).getPropertyDescriptors()) {
-            Method method = null;
-            Type type = null;
-            if (desc.getReadMethod() != null) {
-                method = desc.getReadMethod();
-                type = method.getGenericReturnType();
-            }
-            if (type == null && desc.getWriteMethod() != null) {
-                method = desc.getWriteMethod();
-                type = method.getGenericParameterTypes()[0];
-            }
-
-            if (method != null && !method.getName().equals("getClass")) {
-                if (generator.isTransient(desc)) {
-                    transientNames.add(desc.getName());
-                    continue;
-                }
-
-                if (transientNames.contains(desc.getName()))
-                    continue;
-
-                int pk = generator.partitionKeyIndex(desc);
-                if (pk >= 0)
-                    partitionKeys.add(new KeyColumn(generator.getColumnName(desc), pk));
-                int cc = generator.clusteringColumnIndex(desc);
-                if (cc >= 0)
-                    clusterKeys.add(new KeyColumn(generator.getColumnName(desc), cc));
-
-                ColumnGenerator colGen = columnGenerators.get(generator.getColumnName(desc));
-                if (colGen == null) {
-                    String columnName = columnGenerators2.get(desc.getName());
-                    if (columnName != null) {
-                        colGen = columnGenerators.get(columnName);
-                        if (colGen != null) {
-                            columnGenerators.remove(columnName);
-                        }
-                    }
-                }
-                AnnotatedTypeDescriptor fieldTypeDescriptor = (colGen != null) ? (AnnotatedTypeDescriptor) colGen.getTypeDescriptor() : null;
-                ColumnGenerator methGen = new ColumnGenerator(generator, type, new AnnotatedTypeDescriptor(generator, desc, fieldTypeDescriptor));
-                columnGenerators.put(generator.getColumnName(desc), methGen);
-            }
-        }
+        });
     }
 
-    public Map<String, ColumnGenerator> columns() {
+    public List<KeyColumn> getPartitionKeys() {
+        return analyzer.getPartitionKeys();
+    }
+
+    public List<KeyColumn> getClusteringKeys() {
+        return analyzer.getClusteringKeys();
+    }
+
+    public Map<String, ColumnGenerator> getColumns() {
         return columnGenerators;
     }
 
@@ -121,35 +66,33 @@ public class TableGenerator extends AbstractGenerator {
         builder.append("CREATE TABLE IF NOT EXISTS ");
         builder.append(fullyQualifiedTableName());
         builder.append(" (\n");
-        for (ColumnGenerator gen : columnGenerators.values()) {
+        for (ColumnGenerator gen : getColumns().values()) {
             builder.append(gen.generate());
             builder.append(",\n");
         }
 
-        Collections.sort(partitionKeys, Comparator.comparingInt(KeyColumn::getPosition));
-        Collections.sort(clusterKeys, Comparator.comparingInt(KeyColumn::getPosition));
         boolean first = true;
         builder.append("PRIMARY KEY (");
-        if (partitionKeys.size() > 1)
+        if (analyzer.getPartitionKeys().size() > 1)
             builder.append("(");
-        for (KeyColumn pk : partitionKeys) {
+        for (KeyColumn pk : analyzer.getPartitionKeys()) {
             if (first) {
                 first = false;
             } else {
                 builder.append(", ");
             }
-            builder.append(pk.getName());
+            builder.append("\"" + pk.getName() + "\"");
         }
-        if (partitionKeys.size() > 1)
+        if (analyzer.getPartitionKeys().size() > 1)
             builder.append(")");
 
-        for (KeyColumn cc : clusterKeys) {
+        for (KeyColumn cc : analyzer.getClusteringKeys()) {
             if (first) {
                 first = false;
             } else {
                 builder.append(", ");
             }
-            builder.append(cc.getName());
+            builder.append("\"" + cc.getName() + "\"");
         }
         builder.append(")\n");
         builder.append(")");
@@ -162,18 +105,18 @@ public class TableGenerator extends AbstractGenerator {
         List<ColumnMetadata> columns = tableMetadata.getColumns();
         Map<String, ColumnGenerator> toAdd = new LinkedHashMap<>();
         Map<String, ColumnMetadata> toRemove = new LinkedHashMap<>();
-        for (ColumnGenerator gen : columnGenerators.values()) {
+        for (ColumnGenerator gen : getColumns().values()) {
             toAdd.put(gen.getTypeDescriptor().getColumnName().toLowerCase(), gen);
         }
-        for (ColumnMetadata metadata : columns) {
-            toRemove.put(metadata.getName().toLowerCase(), metadata);
+        for (ColumnMetadata meta : columns) {
+            toRemove.put(meta.getName().toLowerCase(), meta);
         }
 
         for (ColumnMetadata meta : columns) {
             toAdd.remove(meta.getName().toLowerCase());
         }
 
-        for (ColumnGenerator gen : columnGenerators.values()) {
+        for (ColumnGenerator gen : getColumns().values()) {
             toRemove.remove(gen.getTypeDescriptor().getColumnName().toLowerCase());
         }
 
@@ -195,7 +138,7 @@ public class TableGenerator extends AbstractGenerator {
                 builder.append("ALTER TABLE ");
                 builder.append(fullyQualifiedTableName());
                 builder.append(" DROP ");
-                builder.append(col.getName());
+                builder.append("\"" + col.getName() + "\"");
                 session.execute(keyspace, builder.toString());
                 builder.setLength(0);
             }

@@ -19,13 +19,13 @@ package net.e6tech.elements.cassandra.etl;
 import net.e6tech.elements.cassandra.annotations.Checkpoint;
 import net.e6tech.elements.cassandra.annotations.PartitionUnit;
 import net.e6tech.elements.cassandra.generator.Generator;
+import net.e6tech.elements.cassandra.generator.TableAnalyzer;
 import net.e6tech.elements.common.reflection.Accessor;
-import net.e6tech.elements.common.reflection.Accessors;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -210,135 +210,63 @@ public class Inspector {
         return columnMap.get(column);
     }
 
-    private ColumnAccessor alloc(int position, Field field) {
+    private ColumnAccessor alloc(int position, PropertyDescriptor desc, Field field) {
         Generator gen = getGenerator();
-        ColumnAccessor descriptor = new ColumnAccessor(position, gen.getColumnName(field), field.getName(), field);
-        field.setAccessible(true);
+        ColumnAccessor descriptor;
+        if (desc != null) {
+            descriptor = new ColumnAccessor(position, gen.getColumnName(desc), desc.getName(), desc);
+        } else {
+            descriptor = new ColumnAccessor(position, gen.getColumnName(field), field.getName(), field);
+            field.setAccessible(true);
+        }
         return descriptor;
     }
 
-    private ColumnAccessor alloc(int position, Field field, List<ColumnAccessor> list, Map<String, ColumnAccessor> map) {
-        ColumnAccessor descriptor = alloc(position, field);
-        map.put(field.getName(), descriptor);
-        map.put(descriptor.columnName, descriptor);
+    private ColumnAccessor alloc(int position, PropertyDescriptor desc, Field field, List<ColumnAccessor> list) {
+        ColumnAccessor descriptor = alloc(position, desc, field);
         list.add(descriptor);
         return descriptor;
     }
 
-    private ColumnAccessor alloc(int position, PropertyDescriptor desc) {
-        Generator gen = getGenerator();
-        return new ColumnAccessor(position, gen.getColumnName(desc), desc.getName(), desc);
-    }
-
-    private ColumnAccessor alloc(int position, PropertyDescriptor desc, List<ColumnAccessor> list, Map<String, ColumnAccessor> map) {
-        ColumnAccessor descriptor = alloc(position, desc);
-        map.put(desc.getName(), descriptor);
-        map.put(descriptor.columnName, descriptor);
-        list.add(descriptor);
-        return descriptor;
-    }
-
-    @SuppressWarnings({"squid:S3776", "squid:S135"})
     public synchronized void initialize() {
         if (initialized)
             return;
         initialized = true;
-        Map<String, ColumnAccessor> propertyMap = new HashMap<>(100);
         Map<String, ColumnAccessor> chkMap = new HashMap<>(100);
-        Generator gen = getGenerator();
-        Class cls = getSourceClass();
 
-        AtomicInteger position = new AtomicInteger(0);
-        Set<String> transientNames = new HashSet<>(50);
-        Accessors<ColumnAccessor> accessors = new Accessors<>(cls,
-                field -> {
-                    if (Modifier.isStrict(field.getModifiers())
-                        || Modifier.isStatic(field.getModifiers()))
-                        return null;
-                    if (gen.isTransient(field)) {
-                        transientNames.add(field.getName());
-                        return null;
-                    }
-                    if (propertyMap.get(field.getName()) != null)
-                        return null;
+        try {
+            TableAnalyzer analyzer = new TableAnalyzer(getGenerator(), getSourceClass());
+            analyzer.getPartitionKeys().forEach(pk -> {
+                alloc(pk.getPosition(), pk.getPropertyDescriptor(), pk.getField(), partitionKeys);
+                PartitionUnit unit = Accessor.getAnnotation(pk.getPropertyDescriptor(), pk.getField(), PartitionUnit.class);
+                if (unit != null && pk.getPosition() == 0)
+                    timeUnit = unit.value();
+            });
 
-                    int pk = gen.partitionKeyIndex(field);
-                    if (pk >= 0) {
-                        alloc(pk, field, partitionKeys, propertyMap);
-                        PartitionUnit unit = field.getAnnotation(PartitionUnit.class);
-                        if (unit != null && pk == 0)
-                            timeUnit = unit.value();
-                    }
+            analyzer.getClusteringKeys().forEach(cc -> {
+                alloc(cc.getPosition(), cc.getPropertyDescriptor(), cc.getField(), clusteringKeys);
+            });
 
-                    int cc = gen.clusteringColumnIndex(field);
-                    if (cc >= 0)
-                        alloc(cc, field, clusteringKeys, propertyMap);
-
-                    Checkpoint chk = field.getAnnotation(Checkpoint.class);
-                    if (chk != null)
-                        alloc(chk.value(), field, checkpoints, chkMap);
-
-                    return alloc(position.getAndIncrement(), field);
-                },
-                (desc, existing) -> {
-                    if (gen.isTransient(desc)) {
-                        transientNames.add(desc.getName());
-                        return null;
-                    }
-
-                    if (transientNames.contains(desc.getName()))
-                        return null;
-
-                    if (desc.getName().equals("class"))
-                        return null;
-
-                    ColumnAccessor descriptor = propertyMap.get(desc.getName());
-                    String columnName = gen.getColumnName(desc);
-                    if (descriptor == null) {
-                        descriptor = propertyMap.get(columnName);
-                    }
-
-                    int pk = gen.partitionKeyIndex(desc);
-                    if (pk >= 0 && descriptor == null) {
-                        descriptor = alloc(pk, desc, partitionKeys, propertyMap);
-                        PartitionUnit unit = Accessor.getAnnotation(desc, PartitionUnit.class);
-                        if (unit != null && pk == 0)
-                            timeUnit = unit.value();
-                    }
-
-                    int cc = gen.clusteringColumnIndex(desc);
-                    if (cc >= 0 && descriptor == null) {
-                         alloc(cc, desc, clusteringKeys, propertyMap);
-                    }
-
-                    Checkpoint chk = Accessor.getAnnotation(desc, Checkpoint.class);
-                    ColumnAccessor chkDescriptor = chkMap.get(desc.getName());
-                    if (chkDescriptor == null)
-                        chkDescriptor = chkMap.get(columnName);
-                    if (chk != null && chkDescriptor == null) {
-                         alloc(chk.value(), desc, checkpoints, chkMap);
-                    }
-
-                    return (existing != null) ? (ColumnAccessor) existing.descriptor(desc)
-                            : alloc(position.getAndIncrement(), desc);
-                });
-
+            AtomicInteger position = new AtomicInteger(0);
+            columns = new ArrayList<>(analyzer.getColumns().size());
+            analyzer.getColumns().forEach((columnName, column) -> {
+                columns.add(alloc(position.getAndIncrement(), column.getPropertyDescriptor(), column.getField()));
+                Checkpoint checkpoint = Accessor.getAnnotation(column.getPropertyDescriptor(), column.getField(), Checkpoint.class);
+                if (checkpoint != null) {
+                    chkMap.computeIfAbsent(columnName, key -> alloc(checkpoint.value(), column.getPropertyDescriptor(), column.getField(), checkpoints));
+                }
+            });
+        } catch (IntrospectionException e) {
+            throw new SystemException(e);
+        }
         Collections.sort(partitionKeys, Comparator.comparingInt(p -> p.position));
         Collections.sort(clusteringKeys, Comparator.comparingInt(p -> p.position));
         Collections.sort(checkpoints, Comparator.comparingInt(p -> p.position));
-        columns = new ArrayList<>(accessors.getAccessors().values());
-        Collections.sort(columns, Comparator.comparingInt(p -> p.position));
-        for (ColumnAccessor a : partitionKeys) {
-            primaryKeyColumns.add(a);
-        }
-        for (ColumnAccessor a : clusteringKeys) {
-            primaryKeyColumns.add(a);
-        }
 
+        primaryKeyColumns.addAll(partitionKeys);
+        primaryKeyColumns.addAll(clusteringKeys);
         columnMap = new HashMap<>(columns.size(), 1);
-        for (ColumnAccessor a : columns) {
-            columnMap.put(a.getColumnName(), a);
-        }
+        columns.forEach(column -> columnMap.put(column.getColumnName(), column));
     }
 
     public static class ColumnAccessor extends Accessor {

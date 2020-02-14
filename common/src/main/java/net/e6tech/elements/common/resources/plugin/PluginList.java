@@ -51,6 +51,10 @@ public class PluginList<T extends Plugin> implements PluginFactory {
         pluginPath = path;
     }
 
+    public void add(Object object) {
+        list.add(object);
+    }
+
     public void add(T singleton) {
         list.add(singleton);
     }

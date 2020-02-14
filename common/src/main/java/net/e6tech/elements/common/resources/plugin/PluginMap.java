@@ -49,6 +49,10 @@ public class PluginMap<K, V extends Plugin> implements PluginFactory {
         pluginPath = path;
     }
 
+    public void put(K key, Object object) {
+        map.put(key, object);
+    }
+
     public void put(K key, V singleton) {
         map.put(key, singleton);
     }

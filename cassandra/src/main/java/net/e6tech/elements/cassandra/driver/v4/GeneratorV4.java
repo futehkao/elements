@@ -26,6 +26,7 @@ import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
+import java.util.function.IntConsumer;
 
 import static com.datastax.oss.driver.api.mapper.entity.naming.NamingConvention.SNAKE_CASE_INSENSITIVE;
 
@@ -46,15 +47,18 @@ public class GeneratorV4 extends Generator {
         return BuiltInNameConversions.toCassandraName(javaPropertyName, namingConvention);
     }
 
+    @Override
     public Class<? extends Annotation> tableAnnotation() {
         return Table.class;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public Annotation tableAnnotation(Class sourceClass) {
         return sourceClass.getAnnotation(Table.class);
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public String tableKeyspace(Class sourceClass) {
         Table table = (Table) sourceClass.getAnnotation(Table.class);
@@ -63,6 +67,7 @@ public class GeneratorV4 extends Generator {
         return null;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public String tableName(Class sourceClass) {
         Table table = (Table) sourceClass.getAnnotation(Table.class);
@@ -71,14 +76,17 @@ public class GeneratorV4 extends Generator {
         return (table.name() == null) ? toCassandraName(sourceClass.getSimpleName()) : table.name();
     }
 
+    @Override
     public boolean hasColumnAnnotation(AccessibleObject field) {
         return Accessor.getAnnotation(field, Column.class) != null;
     }
 
+    @Override
     public boolean hasColumnAnnotation(PropertyDescriptor desc) {
         return Accessor.getAnnotation(desc, Column.class) != null;
     }
 
+    @Override
     public String getColumnName(Field field) {
         Column column = Accessor.getAnnotation(field, Column.class);
         String columnName;
@@ -90,6 +98,7 @@ public class GeneratorV4 extends Generator {
         return columnName;
     }
 
+    @Override
     public String getColumnName(PropertyDescriptor descriptor) {
         Column column = Accessor.getAnnotation(descriptor, Column.class);
         String columnName;
@@ -101,42 +110,44 @@ public class GeneratorV4 extends Generator {
         return columnName;
     }
 
-    public int partitionKeyIndex(AccessibleObject field) {
+    @Override
+    public boolean partitionKeyIndex(AccessibleObject field, IntConsumer consumer) {
         PartitionKey annotation = Accessor.getAnnotation(field, PartitionKey.class);
         if (annotation != null)
-            return annotation.value();
-        else
-            return -1;
+           consumer.accept(annotation.value());
+        return annotation != null;
     }
 
-    public int partitionKeyIndex(PropertyDescriptor descriptor) {
+    @Override
+    public boolean partitionKeyIndex(PropertyDescriptor descriptor, IntConsumer consumer) {
         PartitionKey annotation = Accessor.getAnnotation(descriptor, PartitionKey.class);
         if (annotation != null)
-            return annotation.value();
-        else
-            return -1;
+            consumer.accept(annotation.value());
+        return annotation != null;
     }
 
-    public int clusteringColumnIndex(AccessibleObject field) {
+    @Override
+    public boolean clusteringColumnIndex(AccessibleObject field, IntConsumer consumer) {
         ClusteringColumn annotation = Accessor.getAnnotation(field, ClusteringColumn.class);
         if (annotation != null)
-            return annotation.value();
-        else
-            return -1;
+            consumer.accept(annotation.value());
+        return annotation != null;
     }
 
-    public int clusteringColumnIndex(PropertyDescriptor descriptor) {
+    @Override
+    public boolean clusteringColumnIndex(PropertyDescriptor descriptor, IntConsumer consumer) {
         ClusteringColumn annotation = Accessor.getAnnotation(descriptor, ClusteringColumn.class);
         if (annotation != null)
-            return annotation.value();
-        else
-            return -1;
+            consumer.accept(annotation.value());
+        return annotation != null;
     }
 
+    @Override
     public boolean isTransient(AccessibleObject field) {
         return Accessor.getAnnotation(field, Transient.class) != null;
     }
 
+    @Override
     public boolean isTransient(PropertyDescriptor descriptor) {
         return Accessor.getAnnotation(descriptor, Transient.class) != null;
     }

@@ -177,23 +177,36 @@ public class Annotated<R, A extends Annotation> {
         }
 
         public Object get(Object target) {
-            Object value = null;
-            if (lambdaGetter != null)
-                value = lambdaGetter.apply(target);
-            else if (getter != null) {
+
+            if (lambdaGetter != null) {
                 try {
-                    value = getter.invoke(target);
+                    return lambdaGetter.apply(target);
+                } catch (NoClassDefFoundError ex) {
+                    lambdaGetter = null;
+                }
+            }
+
+            if (getter != null) {
+                try {
+                    return getter.invoke(target);
                 } catch (Throwable throwable) {
                     // ignore
                 }
             }
-            return value;
+            return null;
         }
 
         public void set(Object target, Object value) {
-            if (lambdaSetter != null)
-                lambdaSetter.accept(target, value);
-            else if (setter != null) {
+            if (lambdaSetter != null) {
+                try {
+                    lambdaSetter.accept(target, value);
+                    return;
+                } catch (NoClassDefFoundError e) {
+                    lambdaSetter = null;
+                }
+            }
+
+            if (setter != null) {
                 try {
                     setter.invoke(target, value);
                 } catch (Throwable throwable) {

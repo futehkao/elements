@@ -127,7 +127,7 @@ public class Schema {
         PackageScanner packageScanner = new PackageScanner();
         List<Class> list = new ArrayList<>();
         for (String packageName : packageNames) {
-            Class[] classes = packageScanner.getTopLevelClassesRecursive(getClass().getClassLoader(), packageName);
+            Class[] classes = packageScanner.getTopLevelClassesRecursive(provision.getPluginClassLoader(), packageName);
             for (Class cls : classes) {
                 if (cls.getAnnotation(annotationClass) != null) {
                     list.add(cls);
@@ -153,7 +153,7 @@ public class Schema {
             for (Class cls : classes) {
                 if (getTableName(cls) == null)
                     continue;
-                TableGenerator generator = provider.getGenerator().createTable(keyspace, cls);
+                TableGenerator generator = provider.getGenerator().getTable(keyspace, cls);
                 TableMetadata metadata = provider.getTableMetadata(keyspace, generator.getTableName());
                 if (metadata == null) {
                     String cql = generator.generate();
@@ -246,7 +246,7 @@ public class Schema {
                 SessionProvider provider = getProvider(resources);
                 for (int i = index.get(); i < classes.length; i++) {
                     Class cls = classes[i];
-                    TableGenerator generator = provider.getGenerator().createTable(keyspace, cls);
+                    TableGenerator generator = provider.getGenerator().getTable(keyspace, cls);
                     TableMetadata metadata = provider.getTableMetadata(keyspace, generator.getTableName());
                     if (metadata == null) {
                         index.set(i);
@@ -371,8 +371,8 @@ public class Schema {
     public Map<Class<Strategy>, ETLContext> scan(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
         PackageScanner scanner = new PackageScanner();
         List<Class> classList = new ArrayList<>();
-        Class[] classes = recursive ? scanner.getTopLevelClassesRecursive(Strategy.class.getClassLoader(), packageName)
-                : scanner.getTopLevelClasses(Strategy.class.getClassLoader(), packageName);
+        Class[] classes = recursive ? scanner.getTopLevelClassesRecursive(provision.getPluginClassLoader(), packageName)
+                : scanner.getTopLevelClasses(provision.getPluginClassLoader(), packageName);
         for (Class cls : classes) {
             if (Strategy.class.isAssignableFrom(cls)) {
                 classList.add(cls);
