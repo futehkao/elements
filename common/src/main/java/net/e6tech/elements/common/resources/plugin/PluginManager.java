@@ -31,13 +31,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Created by futeh.
@@ -78,10 +73,6 @@ public class PluginManager {
 
     public void loadPlugins(String[] directories) {
         for (String dir: directories) {
-            Path path = Paths.get(dir);
-            if (!Files.exists(path) || !Files.isDirectory(path)) {
-                continue;
-            }
             String[] paths;
             try {
                 paths = FileUtil.listFiles(dir, "jar");
@@ -318,6 +309,8 @@ public class PluginManager {
 
     public static class PluginClassLoader extends URLClassLoader {
 
+        private List<URL> pluginURLs = new ArrayList<>();
+
         public PluginClassLoader(ClassLoader parent) {
             super(new URL[0], parent);
         }
@@ -325,6 +318,11 @@ public class PluginManager {
         @Override
         public void addURL(URL url) {
             super.addURL(url);
+            pluginURLs.add(url);
+        }
+
+        public URL[] getPluginURLs() {
+            return pluginURLs.toArray(new URL[0]);
         }
 
     }

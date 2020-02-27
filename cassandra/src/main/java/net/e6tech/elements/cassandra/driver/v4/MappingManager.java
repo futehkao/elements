@@ -53,6 +53,10 @@ public class MappingManager {
         return builder.getMapper();
     }
 
+    public String getKeyspace() {
+        return keyspace;
+    }
+
     @SuppressWarnings("unchecked")
     private class MapperBuilder<T> {
         protected Map<Object, Object> customState;

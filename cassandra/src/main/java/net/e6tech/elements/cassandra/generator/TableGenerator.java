@@ -63,9 +63,9 @@ public class TableGenerator extends AbstractGenerator {
 
     public String generate() {
         StringBuilder builder = new StringBuilder();
-        builder.append("CREATE TABLE IF NOT EXISTS ");
-        builder.append(fullyQualifiedTableName());
-        builder.append(" (\n");
+        builder.append("CREATE TABLE IF NOT EXISTS ")
+                .append(fullyQualifiedTableName())
+                .append(" (\n");
         for (ColumnGenerator gen : getColumns().values()) {
             builder.append(gen.generate());
             builder.append(",\n");
@@ -94,8 +94,10 @@ public class TableGenerator extends AbstractGenerator {
             }
             builder.append("\"" + cc.getName() + "\"");
         }
-        builder.append(")\n");
-        builder.append(")");
+        builder.append(")\n")
+                .append(") ")
+                .append(getTableCompression());
+
         return builder.toString();
     }
 

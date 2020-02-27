@@ -41,15 +41,11 @@ public class FileUtil {
             String dir = path.substring(0, path.length() - 2);
             if (Paths.get(dir).toFile().isDirectory()) {
                 paths = listFiles(dir, extension, true);
-            } else if (!Paths.get(dir).toFile().exists()) {
-                throw new IOException("Directory " + dir + " does not exist");
             }
         } else if (path.endsWith("*")) {
             String dir = path.substring(0, path.length() - 1);
             if (Paths.get(dir).toFile().isDirectory()) {
                 paths = listFiles(dir, extension, false);
-            } else if (!Paths.get(dir).toFile().exists()) {
-                throw new IOException("Directory " + dir + " does not exist");
             }
         } else {
             paths = getSingleFile(path, extension);

@@ -77,6 +77,15 @@ public class GeneratorV4 extends Generator {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public String tableCompression(Class sourceClass) {
+        Table table = (Table) sourceClass.getAnnotation(Table.class);
+        if (table != null)
+            return table.compression();
+        return null;
+    }
+
+    @Override
     public boolean hasColumnAnnotation(AccessibleObject field) {
         return Accessor.getAnnotation(field, Column.class) != null;
     }

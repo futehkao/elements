@@ -37,4 +37,10 @@ public @interface Table {
      * @return the name of the table.
      */
     String name();
+
+    /**
+     * The default compression is used by Cassandra when not specified.
+     * @return compression string, e.g. "WITH compression = {'sstable_compression': 'LZ4Compressor', 'chunk_length_kb': 64}"
+     */
+    String compression() default "";
 }

@@ -137,6 +137,8 @@ public abstract class Sibyl {
         return getSession().execute(bound);
     }
 
+    public abstract String getKeyspace();
+
     public abstract <T> T get(Class<T> cls, PrimaryKey primaryKey);
 
     public abstract <T> T get(Class<T> cls, PrimaryKey primaryKey, ReadOptions readOptions);

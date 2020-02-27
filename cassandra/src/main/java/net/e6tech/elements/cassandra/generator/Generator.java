@@ -161,6 +161,8 @@ public abstract class Generator {
 
     public abstract String tableName(Class sourceClass);
 
+    public abstract String tableCompression(Class sourceClass);
+
     public abstract boolean hasColumnAnnotation(AccessibleObject field);
 
     public abstract boolean hasColumnAnnotation(PropertyDescriptor desc);

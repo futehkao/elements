@@ -27,6 +27,7 @@ public class AbstractGenerator {
     private String keyspace;
     private String tableName;
     private String tableKeyspace;
+    private String tableCompression;
 
     AbstractGenerator(Generator generator) {
         this.generator = generator;
@@ -48,6 +49,10 @@ public class AbstractGenerator {
         return tableKeyspace;
     }
 
+    public String getTableCompression() {
+        return tableCompression;
+    }
+
     protected LinkedList<Class> analyze(Class entityClass) throws IntrospectionException {
         if (entityClass == null)
             return new LinkedList<>();
@@ -59,6 +64,8 @@ public class AbstractGenerator {
                     tableName = generator.tableName(tmp);
                 if (tableKeyspace == null)
                     tableKeyspace = generator.tableKeyspace(tmp);
+                if (tableCompression == null)
+                    tableCompression = generator.tableCompression(tmp);
             }
             classHierarchy.addFirst(tmp);
             tmp = tmp.getSuperclass();

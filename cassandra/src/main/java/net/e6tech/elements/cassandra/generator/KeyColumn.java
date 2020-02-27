@@ -47,4 +47,11 @@ public class KeyColumn {
     public PropertyDescriptor getPropertyDescriptor() {
         return propertyDescriptor;
     }
+
+    public Class<?> getType() {
+        if (propertyDescriptor != null)
+            return propertyDescriptor.getPropertyType();
+
+        return field.getType();
+    }
 }

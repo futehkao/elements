@@ -55,6 +55,11 @@ public class SibylV4 extends Sibyl {
     }
 
     @Override
+    public String getKeyspace() {
+        return mappingManager.getKeyspace();
+    }
+
+    @Override
     public <T> T get(Class<T> cls, PrimaryKey primaryKey) {
         return get(cls, primaryKey, null);
     }
