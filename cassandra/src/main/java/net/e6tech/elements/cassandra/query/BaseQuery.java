@@ -125,22 +125,22 @@ public abstract class BaseQuery<T, Q extends BaseQuery<T, Q>> {
 
     public <R extends Comparable<R>> Q ascending(BiConsumer<T, R> consumer, R from, R to) {
         if (from.compareTo(to) < 0) {
-            greaterThanOrEqualTo(consumer, from);
-            lessThan(consumer, to);
+            greaterThan(consumer, from);
+            lessThanOrEqualTo(consumer, to);
         } else {
-            greaterThanOrEqualTo(consumer, to);
-            lessThan(consumer, from);
+            greaterThan(consumer, to);
+            lessThanOrEqualTo(consumer, from);
         }
         return newOrderBy(t -> consumer.accept(t, from), Comparison.LESS_THAN);
     }
 
     public <R extends Comparable<R>> Q descending(BiConsumer<T, R> consumer, R from, R to) {
         if (from.compareTo(to) < 0) {
-            lessThanOrEqualTo(consumer, to);
-            greaterThan(consumer, from);
+            lessThan(consumer, to);
+            greaterThanOrEqualTo(consumer, from);
         } else {
-            lessThanOrEqualTo(consumer, from);
-            greaterThan(consumer, to);
+            lessThan(consumer, from);
+            greaterThanOrEqualTo(consumer, to);
         }
         return newOrderBy(t -> consumer.accept(t, from), Comparison.GREATER_THAN);
     }
@@ -312,6 +312,12 @@ public abstract class BaseQuery<T, Q extends BaseQuery<T, Q>> {
             this.comparison = comparison;
             this.value = value;
             this.accessor = inspector.getColumn(keyColumn.getName());
+        }
+
+        public boolean isRelated(T t, T t2) {
+            Object v1 = accessor.get(t);
+            Object v2 = accessor.get(t2);
+            return Objects.equals(v1, v2);
         }
     }
 

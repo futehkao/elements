@@ -55,7 +55,16 @@ public class AnsiPinBlock {
         for (int i = 0; i < 8; i++)
             pinBytes[i] = (byte)(encoding[i] ^ panBytes[i]);
         String pinStr = Hex.toString(pinBytes);
-        int pinLen = Integer.parseInt(pinStr.substring(1, 2));
+        int pinLen;
+        try {
+            pinLen = Integer.parseInt(pinStr.substring(1, 2));
+        } catch (NumberFormatException e) {
+            sanityCheck = false;
+            // set pin and encoding to non-null values
+            pin = "";
+            encoding = new byte[0];
+            return;
+        }
         pin = pinStr.substring(2, pinLen + 2);
         String leftOver = pinStr.substring(pinLen + 2);
         for (int i = 0; i < leftOver.length(); i++) {

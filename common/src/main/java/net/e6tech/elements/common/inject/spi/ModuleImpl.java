@@ -328,7 +328,7 @@ public class ModuleImpl implements Module {
         synchronized (singletons) {
             if (!singletons.isEmpty()) {
                 list = new ArrayList<>(singletons);
-                singletons.clear();
+                singletons.clear(); // must be clear or will get an stack overflow.
             }
         }
 

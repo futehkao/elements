@@ -74,6 +74,14 @@ public class HelloWorld {
         return "ping ...";
     }
 
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/echo")
+    @EntityManagerConfig(disable = true)
+    public String echo(@QueryParam("param") String echo) {
+        return echo;
+    }
+
     @POST
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/withParam")
@@ -134,6 +142,20 @@ public class HelloWorld {
     @Path("hello/badPost")
     public HelloData badPost(HelloData data) {
         throw new NullPointerException("test");
+    }
+
+    @DELETE
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/delete/{path}")
+    public void delete(@PathParam("path") String path, HelloData data) {
+        System.out.println("Got DELET with path " + path);
+    }
+
+    @DELETE
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/delete2/{path}")
+    public void delete2(@PathParam("path") String path) {
+        System.out.println("Got DELETE with path " + path);
     }
 
 }

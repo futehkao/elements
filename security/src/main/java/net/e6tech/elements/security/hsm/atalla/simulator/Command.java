@@ -43,6 +43,8 @@ public abstract class Command extends Message {
         commands.put("11B", ImportWorkingKey.class);
         commands.put("335", TranslatePINBlock.class);
         commands.put("350", VerifyARQC.class);
+        commands.put("351", EMVPINChange.class);
+        commands.put("352", EMVGenerateMAC.class);
     }
 
     protected AtallaSimulator simulator;

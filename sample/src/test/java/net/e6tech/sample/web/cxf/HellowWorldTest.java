@@ -25,11 +25,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotSupportedException;
 import java.lang.reflect.Method;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Created by futeh.
@@ -48,9 +48,18 @@ public class HellowWorldTest extends BaseCase {
     }
 
     @Test
-    public void sayHello() throws Exception {
+    void sayHello() {
         String response = helloWorld.sayHello("hello");
         System.out.println(response);
+    }
+
+    @Test
+    void echo() {
+        String response = helloWorld.echo(null);
+        assertTrue(response == null);
+
+        response = helloWorld.echo("hello");
+        assertEquals(response, "hello");
     }
 
     @Test
@@ -99,8 +108,16 @@ public class HellowWorldTest extends BaseCase {
         assertTrue(data.getData().equals("hello"));
 
         provision.suppressLogging(() -> {
-            assertThrows(BadRequestException.class, () -> helloWorld.post(null));
+            assertThrows(NotSupportedException.class, () -> helloWorld.post(null));
             assertThrows(BadRequestException.class, () -> helloWorld.badPost(new HelloData()));
         });
+    }
+
+    @Test
+    public void delete() {
+        HelloData data = new HelloData();
+        data.setData("hello");
+        helloWorld.delete("does not matter", data);
+        helloWorld.delete2("null data");
     }
 }

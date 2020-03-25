@@ -25,12 +25,21 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * Range query is used to query a range, e.g. creationTime >= x and createTime < y order by creationTime asc.  Keep in
+ * Range query is used to query a range, e.g. creationTime &gt;= x and createTime &lt; y order by creationTime asc.  Keep in
  * mind the inclusion of end points depends on the order by.  Using the previous example, if we were to change it to descending
- * order, the query would look like creationTime > x and createTime <= y order by creationTime desc.
+ * order, the query would look like creationTime &gt; x and createTime &lt;= y order by creationTime desc.
  *
  * The query does its best to limit the result set to the limit size.  In some cases, it may return a list that is slightly larger
  * than the limit size.  This could happen for example when multiple records of the same creationTime span the page boundary.
+ *
+ * <pre>
+ * <code>
+ * RangeQuery&lt;X&gt; query = new RangeQuery&lt;&gt;(sibyl, X.class);
+ * query.partition(X::setPartitionKey, 1L)
+ *      .descending(X::setCreationTime, 0L, 9999999999999L)
+ *      .limit(50);
+ * </code>
+ * </pre>
  *
  * @param <T> entity table type
  */
@@ -81,15 +90,22 @@ public class RangeQuery<T> extends BaseQuery<T, RangeQuery<T>> {
         return sub;
     }
 
+    protected boolean isRelated(Relation relation, T t, T t2) {
+        Object v1 = relation.accessor.get(t);
+        Object v2 = relation.accessor.get(t2);
+        if (!v1.equals(v2)) {
+            return false;
+        }
+        return true;
+    }
+
     private List<T> merge(List<T> list, List<T> list2, T last) {
         int trimLast = list.size();
         for (int i = list.size() - 1; i >= 0; i --) {
             T t = list.get(i);
             boolean same = true;
             for (Relation relation : orderBy) {
-                Object v1 = relation.accessor.get(last);
-                Object v2 = relation.accessor.get(t);
-                if (!v1.equals(v2)) {
+                if (!relation.isRelated(last, t)) {
                     same = false;
                     break;
                 }

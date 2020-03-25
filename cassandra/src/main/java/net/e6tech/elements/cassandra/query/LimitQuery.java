@@ -141,9 +141,7 @@ public class LimitQuery<T> extends BaseQuery<T, LimitQuery<T>> {
                 T t2 = iterator.next();
                 boolean same = true;
                 for (Relation relation : orderBy) {
-                    Object v1 = relation.accessor.get(t);
-                    Object v2 = relation.accessor.get(t2);
-                    if (!v1.equals(v2)) {
+                    if (!relation.isRelated(t, t2)) {
                         same = false;
                         break;
                     }

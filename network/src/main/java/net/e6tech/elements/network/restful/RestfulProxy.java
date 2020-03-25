@@ -359,7 +359,7 @@ public class RestfulProxy {
             } else if (get) {
                 response = request.get(fullContext, paramList.toArray(new Param[paramList.size()]));
             } else if (delete) {
-                response = request.delete(fullContext, paramList.toArray(new Param[paramList.size()]));
+                response = request.delete(fullContext, postData, paramList.toArray(new Param[paramList.size()]));
             } else {
                 throw new IllegalArgumentException("Unknown HTTP method");
             }

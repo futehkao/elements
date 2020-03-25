@@ -343,8 +343,8 @@ public class RestfulClient {
         return new Request(this).get(context, params);
     }
 
-    public Response delete(String context, Param ... params) throws Throwable {
-        return new Request(this).delete(context, params);
+    public Response delete(String context, Object postData, Param ... params) throws Throwable {
+        return new Request(this).delete(context, postData, params);
     }
 
     @SuppressWarnings("squid:S3878")
@@ -449,7 +449,7 @@ public class RestfulClient {
         HttpURLConnection conn = null;
         try {
             conn = open(dest, context, params);
-            if (method.equals(Request.POST) || method.equals(Request.PUT)) {
+            if (data != null && (method.equals(Request.POST) || method.equals(Request.PUT) || method.equals(Request.DELETE))) {
                 conn.setDoOutput(true);
                 conn.setRequestProperty("Content-Type", marshaller.getContentType());
             }
@@ -468,16 +468,14 @@ public class RestfulClient {
                 printer.println();
             }
 
-            if (method.equals(Request.POST) || method.equals(Request.PUT)) {
+            if (data != null && (method.equals(Request.POST) || method.equals(Request.PUT) || method.equals(Request.DELETE))) {
                 OutputStream out = conn.getOutputStream();
-                if (data != null) {
-                    Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), StandardCharsets.UTF_8);
-                    String posted = marshaller.encodeRequest(data);
-                    writer.write(posted);
-                    logger.debug(posted);
-                    writer.flush();
-                    writer.close();
-                }
+                Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), StandardCharsets.UTF_8);
+                String posted = marshaller.encodeRequest(data);
+                writer.write(posted);
+                logger.debug(posted);
+                writer.flush();
+                writer.close();
                 out.close();
             }
 

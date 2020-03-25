@@ -218,5 +218,9 @@ public class Helper<T> extends EntityHelperBase<T> {
 
         return update;
     }
+
+    @Override
+    public void validateEntityFields() {
+    }
 }
 

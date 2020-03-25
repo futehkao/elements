@@ -50,8 +50,8 @@ public class Request {
         return request(context, GET, null, params);
     }
 
-    public Response delete(String context, Param ... params) throws Throwable {
-        return request(context, DELETE, null, params);
+    public Response delete(String context, Object data, Param ... params) throws Throwable {
+        return request(context, DELETE, data, params);
     }
 
     public Response put(String context, Object data,  Param ... params) throws Throwable {
