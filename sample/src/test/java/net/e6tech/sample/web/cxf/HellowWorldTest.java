@@ -118,6 +118,7 @@ public class HellowWorldTest extends BaseCase {
         HelloData data = new HelloData();
         data.setData("hello");
         helloWorld.delete("does not matter", data);
+        helloWorld.delete("does not matter", null);
         helloWorld.delete2("null data");
     }
 }

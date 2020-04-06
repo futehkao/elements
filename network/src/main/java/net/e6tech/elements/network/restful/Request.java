@@ -46,20 +46,24 @@ public class Request {
         requestProperties.clear();
     }
 
-    public Response get(String context, Param ... params) throws Throwable {
-        return request(context, GET, null, params);
+    public Response get(String context, Param ... params) throws Exception {
+        return request(context, GET, new PostData(), params);
     }
 
-    public Response delete(String context, Object data, Param ... params) throws Throwable {
-        return request(context, DELETE, data, params);
+    public Response delete(String context, Object data, Param ... params) throws Exception {
+        return request(context, DELETE, new PostData(data), params);
     }
 
-    public Response put(String context, Object data,  Param ... params) throws Throwable {
-        return request(context, PUT, data, params);
+    public Response delete(String context, Param ... params) throws Exception {
+        return request(context, DELETE, new PostData(), params);
     }
 
-    public Response post(String context, Object data,  Param ... params) throws Throwable {
-        return request(context, POST, data, params);
+    public Response put(String context, Object data,  Param ... params) throws Exception {
+        return request(context, PUT, new PostData(data), params);
+    }
+
+    public Response post(String context, Object data,  Param ... params) throws Exception {
+        return request(context, POST, new PostData(data), params);
     }
 
     public Presentation getPresentation() {
@@ -79,9 +83,16 @@ public class Request {
      * @return Response
      */
     @SuppressWarnings("squid:S00112")
-    public Response request(String context, String method, Object postData, Param ... params) throws Throwable {
+    public Response request(String context, String method, PostData postData, Param ... params) throws Exception {
         getPresentation().formatRequest(this);
-        Response response = client.submit(context, method, requestProperties, getPresentation().formatPostData(postData), getPresentation().formatQuery(params));
+        if (postData == null)
+            postData = new PostData();
+
+        if (postData.isSpecified())
+            postData.setData(getPresentation().formatPostData(postData.getData()));
+        Response response = client.submit(context, method, requestProperties,
+                postData,
+                getPresentation().formatQuery(params));
         return getPresentation().formatResponse(response);
     }
 }

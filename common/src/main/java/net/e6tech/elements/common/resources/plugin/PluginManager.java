@@ -75,7 +75,7 @@ public class PluginManager {
         for (String dir: directories) {
             String[] paths;
             try {
-                paths = FileUtil.listFiles(dir, "jar");
+                paths = FileUtil.listFiles(dir, ".jar");
             } catch (IOException e) {
                 throw new SystemException(e);
             }

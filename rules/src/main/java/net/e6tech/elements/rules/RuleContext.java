@@ -212,16 +212,19 @@ public class RuleContext implements GroovyObject {
         }
     }
 
+    @Override
     public Object getProperty(String property) {
         if ("result".equals(property))
             return getResult();
         return properties.get(property);
     }
 
+    @Override
     public void setProperty(String property, Object newValue) {
         properties.put(property, newValue);
     }
 
+    @Override
     public Object invokeMethod(String name, Object args) {
         try {
             return getMetaClass().invokeMethod(this, name, args);

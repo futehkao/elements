@@ -221,6 +221,7 @@ public class Helper<T> extends EntityHelperBase<T> {
 
     @Override
     public void validateEntityFields() {
+        // do nothing
     }
 }
 

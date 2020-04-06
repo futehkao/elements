@@ -243,9 +243,7 @@ public class Inspector {
                     timeUnit = unit.value();
             });
 
-            analyzer.getClusteringKeys().forEach(cc -> {
-                alloc(cc.getPosition(), cc.getPropertyDescriptor(), cc.getField(), clusteringKeys);
-            });
+            analyzer.getClusteringKeys().forEach(cc -> alloc(cc.getPosition(), cc.getPropertyDescriptor(), cc.getField(), clusteringKeys));
 
             AtomicInteger position = new AtomicInteger(0);
             columns = new ArrayList<>(analyzer.getColumns().size());

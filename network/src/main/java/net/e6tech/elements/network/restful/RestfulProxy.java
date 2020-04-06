@@ -301,7 +301,7 @@ public class RestfulProxy {
         Pair<Response, Object> forward(Request request, Object[] args) throws Throwable {
 
             List<Param> paramList = new ArrayList<>();
-            Object postData = null;
+            PostData postData = new PostData();
 
             String fullContext = context;
             for (int i = 0; i < paramTypes.length; i++) {
@@ -347,15 +347,17 @@ public class RestfulProxy {
 
                 }
 
-                if (pathParams[i] == null && queryParams[i] == null && beanParams[i] == null)
-                    postData = args[i];
+                if (pathParams[i] == null && queryParams[i] == null && beanParams[i] == null) {
+                    postData.setData(args[i]);
+                    postData.setSpecified(true);
+                }
             }
 
             Response response = null;
             if (post) {
-                response = request.post(fullContext, postData, paramList.toArray(new Param[paramList.size()]));
+                response = request.post(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
             } else if (put) {
-                response = request.put(fullContext, postData, paramList.toArray(new Param[paramList.size()]));
+                response = request.put(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
             } else if (get) {
                 response = request.get(fullContext, paramList.toArray(new Param[paramList.size()]));
             } else if (delete) {

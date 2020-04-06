@@ -129,7 +129,7 @@ public interface PluginModel {
      * @return Plugin
      */
     default <P extends Plugin> P requirePlugin(Class<P> cls, Object ... args) {
-        return getPlugin(cls, args).orElseThrow(() -> new InstanceNotFoundException());
+        return getPlugin(cls, args).orElseThrow(InstanceNotFoundException::new);
     }
 
     /**

@@ -90,15 +90,6 @@ public class RangeQuery<T> extends BaseQuery<T, RangeQuery<T>> {
         return sub;
     }
 
-    protected boolean isRelated(Relation relation, T t, T t2) {
-        Object v1 = relation.accessor.get(t);
-        Object v2 = relation.accessor.get(t2);
-        if (!v1.equals(v2)) {
-            return false;
-        }
-        return true;
-    }
-
     private List<T> merge(List<T> list, List<T> list2, T last) {
         int trimLast = list.size();
         for (int i = list.size() - 1; i >= 0; i --) {

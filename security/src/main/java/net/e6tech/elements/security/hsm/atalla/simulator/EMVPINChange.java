@@ -159,7 +159,7 @@ public class EMVPINChange extends Command {
             System.arraycopy(newPINBytes, 0, paddedPINBytes, 1, newPINBytes.length);
             Arrays.fill(paddedPINBytes, 1 + newPINBytes.length, 8, (byte) 0xFF);
             paddedPINBytes[8] = (byte)0x80;
-            // the rest are already 0x00;
+            // the rest are already 0x00
         } catch (GeneralSecurityException e) {
             throw new CommandException(8, e);
         }

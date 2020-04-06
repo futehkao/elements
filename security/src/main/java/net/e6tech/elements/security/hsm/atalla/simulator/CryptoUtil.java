@@ -33,6 +33,9 @@ public class CryptoUtil {
     protected static final String DES_EDE_ECB_NO_PADDING = "DESede/ECB/NoPadding";
     protected static final String DES_EDE_CBC_NO_PADDING = "DESede/CBC/NoPadding";
 
+    private CryptoUtil() {
+    }
+
     public static byte[] padDatablock(byte[] data, byte firstPadByte, byte endPadByte) {
         int paddedEndCharCount = (8 - (data.length + 1) % 8);
         byte[] result = new byte[data.length + 1 + paddedEndCharCount];
@@ -77,9 +80,11 @@ public class CryptoUtil {
         return Hex.toString(output).substring(0, resultLength);
     }
 
+    /**
+     * ICC Master Key
+     */
     public static SecretKey createSecretKey(byte[] keyBytes) throws GeneralSecurityException {
-        SecretKey iccMasterKey = new SecretKeySpec(AKB.normalizeKey(keyBytes), ALGORITHM_DES_EDE);
-        return iccMasterKey;
+        return new SecretKeySpec(AKB.normalizeKey(keyBytes), ALGORITHM_DES_EDE);
     }
 
     /**
@@ -87,8 +92,7 @@ public class CryptoUtil {
      */
     public static SecretKey derivativeICCMasterKey(AtallaSimulator simulator, AKB issuerMasterKey, String pan, String cardSequence) throws GeneralSecurityException {
         byte[] iccMasterKeyBytes = derivativeICCMasterKeyBytes(simulator, issuerMasterKey, pan, cardSequence);
-        SecretKey iccMasterKey = new SecretKeySpec(AKB.normalizeKey(iccMasterKeyBytes), ALGORITHM_DES_EDE);
-        return iccMasterKey;
+        return new SecretKeySpec(AKB.normalizeKey(iccMasterKeyBytes), ALGORITHM_DES_EDE);
     }
 
     /**
@@ -144,7 +148,7 @@ public class CryptoUtil {
         return sessionKeyBytes;
     }
 
-    private static byte[] deriveSessionKeyBytesWithATC(byte[] iccMasterKeyBytes, String diversificationData) throws GeneralSecurityException {
+    private static byte[] deriveSessionKeyBytesWithATC(byte[] iccMasterKeyBytes, String diversificationData) {
         int keyComponentSize = iccMasterKeyBytes.length / 2;
         byte[] leftICCMasterKeyBytes = Arrays.copyOf(iccMasterKeyBytes, keyComponentSize);
         byte[] rightICCMasterKeyBytes = Arrays.copyOfRange(iccMasterKeyBytes, keyComponentSize, iccMasterKeyBytes.length);
@@ -159,9 +163,7 @@ public class CryptoUtil {
         byte[] paddedRightInvertedDiverse = Hex.leftPad(rightInvertedDiverse, keyComponentSize, (byte)0x00);
         byte[] rightSessionKeyBytes = Hex.xor(rightICCMasterKeyBytes, paddedRightInvertedDiverse);
 
-        byte[] sessionKeyBytes = Hex.concat(leftSessionKeyBytes, rightSessionKeyBytes);
-
-        return sessionKeyBytes;
+        return Hex.concat(leftSessionKeyBytes, rightSessionKeyBytes);
     }
 
     public static String calculateKeyBytesCheckDigits(byte[] keyBytes, int checkDigitHexLength) throws GeneralSecurityException {
