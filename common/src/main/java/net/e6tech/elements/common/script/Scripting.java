@@ -301,6 +301,32 @@ public class Scripting {
         runAfter();
     }
 
+    /**
+     * Run a script.  The script may trigger further calls to exec.  But, load should not be
+     * be called again.
+     *
+     * @param loadDir use a different director as the load directory
+     * @param path file path of the script to be load
+     * @throws ScriptException throws exception if there are errors.
+     */
+    public void load(String loadDir, String path) throws ScriptException {
+        String prevRootDir = (String) get(__LOAD_DIR);
+        String prevRootFile = (String) get(__LOAD_FILE);
+        try {
+            String dir = (new File(loadDir)).getCanonicalPath();
+            String file = (new File(path)).getCanonicalPath();
+            privatePut(__LOAD_DIR, dir);
+            privatePut(__FILE, file);
+            exec(path, false);
+            runAfter();
+        } catch (IOException e) {
+            throw new ScriptException(e);
+        } finally {
+            privatePut(__LOAD_DIR, prevRootDir);
+            privatePut(__LOAD_FILE, prevRootFile);
+        }
+    }
+
     // runAfter is called after scripts are executed.
     protected void runAfter() {
         executeList(runAfterList);

@@ -101,10 +101,21 @@ public abstract class AbstractScriptShell {
         return loading;
     }
 
-    public void load(String str) throws ScriptException {
+    public synchronized void load(String str) throws ScriptException {
         try {
             loading = true;
             scripting.load(str);
+            onLoaded();
+        } finally {
+            loading = false;
+        }
+    }
+
+    // Same as the load, except specifying a different load directory
+    public synchronized void load(String loadDir, String str) throws ScriptException {
+        try {
+            loading = true;
+            scripting.load(loadDir, str);
             onLoaded();
         } finally {
             loading = false;

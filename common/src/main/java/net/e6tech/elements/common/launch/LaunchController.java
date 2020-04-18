@@ -34,6 +34,7 @@ public class LaunchController implements LaunchListener {
     private List<String> arguments = new ArrayList<>();
     private ResourceManager resourceManager;
     private CountDownLatch latch;
+    private ScriptLoader scriptLoader = ResourceManager::load;
 
     public LaunchController() {
         property("home", System.getProperty("home", System.getProperty("user.dir")));
@@ -91,11 +92,21 @@ public class LaunchController implements LaunchListener {
     }
 
     public void setArguments(List<String> arguments) {
-        this.arguments = arguments;
+        this.arguments.clear();
+        this.arguments.addAll(arguments);
     }
 
     public void addArgument(String arg) {
         arguments.add(arg);
+    }
+
+    public ScriptLoader getScriptLoader() {
+        return scriptLoader;
+    }
+
+    public void setScriptLoader(ScriptLoader scriptLoader) {
+        Objects.requireNonNull(scriptLoader);
+        this.scriptLoader = scriptLoader;
     }
 
     public LaunchController launchScript(String launchScript) {
@@ -184,7 +195,7 @@ public class LaunchController implements LaunchListener {
         initResourceManager();
         listeners.forEach(listener -> listener.created(resourceManager));
         try {
-            resourceManager.load(file);
+            scriptLoader.load(resourceManager, file);
             resourceManager.onShutdown("LaunchController " + getLaunchScript(), notification -> provisions.remove(getLaunchScript()));
         } catch (Exception e) {
             e.printStackTrace(); // we cannot use Logger yet
@@ -200,15 +211,6 @@ public class LaunchController implements LaunchListener {
                 resourceManager.notifyAll();
             }
         }));
-
-        /* Another way of doing it ...
-            resourceManager.getNotificationCenter().addNotificationListener(ShutdownNotification.class,
-                NotificationListener.wrap(getClass().getName(), (notification) -> {
-                synchronized (resourceManager) {
-                    resourceManager.notifyAll();
-                }
-            }));
-            */
 
         Thread thread = new Thread(() -> {
             // wait on resourceManager ... if ShutdownNotification is detected, the code just above will break out of

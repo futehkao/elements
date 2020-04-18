@@ -579,11 +579,22 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     @Override
-    @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity", "squid:S3776"})
     public synchronized void load(String str) throws ScriptException {
         long start = System.currentTimeMillis();
         super.load(str);
+        printAtoms(str, start);
+    }
 
+    @Override
+    public synchronized void load(String loadDir, String str) throws ScriptException {
+        long start = System.currentTimeMillis();
+        logger.info("Using specified load directory {}", loadDir);
+        super.load(loadDir, str);
+        printAtoms(str, start);
+    }
+
+    @SuppressWarnings("squid:S3776")
+    private void printAtoms(String str, long start) {
         if (!silent) {
             int len = 0;
             List<String> atomString = new LinkedList<>();
