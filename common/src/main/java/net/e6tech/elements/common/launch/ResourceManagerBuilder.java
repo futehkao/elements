@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2020 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,12 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.logging;
+package net.e6tech.elements.common.launch;
 
-/**
- * Created by futeh.
- */
-@SuppressWarnings({"squid:S3878", "squid:S2629"})
-public class NullLogger extends ConsoleLogger {
+import net.e6tech.elements.common.resources.ResourceManager;
 
-    public NullLogger() {
-        setOut(null);
-        setTraceEnabled(false);
-        setDebugEnabled(false);
-    }
+import java.util.Properties;
 
-    @Override
-    public String getName() {
-        return "NullLogger";
-    }
+public interface ResourceManagerBuilder {
+    ResourceManager build(Properties properties);
 }

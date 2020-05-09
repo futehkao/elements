@@ -25,8 +25,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotSupportedException;
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -106,9 +107,12 @@ public class HellowWorldTest extends BaseCase {
         data.setData("hello");
         data = helloWorld.post(data);
         assertTrue(data.getData().equals("hello"));
+    }
 
+    @Test
+    public void badPost() {
         provision.suppressLogging(() -> {
-            assertThrows(NotSupportedException.class, () -> helloWorld.post(null));
+            assertThrows(BadRequestException.class, () -> helloWorld.post(null));
             assertThrows(BadRequestException.class, () -> helloWorld.badPost(new HelloData()));
         });
     }
@@ -120,5 +124,15 @@ public class HellowWorldTest extends BaseCase {
         helloWorld.delete("does not matter", data);
         helloWorld.delete("does not matter", null);
         helloWorld.delete2("null data");
+    }
+
+    @Test
+    public void list() {
+        List<HelloData> list = helloWorld.list();
+    }
+
+    @Test
+    public void map() {
+        Map<String, HelloData> map = helloWorld.map();
     }
 }

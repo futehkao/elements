@@ -40,6 +40,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -52,25 +53,18 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * code is based on http://cxf.apache.org/docs/jaxrs-services-configuration.html#JAXRSServicesConfiguration-JAX-RSRuntimeDelegateandApplications
  */
-@SuppressWarnings({"squid:S1149", "squid:MethodCyclomaticComplexity", "squid:S3776"})
 public class JaxRSServer extends CXFServer {
 
     static {
         System.setProperty("org.apache.cxf.useSpringClassHelpers", "false");
     }
 
-    private static final String CLASS = "class";
-    private static final String CLASS_LOADER = "classLoader";
-    private static final String SINGLETON = "singleton";
-    private static final String BIND_HEADER_OBSERVER = "bindHeaderObserver";
-    private static final String REGISTER_BEAN = "registerBean";
-    private static final String NAME = "name";
-    private static final String PROTOTYPE = "prototype";
     private static final Logger messageLogger = Logger.getLogger(JaxRSServer.class.getName() + ".message");
     private static final Map<Integer, JaxRSServerController> entries = new ConcurrentHashMap<>();
     private static Logger logger = Logger.getLogger();
 
     private List<Map<String, Object>> resources = new ArrayList<>();
+    private List<JaxResource> jaxResources = new ArrayList<>();
     private Map<String, Object> instances = new ConcurrentHashMap<>();
     private boolean corsFilter = false;
     private SecurityAnnotationEngine securityAnnotationEngine;
@@ -93,6 +87,19 @@ public class JaxRSServer extends CXFServer {
 
     public void setResources(List<Map<String, Object>> resources) {
         this.resources = resources;
+    }
+
+    public List<JaxResource> getJaxResources() {
+        return jaxResources;
+    }
+
+    public void setJaxResources(List<JaxResource> jaxResources) {
+        this.jaxResources = jaxResources;
+    }
+
+    public JaxRSServer add(JaxResource resource) {
+        this.jaxResources.add(resource);
+        return this;
     }
 
     public Map<String, Object> getInstances() {
@@ -154,18 +161,17 @@ public class JaxRSServer extends CXFServer {
         this.resourcesFactory = resourcesFactory;
     }
 
-    @Override
-    @SuppressWarnings({"unchecked", "squid:S2112", "squid:S1125"})
-    public void initialize(Resources res) {
-        if (getURLs().isEmpty()) {
-            throw new IllegalStateException("address not set");
-        }
-
+    private List<JaxRSServerController> updateServerControllers() throws URISyntaxException {
         List<JaxRSServerController> entryList = new ArrayList<>();
         synchronized (entries) {
             for (URL url : getURLs()) {
-                JaxRSServerController controller = entries.computeIfAbsent(url.getPort(), port -> new JaxRSServerController(url, new JAXRSServerFactoryBean()));
-                if (!controller.getURL().equals(url)) {
+                JaxRSServerController controller = entries.get(url.getPort());
+                if (controller == null) {
+                    controller = new JaxRSServerController(url, new JAXRSServerFactoryBean());
+                    entries.put(url.getPort(), controller);
+                }
+
+                if (!controller.getURI().equals(url.toURI())) {
                     throw new SystemException("Cannot register " + url.toExternalForm() + ".  Already a service at " + url.toExternalForm());
                 }
 
@@ -175,80 +181,70 @@ public class JaxRSServer extends CXFServer {
                 entryList.add(controller);
             }
         }
+        return entryList;
+    }
 
+    private Observer initBindHeaderObserver(Resources res, JaxResource jaxResource) {
+        // determine if we should bind header observer or not
+        Observer hObserver = getHeaderObserver();
+        boolean bindHeaderObserver = jaxResource.isBindHeaderObserver();
+        if (!bindHeaderObserver)
+            hObserver = null;
+        injectInitialize(res, hObserver);
+        return hObserver;
+    }
+
+    private ResourceProvider initResourceProvider(Resources res, JaxResource jaxResource, Observer hObserver) {
+        Object prototype = jaxResource.resolvePrototype(classLoader, resolver);
+        ResourceProvider resourceProvider ;
+        if (jaxResource.isSingleton()) {
+            injectInitialize(res, prototype);
+            resourceProvider = new SharedResourceProvider(this, prototype, hObserver);
+            String beanName = jaxResource.getRegisterBean();
+            if (beanName != null)
+                getProvision().getResourceManager().registerBean(beanName, prototype);
+        } else {
+            Module module = (res == null) ? null : res.getModule();
+            ResourcesFactory factory = (resourcesFactory != null) ? resourcesFactory : getProvision().resourcesFactory();
+            resourceProvider = new InstanceResourceProvider(this, jaxResource.getResourceClass(), prototype, module, factory, hObserver);
+        }
+
+        String resourceName = jaxResource.getName();
+        if (resourceName != null && prototype != null)
+            instances.put(resourceName, prototype);
+
+        return resourceProvider;
+    }
+
+    @Override
+    public void initialize(Resources res) {
+        if (getURLs().isEmpty()) {
+            throw new IllegalStateException("address not set");
+        }
+
+        List<JaxRSServerController> entryList = null;
+        try {
+            entryList = updateServerControllers();
+        } catch (URISyntaxException e) {
+            throw new SystemException(e);
+        }
+
+        resources.forEach(m -> add(JaxResource.from(m)));
         List<Class<?>> resourceClasses = new ArrayList<>();
-        for (Map<String, Object> map : resources) {
-            boolean singleton = false;
-            Class resourceClass = null;
-
-            String resourceClassName = (String) map.get(CLASS);
-            if (resourceClassName == null)
-                throw new SystemException("Missing resource class in resources map");
-            try {
-                String classLoaderExpression = (String) map.get(CLASS_LOADER);
-                ClassLoader loader = null;
-                if (classLoaderExpression != null && resolver != null) {
-                    loader = (ClassLoader) resolver.resolve(classLoaderExpression);
-                }
-                if (loader == null) {
-                    loader = (classLoader == null) ? getProvision().getClass().getClassLoader() : classLoader;
-                }
-                resourceClass = loader.loadClass(resourceClassName);
-            } catch (ClassNotFoundException e) {
-                throw new SystemException(e);
-            }
+        for (JaxResource jaxResource : jaxResources) {
+            Class resourceClass = jaxResource.resolveResourceClass(classLoader, resolver);
 
             // determine if we should bind header observer or not
-            Observer hObserver = getHeaderObserver();
-            boolean bindHeaderObserver = (map.get(BIND_HEADER_OBSERVER) == null) ? true : (Boolean) map.get(BIND_HEADER_OBSERVER);
-            if (!bindHeaderObserver)
-                hObserver = null;
-            injectInitialize(res, hObserver);
-
-            Object s = map.get(SINGLETON);
-            if (s instanceof String && "true".equalsIgnoreCase(s.toString().trim()))
-                singleton = true;
-            else
-                singleton = (s == null) ? false : (Boolean) map.get(SINGLETON);
-            String resourceName = (String) map.get(NAME);
-
-            // prototype
-            String prototypeExpression;
-            Object prototype = null;
-            prototypeExpression = (String) map.get(PROTOTYPE);
-            if (prototypeExpression != null && resolver != null) {
-                prototype = resolver.resolve(prototypeExpression);
-            }
+            Observer hObserver = initBindHeaderObserver(res, jaxResource);
 
             if (securityAnnotationEngine != null) {
-                securityAnnotationEngine.register(resourceClass);
+                securityAnnotationEngine.register(jaxResource.getResourceClass());
             }
 
-            ResourceProvider resourceProvider ;
-            if (singleton) {
-                if (prototype == null) {
-                    try {
-                        prototype = resourceClass.getDeclaredConstructor().newInstance();
-                    } catch (Exception e) {
-                        throw new SystemException(e);
-                    }
-                    injectInitialize(res, prototype);
-                }
-                resourceProvider = new SharedResourceProvider(this, prototype, hObserver);
-                String beanName = (String) map.get(REGISTER_BEAN);
-                if (beanName != null)
-                    getProvision().getResourceManager().registerBean(beanName, prototype);
-            } else {
-                Module module = (res == null) ? null : res.getModule();
-                ResourcesFactory factory = (resourcesFactory != null) ? resourcesFactory : getProvision().resourcesFactory();
-                resourceProvider = new InstanceResourceProvider(this, resourceClass, prototype, module, factory, hObserver);
-            }
+            ResourceProvider resourceProvider = initResourceProvider(res, jaxResource, hObserver);
 
             for (JaxRSServerController entry : entryList)
                 entry.getFactory().setResourceProvider(resourceClass, resourceProvider);
-
-            if (resourceName != null && prototype != null)
-                instances.put(resourceName, prototype);
 
             resourceClasses.add(resourceClass);
         }
@@ -363,8 +359,7 @@ public class JaxRSServer extends CXFServer {
             this.mapper = mapper;
         }
 
-        @Override
-        public Response toResponse(Exception exception) {
+        private Response.Status toStatus(Exception exception) {
             Response.Status status = Response.Status.BAD_REQUEST;
             if (exception instanceof BadRequestException) {
                 status = Response.Status.BAD_REQUEST;
@@ -385,6 +380,12 @@ public class JaxRSServer extends CXFServer {
             } else if (exception instanceof ServiceUnavailableException) {
                 status = Response.Status.SERVICE_UNAVAILABLE;
             }
+            return status;
+        }
+
+        @Override
+        public Response toResponse(Exception exception) {
+            Response.Status status = toStatus(exception);
 
             Object response;
             if (exception instanceof InvocationException) {

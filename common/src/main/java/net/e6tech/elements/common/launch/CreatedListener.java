@@ -28,6 +28,5 @@ public interface CreatedListener extends LaunchListener {
     void created(ResourceManager rm);
 
     default void launched(Provision provision) {
-
     }
 }

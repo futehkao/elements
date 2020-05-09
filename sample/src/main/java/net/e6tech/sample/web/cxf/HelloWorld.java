@@ -30,6 +30,10 @@ import javax.annotation.security.PermitAll;
 import javax.persistence.EntityManager;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Path("/helloworld")
 @SuppressWarnings("all") // it is a test case
@@ -132,7 +136,7 @@ public class HelloWorld {
     @POST
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello")
-    public HelloData post(@Nonnull HelloData data) {
+    public HelloData post(HelloData data) {
         if (data == null) throw new NullPointerException();
         return data;
     }
@@ -156,6 +160,30 @@ public class HelloWorld {
     @Path("hello/delete2/{path}")
     public void delete2(@PathParam("path") String path) {
         System.out.println("Got DELETE with path " + path);
+    }
+
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/list")
+    @EntityManagerConfig(disable = true)
+    public List<HelloData> list() {
+        List<HelloData> list = new ArrayList<>();
+        HelloData data = new HelloData();
+        data.setData("hello");
+        list.add(data);
+        return list;
+    }
+
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/map")
+    @EntityManagerConfig(disable = true)
+    public Map<String, HelloData> map() {
+        Map<String, HelloData> map = new HashMap<>();
+        HelloData data = new HelloData();
+        data.setData("hello");
+        map.put("1", data);
+        return map;
     }
 
 }

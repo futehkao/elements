@@ -34,6 +34,7 @@ public class LaunchController implements LaunchListener {
     private List<String> arguments = new ArrayList<>();
     private ResourceManager resourceManager;
     private CountDownLatch latch;
+    private ResourceManagerBuilder resourceManagerBuilder = ResourceManager::new;
     private ScriptLoader scriptLoader = ResourceManager::load;
 
     public LaunchController() {
@@ -98,6 +99,15 @@ public class LaunchController implements LaunchListener {
 
     public void addArgument(String arg) {
         arguments.add(arg);
+    }
+
+    public ResourceManagerBuilder getResourceManagerBuilder() {
+        return resourceManagerBuilder;
+    }
+
+    public void setResourceManagerBuilder(ResourceManagerBuilder resourceManagerBuilder) {
+        Objects.requireNonNull(resourceManagerBuilder);
+        this.resourceManagerBuilder = resourceManagerBuilder;
     }
 
     public ScriptLoader getScriptLoader() {
@@ -180,7 +190,7 @@ public class LaunchController implements LaunchListener {
 
     public ResourceManager initResourceManager() {
         if (resourceManager == null) {
-            resourceManager = new ResourceManager(getProperties());
+            resourceManager = resourceManagerBuilder.build(getProperties());
             created(resourceManager);
         }
         return resourceManager;

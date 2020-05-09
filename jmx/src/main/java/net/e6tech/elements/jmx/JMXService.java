@@ -54,32 +54,36 @@ public class JMXService {
 
     @SuppressWarnings({"unchecked", "squid:S00112", "squid:S1191"})
     public static void start(InetAddress bindAddress, int port, int jmxrmiPort, String user, char[] password) throws Exception {
-        JMXHtmlServer adapter = new JMXHtmlServer(port);
-        adapter.setBindAddress(bindAddress);
-        if (user != null && user.length() > 0) {
-            com.sun.jdmk.comm.AuthInfo authInfo = new com.sun.jdmk.comm.AuthInfo(user, new String(password));
-            adapter.addUserAuthenticationInfo(authInfo);
-        }
-        adapter.start();
-        try {
-            ManagementFactory.getPlatformMBeanServer().registerMBean(adapter, new ObjectName("JMX:name=htmlAdaptorServer"));
-        } catch (Exception e) {
-            throw new SystemException(e);
+        if (port >= 0) {
+            JMXHtmlServer adapter = new JMXHtmlServer(port);
+            adapter.setBindAddress(bindAddress);
+            if (user != null && user.length() > 0) {
+                com.sun.jdmk.comm.AuthInfo authInfo = new com.sun.jdmk.comm.AuthInfo(user, new String(password));
+                adapter.addUserAuthenticationInfo(authInfo);
+            }
+            adapter.start();
+            try {
+                ManagementFactory.getPlatformMBeanServer().registerMBean(adapter, new ObjectName("JMX:name=htmlAdaptorServer"));
+            } catch (Exception e) {
+                throw new SystemException(e);
+            }
         }
 
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        Registry registry = LocateRegistry.createRegistry(jmxrmiPort);
-        registry.list();
-        Map env = new HashMap<>();
-        if (user != null && user.length() > 0) {
-            String[] creds = {user, new String(password)};
-            env.put(JMXConnector.CREDENTIALS, creds);
-        }
-        JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:" + jmxrmiPort + "/server");
-        JMXConnectorServer cs = JMXConnectorServerFactory.newJMXConnectorServer(url, env, mbs);
-        cs.start();
+        if (jmxrmiPort >= 0) {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            Registry registry = LocateRegistry.createRegistry(jmxrmiPort);
+            registry.list();
+            Map env = new HashMap<>();
+            if (user != null && user.length() > 0) {
+                String[] creds = {user, new String(password)};
+                env.put(JMXConnector.CREDENTIALS, creds);
+            }
+            JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:" + jmxrmiPort + "/server");
+            JMXConnectorServer cs = JMXConnectorServerFactory.newJMXConnectorServer(url, env, mbs);
+            cs.start();
 
-        mbs.registerMBean(cs, new ObjectName("connector:type=standard_rmi") );
+            mbs.registerMBean(cs, new ObjectName("connector:type=standard_rmi"));
+        }
     }
 
     public static void registerMBean(Object mbean, String name) {

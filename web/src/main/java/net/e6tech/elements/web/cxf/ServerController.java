@@ -18,20 +18,27 @@ package net.e6tech.elements.web.cxf;
 
 import org.apache.cxf.endpoint.AbstractEndpointFactory;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 
-@SuppressWarnings("squid:S2112")
 public class ServerController<T extends AbstractEndpointFactory> {
     protected T factory;
     protected URL url;
+    protected URI uri;
 
-    ServerController(URL url, T factory) {
+    ServerController(URL url, T factory) throws URISyntaxException {
         this.url = url;
         this.factory = factory;
+        this.uri = url.toURI();
     }
 
     public synchronized URL getURL() {
         return url;
+    }
+
+    public URI getURI() {
+        return uri;
     }
 
     public T getFactory() {
@@ -40,7 +47,7 @@ public class ServerController<T extends AbstractEndpointFactory> {
 
     @Override
     public int hashCode() {
-        return url.hashCode();
+        return uri.hashCode();
     }
 
     @Override
@@ -50,7 +57,7 @@ public class ServerController<T extends AbstractEndpointFactory> {
         }
 
         ServerController c = (ServerController) object;
-        return url.equals(c.getURL()) && factory.equals(c.getFactory());
+        return uri.equals(c.getURI()) && factory.equals(c.getFactory());
     }
 }
 

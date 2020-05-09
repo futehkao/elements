@@ -17,6 +17,7 @@ limitations under the License.
 package net.e6tech.elements.network.restful;
 
 import com.fasterxml.jackson.databind.type.CollectionType;
+import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.Interceptor;
@@ -297,7 +298,7 @@ public class RestfulProxy {
             return Optional.empty();
         }
 
-        @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S3776"})
+        @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S3776", "squid:S00112"})
         Pair<Response, Object> forward(Request request, Object[] args) throws Throwable {
 
             List<Param> paramList = new ArrayList<>();
@@ -361,7 +362,10 @@ public class RestfulProxy {
             } else if (get) {
                 response = request.get(fullContext, paramList.toArray(new Param[paramList.size()]));
             } else if (delete) {
-                response = request.delete(fullContext, postData, paramList.toArray(new Param[paramList.size()]));
+                if (postData.isSpecified())
+                    response = request.delete(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
+                else
+                    response = request.delete(fullContext, paramList.toArray(new Param[paramList.size()]));
             } else {
                 throw new IllegalArgumentException("Unknown HTTP method");
             }
@@ -380,6 +384,11 @@ public class RestfulProxy {
                             Class elementType = (Class) parameterizedReturnType.getActualTypeArguments()[0];
                             CollectionType ctype = TypeFactory.defaultInstance().constructCollectionType(encloseType, elementType);
                             return new Pair<>(response, Response.mapper.readValue(response.getResult(), ctype));
+                        } else if (Map.class.isAssignableFrom(encloseType)) {
+                            Class keyType = (Class) parameterizedReturnType.getActualTypeArguments()[0];
+                            Class valueType = (Class) parameterizedReturnType.getActualTypeArguments()[1];
+                            MapType mtype = TypeFactory.defaultInstance().constructMapType(encloseType, keyType, valueType);
+                            return new Pair<>(response, Response.mapper.readValue(response.getResult(), mtype));
                         }
                     }
                 }

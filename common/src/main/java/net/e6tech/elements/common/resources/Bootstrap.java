@@ -667,7 +667,13 @@ public class Bootstrap extends GroovyObjectSupport {
             Object on = expando.getProperty(key.toString());
             if (Boolean.TRUE.equals(on)) {
                 runComponentMessage("    Booting *" + key + "*");
-                exec(value);
+                if (value instanceof Map) {
+                    ((Map) value).forEach(this::runComponent);
+                } else {
+                    exec(value);
+                }
+            } else {
+                logger.info("    !! {} is disabled", key);
             }
             if (logger.isInfoEnabled()) {
                 logger.info("    Done booting *{}*", key);

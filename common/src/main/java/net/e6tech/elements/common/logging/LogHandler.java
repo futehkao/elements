@@ -18,7 +18,6 @@ package net.e6tech.elements.common.logging;
 import net.e6tech.elements.common.util.SystemException;
 import org.apache.logging.log4j.ThreadContext;
 import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.MessageFormatter;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -171,32 +170,6 @@ public class LogHandler implements InvocationHandler {
                 return null;
             } else {
                 return method.invoke(logger, args);
-            }
-        }
-    }
-
-    private static class ConsoleLogger extends NullLogger {
-
-        @Override
-        public String getName() {
-            return "ConsoleLogger";
-        }
-
-        @Override
-        public void info(String format, Object... arguments) {
-            if (arguments != null && arguments.length > 0) {
-                System.out.println(MessageFormatter.arrayFormat(format, arguments).getMessage());
-            } else {
-                System.out.println(format);
-            }
-        }
-
-        @Override
-        public void info(String msg, Throwable t) {
-            System.out.println(msg);
-            if (t != null) {
-                t.printStackTrace(System.out);
-                System.out.println();
             }
         }
     }

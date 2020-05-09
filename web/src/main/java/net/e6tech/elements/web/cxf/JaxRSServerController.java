@@ -18,16 +18,16 @@ package net.e6tech.elements.web.cxf;
 
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-@SuppressWarnings("squid:S2160") // relies on super's equals and hashCode
 public class JaxRSServerController extends ServerController<JAXRSServerFactoryBean> {
 
     private List<Class<?>> resourceClasses = new ArrayList<>();
 
-    JaxRSServerController(URL url, JAXRSServerFactoryBean bean) {
+    JaxRSServerController(URL url, JAXRSServerFactoryBean bean) throws URISyntaxException {
         super(url, bean);
     }
 
@@ -37,5 +37,19 @@ public class JaxRSServerController extends ServerController<JAXRSServerFactoryBe
 
     List<Class<?>> getResourceClasses() {
         return resourceClasses;
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof JaxRSServerController)) {
+            return false;
+        }
+
+        return super.equals(object);
     }
 }

@@ -23,13 +23,14 @@ import net.e6tech.sample.web.cxf.HelloWorldRoles
 import javax.ws.rs.*
 import javax.ws.rs.core.MediaType
 
+helloWorldPort = 19001
 roleMap = [(HelloWorld.getName()): HelloWorldRoles]
 
 atom("helloWorld") {
     configuration =  """
     _prototype.extraMessage: '...What a sunny day!'
     _helloWorld.addresses:
-        - "http://0.0.0.0:19001/restful/"
+        - "http://0.0.0.0:${helloWorldPort}/restful/"
     _helloWorld.resources:
         - class: "net.e6tech.sample.web.cxf.HelloWorld"
           singleton: false
