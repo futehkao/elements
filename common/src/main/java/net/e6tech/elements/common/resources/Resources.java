@@ -53,6 +53,8 @@ import java.util.function.Supplier;
 @SuppressWarnings({"unchecked", "squid:S1141", "squid:S134", "squid:S1602", "squid:S00100", "squid:MethodCyclomaticComplexity"})
 public class Resources implements AutoCloseable, ResourcePool {
 
+    private static ThreadLocal<Deque<Resources>> activeResources = new ThreadLocal<>();
+
     private static Logger logger = Logger.getLogger(Resources.class);
     private static final String ABORT_DUE_TO_EXCEPTION = "Aborting due to exception";
     private ResourceManager resourceManager;
@@ -65,6 +67,34 @@ public class Resources implements AutoCloseable, ResourcePool {
     private Object lastResult;
     private Throwable lastException;
     private boolean submitting = false;
+
+    public static Resources parent(Resources current) {
+        Deque<Resources> deque = activeResources.get();
+        if (deque == null)
+            return null;
+        Iterator<Resources> iterator = deque.iterator();
+        while (iterator.hasNext()) {
+            Resources r = iterator.next();
+            if (r == current) {
+                return (iterator.hasNext()) ? iterator.next() : null;
+            }
+        }
+        return null;
+    }
+
+    public static Iterator<Resources> parents(Resources current) {
+        Deque<Resources> deque = activeResources.get();
+        if (deque == null)
+            return null;
+        Iterator<Resources> iterator = deque.iterator();
+        while (iterator.hasNext()) {
+            Resources r = iterator.next();
+            if (r == current) {
+                return iterator;
+            }
+        }
+        return Collections.emptyIterator();
+    }
 
     protected Resources(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
@@ -568,7 +598,15 @@ public class Resources implements AutoCloseable, ResourcePool {
         R ret = null;
         boolean topLevel = !submitting;
         submitting = true;
+        Deque<Resources> deque = activeResources.get();
+
         try {
+            if (deque == null) {
+                deque = new LinkedList<>();
+                activeResources.set(deque);
+            }
+            deque.push(this);
+
             try {
                 ret = replay.replay((T) this);
             } catch (Exception th) {
@@ -583,6 +621,10 @@ public class Resources implements AutoCloseable, ResourcePool {
                 if (!isAborted())
                     replays.add(replay);
             }
+
+            deque.remove(this);
+            if (deque.isEmpty())
+                activeResources.remove();
         }
         return ret;
     }

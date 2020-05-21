@@ -1,0 +1,428 @@
+package net.e6tech.elements.web.federation;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.Provision;
+
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+
+public class Beacon {
+    public static Logger logger = Logger.getLogger();
+    private Federation federation;
+
+    private Cache<UUID, Event> events;
+    private final Random random = new Random();
+    private volatile boolean shutdown = false;
+    private ReentrantLock seeding = new ReentrantLock();
+    private List<HailingFrequency> seedFrequencies = Collections.unmodifiableList(new ArrayList<>());
+    private Thread eventThread;
+    private Map<String, HailingFrequency> frequencies = new ConcurrentHashMap<>(128); // memberId to frequency
+
+    public Federation getFederation() {
+        return federation;
+    }
+
+    public void setFederation(Federation federation) {
+        this.federation = federation;
+    }
+
+    protected void seeds(List<Member> seeds) {
+        List<HailingFrequency> list = seeds.stream().map(s ->
+                new HailingFrequency(s, federation.getAuthObserver())
+                    .connectionTimeout(federation.getConnectionTimeout())
+                    .readTimeout(federation.getReadTimeout())).collect(Collectors.toList());
+        seedFrequencies = Collections.unmodifiableList(list);
+    }
+
+    public boolean isShutdown() {
+        return shutdown;
+    }
+
+    public void setShutdown(boolean shutdown) {
+        this.shutdown = shutdown;
+    }
+
+    public Collection<Member> members() {
+        return frequencies.values().stream().map(HailingFrequency::getMember).collect(Collectors.toList());
+    }
+
+    protected int knownFrequencies() {
+         return frequencies.size();
+    }
+
+    protected void trimFrequencies() {
+        frequencies.values().removeIf(f -> !federation.getHostedMembers().containsKey(f.memberId()) &&
+                f.getMember().getExpiration() < System.currentTimeMillis());
+    }
+
+    public HailingFrequency getFrequency(String memberId) {
+        return frequencies.get(memberId);
+    }
+
+    protected HailingFrequency updateFrequency(Member member) {
+        HailingFrequency f = frequencies.get(member.getMemberId());
+
+        if (f == null) {
+            f = new HailingFrequency(member, federation.getAuthObserver());
+            f.connectionTimeout(federation.getConnectionTimeout())
+                    .readTimeout(federation.getReadTimeout());
+            frequencies.put(member.getMemberId(), f);
+            if (f.getMember().getExpiration() < member.getExpiration())
+                f.setMember(member);
+
+            HailingFrequency f2 = f;
+            CompletableFuture.runAsync(() -> federation.getListeners().forEach(listener -> listener.added(f2)));
+        } else if (f.getMember().getExpiration() < member.getExpiration()) {
+            f.setMember(member);
+        }
+
+        return f;
+    }
+
+    protected void updateFrequencies(Collection<Member> list) {
+        for (Member member : list) {
+            updateFrequency(member);
+        }
+    }
+
+    protected void removeFrequency(HailingFrequency frequency) {
+        if (frequency != null && !federation.getHostedMembers().containsKey(frequency.getMember().getMemberId())) {
+            HailingFrequency c = frequencies.remove(frequency.memberId());
+            CompletableFuture.runAsync(() -> federation.getListeners().forEach(listener -> listener.removed(c)));
+        }
+    }
+
+    protected void removeFrequencies(Collection<Member> list) {
+        for (Member member : list) {
+            if (!federation.getHostedMembers().containsKey(member.getMemberId())) {
+                HailingFrequency c = frequencies.remove(member.getMemberId());
+                CompletableFuture.runAsync(() -> federation.getListeners().forEach(listener -> listener.removed(c)));
+            }
+        }
+    }
+
+    protected Map<String, HailingFrequency> frequencies() {
+         return frequencies;
+    }
+
+    // need to have a background thread to poll liveliness.
+    public void start() {
+        if (events != null) {
+            events.invalidateAll();
+            events.cleanUp();
+        }
+        events = CacheBuilder.newBuilder()
+                .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+                .initialCapacity(federation.getEventCacheInitialCapacity())
+                .expireAfterAccess(federation.getEventCacheExpire(), TimeUnit.MILLISECONDS)
+                .build();
+
+        shutdown = false;
+
+        Thread thread = new Thread(this::run);
+        thread.start();
+    }
+
+    private void run() {
+        federation.getHostedMembers().values().forEach(m -> {
+                federation.refresh(m);
+                updateFrequency(m);
+        });
+
+        // wait till the api is up
+        while (frequencies.size() == 0) {
+            HailingFrequency frequency = frequencies.values().iterator().next();
+            try {
+                frequency.beacon().members();
+                break;
+            } catch (Exception e) {
+                // ignore
+            }
+
+            try {
+                Thread.sleep(100L); // wait for its own API to start.
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
+        // send out new Event to seeds
+        logger.trace("{} start seeding.", federation.getHostAddress());
+        seeds("start");
+        logger.trace("{} done seeding.", federation.getHostAddress());
+
+        // create a thread to process events
+        eventThread = new Thread(this::events);
+        eventThread.start();
+
+        // create a thread to sync members
+        Thread sync = new Thread(this::sync);
+        sync.start();
+
+        // create a thread to send out new lease events
+        try {
+            Thread.sleep(federation.getRenewalInterval());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        Thread renewal = new Thread(this::renewal);
+        renewal.start();
+    }
+
+    private void seeds(String from) {
+        if (!seeding.tryLock())
+            return;
+        try {
+            while (true) {
+                if (syncMembers(seedFrequencies)) {
+                    logger.trace("{} {} seeds announce ", federation.getHostAddress(), from);
+                    announce();
+                    break;
+                }
+
+                try {
+                    Thread.sleep(federation.getSeedRefreshInterval());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        } finally {
+            seeding.unlock();
+        }
+    }
+
+    public void onEvent(Event event) {
+        if (shutdown)
+            return;
+        // seen it before?
+        synchronized (events) {
+            Event existing = events.getIfPresent(event.getUuid());
+            if (existing != null) {
+                if (existing != null && existing.getUuid().equals(event.getUuid())) {
+                    event.getVisited().addAll(existing.getVisited());
+                    if (event.getCycle() > existing.getCycle())
+                        event.setCycle(existing.getCycle());
+                    events.put(event.getUuid(), event);
+                    return;
+                }
+            }
+        }
+
+        logger.trace("{} onEvent: {}" , federation.getHostAddress(), event);
+        if (event.getType() == Event.Type.ANNOUNCE) {
+            updateFrequencies(event.getMembers());
+        } else if (event.getType() == Event.Type.REMOVE) {
+            removeFrequencies(event.getMembers());
+        }
+
+        if (event.getCycle() > 0) {
+            synchronized (events) {
+                events.put(event.getUuid(), event);
+                federation.getHostedMembers().values().forEach(m -> event.getVisited().add(m.getMemberId()));
+                event.getVisited().addAll(federation.getHostedMembers().keySet());
+                events.notifyAll();
+            }
+        }
+    }
+
+    private void decrementCycle(Event event) {
+        if (event.getCycle() > 0) {
+            event.setCycle(event.getCycle() - 1);
+        }
+    }
+
+    private void announce() {
+        trimFrequencies();
+
+        federation.getHostedMembers().values().forEach(federation::refresh);
+        List<Member> list = new ArrayList<>(federation.getHostedMembers().size());
+        list.addAll(federation.getHostedMembers().values());
+        Event event = new Event(Event.Type.ANNOUNCE, list, federation.getCycle());
+        event.getVisited().addAll(federation.getHostedMembers().keySet());
+        gossip(event);
+    }
+
+    void announce(Member member) {
+        federation.refresh(member);
+        List<Member> list = new ArrayList<>();
+        list.add(member);
+        onEvent(new Event(Event.Type.ANNOUNCE, list, federation.getCycle()));
+    }
+
+    private void renewal() {
+        while (!shutdown) {
+            try {
+                long interval = federation.getRenewalInterval() + federation.getCycle() * federation.getEventInterval();
+                if (knownFrequencies() <= federation.getHostedMembers().size()) {
+                    seeds("renewal");
+                    Thread.sleep(interval);
+                } else {
+                    long now = System.currentTimeMillis();
+                    logger.trace("{} renewal: ", federation.getHostAddress());
+                    announce();
+                    long sleep = interval - (System.currentTimeMillis() - now);
+                    if (sleep < 0) // during trace
+                        sleep = federation.getRenewalInterval();
+                    Thread.sleep(sleep);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception ex) {
+                logger.error("renewal", ex);
+            }
+        }
+    }
+
+    private void events() {
+        while (!shutdown) {
+            try {
+                processEvents();
+                Thread.sleep(federation.getEventInterval());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (Exception ex) {
+                logger.error("events", ex);
+            }
+        }
+    }
+
+    private void processEvents() {
+        List<Event> copy = new LinkedList<>();
+        int before;
+        int after;
+        synchronized (events) {
+            while (events.size() == 0 || knownFrequencies() <= federation.getHostedMembers().size()) {
+                try {
+                    events.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            Map<UUID, Event> map = events.asMap();
+            copy.addAll(map.values());
+            copy.forEach(this::decrementCycle);
+            before = copy.size();
+            map.entrySet().removeIf(e -> e.getValue().getCycle() <= 0);
+            after = copy.size();
+        }
+        logger.trace("{} event size {}, {}", federation.getHostAddress(), before, after);
+        copy.forEach(this::gossip);
+    }
+
+    private void sync() {
+        while (!shutdown) {
+            try {
+                if (knownFrequencies() >= federation.getHostedMembers().size()) {
+                    syncMembers(frequencies().values());
+                }
+                Thread.sleep(federation.getSyncInterval());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception ex) {
+                logger.error("sync", ex);
+            }
+        }
+    }
+
+    private boolean syncMembers(Collection<HailingFrequency> fList) {
+        if (fList.isEmpty())
+            return false;
+
+        // filter out self
+        List<HailingFrequency> list = fList.stream().filter(c -> !federation.getHostedMembers().containsKey(c.memberId())).collect(Collectors.toList());
+
+        if (list.isEmpty())
+            return true; // because list contain only self
+
+        while (true) {
+            HailingFrequency frequency = null;
+            try {
+                if (list.isEmpty())
+                    return false;
+                int n = random.nextInt(list.size());
+                frequency = list.remove(n);
+                Collection<Member> list2 = frequency.beacon().members();
+                logger.trace("{} syncMembers: {}", federation.getHostAddress(), list2);
+                updateFrequencies(list2);
+                return true;
+            } catch (Exception ex) {
+                removeFrequency(frequency);
+            }
+        }
+    }
+
+    public void shutdown() {
+        if (shutdown)
+            return;
+        shutdown = true;
+
+        long now = System.currentTimeMillis();
+        federation.getHostedMembers().values().forEach(m -> m.setExpiration(now));
+        List<Member> list = new ArrayList<>(federation.getHostedMembers().size());
+        list.addAll(federation.getHostedMembers().values());
+        Event event = new Event(Event.Type.REMOVE, list, federation.getCycle());
+        event.getVisited().addAll(federation.getHostedMembers().keySet());
+        for (Member member : list) {
+            HailingFrequency c = frequencies.remove(member.getMemberId());
+            CompletableFuture.runAsync(() -> federation.getListeners().forEach(listener -> listener.removed(c)));
+        }
+        gossip(event);
+
+        if (eventThread != null) {
+            eventThread.interrupt();
+            eventThread = null;
+        }
+        if (events != null) {
+            events.invalidateAll();
+        }
+    }
+
+    private boolean gossip(Event event) {
+        // filter out already visited
+        List<HailingFrequency> list = frequencies.values().stream()
+                .filter(c -> !event.getVisited().contains(c.memberId()))
+                .collect(Collectors.toList());
+        if (list.isEmpty()) {
+            return false;
+        }
+
+        List<HailingFrequency> chosen;
+        int fanout = federation.getFanout();
+        if (fanout >= list.size()) {
+            chosen = list;
+        } else {
+            chosen = new ArrayList<>(fanout);
+            for (int i = 0; i < fanout; i++) {
+                int n = random.nextInt(list.size());
+                chosen.add(list.get(n));
+                list.remove(n);
+            }
+        }
+
+        AtomicBoolean atomic = new AtomicBoolean(false);
+        chosen.forEach(frequency -> {
+            logger.trace("{} gossip to {}: {}", federation.getHostAddress(), frequency.memberId(), event);
+            try {
+                frequency.beacon().onEvent(event);
+                atomic.set(true);
+            } catch (Exception ex) {
+                // remove connector from members.
+                removeFrequency(frequency);
+            }
+        });
+        return atomic.get();
+    }
+}
