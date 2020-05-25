@@ -211,6 +211,7 @@ public class JaxResource {
         return getResourceClass();
     }
 
+    @SuppressWarnings("unchecked")
     public Object resolvePrototype(ClassLoader externalLoader, Configuration.Resolver resolver) {
         Object prototype = null;
 

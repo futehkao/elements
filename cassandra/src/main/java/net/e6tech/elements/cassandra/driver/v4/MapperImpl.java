@@ -45,7 +45,7 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
     private static final Logger LOG = Logger.getLogger();
 
     private final Helper<T> helper;
-    private final PreparedStatement getStatement;
+    private final PreparedStatement findByIdStatement;
     private final PreparedStatement saveStatement;
     private final PreparedStatement deleteStatement;
     private Inspector inspector;
@@ -55,13 +55,13 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
     private MapperImpl(MapperContext context,
                        Helper helper,
                        Inspector inspector,
-                       PreparedStatement getStatement,
+                       PreparedStatement findByIdStatement,
                        PreparedStatement saveStatement,
                        PreparedStatement deleteStatement) {
         super(context);
         this.helper = helper;
         this.inspector = inspector;
-        this.getStatement = getStatement;
+        this.findByIdStatement = findByIdStatement;
         this.saveStatement = saveStatement;
         this.deleteStatement = deleteStatement;
     }
@@ -96,7 +96,7 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
     }
 
     private BoundStatement getBoundStatement(ReadOptions options, Object ... keys) {
-        BoundStatementBuilder boundStatementBuilder = getStatement.boundStatementBuilder();
+        BoundStatementBuilder boundStatementBuilder = findByIdStatement.boundStatementBuilder();
 
         int i = 0;
         for (Inspector.ColumnAccessor accessor : inspector.getPrimaryKeyColumns()) {
@@ -201,25 +201,25 @@ public class MapperImpl<T> extends DaoBase implements Mapper<T> {
             Helper<T> helper = new Helper<>(context, cls, inspector);
             List<CompletionStage<PreparedStatement>> prepareStages = new ArrayList<>();
 
-            // Prepare the statement for `get(java.lang.Long)`:
+            // Prepare the statement for `get()`:
             SimpleStatement getStatement_simple = helper.selectByPrimaryKey().build();
-            LOG.debug("[{}] Preparing query `{}` for method get(java.lang.Long)",
+            LOG.debug("[{}] Preparing query `{}` for method get()",
                     context.getSession().getName(),
                     getStatement_simple.getQuery());
             CompletionStage<PreparedStatement> getStatement = prepare(getStatement_simple, context);
             prepareStages.add(getStatement);
 
-            // Prepare the statement for `save(net.e6tech.elements.cassandra.driver.v4.sample.Product)`:
+            // Prepare the statement for `save()`:
             SimpleStatement saveStatement_simple = helper.insert().build();
-            LOG.debug("[{}] Preparing query `{}` for method save(net.e6tech.elements.cassandra.driver.v4.sample.Product)",
+            LOG.debug("[{}] Preparing query `{}` for method save()",
                     context.getSession().getName(),
                     saveStatement_simple.getQuery());
             CompletionStage<PreparedStatement> saveStatement = prepare(saveStatement_simple, context);
             prepareStages.add(saveStatement);
 
-            // Prepare the statement for `delete(net.e6tech.elements.cassandra.driver.v4.sample.Product)`:
+            // Prepare the statement for `delete()`:
             SimpleStatement deleteStatement_simple = helper.deleteByPrimaryKey().build();
-            LOG.debug("[{}] Preparing query `{}` for method delete(net.e6tech.elements.cassandra.driver.v4.sample.Product)",
+            LOG.debug("[{}] Preparing query `{}` for method delete()",
                     context.getSession().getName(),
                     deleteStatement_simple.getQuery());
             CompletionStage<PreparedStatement> deleteStatement = prepare(deleteStatement_simple, context);

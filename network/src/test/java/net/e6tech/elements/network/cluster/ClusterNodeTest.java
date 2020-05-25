@@ -23,6 +23,10 @@ import net.e6tech.elements.network.cluster.catalyst.Reactor;
 import net.e6tech.elements.network.cluster.invocation.Registry;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @SuppressWarnings("squid:S2925")
 public class ClusterNodeTest {
 
@@ -57,16 +61,45 @@ public class ClusterNodeTest {
     }
 
     @Test
-    public void vm1() throws Exception {
-        ClusterNode node = start(2551);
+    void basic() throws Exception {
+        Thread thread = new Thread(() -> {
+            try {
+                vm1();
+            } catch (InterruptedException e) {
+                //
+            }
+        });
+        thread.start();
+
+        ClusterNode node = start(2552);
+        while (node.getMembers().size() < 2)
+            Thread.sleep(100);
+
+        AtomicBoolean gotIt = new AtomicBoolean(false);
         node.getBroadcast().subscribe("test", notice -> {
             System.out.println(node + " " + notice);
+            gotIt.set(true);
         });
-        Thread.sleep(2000L);
-        node.getBroadcast().publish("test", "Hello world!");
+        int tries = 0;
+        while (!gotIt.get() && tries < 20) {
+            Thread.sleep(100);
+            node.getBroadcast().publish("test2", "Hello world 2!");
+            tries ++;
+        }
+        thread.interrupt();
+        assertTrue(gotIt.get());
+    }
 
-        synchronized (this) {
-            wait();
+    @Test
+    public void vm1() throws InterruptedException {
+        ClusterNode node = start(2551);
+        node.getBroadcast().subscribe("test2", notice -> {
+            System.out.println(node + " " + notice);
+        });
+
+        while (true) {
+            Thread.sleep(100L);
+            node.getBroadcast().publish("test", "Hello world!");
         }
     }
 
@@ -80,7 +113,7 @@ public class ClusterNodeTest {
         });
 
         Thread.sleep(2000L);
-        node.getBroadcast().publish("test", "Hello world 2!");
+        node.getBroadcast().publish("test2", "Hello world 2!");
         Thread.sleep(2000L);
     }
 }

@@ -32,7 +32,7 @@ dependencies {
         exclude group: 'org.slf4j'
     }
 
-    // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: '4.1.0'
+    // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: "$cassandraDriver4Version"
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"

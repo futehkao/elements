@@ -16,7 +16,6 @@ limitations under the License.
 dependencies {
     compile project(':common')
     compile ("com.zaxxer:HikariCP:${hikariVersion}")
-    // compile group: 'com.mchange', name: 'c3p0', version: '0.9.5.2'
     compile "org.mariadb.jdbc:mariadb-java-client:${mariadbClientVersion}"
     compile "javax:javaee-api:${javaeeApiVersion}"
 
