@@ -30,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 class SharedResourceProvider extends SingletonResourceProvider {
 
+    private static ThreadLocal<Message> messageThreadLocal = new ThreadLocal<>();
+
     private Observer observer;
     private Object proxy = null;
     private Map<Method, String> methods = new ConcurrentHashMap<>();
@@ -44,15 +46,17 @@ class SharedResourceProvider extends SingletonResourceProvider {
     @Override
     @SuppressWarnings({"squid:S1188", "squid:S3776"})
     public Object getInstance(Message m) {
+        messageThreadLocal.set(m);
         Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
         if (proxy == null) {
-            proxy = server.getInterceptor().newInterceptor(super.getInstance(m), frame -> {
+            proxy = server.getInterceptor().newInterceptor(super.getInstance(null), frame -> {
+                Message message = messageThreadLocal.get();
                 try {
                     server.checkInvocation(frame.getMethod(), frame.getArguments());
-                    Pair<HttpServletRequest, HttpServletResponse> pair = server.getServletRequestResponse(m);
-                    if (cloneObserver != null) {
+                    if (cloneObserver != null && message != null) {
+                        Pair<HttpServletRequest, HttpServletResponse> pair = server.getServletRequestResponse(message);
                         server.getProvision().inject(cloneObserver);
-                        CachedOutputStream cachedOutputStream = m.getContent(CachedOutputStream.class);
+                        CachedOutputStream cachedOutputStream = message.getContent(CachedOutputStream.class);
                         if (cachedOutputStream != null) {
                             pair.key().setAttribute("Content", cachedOutputStream.getBytes());
                         }
@@ -73,7 +77,9 @@ class SharedResourceProvider extends SingletonResourceProvider {
                         cloneObserver.onException(th);
                     server.recordFailure(frame.getMethod(), methods);
                     server.getProvision().log(JaxRSServer.getLogger(), LogLevel.DEBUG, th.getMessage(), th);
-                    server.handleException(m, frame, th);
+                    server.handleException(message, frame, th);
+                } finally {
+                    messageThreadLocal.remove();
                 }
                 return null;
             });

@@ -3,14 +3,11 @@ package net.e6tech.elements.web.federation;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.Startable;
-import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.web.cxf.JaxRSServer;
+import net.e6tech.elements.web.cxf.JaxRSLauncher;
 import net.e6tech.elements.web.cxf.JaxResource;
 
 import javax.annotation.Nonnull;
-import java.net.MalformedURLException;
 import java.util.*;
 
 public class Federation implements Startable {
@@ -30,7 +27,7 @@ public class Federation implements Startable {
     private Long renewalPadding = 30 * 1000L; // 30 seconds
     private int connectionTimeout = 15000; // 15 seconds
     private int readTimeout = 10000; // 10 seconds
-    protected JaxRSServer server;
+    protected JaxRSLauncher launcher;
     private int instanceId = 1;
     private Map<String, Object> resolver = new HashMap<>();
     private List<MemberListener> listeners = new LinkedList<>();
@@ -59,7 +56,7 @@ public class Federation implements Startable {
         member.setMemberId(memberId);
         refresh(member);
         hostedMembers.put(memberId, member);
-        if (server != null && server.isStarted())
+        if (launcher != null && launcher.isStarted())
             beacon.announce(member);
         return this;
     }
@@ -230,14 +227,9 @@ public class Federation implements Startable {
     }
 
     protected void createServer() {
-        server = provision.newInstance(JaxRSServer.class);
-        try {
-            server.setAddresses(Arrays.asList(hostAddress));
-        } catch (MalformedURLException e) {
-            throw new SystemException(e);
-        }
-        server.setResolver(key -> resolver.get(key));
-        server.setHeaderObserver(authObserver);
+        launcher = JaxRSLauncher.create(provision, hostAddress)
+                .setResolver(key -> resolver.get(key))
+                .setHeaderObserver(authObserver);
     }
 
     protected void createServices() {
@@ -248,7 +240,6 @@ public class Federation implements Startable {
         if (fanout <= 0)
             throw new IllegalStateException("fanout needs to be greater than 0.");
 
-        long duration = getRenewalInterval() + getCycle() * getEventInterval() + getRenewalPadding();
         hostedMembers.forEach((id, m) -> {
             if (m.getMemberId() == null)
                 throw new IllegalStateException("memberId is null.");
@@ -271,7 +262,7 @@ public class Federation implements Startable {
 
     protected <T> T sharedService(Class<T> cls) {
         T api = provision.newInstance(cls);
-        server.add(new JaxResource(cls)
+        launcher.add(new JaxResource(cls)
                 .prototype(Integer.toString(instanceId))
                 .singleton());
         resolver.put(Integer.toString(instanceId), api);
@@ -280,11 +271,11 @@ public class Federation implements Startable {
     }
 
     protected <T> void perInstanceService(Class<T> cls) {
-        server.add(new JaxResource(cls));
+        launcher.add(new JaxResource(cls));
     }
 
     protected <T> void perInstanceService(T prototype) {
-        server.add(new JaxResource(prototype.getClass())
+        launcher.add(new JaxResource(prototype.getClass())
                 .prototype(Integer.toString(instanceId)));
         resolver.put(Integer.toString(instanceId), prototype);
         instanceId ++;
@@ -292,10 +283,7 @@ public class Federation implements Startable {
 
     protected void startServer() {
         // start JaxRSServer
-        provision.open().accept(Resources.class, res -> {
-            server.initialize(res);
-            server.start();
-        });
+        launcher.start();
     }
 
     protected void startServices() {
@@ -304,6 +292,6 @@ public class Federation implements Startable {
 
     public void shutdown() {
         beacon.shutdown();
-        server.stop();
+        launcher.stop();
     }
 }

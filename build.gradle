@@ -33,7 +33,7 @@ ext.mariadbClientVersion = '2.6.0'
 ext.javaeeApiVersion = '8.0.1'
 ext.hibernateVersion = '5.4.4.Final'  // note 5.4.6 - 5.4.8 have major stack overflow issues
 ext.bouncycastleVersion = '1.64'
-ext.jaxbVersion = '2.3.1'
+ext.jaxbVersion = '2.3.0'
 ext.jaxbRuntime = '2.3.3'
 ext.jnrffiVersion = '2.1.14'  // cassandra and akka cluster typed
 

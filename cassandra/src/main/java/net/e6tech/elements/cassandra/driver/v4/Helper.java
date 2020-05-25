@@ -19,6 +19,7 @@ package net.e6tech.elements.cassandra.driver.v4;
 import com.datastax.oss.driver.api.core.data.GettableByName;
 import com.datastax.oss.driver.api.core.data.SettableByName;
 import com.datastax.oss.driver.api.mapper.MapperContext;
+import com.datastax.oss.driver.api.mapper.MapperException;
 import com.datastax.oss.driver.api.mapper.entity.saving.NullSavingStrategy;
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
 import com.datastax.oss.driver.api.querybuilder.delete.Delete;
@@ -35,10 +36,13 @@ import net.e6tech.elements.cassandra.etl.Inspector;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 
+import javax.annotation.Nonnull;
 import java.util.HashSet;
 import java.util.Set;
 
 public class Helper<T> extends EntityHelperBase<T> {
+    private static final String MISSING_KEY_COLUMNS = "Missing primary key columns for %s.";
+    private static final String EMPTY_COLUMNS = "Empty columns for %s.";
     private static final Logger LOG = Logger.getLogger();
     private Class<T> entityClass;
     private Inspector inspector;
@@ -76,9 +80,10 @@ public class Helper<T> extends EntityHelperBase<T> {
     }
 
     @SuppressWarnings("unchecked")
+    @Nonnull
     @Override
-    public T get(GettableByName source) {
-        T returnValue = null;
+    public T get(@Nonnull GettableByName source) {
+        T returnValue;
         try {
             returnValue = entityClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
@@ -91,6 +96,7 @@ public class Helper<T> extends EntityHelperBase<T> {
         return returnValue;
     }
 
+    @Nonnull
     @Override
     public RegularInsert insert() {
         throwIfKeyspaceMissing();
@@ -109,9 +115,13 @@ public class Helper<T> extends EntityHelperBase<T> {
                 regularInsert = regularInsert.value(column, QueryBuilder.bindMarker(column));
             }
         }
+        if (regularInsert == null)
+            throw new MapperException(
+                    String.format(EMPTY_COLUMNS, inspector.tableName()));
         return regularInsert;
     }
 
+    @Nonnull
     @Override
     public Select selectByPrimaryKey() {
         Select selectStart =  selectStart();
@@ -126,9 +136,13 @@ public class Helper<T> extends EntityHelperBase<T> {
                 select = select.whereColumn(column).isEqualTo(QueryBuilder.bindMarker(column));
             }
         }
+        if (select == null)
+            throw new MapperException(
+                    String.format(MISSING_KEY_COLUMNS, inspector.tableName()));
         return select;
     }
 
+    @Nonnull
     @Override
     public Select selectStart() {
         throwIfKeyspaceMissing();
@@ -148,9 +162,13 @@ public class Helper<T> extends EntityHelperBase<T> {
             }
         }
 
+        if (select == null)
+            throw new MapperException(
+                String.format(EMPTY_COLUMNS, inspector.tableName()));
         return select;
     }
 
+    @Nonnull
     @Override
     public Delete deleteByPrimaryKey() {
         throwIfKeyspaceMissing();
@@ -169,10 +187,13 @@ public class Helper<T> extends EntityHelperBase<T> {
                 delete = delete.whereColumn(column).isEqualTo(QueryBuilder.bindMarker(column));
             }
         }
-
+        if (delete == null)
+            throw new MapperException(
+                String.format(MISSING_KEY_COLUMNS, inspector.tableName()));
         return delete;
     }
 
+    @Nonnull
     @Override
     public DefaultUpdate updateStart() {
         throwIfKeyspaceMissing();
@@ -199,9 +220,13 @@ public class Helper<T> extends EntityHelperBase<T> {
             }
         }
 
+        if (update == null)
+            throw new MapperException(
+                    String.format(EMPTY_COLUMNS, inspector.tableName()));
         return update;
     }
 
+    @Nonnull
     @Override
     public DefaultUpdate updateByPrimaryKey() {
         DefaultUpdate update = null;
@@ -216,6 +241,9 @@ public class Helper<T> extends EntityHelperBase<T> {
             }
         }
 
+        if (update == null)
+            throw new MapperException(
+                    String.format(MISSING_KEY_COLUMNS, inspector.tableName()));
         return update;
     }
 
