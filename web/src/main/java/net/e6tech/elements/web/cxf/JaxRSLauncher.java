@@ -24,13 +24,18 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.net.MalformedURLException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class is used to launch JaxRSServer programmatically
  */
 public class JaxRSLauncher {
-    Provision provision;
-    JaxRSServer server;
+    private Provision provision;
+    private JaxRSServer server;
+    private int instanceId = 1;
+    private Map<String, Object> instances = new HashMap<>();
+    private Configuration.Resolver resolver = key -> instances.get(key);
 
     public static JaxRSLauncher create(ResourceManager resourceManager, String url) {
         Provision provision = resourceManager.getInstance(Provision.class);
@@ -43,6 +48,7 @@ public class JaxRSLauncher {
         launcher.provision = provision;
         try {
             launcher.server.setAddresses(Arrays.asList(url));
+            launcher.resolver(launcher.resolver);
         } catch (MalformedURLException e) {
             throw new SystemException(e);
         }
@@ -57,18 +63,47 @@ public class JaxRSLauncher {
         return server;
     }
 
-    public JaxRSLauncher setHeaderObserver(Observer observer) {
+    public JaxRSLauncher headerObserver(Observer observer) {
         server.setHeaderObserver(observer);
         return this;
     }
 
-    public JaxRSLauncher setResolver(Configuration.Resolver resolver) {
-        server.setResolver(resolver);
+    public JaxRSLauncher resolver(Configuration.Resolver r) {
+        Configuration.Resolver wrap = key -> {
+            Object found = instances.get(key);
+            if (found != null)
+                return found;
+            return r.resolve(key);
+        };
+        server.setResolver(wrap);
         return this;
     }
 
     public JaxRSLauncher add(JaxResource resource) {
         server.add(resource);
+        return this;
+    }
+
+    public <T> JaxRSLauncher sharedService(Class<T> cls) {
+        T api = provision.newInstance(cls);
+        add(new JaxResource(cls)
+                .prototype(Integer.toString(instanceId))
+                .singleton());
+        instances.put(Integer.toString(instanceId), api);
+        instanceId ++;
+        return this;
+    }
+
+    public <T> JaxRSLauncher perInstanceService(Class<T> cls) {
+        add(new JaxResource(cls));
+        return this;
+    }
+
+    public <T> JaxRSLauncher perInstanceService(T prototype) {
+        add(new JaxResource(prototype.getClass())
+                .prototype(Integer.toString(instanceId)));
+        instances.put(Integer.toString(instanceId), prototype);
+        instanceId ++;
         return this;
     }
 

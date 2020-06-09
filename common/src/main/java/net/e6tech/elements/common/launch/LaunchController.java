@@ -16,10 +16,7 @@
 
 package net.e6tech.elements.common.launch;
 
-import net.e6tech.elements.common.resources.OnShutdown;
-import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.common.resources.ResourceManager;
-import net.e6tech.elements.common.resources.ResourceProvider;
+import net.e6tech.elements.common.resources.*;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -136,6 +133,22 @@ public class LaunchController implements LaunchListener {
 
     public LaunchController addCreatedListener(CreatedListener listener) {
         listeners.add(listener);
+        return this;
+    }
+
+    // listener for catching when both env variables and system properties are defined.
+    public LaunchController addBootstrapEndVariables(BootstrapSystemPropertiesListener listener) {
+        addCreatedListener(rm -> {
+            rm.getBootstrap().addBootstrapSystemPropertiesListener(listener);
+        });
+        return this;
+    }
+
+    // Almost same as addBootstrapEndVariables but after various boot list are configured.
+    public LaunchController addBootstrapEndEnv(BootstrapEndEnv listener) {
+        addCreatedListener(rm -> {
+            rm.getBootstrap().addBootstrapEndEnv(listener);
+        });
         return this;
     }
 

@@ -28,8 +28,6 @@ public class Federation implements Startable {
     private int connectionTimeout = 15000; // 15 seconds
     private int readTimeout = 10000; // 10 seconds
     protected JaxRSLauncher launcher;
-    private int instanceId = 1;
-    private Map<String, Object> resolver = new HashMap<>();
     private List<MemberListener> listeners = new LinkedList<>();
     private AuthObserver authObserver;
 
@@ -228,8 +226,7 @@ public class Federation implements Startable {
 
     protected void createServer() {
         launcher = JaxRSLauncher.create(provision, hostAddress)
-                .setResolver(key -> resolver.get(key))
-                .setHeaderObserver(authObserver);
+                .headerObserver(authObserver);
     }
 
     protected void createServices() {
@@ -260,25 +257,16 @@ public class Federation implements Startable {
         perInstanceService(prototype);
     }
 
-    protected <T> T sharedService(Class<T> cls) {
-        T api = provision.newInstance(cls);
-        launcher.add(new JaxResource(cls)
-                .prototype(Integer.toString(instanceId))
-                .singleton());
-        resolver.put(Integer.toString(instanceId), api);
-        instanceId ++;
-        return api;
+    protected <T> void sharedService(Class<T> cls) {
+       launcher.sharedService(cls);
     }
 
     protected <T> void perInstanceService(Class<T> cls) {
-        launcher.add(new JaxResource(cls));
+        launcher.perInstanceService(cls);
     }
 
     protected <T> void perInstanceService(T prototype) {
-        launcher.add(new JaxResource(prototype.getClass())
-                .prototype(Integer.toString(instanceId)));
-        resolver.put(Integer.toString(instanceId), prototype);
-        instanceId ++;
+        launcher.perInstanceService(prototype);
     }
 
     protected void startServer() {

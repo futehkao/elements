@@ -28,7 +28,7 @@ public class SingletonTest {
 
     private static void setupServer(int port) {
         JaxRSLauncher.create(new ResourceManager(), "http://0.0.0.0:" + port + "/restful/")
-                .setHeaderObserver(new MyObserver())
+                .headerObserver(new MyObserver())
                 .add(new JaxResource(HelloWorldRS.class).singleton())
                 .start();
     }

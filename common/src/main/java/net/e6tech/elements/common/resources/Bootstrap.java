@@ -116,40 +116,6 @@ public class Bootstrap extends GroovyObjectSupport {
         this.defaultSystemProperties = defaultSystemProperties;
     }
 
-    public List<String> getInitBoot() {
-        return initBoot;
-    }
-
-    public void setInitBoot(List initBoot) {
-        this.initBoot = initBoot;
-    }
-
-    public Bootstrap initBoot(List initBoot) {
-        if (this.initBoot == null) {
-            this.initBoot = initBoot;
-        } else {
-            this.initBoot.addAll(initBoot);
-        }
-        return this;
-    }
-
-    public List<String> getInit() {
-        return getInitBoot();
-    }
-
-    public void setInit(List initBoot) {
-        setInitBoot(initBoot);
-    }
-
-    public Map getAfter() {
-        return after;
-    }
-
-    public void setAfter(Map after) {
-        this.after = after;
-        after.keySet().forEach(key -> setComponent(key, false));
-    }
-
     public List<ComponentInfo> componentInfos() {
         List<ComponentInfo> list = new ArrayList<>();
         preBoot.forEach((key, value) -> list.add(this.componentInfo(PRE_BOOT, key, value)));
@@ -203,7 +169,7 @@ public class Bootstrap extends GroovyObjectSupport {
     }
 
     public Map getBootEnv() {
-        Object bootEnvOverride = getVar(BOOT_ENV);
+        Object bootEnvOverride = var(BOOT_ENV);
         if (bootEnvOverride instanceof Map) {
             return (Map) bootEnvOverride;
         }
@@ -261,6 +227,63 @@ public class Bootstrap extends GroovyObjectSupport {
                 expando.setProperty(component, false);
             }
         }
+        return this;
+    }
+
+    public List<String> getInitBoot() {
+        return initBoot;
+    }
+
+    public void setInitBoot(List initBoot) {
+        this.initBoot = initBoot;
+    }
+
+    public Bootstrap initBoot(List initBoot) {
+        if (this.initBoot == null) {
+            this.initBoot = initBoot;
+        } else {
+            this.initBoot.addAll(initBoot);
+        }
+        return this;
+    }
+
+    public List<String> getInit() {
+        return getInitBoot();
+    }
+
+    public void setInit(List initBoot) {
+        setInitBoot(initBoot);
+    }
+
+    public Map getAfter() {
+        return after;
+    }
+
+    public void setAfter(Map after) {
+        this.after = after;
+        after.keySet().forEach(key -> setComponent(key, false));
+    }
+
+    public Bootstrap after(String key, Object component) {
+        after.put(key, component);
+        setComponent(key, true);
+        if (disableList != null) {
+            disableList.remove(key);
+        }
+        return this;
+    }
+
+    public Bootstrap after(Map map) {
+        map.forEach((key, value) -> {
+            after.put(key, value);
+            setComponent(key, true); // default to on unless they are turn off by disable list during bootEnv()
+        });
+        if (disableList != null) {
+            for (String component : disableList) {
+                expando.setProperty(component, false);
+            }
+        }
+        bootAfter();
         return this;
     }
 
@@ -390,7 +413,7 @@ public class Bootstrap extends GroovyObjectSupport {
         if (defaultEnvironmentFile != null) {
             exec(defaultEnvironmentFile);
         } else {
-            String script = getVar(Scripting.__DIR) + "/environment.groovy";
+            String script = var(Scripting.__DIR) + "/environment.groovy";
             File file = new File(script);
             if (file.exists()) {
                 exec(script);
@@ -400,22 +423,22 @@ public class Bootstrap extends GroovyObjectSupport {
         }
 
         // startup script's environment
-        String envFile = getVar(Scripting.__LOAD_DIR) + "/environment.groovy";
-        if (getVar(ENVIRONMENT) != null) {
-            envFile = getVar(ENVIRONMENT).toString();
+        String envFile = var(Scripting.__LOAD_DIR) + "/environment.groovy";
+        if (var(ENVIRONMENT) != null) {
+            envFile = var(ENVIRONMENT).toString();
         }
         tryExec(envFile);
 
         // bootEnv override
-        Object bootEnvOverride = getVar(BOOT_ENV);
+        Object bootEnvOverride = var(BOOT_ENV);
         if (bootEnvOverride instanceof Map) {
             Map<String, Object> map = (Map) bootEnvOverride;
             map.forEach((key, val) -> resourceManager.getScripting().put(key, val));
         }
 
         // host environment file, e.g. /usr/local/e6tech/environment.groovy
-        if (getVar(HOST_ENVIRONMENT_FILE) != null) {
-            envFile = getVar(HOST_ENVIRONMENT_FILE).toString();
+        if (var(HOST_ENVIRONMENT_FILE) != null) {
+            envFile = var(HOST_ENVIRONMENT_FILE).toString();
             tryExec(envFile);
         }
 
@@ -425,20 +448,20 @@ public class Bootstrap extends GroovyObjectSupport {
         if (defaultSystemProperties != null)
             exec(defaultSystemProperties);
         else {
-            String script = getVar(Scripting.__DIR) + "/system_properties.groovy";
+            String script = var(Scripting.__DIR) + "/system_properties.groovy";
             tryExec(script);
         }
 
         // startup script's system properties
-        String sysFile = getVar(Scripting.__LOAD_DIR) + "/system_properties.groovy";
-        if (getVar(SYSTEM_PROPERTIES) != null) {
-            sysFile = getVar(SYSTEM_PROPERTIES).toString();
+        String sysFile = var(Scripting.__LOAD_DIR) + "/system_properties.groovy";
+        if (var(SYSTEM_PROPERTIES) != null) {
+            sysFile = var(SYSTEM_PROPERTIES).toString();
         }
         tryExec(sysFile);
 
         // host system properties, e.g. /usr/local/e6tech/system_properties.groovy
-        if (getVar(HOST_SYSTEM_PROPERTIES_FILE) != null) {
-            sysFile = getVar(HOST_SYSTEM_PROPERTIES_FILE).toString();
+        if (var(HOST_SYSTEM_PROPERTIES_FILE) != null) {
+            sysFile = var(HOST_SYSTEM_PROPERTIES_FILE).toString();
             tryExec(sysFile);
         }
 
@@ -448,31 +471,31 @@ public class Bootstrap extends GroovyObjectSupport {
         ThreadContext.put(ResourceManager.LOG_DIR_ABBREV, System.getProperty(Logger.logDir));
         logger.info("-> Log4J log4j.configurationFile={}", System.getProperty("log4j.configurationFile"));
 
-        if (getVar(PRE_BOOT) != null) {
-            Object p = getVar(PRE_BOOT);
+        if (var(PRE_BOOT) != null) {
+            Object p = var(PRE_BOOT);
             setupBootList(p, preBoot);
         }
 
-        if (getVar(POST_BOOT) != null) {
-            Object p = getVar(POST_BOOT);
+        if (var(POST_BOOT) != null) {
+            Object p = var(POST_BOOT);
             setupBootList(p, postBoot);
         }
 
-        if (getVar(BOOT_DISABLE_LIST) != null) {
-            Object p = getVar(BOOT_DISABLE_LIST);
+        if (var(BOOT_DISABLE_LIST) != null) {
+            Object p = var(BOOT_DISABLE_LIST);
             setupDisableList(p);
         }
 
-        if (getVar(BOOT_DISABLE_LIST) != null) {
-            Object p = getVar(BOOT_ENABLE_LIST);
+        if (var(BOOT_DISABLE_LIST) != null) {
+            Object p = var(BOOT_ENABLE_LIST);
             setupEnableList(p);
         }
 
-        if (getVar(BOOT_AFTER) != null) {
-            if (!(getVar(BOOT_AFTER) instanceof Map)) {
-                throw new SystemException("Expecting variable " + BOOT_AFTER + " to be a Map instead of " + getVar(BOOT_AFTER).getClass());
+        if (var(BOOT_AFTER) != null) {
+            if (!(var(BOOT_AFTER) instanceof Map)) {
+                throw new SystemException("Expecting variable " + BOOT_AFTER + " to be a Map instead of " + var(BOOT_AFTER).getClass());
             }
-            Map p = (Map) getVar(BOOT_AFTER);
+            Map p = (Map) var(BOOT_AFTER);
             p.forEach((key, value) -> {
                 after.put(key, value);
                 setComponent(key, true);
@@ -549,12 +572,12 @@ public class Bootstrap extends GroovyObjectSupport {
             return;
 
         Class provisionClass = Provision.class;
-        if (getVar(PROVISION_CLASS) != null) {
-            provisionClass = (Class) getVar(PROVISION_CLASS);
+        if (var(PROVISION_CLASS) != null) {
+            provisionClass = (Class) var(PROVISION_CLASS);
         }
         resourceManager.loadProvision(provisionClass);
-        if (getVar(PLUGIN_DIRECTORIES) != null) {
-            Object dir = getVar(PLUGIN_DIRECTORIES);
+        if (var(PLUGIN_DIRECTORIES) != null) {
+            Object dir = var(PLUGIN_DIRECTORIES);
             String[] pluginDirectories = new String[0];
             if (dir instanceof Collection) {
                 Collection collection = (Collection) dir;
@@ -624,20 +647,6 @@ public class Bootstrap extends GroovyObjectSupport {
         bootMessage("Boot after");
         after.forEach(this::runComponent);
         logger.info("Done boot after ********************************************\n");
-    }
-
-    public Bootstrap after(Map map) {
-        map.forEach((key, value) -> {
-            after.put(key, value);
-            setComponent(key, true); // default to on unless they are turn off by disable list during bootEnv()
-        });
-        if (disableList != null) {
-            for (String component : disableList) {
-                expando.setProperty(component, false);
-            }
-        }
-        bootAfter();
-        return this;
     }
 
     private void runComponentMessage(String message) {
@@ -715,8 +724,13 @@ public class Bootstrap extends GroovyObjectSupport {
         }
     }
 
-    private Object getVar(String var) {
-        return resourceManager.getScripting().get(var);
+    public <T> T var(String var) {
+        return (T) resourceManager.getScripting().get(var);
+    }
+
+    public Bootstrap var(String var, Object value) {
+        resourceManager.getScripting().put(var, value);
+        return this;
     }
 
     // convenient method for initBoot
