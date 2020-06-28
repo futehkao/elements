@@ -33,6 +33,7 @@ public class SingletonTest {
                 .start();
     }
 
+    @SuppressWarnings("squid:S2925")
     @Test
     void basic() {
         setupServer(9000);

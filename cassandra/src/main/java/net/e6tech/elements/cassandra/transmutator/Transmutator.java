@@ -119,8 +119,8 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         if (!ptype.isArray()) {
             throw new SystemException("Invalid signature for method " + method + ", expecting array type for argument 2.");
         }
-        Class sourceClass = (src != null) ? src : ptype.getComponentType();
-        Class componentType = ptype.getComponentType();
+        Class sourceClass = extractorSourceClass(order, method, src);
+        Class componentType = extractorComponentClass(order, method, src);
         try {
             if (!Partition.class.isAssignableFrom(sourceClass)) {
                 throw new SystemException("Source class " + sourceClass + " does not implement Partition inteface");
@@ -132,8 +132,9 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
                 throw new SystemException("Invalid loader (" + getClass() + ") argument type declaration for method " + method
                         + ": expecting " +  context.getClass() + " but declared as " + method.getParameterTypes()[0]);
             }
-                        PartitionStrategy strategy = context.createStrategy();
-            context.setExtractorName(sourceClass.getName() + "_" + getClass().getSimpleName());
+
+            PartitionStrategy strategy = context.createStrategy();
+            context.setExtractorName(extractorName(sourceClass));
             context.setLoadDelegate(list -> {
                 try {
                     return (Integer) method.invoke(Transmutator.this, context, list.toArray((Object[]) Array.newInstance(componentType, 0)));
@@ -150,6 +151,20 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         } catch (Exception e) {
             throw new SystemException(e);
         }
+    }
+
+    protected Class extractorSourceClass(int order, Method method, Class src) {
+        Class ptype = method.getParameterTypes()[1];
+        return (src != null) ? src : ptype.getComponentType();
+    }
+
+    protected Class extractorComponentClass(int order, Method method, Class src) {
+        Class ptype = method.getParameterTypes()[1];
+        return ptype.getComponentType();
+    }
+
+    protected String extractorName(Class sourceClass) {
+        return sourceClass.getName() + "_" + getClass().getSimpleName();
     }
 
     public List<Descriptor> describe() {

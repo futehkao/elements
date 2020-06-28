@@ -5,7 +5,6 @@ import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Startable;
 import net.e6tech.elements.web.cxf.JaxRSLauncher;
-import net.e6tech.elements.web.cxf.JaxResource;
 
 import javax.annotation.Nonnull;
 import java.util.*;

@@ -138,17 +138,15 @@ public class LaunchController implements LaunchListener {
 
     // listener for catching when both env variables and system properties are defined.
     public LaunchController addBootstrapEndVariables(BootstrapSystemPropertiesListener listener) {
-        addCreatedListener(rm -> {
-            rm.getBootstrap().addBootstrapSystemPropertiesListener(listener);
-        });
+        addCreatedListener(rm ->
+                rm.getBootstrap().addBootstrapSystemPropertiesListener(listener));
         return this;
     }
 
     // Almost same as addBootstrapEndVariables but after various boot list are configured.
     public LaunchController addBootstrapEndEnv(BootstrapEndEnv listener) {
-        addCreatedListener(rm -> {
-            rm.getBootstrap().addBootstrapEndEnv(listener);
-        });
+        addCreatedListener(rm ->
+            rm.getBootstrap().addBootstrapEndEnv(listener));
         return this;
     }
 

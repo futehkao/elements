@@ -42,8 +42,6 @@ public abstract class RuleSetScript extends AbstractScriptBase<RuleSet> {
             Configuration configuration = new Configuration(getShell().getProperties());
 
             Rule root = new Rule();
-            getShell().getRoot(ruleName);
-
             root.measurement(getShell().measurement());
             // switch closure's delegate to root
             Object delegate = closure.getDelegate();
