@@ -30,6 +30,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static net.e6tech.elements.security.vault.Constants.mapper;
 
@@ -248,10 +249,11 @@ public class DBVaultStore implements VaultStore {
     }
 
     private class DBVault implements Vault {
-        List<Secret> addedSecrets = new ArrayList<>();
+        List<Secret> addedSecrets = Collections.synchronizedList(new ArrayList<>());
         String name;
-        Map<String, SortedMap<String, Secret>> cache = new HashMap<>();
-        Map<String, LatestSecret> latestSecret = new Hashtable<>();
+        Map<String, SortedMap<String, SecretEntry>> cache = new HashMap<>();
+        Map<String, SecretEntry> latestSecrets = new ConcurrentHashMap<>();
+        volatile long lastTrim = System.currentTimeMillis();
 
         DBVault(String name) {
             this.name = name;
@@ -266,24 +268,27 @@ public class DBVaultStore implements VaultStore {
         public Secret getSecret(String alias, String version) {
             if (version != null) {
                 synchronized (cache) {
-                    SortedMap<String, Secret> versions = cache.get(alias);
+                    SortedMap<String, SecretEntry> versions = cache.get(alias);
                     if (versions != null) {
-                        Secret secret = versions.get(version);
-                        if (secret != null)
-                            return secret;
+                        SecretEntry l = versions.get(version);
+                        if (l != null && l.timestamp > System.currentTimeMillis() - latestRefreshPeriod) {
+                            trimCache();
+                            return l.secret;
+                        }
                     }
                 }
             } else {
-                LatestSecret l = latestSecret.get(alias);
+                SecretEntry l = latestSecrets.get(alias);
                 if (l != null && l.timestamp > System.currentTimeMillis() - latestRefreshPeriod) {
+                    trimCache();
                     return l.secret;
                 }
             }
 
-            Secret secret = null;
+            Secret secret;
             try {
                 secret = getRetry().retry(() -> {
-                    Secret ret = null;
+                    Secret ret;
                     Connection connection = null;
                     PreparedStatement select = null;
                     ResultSet rs = null;
@@ -338,6 +343,7 @@ public class DBVaultStore implements VaultStore {
             if (version == null) {
                 updateLatest(secret);
             }
+            trimCache();
             return secret;
         }
 
@@ -346,6 +352,20 @@ public class DBVaultStore implements VaultStore {
             addedSecrets.add(secret);
             updateCache(secret);
             updateLatest(secret);
+            trimCache();
+        }
+
+        private void trimCache() {
+            if (lastTrim < System.currentTimeMillis() - latestRefreshPeriod) {
+                synchronized (cache) {
+                    for (SortedMap<String, SecretEntry> versions : cache.values()) {
+                        versions.entrySet().removeIf(e -> e.getValue().timestamp < System.currentTimeMillis() - latestRefreshPeriod);
+                    }
+                    cache.entrySet().removeIf(e -> e.getValue().isEmpty());
+                }
+                latestSecrets.entrySet().removeIf(e -> e.getValue().timestamp < System.currentTimeMillis() - latestRefreshPeriod);
+                lastTrim = System.currentTimeMillis();
+            }
         }
 
         @SuppressWarnings("squid:MethodCyclomaticComplexity")
@@ -406,7 +426,7 @@ public class DBVaultStore implements VaultStore {
             }
 
             synchronized (cache) {
-                SortedMap<String, Secret> versions = cache.get(alias);
+                SortedMap<String, SecretEntry> versions = cache.get(alias);
                 if (versions != null) {
                     if (version == null)
                         cache.remove(alias);
@@ -415,11 +435,11 @@ public class DBVaultStore implements VaultStore {
                 }
             }
 
-            synchronized (latestSecret) {
-                LatestSecret latest = latestSecret.get(alias);
+            synchronized (latestSecrets) {
+                SecretEntry latest = latestSecrets.get(alias);
                 if (latest != null) {
                     if (version == null || version.equals(latest.secret.version()))
-                        latestSecret.remove(alias);
+                        latestSecrets.remove(alias);
                 }
             }
         }
@@ -428,19 +448,19 @@ public class DBVaultStore implements VaultStore {
             if (secret == null)
                 return;
             synchronized (cache) {
-                SortedMap<String, Secret> versions = cache.get(secret.alias());
+                SortedMap<String, SecretEntry> versions = cache.get(secret.alias());
                 if (versions == null) {
                     versions = new TreeMap<>();
                     cache.put(secret.alias(), versions);
                 }
-                versions.put(secret.version(), secret);
+                versions.put(secret.version(), new SecretEntry(secret));
             }
         }
 
         private void updateLatest(Secret secret) {
             if (secret == null)
                 return;
-            latestSecret.put(secret.alias(), new LatestSecret(secret));
+            latestSecrets.put(secret.alias(), new SecretEntry(secret));
         }
 
         public Set<String> aliases() {
@@ -487,6 +507,9 @@ public class DBVaultStore implements VaultStore {
             } catch (Throwable th) {
                 throw new SystemException(th);
             }
+
+            addedSecrets.forEach(secret -> aliases.add(secret.alias()));
+
             return aliases;
         }
 
@@ -533,6 +556,11 @@ public class DBVaultStore implements VaultStore {
                 throw new SystemException(th);
             }
 
+            addedSecrets.forEach(secret -> {
+                if (secret.alias().equals(alias))
+                    versions.add(Long.parseLong(secret.version()));
+            });
+
             return versions;
         }
 
@@ -547,7 +575,7 @@ public class DBVaultStore implements VaultStore {
 
         public void restore(Connection connection, String version) {
             copy(connection, name + "." + version, name);
-            latestSecret.clear();
+            latestSecrets.clear();
             cache.clear();
         }
 
@@ -675,11 +703,11 @@ public class DBVaultStore implements VaultStore {
         }
     }
 
-    private class LatestSecret {
+    private class SecretEntry {
         long timestamp;
         Secret secret;
 
-        LatestSecret(Secret secret) {
+        SecretEntry(Secret secret) {
             timestamp = System.currentTimeMillis();
             this.secret = secret;
         }

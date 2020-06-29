@@ -378,6 +378,17 @@ public class VaultManager {
     public void newMasterKey(DualEntry dualEntry) throws GeneralSecurityException {
         getPassphrase(dualEntry);
         addKey(generateInternalKey(MASTER_KEY_ALIAS));
+
+        Vault dataVault = keyDataStore.getVault(DATA_VAULT);
+        Set<String> aliases = dataVault.aliases();
+        for (String alias : aliases) {
+            Set<Long> versions = dataVault.versions(alias);
+            for (Long version : versions) {
+                ClearText ct = getSecretData(dualEntry.getUser1(), alias, "" + version);
+                if (ct != null) // could be null if a newly added data was not saved and then was removed from cache
+                    addSecretData(dualEntry, alias, ct);
+            }
+        }
     }
 
     private void checkAccess(Credential credential) throws GeneralSecurityException {
@@ -529,7 +540,6 @@ public class VaultManager {
             addLocal(newSignature, passphrase);
 
             // need to start using the new password since we just finished re-encrypting
-            state.getCachedKeys().clear();
             state.setPassword((new String(passphrase.getBytes(), StandardCharsets.UTF_8)).toCharArray());
             addData(newSignature);
             state.setSignature(newSignature);
@@ -767,18 +777,10 @@ public class VaultManager {
     // This is declared to be protected to allow a subclass to retrieve the key from a different place, e.g. an application key HSM
     protected ClearText getKey(String keyAlias, String version) throws GeneralSecurityException {
         openKeyData();
-        if (version != null) {
-            String key = keyAlias + ":" + version;
-            ClearText ct = state.getCachedKeys().get(key);
-            if (ct != null)
-                return ct;
-        }
         Secret key = keyDataStore.getVault(KEY_VAULT).getSecret(keyAlias, version);
         if (key == null)
             return null;
-        ClearText ct = pwd.unseal(key, getPassphrase(key));
-        state.getCachedKeys().put(ct.alias() + ":" + ct.version(), ct);
-        return ct;
+        return pwd.unseal(key, getPassphrase(key));
     }
 
     // This is declared to be protected to allow a subclass to retrieve the key from a different place, e.g. an application key HSM
@@ -789,7 +791,6 @@ public class VaultManager {
         ClearText passphrase = getPassphrase();
         Secret secret = pwd.seal(ct, passphrase);
         keyDataStore.getVault(KEY_VAULT).addSecret(secret);
-        state.getCachedKeys().put(ct.alias() + ":" + ct.version(), ct);
     }
 
     private void addData(ClearText ct) throws GeneralSecurityException {

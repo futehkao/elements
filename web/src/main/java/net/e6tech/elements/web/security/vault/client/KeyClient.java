@@ -15,8 +15,10 @@ limitations under the License.
 */
 package net.e6tech.elements.web.security.vault.client;
 
-import net.e6tech.elements.common.cache.CacheFacade;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Startable;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.restful.RestfulClient;
@@ -31,6 +33,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.spec.RSAPublicKeySpec;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static net.e6tech.elements.security.vault.Constants.mapper;
 
@@ -38,6 +42,16 @@ import static net.e6tech.elements.security.vault.Constants.mapper;
  * Created by futeh.
  */
 public class KeyClient implements Startable {
+    private Cache<String, SecretKey> cachedSecretKeys = CacheBuilder.newBuilder()
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .initialCapacity(50)
+            .expireAfterWrite(600, TimeUnit.SECONDS)
+            .build();
+    private Cache<String, ClearText> cachedSecrets = CacheBuilder.newBuilder()
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .initialCapacity(50)
+            .expireAfterWrite(600, TimeUnit.SECONDS)
+            .build();
     private AsymmetricCipher asym = AsymmetricCipher.getInstance("RSA");
     private SymmetricCipher sym = SymmetricCipher.getInstance("AES");
     private String clientKey;
@@ -48,9 +62,6 @@ public class KeyClient implements Startable {
     private String authorization;
     private boolean started;
     private boolean remoteEncryption = true;
-    private CacheFacade<String, SecretKey> cachedSecretKeys;
-    private CacheFacade<String, ClearText> cachedSecrets;
-
 
     public String getAddress() {
         return address;
@@ -81,15 +92,10 @@ public class KeyClient implements Startable {
             return;
         started = true;
 
-        cachedSecretKeys = new CacheFacade<String, SecretKey>("secretKeys") {};
-        cachedSecretKeys.initPool();
-
-        cachedSecrets = new CacheFacade<String, ClearText>("secrets") {};
-        cachedSecrets.initPool();
-
         initCredential();
     }
 
+    @SuppressWarnings("squid:S1181")
     private void initCredential() {
         client = new RestfulClient();
         client.setAddress(address);
@@ -128,12 +134,16 @@ public class KeyClient implements Startable {
     // for remote calls
     public ClearText getSecret(String alias) throws GeneralSecurityException {
         checkAuthorize();
-        return cachedSecrets.get(alias, ()-> {
-            GetSecret request = new GetSecret();
-            request.setAlias(alias);
-            String ret = submit(request);
-            return decryptResult(ret, ClearText.class);
-        });
+        try {
+            return cachedSecrets.get(alias, ()-> {
+                GetSecret request = new GetSecret();
+                request.setAlias(alias);
+                String ret = submit(request);
+                return decryptResult(ret, ClearText.class);
+            });
+        } catch (ExecutionException e) {
+            throw new GeneralSecurityException(e.getCause());
+        }
     }
 
     // for remote calls
@@ -177,11 +187,15 @@ public class KeyClient implements Startable {
         }
     }
 
-    private SecretKey getSecretKey(String key) {
-        return cachedSecretKeys.get(key, ()-> {
-            byte[] keyBytes = decrypt(key);
-            return sym.getKeySpec(keyBytes);
-        });
+    private SecretKey getSecretKey(String key) throws GeneralSecurityException {
+        try {
+            return cachedSecretKeys.get(key, ()-> {
+                byte[] keyBytes = decrypt(key);
+                return sym.getKeySpec(keyBytes);
+            });
+        } catch (ExecutionException e) {
+            throw new GeneralSecurityException(e.getCause());
+        }
     }
 
     // for decrypt keys
@@ -193,6 +207,7 @@ public class KeyClient implements Startable {
         return decryptResult(ret);
     }
 
+    @SuppressWarnings("squid:S1181")
     private String submit(Action action) throws GeneralSecurityException {
         Request request = new Request();
         request.setAction(action.getType());

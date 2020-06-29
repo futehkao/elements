@@ -17,10 +17,8 @@ limitations under the License.
 package net.e6tech.elements.security.vault;
 
 import net.e6tech.elements.common.util.SystemException;
-import org.ehcache.impl.internal.concurrent.ConcurrentHashMap;
 
 import java.util.Arrays;
-import java.util.Map;
 
 /**
  * Created by futeh.
@@ -29,7 +27,6 @@ public class VaultManagerState implements Cloneable {
 
     private char[] password;
     private ClearText signature;
-    private Map<String, ClearText> cachedKeys = new ConcurrentHashMap<>();
 
     @SuppressWarnings("squid:S2975")
     public VaultManagerState clone() {
@@ -59,13 +56,5 @@ public class VaultManagerState implements Cloneable {
 
     public void setSignature(ClearText signature) {
         this.signature = signature;
-    }
-
-    public Map<String, ClearText> getCachedKeys() {
-        return cachedKeys;
-    }
-
-    public void setCachedKeys(Map<String, ClearText> cachedKeys) {
-        this.cachedKeys = cachedKeys;
     }
 }
