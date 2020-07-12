@@ -35,13 +35,13 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.function.Function;
 
 import static net.e6tech.elements.security.vault.Constants.*;
 
 /**
  * Created by futeh.
  */
-@SuppressWarnings({"squid:S1192", "squid:RedundantThrowsDeclarationCheck", "squid:S00100"})
 public class VaultManager {
     private static Logger logger = Logger.getLogger();
 
@@ -49,6 +49,13 @@ public class VaultManager {
     public static final String USER_VAULT = "user-vault";
     public static final String DATA_VAULT = "data-vault";
     public static final String LOCAL_VAULT = "local-vault";
+
+    private static final String CANNOT_FIND_USER = "Cannot find user ";
+    private static final String USER = "USER ";
+    private static final String IS_NOT_GUARDIAN = " is not a guardian";
+    private static final String GUARDIA_HAS_BEEN_TEMPERED = " guardian property has been tempered";
+    private static final GeneralSecurityException NOT_OPEN_EXCEPTION = new GeneralSecurityException("user local store is not open.  Please call open() first");
+    private static final Function<Exception, GeneralSecurityException> BAD_USER_PASSWORD = ex -> new GeneralSecurityException("Bad user name or password to unlock the vault", ex);
 
     private SymmetricCipher symmetricCipher;
     private AsymmetricCipher asymmetricCipher;
@@ -119,7 +126,7 @@ public class VaultManager {
         return ct;
     }
 
-    private ClearText generateSignature() throws GeneralSecurityException {
+    private ClearText generateSignature() {
         ClearText ct = new ClearText();
         byte[] bytes = RNG.generateSeed(16);
         ct.setBytes(bytes);
@@ -133,31 +140,34 @@ public class VaultManager {
 
     private ClearText getPassphrase() throws GeneralSecurityException {
         Secret secret = getLocal(PASSPHRASE, null);
-        return pwd.unsealUserOrPassphrase(secret, state.getPassword());
+        return pwd.unsealUserOrPassphrase(secret, state.getCurrentPassphrase());
     }
 
-    private ClearText getPassphrase(Secret secret) throws GeneralSecurityException {
-        String[] components =secret.getSecret().split("\\$");
-        Secret passphraseSecrect;
+    // determining the format of the passphrase
+    private ClearText passphraseForSecret(Secret secret) throws GeneralSecurityException {
+        String[] components = secret.getSecret().split("\\$");
+        Secret passphraseSecret;
+        String keyVersion = null;
         if (components.length >= 5) {
-            String keyVersion = components[4];
-            passphraseSecrect = getLocal(PASSPHRASE, keyVersion);
-        } else {
-            passphraseSecrect = getLocal(PASSPHRASE, null);
+            keyVersion = components[4];
         }
-        return pwd.unsealUserOrPassphrase(passphraseSecrect, state.getPassword());
+        if (keyVersion != null && keyVersion.trim().equals("0"))
+            keyVersion = null;
+
+        passphraseSecret = getLocal(PASSPHRASE, keyVersion);
+        return pwd.unsealUserOrPassphrase(passphraseSecret, state.getCurrentPassphrase());
     }
 
-    private ClearText generatePassphrase(char[] password) throws GeneralSecurityException {
+    private ClearText passphraseClearText(char[] passphrase) {
         ClearText ct = new ClearText();
-        ct.setBytes(new String(password).getBytes(StandardCharsets.UTF_8));
+        ct.setBytes(new String(passphrase).getBytes(StandardCharsets.UTF_8));
         ct.alias(PASSPHRASE);
         ct.setProperty(TYPE, PASSPHRASE_TYPE);
         ct.protect();
         return ct;
     }
 
-    private ClearText generateInternalKey(String alias) throws GeneralSecurityException {
+    private ClearText generateInternalKey(String alias) {
         SecretKey secretKey = symmetricCipher.generateKeySpec();
         ClearText ct = new ClearText();
         ct.setBytes(secretKey.getEncoded());
@@ -168,13 +178,15 @@ public class VaultManager {
         return ct;
     }
 
-    private ZonedDateTime setCreationTimeVersion(ClearText ct) {
+    private ZonedDateTime setCreationTimeVersion(ClearText ... clearTexts) {
         ZonedDateTime now = ZonedDateTime.now();
         String dateTime = now.format(DateTimeFormatter.ISO_ZONED_DATE_TIME);
-        if (ct.version() == null) {
-            ct.setProperty(CREATION_DATE_TIME, dateTime);
-            ct.setProperty(CREATION_TIME, Long.toString(now.toInstant().toEpochMilli()));
-            ct.version(Long.toString(now.toInstant().toEpochMilli()));
+        for (ClearText ct : clearTexts) {
+            if (ct.version() == null) {
+                ct.setProperty(CREATION_DATE_TIME, dateTime);
+                ct.setProperty(CREATION_TIME, Long.toString(now.toInstant().toEpochMilli()));
+                ct.version(Long.toString(now.toInstant().toEpochMilli()));
+            }
         }
         return now;
     }
@@ -207,7 +219,7 @@ public class VaultManager {
      * data vault.  As always, data vault items are encrypted with m-key
      *
      * @param dualEntry dual entry containing authentication info for two users.
-     * @param alias alias of the key
+     * @param alias     alias of the key
      * @throws GeneralSecurityException general exception
      */
     public void addKeyPair(DualEntry dualEntry, String alias) throws GeneralSecurityException {
@@ -220,8 +232,8 @@ public class VaultManager {
      * Adding secret to the data vault.  It will be encrypted by m-key when stored.
      *
      * @param dualEntry dual entry containing authentication info for two users.
-     * @param alias alias of the secret data
-     * @param ct clear text of the secret
+     * @param alias     alias of the secret data
+     * @param ct        clear text of the secret
      * @throws GeneralSecurityException general exception
      */
     public void addSecretData(DualEntry dualEntry, String alias, ClearText ct) throws GeneralSecurityException {
@@ -258,10 +270,29 @@ public class VaultManager {
     public String generateKey(DualEntry dualEntry) throws GeneralSecurityException {
         byte[] plain = symmetricCipher.generateKeySpec().getEncoded();
         checkAccess(dualEntry);
-        return _encrypt(MASTER_KEY_ALIAS, plain);
+        return internalEncrypt(MASTER_KEY_ALIAS, null, plain);
     }
 
+    /**
+     * Imports a plan key.  It's stored encrypted by latest master ky.
+     * @param dualEntry dual entry
+     * @param plainKey plain key
+     * @param iv initialization vector.  If null, randomly generated
+     * @return encrypted key
+     */
     public String importKey(DualEntry dualEntry, String plainKey, String iv) throws GeneralSecurityException {
+        return importKey(dualEntry, plainKey, iv, null);
+    }
+
+    /**
+     *
+     * @param dualEntry dual entry
+     * @param version version of the master key.  If null, use the latest version.
+     * @param plainKey the plain key to be imported
+     * @param iv  initialization vector.  If null, randomly generated
+     * @return encrypted key
+     */
+    public String importKey(DualEntry dualEntry, String plainKey, String iv, String version) throws GeneralSecurityException {
         byte[] plain = symmetricCipher.toBytes(plainKey);
         byte[] plain2 = symmetricCipher.generateKeySpec().getEncoded();
         String iv2 = symmetricCipher.generateIV();
@@ -272,13 +303,13 @@ public class VaultManager {
             throw new GeneralSecurityException("Invalid IV length: expecting the IV to be " + ivLength + " bytes.");
         }
         checkAccess(dualEntry);
-        return _encrypt(MASTER_KEY_ALIAS, plain, iv);
+        return internalEncrypt(MASTER_KEY_ALIAS, version, plain, iv);
     }
 
     // encrypt data with key. key is encrypted with master key.
     public String encrypt(Credential credential, String key, byte[] data, String iv) throws GeneralSecurityException {
         checkAccess(credential);
-        byte[] keyBytes =  _decrypt(key);
+        byte[] keyBytes = internalDecrypt(key);
         SecretKey secretKey = symmetricCipher.getKeySpec(keyBytes);
         return symmetricCipher.encrypt(secretKey, data, iv);
     }
@@ -286,7 +317,7 @@ public class VaultManager {
     // for decrypt data
     public byte[] decrypt(Credential credential, String key, String secret, String iv) throws GeneralSecurityException {
         checkAccess(credential);
-        byte[] keyBytes =  _decrypt(key);
+        byte[] keyBytes = internalDecrypt(key);
         SecretKey secretKey = symmetricCipher.getKeySpec(keyBytes);
         return symmetricCipher.decrypt(secretKey, secret, iv);
     }
@@ -294,7 +325,7 @@ public class VaultManager {
     // for decrypt keys
     public byte[] decrypt(Credential credential, String secret) throws GeneralSecurityException {
         checkAccess(credential);
-        return _decrypt(secret);
+        return internalDecrypt(secret);
     }
 
     public String encryptPublic(byte[] data) throws GeneralSecurityException {
@@ -353,18 +384,18 @@ public class VaultManager {
         }
     }
 
-    // Encrypting ClearText with dualEntry's associated passphrase and store it in local, ie file.
+    // Encrypting ClearText with dualEntry's associated password and store it in local, ie file.
     public void passphraseLock(DualEntry dualEntry, String alias, ClearText ct) throws GeneralSecurityException {
         ct.alias(alias);
-        ClearText clearPassphrase;
-        if (alias.equals(PASSPHRASE)) {
-            clearPassphrase = generatePassphrase(getPassphrase(dualEntry));
-            clearPassphrase.version("0");
+        ClearText passphrase;
+        if (alias.equals(PASSPHRASE)) {  // this happens when we change passphrase
+            passphrase = passphraseClearText(getUserComponents(dualEntry));
+            passphrase.version("0");
         } else {
-            Secret passphrase = getLocal(PASSPHRASE, null);
-            clearPassphrase = pwd.unsealUserOrPassphrase(passphrase, getPassphrase(dualEntry));
+            Secret secret = getLocal(PASSPHRASE, null);
+            passphrase = pwd.unsealUserOrPassphrase(secret, getUserComponents(dualEntry));
         }
-        addLocal(ct, clearPassphrase);
+        addLocal(ct, passphrase);
     }
 
     public ClearText passphraseUnlock(Credential credential, String alias) throws GeneralSecurityException {
@@ -376,7 +407,7 @@ public class VaultManager {
     }
 
     public void newMasterKey(DualEntry dualEntry) throws GeneralSecurityException {
-        getPassphrase(dualEntry);
+        checkAccess(dualEntry);
         addKey(generateInternalKey(MASTER_KEY_ALIAS));
 
         Vault dataVault = keyDataStore.getVault(DATA_VAULT);
@@ -394,19 +425,19 @@ public class VaultManager {
     private void checkAccess(Credential credential) throws GeneralSecurityException {
         ClearText ct = getUser(credential);
         if (ct == null)
-            throw new GeneralSecurityException("Cannot find user " + credential.getUser());
+            throw new GeneralSecurityException(CANNOT_FIND_USER + credential.getUser());
         if (!(ct.getProperty(GUARDIAN).equals(GROUP_1) || ct.getProperty(GUARDIAN).equals(GROUP_2)))
-            throw new GeneralSecurityException("User " + ct.getProperty(USERNAME) + " is not a guardian");
+            throw new GeneralSecurityException(USER + ct.getProperty(USERNAME) + IS_NOT_GUARDIAN);
 
         if (!ct.getProperty(GUARDIAN).equals(ct.getProtectedProperty(GUARDIAN))) {
-            throw new GeneralSecurityException("User " + ct.getProperty(USERNAME) + " guardian property has been tempered");
+            throw new GeneralSecurityException(USER + ct.getProperty(USERNAME) + GUARDIA_HAS_BEEN_TEMPERED);
         }
     }
 
     @SuppressWarnings("squid:MethodCyclomaticComplexity")
     private void checkAccess(DualEntry dualEntry) throws GeneralSecurityException {
         ClearText ct1 = getUser(dualEntry.getUser1());
-        ClearText ct2  = getUser(dualEntry.getUser2());
+        ClearText ct2 = getUser(dualEntry.getUser2());
 
         if (ct1 == null)
             throw new GeneralSecurityException("Bad user name " + dualEntry.getUser1());
@@ -415,11 +446,11 @@ public class VaultManager {
 
         if (ct1.getProperty(GUARDIAN) == null ||
                 !(ct1.getProperty(GUARDIAN).equals(GROUP_1) || ct1.getProperty(GUARDIAN).equals(GROUP_2))) {
-            throw new SystemException("User " + ct1.getProperty(USERNAME) + " is not a guardian");
+            throw new SystemException(USER + ct1.getProperty(USERNAME) + IS_NOT_GUARDIAN);
         }
         if (ct2.getProperty(GUARDIAN) == null ||
                 !(ct2.getProperty(GUARDIAN).equals(GROUP_1) || ct2.getProperty(GUARDIAN).equals(GROUP_2))) {
-            throw new GeneralSecurityException("User " + ct2.getProperty(USERNAME) + " is not a guardian");
+            throw new GeneralSecurityException(USER + ct2.getProperty(USERNAME) + IS_NOT_GUARDIAN);
         }
         if (ct1.getProperty(GUARDIAN).equals(ct2.getProperty(GUARDIAN))) {
             throw new SystemException("User1 " + ct1.getProperty(USERNAME) + " and user 2 "
@@ -427,29 +458,37 @@ public class VaultManager {
         }
 
         if (!ct1.getProperty(GUARDIAN).equals(ct1.getProtectedProperty(GUARDIAN))) {
-            throw new GeneralSecurityException("User " + ct1.getProperty(USERNAME) + " guardian property has been tempered");
+            throw new GeneralSecurityException(USER + ct1.getProperty(USERNAME) + GUARDIA_HAS_BEEN_TEMPERED);
         }
 
         if (!ct2.getProperty(GUARDIAN).equals(ct2.getProtectedProperty(GUARDIAN))) {
-            throw new GeneralSecurityException("User " + ct2.getProperty(USERNAME) + " guardian property has been tempered");
+            throw new GeneralSecurityException(USER + ct2.getProperty(USERNAME) + GUARDIA_HAS_BEEN_TEMPERED);
         }
     }
 
-    private char[] getPassphrase(DualEntry dualEntry) throws GeneralSecurityException {
+    private char[] getUserComponents(DualEntry dualEntry) throws GeneralSecurityException {
         ClearText ct1 = getUser(dualEntry.getUser1());
         if (ct1 == null)
-            throw new GeneralSecurityException("Cannot find user " + dualEntry.getUser1());
-        ClearText ct2  = getUser(dualEntry.getUser2());
+            throw new GeneralSecurityException(CANNOT_FIND_USER + dualEntry.getUser1());
+        ClearText ct2 = getUser(dualEntry.getUser2());
         if (ct2 == null)
-            throw new GeneralSecurityException("Cannot find user " + dualEntry.getUser2());
+            throw new GeneralSecurityException(CANNOT_FIND_USER + dualEntry.getUser2());
 
         checkAccess(dualEntry);
         byte[] comp1 = ct1.getBytes();
         byte[] comp2 = ct2.getBytes();
+        return xor(comp1, comp2);
+    }
+
+    private char[] xor(byte[] comp1, byte[] comp2) {
         byte[] pwdBytes = new byte[comp1.length];
-        for (int i = 0; i< comp1.length; i++)
-            pwdBytes[i] = (byte)((comp1[i] ^ comp2[i]) & 0x000000ff);
+        for (int i = 0; i < comp1.length; i++)
+            pwdBytes[i] = (byte) ((comp1[i] ^ comp2[i]) & 0x000000ff);
         return Hex.toString(pwdBytes).toCharArray();
+    }
+
+    public ClearText getSignature() {
+        return state.getSignature();
     }
 
     /**
@@ -459,13 +498,13 @@ public class VaultManager {
      * 3. remove all other users
      * 4. re-encrypt everything in local vault
      * 5. re-encrypt keys in the database.  We need to iterate through all version for each alias.
+     *
      * @param dualEntry dual entry containing authentication info for two users.
      * @throws GeneralSecurityException general security exception
      */
     @SuppressWarnings("squid:S3776")
     public void changePassphrase(DualEntry dualEntry) throws GeneralSecurityException {
         checkAccess(dualEntry);
-
         // save password and signature
         VaultManagerState oldState = state.clone();
 
@@ -478,24 +517,72 @@ public class VaultManager {
             throw new GeneralSecurityException(ex);
         }
 
+        ClearText newSignature = generateSignature();
+        ClearText newPassphrase;
+
         try {
-            byte[] comp1 = RNG.generateSeed(16);
-            byte[] comp2 = RNG.generateSeed(16);
+            newPassphrase = userLocalPassphraseChange(dualEntry, newSignature);
+        } catch (Exception ex) {
+            // restore file
+            state = oldState;
+            throw new GeneralSecurityException(ex);
+        }
 
-            ClearText ct1 = getUser(dualEntry.getUser1());
-            ClearText ct2 = getUser(dualEntry.getUser2());
+        // save userLocalStore
+        try {
+            userLocalStore.save();
+        } catch (Exception ex) {
+            // restore file
+            state = oldState;
+            try {
+                userLocalStore.restore(currentVersion);
+            } catch (IOException io) {
+                throw new GeneralSecurityException(io);
+            }
+            throw new GeneralSecurityException(ex);
+        }
 
-            // change components for the users
-            ct1.setBytes(comp1);
-            ct2.setBytes(comp2);
+        try {
+            keyDataPassphraseChange(newSignature, newPassphrase);
+        } catch (Exception ex) {
+            // restore file
+            state = oldState;
+            try {
+                userLocalStore.restore(currentVersion);
+            } catch (IOException io) {
+                throw new GeneralSecurityException(io);
+            }
+            throw new GeneralSecurityException(ex);
+        }
 
-            addUser(pwd.sealUser(ct1, dualEntry.getUser1().getPassword()));
-            addUser(pwd.sealUser(ct2, dualEntry.getUser2().getPassword()));
+        try {
+            keyDataStore.save();
+        } catch (Exception ex) {
+            try {
+                keyDataStore.restore(currentVersion);
+            } catch (IOException io) {
+                throw new GeneralSecurityException(io);
+            }
+            state = oldState;
+            try {
+                userLocalStore.restore(currentVersion);
+            } catch (IOException io) {
+                throw new GeneralSecurityException(io);
+            }
+            throw new GeneralSecurityException(ex);
+        }
+    }
 
-            // add the new passphrase
-            ClearText passphrase = generatePassphrase(getPassphrase(dualEntry));
-            passphraseLock(dualEntry, PASSPHRASE, passphrase);
+    private ClearText userLocalPassphraseChange(DualEntry dualEntry, ClearText newSignature) throws GeneralSecurityException {
+        byte[] comp1 = RNG.generateSeed(16);
+        byte[] comp2 = RNG.generateSeed(16);
 
+        // get the new passphrase clear text
+        // newRandomPassphrase needs to be after addUser so that getUserComponents picks up comp1 xor comp2.
+        char[] newRandomPassphrase = xor(comp1, comp2);
+        ClearText newPassphrase = passphraseClearText(newRandomPassphrase);
+        setCreationTimeVersion(newPassphrase, newSignature);
+        try {
             // re-encrypt local vault
             Vault localVault = userLocalStore.getVault(LOCAL_VAULT);
 
@@ -508,96 +595,101 @@ public class VaultManager {
                 Set<Long> versions = localVault.versions(alias);
                 for (Long version : versions) {
                     Secret secret = getLocal(alias, "" + version);
-                    ClearText ct = pwd.unseal(secret, passphrase);
-                    addLocal(ct, passphrase);
+                    ClearText oldPassphrase = passphraseForSecret(secret);
+                    ClearText ct = pwd.unseal(secret, oldPassphrase);
+                    addLocal(ct, newPassphrase);
                 }
             }
 
-            // re-encrypt database's key-vault
-            Vault keyVault = keyDataStore.getVault(KEY_VAULT);
-            aliases = keyVault.aliases();
-            for (String alias : aliases) {
-                Set<Long> versions = keyVault.versions(alias);
-                for (Long version : versions) {
-                    ClearText ct = getKey(alias, "" + version);
-                    Secret secret = pwd.seal(ct, passphrase);
-                    keyVault.addSecret(secret);
-                }
-            }
+            // update user1 and user2
+            ClearText ct1 = getUser(dualEntry.getUser1());
+            ClearText ct2 = getUser(dualEntry.getUser2());
+            if (ct1 == null || ct2 == null)
+                throw new IllegalStateException(); // not possible.
+            ct1.setBytes(comp1);
+            ct2.setBytes(comp2);
+            addUser(pwd.sealUser(ct1, dualEntry.getUser1().getPassword()));
+            addUser(pwd.sealUser(ct2, dualEntry.getUser2().getPassword()));
 
-            // delete database signature
-            keyDataStore.getVault(DATA_VAULT).removeSecret(SIGNATURE, null);
+            // Add the new passphrase encrypted with its own passphrase.
+            // This has to be done before we proceed to convert database's key-vault because
+            // the keys are encrypted with old passphrase and the old passphrase has been
+            // just re-encrypted with newPassphrase so that newPassphrase has to be in the vault file.
+            passphraseLock(dualEntry, PASSPHRASE, newPassphrase);
+            // Make the newPassphrase the current passphrase.  Remember, newPassphrase is made up of user1 and user2 getBytes.
+            state.setCurrentPassphrase(getUserComponents(dualEntry));
+
+            // add new signature to local vault, but we don't chante state's signature
+            // because when we re-encrypt key vault, it will check against state's signature.
+            addLocal(newSignature, newPassphrase);
 
             // remove all other users
             aliases = listUsers();
             for (String alias : aliases) {
                 if (!dualEntry.getUser1().getUser().equals(alias)
-                        && !dualEntry.getUser2().getUser().equals(alias)) removeUser(alias, null);
+                        && !dualEntry.getUser2().getUser().equals(alias))
+                    removeUser(alias, null);
             }
+        } catch (Exception ex) {
+            throw new GeneralSecurityException(ex);
+        }
+        return newPassphrase;
+    }
 
-            // add new signature
-            ClearText newSignature = generateSignature();
-            addLocal(newSignature, passphrase);
+    private void keyDataPassphraseChange(ClearText newSignature, ClearText newPassphrase) throws GeneralSecurityException {
+        // go to the keyDataStore and re-encrypt it
 
-            // need to start using the new password since we just finished re-encrypting
-            state.setPassword((new String(passphrase.getBytes(), StandardCharsets.UTF_8)).toCharArray());
-            addData(newSignature);
-            state.setSignature(newSignature);
-
-        } catch (Exception th) {
-            // restore file and database
-            state = oldState;
-            try {
-                userLocalStore.restore(currentVersion);
-                keyDataStore.restore(currentVersion);
-            } catch (IOException ex) {
-                throw new GeneralSecurityException(ex);
+        // re-encrypt database's key-vault, the signature, from state's signature, is still
+        // the old one so that it doesn't trigger restore from the key vault
+        Vault keyVault = keyDataStore.getVault(KEY_VAULT);
+        Set<String> aliases = keyVault.aliases();
+        for (String alias : aliases) {
+            Set<Long> versions = keyVault.versions(alias);
+            for (Long version : versions) {
+                ClearText ct = getKey(alias, "" + version);
+                Secret secret = pwd.seal(ct, newPassphrase);
+                keyVault.addSecret(secret);
             }
-            throw new GeneralSecurityException(th);
         }
 
-        // commit file changes
-        // commit db changes if failed rollback file changes
-        // files store need to detect if a backup exist.
-        try {
-            userLocalStore.save();
-        } catch (Exception th) {
-            // restore file and database from backup
-            restoreState(currentVersion, oldState);
-            throw new GeneralSecurityException(th);
-        }
-
-        try {
-            keyDataStore.save();
-        } catch (Exception th) {
-            // restore file and database from backup
-            restoreState(currentVersion, oldState);
-            state = oldState;
-            throw new GeneralSecurityException(th);
-        }
+        // delete database signature and add new signature.
+        keyDataStore.getVault(DATA_VAULT).removeSecret(SIGNATURE, null);
+        addData(newSignature);
+        state.setSignature(newSignature);
     }
 
-    private void restoreState(String currentVersion, VaultManagerState oldState) throws GeneralSecurityException {
+    public void restore(DualEntry dualEntry, String version) throws GeneralSecurityException {
+        String currentVersion = state.getSignature().version();
         try {
-            restore(currentVersion);
-        } catch (IOException e) {
-            throw new GeneralSecurityException(e);
+            userLocalStore.backup(currentVersion);
+            keyDataStore.backup(currentVersion);
+        } catch (IOException ex) {
+            throw new GeneralSecurityException(ex);
         }
-        state = oldState;
+
+        try {
+            keyDataStore.restore(version);
+            userLocalStore.restore(version);
+        } catch (IOException io) {
+            throw new GeneralSecurityException(io);
+        }
+
+        try {
+            state.setCurrentPassphrase(getUserComponents(dualEntry));
+        } catch (GeneralSecurityException ex) {
+            throw BAD_USER_PASSWORD.apply(ex);
+        }
+
+        state.setSignature(passphraseUnlock(dualEntry.getUser1(), SIGNATURE));
     }
 
-    private void restore(String version) throws IOException {
-        userLocalStore.restore(version);
-        keyDataStore.restore(version);
-    }
-
-    private String _encrypt(String keyAlias, byte[] plain) throws GeneralSecurityException {
-        return _encrypt(keyAlias, plain, null);
+    private String internalEncrypt(String keyAlias, String version, byte[] plain) throws GeneralSecurityException {
+        return internalEncrypt(keyAlias, version, plain, null);
     }
 
     @SuppressWarnings("squid:S00100")
-    private String _encrypt(String keyAlias, byte[] plain, String iv) throws GeneralSecurityException {
-        ClearText ct = getKey(keyAlias, null);
+    private String internalEncrypt(String keyAlias, String version, byte[] plain, String iv) throws GeneralSecurityException {
+        ClearText ct = getKey(keyAlias, version);
         if (ct == null)
             throw new GeneralSecurityException("No key for keyAlias=" + keyAlias);
 
@@ -607,7 +699,7 @@ public class VaultManager {
         return iv + "$" + encrypted + "$" + keyAlias + "$" + ct.version(); // iv and enc
     }
 
-    public byte[] _decrypt(String encoded) throws GeneralSecurityException {
+    public byte[] internalDecrypt(String encoded) throws GeneralSecurityException {
         String[] components = encryptedComponents(encoded);
         String alias = components[2];
         String version = components[3];
@@ -645,15 +737,16 @@ public class VaultManager {
             byte[] comp2 = RNG.generateSeed(16);
             newUser(dualEntry.getUser1(), comp1, GROUP_1);
             newUser(dualEntry.getUser2(), comp2, GROUP_2);
+            char[] newRandomPassphrase = getUserComponents(dualEntry);
 
             try {
-                state.setPassword(getPassphrase(dualEntry));
+                state.setCurrentPassphrase(getUserComponents(dualEntry));
             } catch (GeneralSecurityException ex) {
-                throw new GeneralSecurityException("Bad user name or password to unlock the vault", ex);
+                throw BAD_USER_PASSWORD.apply(ex);
             }
 
             // add passphrase
-            ClearText passphrase = generatePassphrase(getPassphrase(dualEntry));
+            ClearText passphrase = passphraseClearText(newRandomPassphrase);
             passphraseLock(dualEntry, PASSPHRASE, passphrase);
 
             // add signature
@@ -672,13 +765,12 @@ public class VaultManager {
         }
 
         try {
-            state.setPassword(getPassphrase(dualEntry));
+            state.setCurrentPassphrase(getUserComponents(dualEntry));
         } catch (GeneralSecurityException ex) {
-            throw new GeneralSecurityException("Bad user name or password to unlock the vault", ex);
+            throw BAD_USER_PASSWORD.apply(ex);
         }
 
         state.setSignature(passphraseUnlock(dualEntry.getUser1(), SIGNATURE));
-
     }
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S3776"})
@@ -774,13 +866,18 @@ public class VaultManager {
         return modified;
     }
 
+    public ClearText getKey(DualEntry dualEntry, String keyAlias, String version) throws GeneralSecurityException {
+        checkAccess(dualEntry);
+        return getKey(keyAlias, version);
+    }
+
     // This is declared to be protected to allow a subclass to retrieve the key from a different place, e.g. an application key HSM
     protected ClearText getKey(String keyAlias, String version) throws GeneralSecurityException {
         openKeyData();
         Secret key = keyDataStore.getVault(KEY_VAULT).getSecret(keyAlias, version);
         if (key == null)
             return null;
-        return pwd.unseal(key, getPassphrase(key));
+        return pwd.unseal(key, passphraseForSecret(key));
     }
 
     // This is declared to be protected to allow a subclass to retrieve the key from a different place, e.g. an application key HSM
@@ -809,31 +906,31 @@ public class VaultManager {
     // this function is different from the other addXXX function because we don't version users.
     private void addUser(Secret secret) throws GeneralSecurityException {
         if (!userLocalOpened)
-            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+            throw NOT_OPEN_EXCEPTION;
         userLocalStore.getVault(USER_VAULT).addSecret(secret);
     }
 
     private Secret getUser(String alias, String version) throws GeneralSecurityException {
         if (!userLocalOpened)
-            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+            throw NOT_OPEN_EXCEPTION;
         return userLocalStore.getVault(USER_VAULT).getSecret(alias, version);
     }
 
     private void removeUser(String alias, String version) throws GeneralSecurityException {
         if (!userLocalOpened)
-            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+            throw NOT_OPEN_EXCEPTION;
         userLocalStore.getVault(USER_VAULT).removeSecret(alias, version);
     }
 
     public Set<String> listUsers() throws GeneralSecurityException {
         if (!userLocalOpened)
-            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+            throw NOT_OPEN_EXCEPTION;
         return userLocalStore.getVault(USER_VAULT).aliases();
     }
 
     private void addLocal(ClearText ct, ClearText passphrase) throws GeneralSecurityException {
         if (!userLocalOpened)
-            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+            throw NOT_OPEN_EXCEPTION;
         setCreationTimeVersion(ct);
         Secret secret = pwd.seal(ct, passphrase);
         userLocalStore.getVault(LOCAL_VAULT).addSecret(secret);
@@ -841,7 +938,7 @@ public class VaultManager {
 
     private Secret getLocal(String alias, String version) throws GeneralSecurityException {
         if (!userLocalOpened)
-            throw new GeneralSecurityException("user local store is not open.  Please call open() first");
+            throw NOT_OPEN_EXCEPTION;
         return userLocalStore.getVault(LOCAL_VAULT).getSecret(alias, version);
     }
 }

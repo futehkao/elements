@@ -31,8 +31,6 @@ import org.apache.catalina.LifecycleException;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
-import org.apache.tomcat.util.net.SSLHostConfig;
-import org.apache.tomcat.util.net.SSLHostConfigCertificate;
 
 import java.net.URL;
 import java.util.Iterator;
@@ -58,6 +56,7 @@ public class TomcatEngine implements ServerEngine {
     private Provision provision;
     private boolean useActorThreadPool = false;
     private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
+    private TomcatSSL tomcatSSL = new TomcatSSL();
 
     public int getMaxThreads() {
         return maxThreads;
@@ -95,27 +94,35 @@ public class TomcatEngine implements ServerEngine {
         return provision;
     }
 
+    @Inject(optional = true)
+    public void setProvision(Provision provision) {
+        this.provision = provision;
+    }
+
     public WorkerPoolConfig getWorkerPoolConfig() {
         return workerPoolConfig;
     }
 
+    @Inject(optional = true)
     public void setWorkerPoolConfig(WorkerPoolConfig workerPoolConfig) {
         this.workerPoolConfig = workerPoolConfig;
-    }
-
-    @Inject(optional = true)
-    public void setProvision(Provision provision) {
-        this.provision = provision;
     }
 
     public boolean isUseActorThreadPool() {
         return useActorThreadPool;
     }
 
-    @Inject(optional = true)
-
     public void setUseActorThreadPool(boolean useActorThreadPool) {
         this.useActorThreadPool = useActorThreadPool;
+    }
+
+    public TomcatSSL getTomcatSSL() {
+        return tomcatSSL;
+    }
+
+    @Inject(optional = true)
+    public void setTomcatSSL(TomcatSSL tomcatSSL) {
+        this.tomcatSSL = tomcatSSL;
     }
 
     @Override
@@ -181,63 +188,17 @@ public class TomcatEngine implements ServerEngine {
             }
             iterator.remove();
         }
-
     }
 
     @SuppressWarnings("squid:S3776")
     protected Connector createConnector(CXFServer cxfServer, URL url) {
-        Connector connector = new Connector("org.apache.coyote.http11.Http11Nio2Protocol");
+        Connector connector = tomcatSSL.createConnector();
         connector.setPort(url.getPort());
         connector.setAttribute("maxThreads", maxThreads);  // default 200
         connector.setAttribute("maxConnections", maxConnections); // default 10000
         connector.setAttribute("minSpareThreads", minSpareThreads); // default 10
         connector.setAttribute("address", url.getHost());
-
-        if ("https".equals(url.getProtocol())) {
-            connector.setSecure(true);
-            connector.setScheme("https");
-            connector.setAttribute("protocol", "HTTP/1.1");
-            connector.setAttribute("SSLEnabled", true);
-            connector.setAttribute("defaultSSLHostConfigName", url.getHost());
-            if (cxfServer.getKeyStoreFile() == null &&
-                cxfServer.getKeyStore() == null &&
-                cxfServer.getSelfSignedCert() == null)
-                throw new IllegalArgumentException("Missing keyStoreFile or keyStore");
-
-            SSLHostConfig config = new SSLHostConfig();
-            config.setHostName(url.getHost()); // this needs to match defaultSSLHostConfigName attribute
-
-            // only support keyStoreFile
-            if (cxfServer.getKeyStoreFile() != null) {
-                config.setCertificateKeystoreFile(cxfServer.getKeyStoreFile());
-                if (cxfServer.getKeyStorePassword() != null)
-                    config.setCertificateKeystorePassword(new String(cxfServer.getKeyStorePassword()));
-                if (cxfServer.getKeyManagerPassword() != null)
-                    config.setCertificateKeyPassword(new String(cxfServer.getKeyManagerPassword()));
-                config.setCertificateKeystoreType(cxfServer.getKeyStoreFormat());
-
-            } else if (cxfServer.getKeyStore() != null) {
-                SSLHostConfigCertificate certificate = new SSLHostConfigCertificate(config,  SSLHostConfigCertificate.Type.UNDEFINED);
-                certificate.setCertificateKeystore(cxfServer.getKeyStore());
-                if (cxfServer.getKeyStorePassword() != null)
-                    certificate.setCertificateKeystorePassword(new String(cxfServer.getKeyStorePassword()));
-                if (cxfServer.getKeyManagerPassword() != null)
-                    certificate.setCertificateKeyPassword(new String(cxfServer.getKeyManagerPassword()));
-                config.addCertificate(certificate);
-            } else {
-                SSLHostConfigCertificate certificate = new SSLHostConfigCertificate(config,  SSLHostConfigCertificate.Type.UNDEFINED);
-                certificate.setCertificateKeystore(cxfServer.getSelfSignedCert().getKeyStore());
-                certificate.setCertificateKeystorePassword(new String(cxfServer.getSelfSignedCert().getPassword()));
-                certificate.setCertificateKeyPassword(new String(cxfServer.getSelfSignedCert().getPassword()));
-                config.addCertificate(certificate);
-            }
-
-            if (cxfServer.getClientAuth() != null)
-                config.setCertificateVerification(cxfServer.getClientAuth());
-            config.setSslProtocol(cxfServer.getSslProtocol());
-            connector.addSslHostConfig(config);
-
-        }
+        tomcatSSL.initialize(cxfServer, url, connector);
         return connector;
     }
 }

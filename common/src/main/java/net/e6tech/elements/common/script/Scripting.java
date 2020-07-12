@@ -29,6 +29,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+
+import static org.apache.groovy.util.SystemUtil.getBooleanSafe;
+import static org.apache.groovy.util.SystemUtil.getSystemPropertySafe;
 
 /**
  * Created by futeh.
@@ -70,9 +74,7 @@ public class Scripting {
 
     public static Scripting newInstance(ClassLoader classLoader, Properties properties) {
         Scripting script = new Scripting();
-
         script.engine = new GroovyEngine(classLoader, properties);
-
         return script;
     }
 
@@ -403,6 +405,13 @@ public class Scripting {
                 ctxLoader = Scripting.class.getClassLoader();
 
             compilerConfig = new CompilerConfiguration();
+            setCompilerConfig(properties, "groovy.source.encoding", compilerConfig::setSourceEncoding, "UTF-8");
+            setCompilerConfig(properties, "groovy.parameters", value -> compilerConfig.setParameters(Boolean.parseBoolean(value)));
+            setCompilerConfig(properties, "groovy.preview.features", value -> compilerConfig.setPreviewFeatures(Boolean.parseBoolean(value)));
+            setCompilerConfig(properties, "groovy.target.directory", value -> compilerConfig.setTargetDirectory(new File(value)));
+            setCompilerConfig(properties, "groovy.target.bytecode", compilerConfig::setTargetBytecode);
+            setCompilerConfig(properties, "groovy.default.scriptExtension", compilerConfig::setDefaultScriptExtension);
+
             String scriptBaseClass = properties.getProperty(SCRIPT_BASE_CLASS);
             if (scriptBaseClass != null)
                 compilerConfig.setScriptBaseClass(scriptBaseClass);
@@ -416,7 +425,18 @@ public class Scripting {
                 binding.setVariable(entry.getKey().toString(), entry.getValue());
             }
             shell = new GroovyShell(loader, binding, compilerConfig);
+        }
 
+        private void setCompilerConfig(Properties properties, String key, Consumer<String> consumer) {
+            if (properties.containsKey(key))
+                consumer.accept(properties.getProperty(key));
+        }
+
+        private void setCompilerConfig(Properties properties, String key, Consumer<String> consumer, String defaultValue) {
+            if (properties.containsKey(key))
+                consumer.accept(properties.getProperty(key));
+            else if (System.getProperty(key) == null && defaultValue != null)
+                consumer.accept(defaultValue);
         }
 
         public void shutdown() {

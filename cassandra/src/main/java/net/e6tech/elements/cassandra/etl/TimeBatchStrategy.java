@@ -50,20 +50,16 @@ public interface TimeBatchStrategy<S> extends BatchStrategy<S, TimeBatch> {
         if (context.getSourceClass() == null)
             throw new IllegalStateException("sourceClass not set in context");
         return context.open().apply(Sibyl.class, sibyl -> {
-            context.initialize();
+            initializeContext(context);
             LastUpdate lastUpdate = context.getLastUpdate();
-            long lastImport = Long.parseLong(lastUpdate.getLastUpdate());
-
-            long start = System.currentTimeMillis();
-            context.setEnd(start - context.getTimeLag());
-            context.setStart(lastImport);
             int importedCount = 0;
-            List<S> batchResults = null;
-
+            List<S> batchResults;
             // NOTE, extract must call lastUpdate.update
             logger.info("Loading Class {}", getClass());
             while (!(batchResults = extract(context)).isEmpty()) {
+                int n = context.getImportedCount();
                 int processedCount = load(context, batchResults);
+                context.setImportedCount(n + processedCount);
                 context.saveLastUpdate(lastUpdate);
                 logger.info("Processed {} instance of {}", processedCount, getClass());
                 importedCount += processedCount;
@@ -71,6 +67,14 @@ public interface TimeBatchStrategy<S> extends BatchStrategy<S, TimeBatch> {
             logger.info("Done loading {} instance of {}", importedCount, getClass());
             return importedCount;
         });
+    }
 
+    default void initializeContext(TimeBatch context) {
+        context.initialize();
+        LastUpdate lastUpdate = context.getLastUpdate();
+        long lastImport = Long.parseLong(lastUpdate.getLastUpdate());
+        long start = System.currentTimeMillis();
+        context.setEnd(start - context.getTimeLag());
+        context.setStart(lastImport);
     }
 }

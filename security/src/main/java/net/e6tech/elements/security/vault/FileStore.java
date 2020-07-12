@@ -38,7 +38,6 @@ public class FileStore implements VaultStore {
     private Map<String, VaultImpl> vaults = new LinkedHashMap<>();
     private Set<String> managedVaults = new HashSet<>();
     private String fileName;
-    private boolean backup = false;
 
     public FileStore() {}
 
@@ -121,23 +120,46 @@ public class FileStore implements VaultStore {
         if (fileName == null)
             throw new IOException("null fileName");
 
-        if (!backup) {
+        boolean shouldBackup = false;
+        for (VaultImpl vault : vaults.values()) {
+            if (vault.isModified()) {
+                shouldBackup = true;
+                break;
+            }
+        }
+
+        if (shouldBackup) {
             File file = new File(fileName);
             if (file.exists()) {
-                SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss");
-                String backupFile;
-                int index = fileName.lastIndexOf('.');
-                if (index > 0) {
-                    String extension = fileName.substring(index);
-                    backupFile = fileName.substring(0, index) + "-" + format.format(new Date()) + extension;
-                } else {
-                    backupFile = fileName + "-" + format.format(new Date());
+                String backupFileName = backupFileName();
+                File backupFile = new File(backupFileName);
+                while (backupFile.exists()) {
+                    try {
+                        Thread.sleep(1000L);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    backupFileName = backupFileName();
+                    backupFile = new File(backupFileName);
                 }
-                Files.copy(Paths.get(fileName), Paths.get(backupFile));
+                Files.copy(Paths.get(fileName), Paths.get(backupFileName));
             }
-            backup = true;
         }
         mapper.writerWithDefaultPrettyPrinter().writeValue(new File(fileName), new VaultFormat(vaults));
+        vaults.values().forEach(vault -> vault.setModified(false));
+    }
+
+    private String backupFileName() {
+        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss");
+        String backupFile;
+        int index = fileName.lastIndexOf('.');
+        if (index > 0) {
+            String extension = fileName.substring(index);
+            backupFile = fileName.substring(0, index) + "-" + format.format(new Date()) + "-backup" + extension;
+        } else {
+            backupFile = fileName + "-" + format.format(new Date());
+        }
+        return backupFile;
     }
 
     @Override

@@ -25,7 +25,7 @@ import java.util.Arrays;
  */
 public class VaultManagerState implements Cloneable {
 
-    private char[] password;
+    private char[] currentPassphrase;
     private ClearText signature;
 
     @SuppressWarnings("squid:S2975")
@@ -37,17 +37,17 @@ public class VaultManagerState implements Cloneable {
             throw new SystemException(e);
         }
 
-        if (password != null)
-            state.password = Arrays.copyOf(password, password.length);
+        if (currentPassphrase != null)
+            state.currentPassphrase = Arrays.copyOf(currentPassphrase, currentPassphrase.length);
         return state;
     }
 
-    public char[] getPassword() {
-        return password;
+    public char[] getCurrentPassphrase() {
+        return currentPassphrase;
     }
 
-    public void setPassword(char[] password) {
-        this.password = password;
+    public void setCurrentPassphrase(char[] currentPassphrase) {
+        this.currentPassphrase = currentPassphrase;
     }
 
     public ClearText getSignature() {

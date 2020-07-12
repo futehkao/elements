@@ -5,11 +5,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Created by futeh.
@@ -21,9 +29,16 @@ public class VaultManagerTest {
 
     @BeforeEach
     public void setup() throws Exception {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get("/tmp"), "test-*.{vault}")) {
+            for (Path entry: stream) {
+                entry.toFile().delete();
+            }
+        }
+
         String tmpVaultFilename = "/tmp/test-" + System.currentTimeMillis() + ".vault";
         File file = new File(tmpVaultFilename);
-        if (file.exists()) file.delete();
+        if (file.exists())
+            file.delete();
         manager = new VaultManager();
         ((FileStore) manager.getUserLocalStore()).setFileName(tmpVaultFilename);
         dualEntry = new DualEntry("user1", "password1".toCharArray(), "user2", "password2".toCharArray());
@@ -125,5 +140,24 @@ public class VaultManagerTest {
         assertTrue(Arrays.equals(ct1.getBytes(), clearText.getBytes()));
     }
 
+    @Test
+    void changeMasterKey() throws Exception {
+        String version = manager.getSignature().version();
+        manager.getKeyDataStore().backup(version);
+        ClearText sig = manager.getSecretData(dualEntry.getUser1(), Constants.SIGNATURE);
+        manager.newMasterKey(dualEntry);
+        // check signature before and after master change.  They have to be the same
+        ClearText sig2 = manager.getSecretData(dualEntry.getUser1(), Constants.SIGNATURE);
+        assertEquals(sig.version(), sig2.version());
+        assertEquals(sig.toText(), sig2.toText());
+    }
+
+    @Test
+    void changePassphrase() throws Exception {
+        ClearText m1 = manager.getKey(Constants.MASTER_KEY_ALIAS, null);
+        manager.changePassphrase(dualEntry);
+        ClearText m2 = manager.getKey(Constants.MASTER_KEY_ALIAS, null);
+        assertTrue(Arrays.equals(m1.getBytes(), m2.getBytes()));
+    }
 
 }

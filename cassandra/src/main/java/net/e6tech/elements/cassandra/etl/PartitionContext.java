@@ -33,7 +33,7 @@ public class PartitionContext extends ETLContext {
     private ToIntFunction<List> loadDelegate;
 
     public static PartitionContext createContext(Provision provision, Class<? extends Partition> cls) {
-        Partition partition = null;
+        Partition partition;
         try {
             partition = cls.getDeclaredConstructor().newInstance();
         } catch (Exception e) {

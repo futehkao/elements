@@ -30,6 +30,7 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
 
     private String name;
     private transient VersionComparator comparator = new VersionComparator();
+    private boolean modified;
 
     public String getName() {
         return name;
@@ -37,6 +38,14 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public boolean isModified() {
+        return modified;
+    }
+
+    public void setModified(boolean modified) {
+        this.modified = modified;
     }
 
     public Secret getSecret(String alias, String version) {
@@ -60,6 +69,7 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         if (version == null)
             version = "0";
         versions.put(Long.parseLong(version), secret);
+        modified = true;
     }
 
     public void removeSecret(String alias, String version) {
@@ -67,10 +77,13 @@ public class VaultImpl implements Vault, Serializable, Cloneable {
         if (versions == null) {
             return;
         }
+
         if (version == null) {
-            secrets.remove(alias);
+            if (secrets.remove(alias) != null)
+                modified = true;
         } else {
-            versions.remove(Long.parseLong(version));
+            if (versions.remove(Long.parseLong(version)) != null)
+                modified = true;
         }
     }
 

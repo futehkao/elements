@@ -145,40 +145,89 @@ public class Schema {
     }
 
     public void createTables(String keyspace, Class ... classes) {
-        provision.open().accept(Resources.class, resources -> {
-            List<TableGenerator> tableGenerators = new LinkedList<>();
-            Session session = resources.getInstance(Session.class);
-            SessionProvider provider = getProvider(resources);
-            Map<String,  Future<AsyncResultSet>> tableCreation = new LinkedHashMap<>();
-            for (Class cls : classes) {
-                if (getTableName(cls) == null)
-                    continue;
-                TableGenerator generator = provider.getGenerator().getTable(keyspace, cls);
-                TableMetadata metadata = provider.getTableMetadata(keyspace, generator.getTableName());
+        class AsyncTableGenerator {
+            SessionProvider provider;
+            Session session;
+            TableGenerator tableGenerator;
+            TableMetadata metadata;
+            Class tableClass;
+            Future<AsyncResultSet> future;
+
+            AsyncTableGenerator(Resources resources, Class cls) {
+                session = resources.getInstance(Session.class);
+                provider = getProvider(resources);
+                tableGenerator = provider.getGenerator().getTable(keyspace, cls);
+                tableClass = cls;
+                generate();
+            }
+
+            TableGenerator generator() {
+                return tableGenerator;
+            }
+
+            void generate() {
+                metadata = provider.getTableMetadata(keyspace, tableGenerator.getTableName());
                 if (metadata == null) {
-                    String cql = generator.generate();
+                    String cql = tableGenerator.generate();
                     try {
-                        logger.info("Creating table asynchronously, {}", generator.fullyQualifiedTableName());
-                        Future<AsyncResultSet> future = session.executeAsync(keyspace, cql);
-                        tableCreation.put(cls.getName(), future);
+                        if (logger.isInfoEnabled())
+                            logger.info("Creating table asynchronously, {}", tableGenerator.fullyQualifiedTableName());
+                        future = session.executeAsync(keyspace, cql);
                     } catch (Exception ex) {
-                        logger.info("Syntax error in creating table for {}", cls);
+                        logger.info("Syntax error in creating table for {}", tableClass);
                         logger.info(cql);
                         throw ex;
                     }
                 }
-                tableGenerators.add(generator);
             }
 
-            for (Map.Entry<String, Future<AsyncResultSet>> entry : tableCreation.entrySet()) {
+            void complete() throws ExecutionException, InterruptedException {
                 try {
-                    entry.getValue().get();
+                    tryComplete();
+                    future = null;
                 } catch (Exception ex) {
-                    throw new SystemException("Cannot create table for " + entry.getKey(), ex);
+                    tryComplete();
+                }
+            }
+
+            void tryComplete() throws ExecutionException, InterruptedException {
+                if (future == null) {
+                    generate();
+                }
+
+                if (metadata == null && future == null)
+                    throw new ExecutionException("Cannot generate table " + tableClass.getName(), new SystemException("Cannot generate table " + tableClass.getName()));
+
+                if (future != null) {
+                    future.get();
+                }
+            }
+        }
+
+        provision.open().accept(Resources.class, resources -> {
+            List<TableGenerator> tableGenerators = new LinkedList<>();
+            Session session = resources.getInstance(Session.class);
+            SessionProvider provider = getProvider(resources);
+
+            LinkedList<AsyncTableGenerator> tableCreation = new LinkedList<>();
+            for (Class cls : classes) {
+                if (getTableName(cls) == null)
+                    continue;
+                AsyncTableGenerator asyncTableGenerator = new AsyncTableGenerator(resources, cls);
+                tableCreation.add(asyncTableGenerator);
+                tableGenerators.add(asyncTableGenerator.generator());
+            }
+
+            for (AsyncTableGenerator asyncTableGenerator : tableCreation) {
+                try {
+                    asyncTableGenerator.complete();
+                } catch (Exception ex) {
+                    throw new SystemException("Cannot create table for " + asyncTableGenerator.tableClass.getName(), ex);
                 }
             }
             tableCreation.clear();
 
+            // diff tables
             Map<String,  CompletableFuture<Void>> diffTasks = new LinkedHashMap<>();
             for (TableGenerator gen : tableGenerators) {
                 CompletableFuture<Void> future = CompletableFuture.runAsync(() ->
