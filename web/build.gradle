@@ -28,11 +28,6 @@ dependencies {
     compile "org.eclipse.jetty:jetty-util:${jettyVersion}"
     compile "org.eclipse.jetty:jetty-security:${jettyVersion}"
     compile "org.eclipse.jetty:jetty-io:${jettyVersion}"
-    
-    // tomcat
-    compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-core', version: "${tomcatVersion}"
-    compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-jasper', version: "${tomcatVersion}"
-    compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-logging-log4j', version: "${tomcatLog4jVersion}"
 
     // compile 'javax.ws.rs:jsr311-api:1.1.1'
     compile ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}") {

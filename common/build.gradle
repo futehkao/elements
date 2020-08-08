@@ -20,13 +20,12 @@ dependencies {
     compile "org.apache.logging.log4j:log4j-api:${log4jVersion}"
     compile "org.apache.logging.log4j:log4j-core:${log4jVersion}"
     compile group: 'org.apache.logging.log4j', name: 'log4j-web', version: "${log4jVersion}"
-    compile ("org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}") {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-    }
+    compile "org.slf4j:slf4j-api:${slf4jVersion}"
+    compile ("org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}")
     compile "org.apache.logging.log4j:log4j-jul:${log4jVersion}"
     compile "com.lmax:disruptor:${lmaxDisruptorVerions}"
-    compile "org.slf4j:slf4j-api:${slf4jVersion}"
-    compile ("org.codehaus.groovy:groovy:${groovyVersion}")
+    compile ("org.codehaus.groovy:groovy:${groovyVersion}:indy")
+    compile ("org.codehaus.groovy:groovy-json:${groovyVersion}:indy")
     compile "com.google.guava:guava:${guavaVerions}"
     compile "javax.inject:javax.inject:1"
     compile "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
@@ -36,14 +35,10 @@ dependencies {
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${jacksonVersion}"
     compile "net.bytebuddy:byte-buddy:${bytebuddyVersion}"
     compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: "${jaxbRuntime}"
-    compile ("org.ehcache:ehcache:${ehcacheVersion}") {
-        exclude group: 'org.glassfish.jaxb', module: 'jaxb-runtime'
-    }
+    compile ("org.ehcache:ehcache:${ehcacheVersion}")
     compile "javax.cache:cache-api:${javaCacheApiVerison}"
-
-    // akka core
+    compile ("com.typesafe.akka:akka-actor-typed_${akkaScalaVersion}:${akkaVersion}")
     compile group: 'com.typesafe.akka', name: "akka-actor_${akkaScalaVersion}", version: "${akkaVersion}"
-    compile group: 'com.typesafe.akka', name: "akka-actor-typed_${akkaScalaVersion}", version: "${akkaVersion}"
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"

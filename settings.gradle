@@ -10,5 +10,5 @@ include 'rules'
 include 'security'
 include 'web'
 include 'sample'
-
+include 'web-tomcat'
 

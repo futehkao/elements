@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2020 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,23 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.web.cxf;
+package net.e6tech.elements.web.cxf.jetty;
 
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.network.restful.RestfulClient;
 import net.e6tech.elements.network.restful.RestfulProxy;
+import net.e6tech.elements.web.cxf.HelloWorldRS;
+import net.e6tech.elements.web.cxf.HelloWorldRS2;
+import net.e6tech.elements.web.cxf.JaxRSServer;
+import net.e6tech.elements.web.cxf.PutData;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.PrintWriter;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Created by futeh.
@@ -46,14 +49,14 @@ public class JaxRSServerTest {
     }
 
     @Test
-    public void simpleTomcat() {
-        String input = "net.e6tech.elements.web.cxf.tomcat.TomcatEngine";
+    public void simpleJetty() {
+        String input = "net.e6tech.elements.web.cxf.jetty.JettyEngine";
         new LaunchController().launchScript("conf/provisioning/jaxrs/simple_hello.groovy")
                 .property("serverEngineClass", input)
                 .inject(this).launch();
 
         JaxRSServer server = provision.getComponentResource("helloworld", "_helloworld");
-        assertEquals(server.getServerEngine().getClass().getName(), input);
+        Assertions.assertEquals(server.getServerEngine().getClass().getName(), input);
 
         RestfulProxy proxy = new RestfulProxy("http://localhost:" + 9000 + "/restful");
         proxy.setPrinter(new PrintWriter(System.out, true));
@@ -72,14 +75,14 @@ public class JaxRSServerTest {
     // NOTE when running using Tomcat, it's quite a bit slower because the shutdown time is long.
     // The various runXXX methods start and stop the engine.
     @ParameterizedTest
-    @ValueSource(strings = {"net.e6tech.elements.web.cxf.jetty.JettyEngine", "net.e6tech.elements.web.cxf.tomcat.TomcatEngine", })
+    @ValueSource(strings = {"net.e6tech.elements.web.cxf.jetty.JettyEngine" })
     public void hello(String input) {
         new LaunchController().launchScript("conf/provisioning/jaxrs/helloworld.groovy")
                 .property("serverEngineClass", input)
                 .inject(this).launch();
 
         JaxRSServer server = provision.getComponentResource("helloworld", "_helloworld");
-        assertEquals(server.getServerEngine().getClass().getName(), input);
+        Assertions.assertEquals(server.getServerEngine().getClass().getName(), input);
         runHello("http://localhost:" + 9000 + "/restful");
         runHello("http://localhost:" + 9001 + "/restful");
         runHello("http://localhost:" + 9002 + "/restful");
@@ -119,11 +122,11 @@ public class JaxRSServerTest {
         proxy.setPrinter(new PrintWriter(System.out, true));
         HelloWorldRS2 api = proxy.newProxy(HelloWorldRS2.class);
         String reply = api.sayHi("Mr. Jones");
-        assertEquals(reply, "Hello2 Mr. Jones");
+        Assertions.assertEquals(reply, "Hello2 Mr. Jones");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"net.e6tech.elements.web.cxf.tomcat.TomcatEngine", "net.e6tech.elements.web.cxf.jetty.JettyEngine"})
+    @ValueSource(strings = {"net.e6tech.elements.web.cxf.jetty.JettyEngine"})
     public void httpsKeyStore(String input) {
         new LaunchController().launchScript("conf/provisioning/jaxrs/helloworld_keystore.groovy")
                 .property("serverEngineClass", input)
@@ -132,7 +135,7 @@ public class JaxRSServerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"net.e6tech.elements.web.cxf.tomcat.TomcatEngine", "net.e6tech.elements.web.cxf.jetty.JettyEngine"})
+    @ValueSource(strings = {"net.e6tech.elements.web.cxf.jetty.JettyEngine"})
     public void httpsKeyStoreFile(String input) {
         new LaunchController().launchScript("conf/provisioning/jaxrs/helloworld_keystore_file.groovy")
                 .property("serverEngineClass", input)
@@ -141,7 +144,7 @@ public class JaxRSServerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"net.e6tech.elements.web.cxf.tomcat.TomcatEngine", "net.e6tech.elements.web.cxf.jetty.JettyEngine"})
+    @ValueSource(strings = {"net.e6tech.elements.web.cxf.jetty.JettyEngine"})
     public void httpsSelfSigned(String input) {
         new LaunchController().launchScript("conf/provisioning/jaxrs/helloworld_selfsigned.groovy")
                 .property("serverEngineClass", input)

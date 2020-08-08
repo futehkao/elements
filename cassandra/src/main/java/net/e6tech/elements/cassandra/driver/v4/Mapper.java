@@ -40,7 +40,7 @@ public interface Mapper<T> {
 
     T get(ReadOptions options, Object ... keyColumns);
 
-    CompletionStage<T> getAsync(ReadOptions readOptions, Object ... keyColumnss);
+    CompletionStage<T> getAsync(ReadOptions readOptions, Object ... keyColumns);
 
     void save(WriteOptions options, T entity);
 
