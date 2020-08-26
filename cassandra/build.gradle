@@ -30,6 +30,7 @@ dependencies {
 
     compile("com.datastax.oss:java-driver-mapper-processor:${cassandraDriver4Version}") {
         exclude group: 'org.slf4j'
+        exclude group: 'com.github.jnr'
     }
 
     // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: "$cassandraDriver4Version"

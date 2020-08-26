@@ -29,15 +29,15 @@ dependencies {
         exclude group: 'org.ow2.asm'
     }
 
+    compile group: 'io.aeron', name: "aeron-driver", version: "${aeronVersion}"
+    compile group: 'io.aeron', name: "aeron-client", version: "${aeronVersion}"
     compile (group: 'com.typesafe.akka', name: "akka-cluster-typed_${akkaScalaVersion}", version: "${akkaVersion}") {
         exclude group: 'com.github.jnr'
         exclude group: 'org.ow2.asm'
     }
-
-    compile group: 'io.aeron', name: "aeron-driver", version: "${aeronVersion}"
-    compile group: 'io.aeron', name: "aeron-client", version: "${aeronVersion}"
-    compile group: 'com.typesafe.akka', name: "akka-cluster_${akkaScalaVersion}", version: "${akkaVersion}"
-    compile("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}")
+    compile("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}") {
+        exclude group: 'com.typesafe.akka', module: "akka-distributed-data_${akkaScalaVersion}"
+    }
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
