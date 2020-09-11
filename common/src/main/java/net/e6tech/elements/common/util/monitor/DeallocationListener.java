@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2020 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.e6tech.elements.common.util.monitor;
 
-/**
- * Created by futeh.
- *
- * IMPORTANT: implementer must not hold on to any references.
- */
-public interface AllocationListener {
+@FunctionalInterface
+public interface DeallocationListener extends AllocationListener {
+    @Override
     void onDeallocated();
-    void onPotentialLeak();
+
+    @Override
+    default void onPotentialLeak() {
+    }
 }

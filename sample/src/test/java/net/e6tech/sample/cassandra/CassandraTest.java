@@ -25,7 +25,6 @@ import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.driver.v4.SessionV4;
 import net.e6tech.elements.cassandra.etl.PartitionContext;
-import net.e6tech.elements.cassandra.transmutator.Transmutator;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
@@ -69,12 +68,12 @@ public class CassandraTest {
                     SessionV4 v4 = (SessionV4) resources.getInstance(Session.class);
                     CqlSession cql = v4.unwrap();
                     PreparedStatement pstmt = cql.prepare("select * from time_table where creation_time in :ids ");
-                    BoundStatement bound =  pstmt.bind();
+                    BoundStatement bound = pstmt.bind();
                     bound = bound.setList("ids", ids, Long.class);
-                    ResultSet rs =  cql.execute(bound);
+                    ResultSet rs = cql.execute(bound);
 
-                   List<TimeTable> testTables = s.all(TimeTable.class, "select * from time_table where creation_time in :ids",
-                           MapBuilder.of("ids", ids));
+                    List<TimeTable> testTables = s.all(TimeTable.class, "select * from time_table where creation_time in :ids",
+                            MapBuilder.of("ids", ids));
                     List<TimeTable> list = new ArrayList<>();
                     TimeTable test = new TimeTable();
                     test.setCreationTime(System.currentTimeMillis());
@@ -94,5 +93,17 @@ public class CassandraTest {
         context.setExtractAll(true);
         context.setTimeLag(0);
         new TimeTransmutator().run(context);
+    }
+
+    @Test
+    void schema() throws InterruptedException {
+        while (true) {
+            provision.newInstance(Schema.class)
+                    .threadSize(10)
+                    .extract("net.e6tech.elements.cassandra", false, etlContext -> {
+                    });
+            Thread.sleep(5000L);
+            System.gc();
+        }
     }
 }

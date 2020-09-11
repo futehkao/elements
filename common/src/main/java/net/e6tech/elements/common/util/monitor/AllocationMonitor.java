@@ -18,24 +18,26 @@ package net.e6tech.elements.common.util.monitor;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by futeh.
  *
- * Used to monitor objects that should have a short life time.
+ * Used to monitor objects gc state.
  */
 public class AllocationMonitor {
 
     private ReferenceQueue<Object> phantoms = new ReferenceQueue<>();
-    private Thread gcThread = new Thread();
-    Set<AllocationReference> allocated = Collections.synchronizedSet(new LinkedHashSet<>());
+    private Thread deallocThread = new Thread();
+    private final SortedSet<AllocationReference> allocated;
     private long checkInterval = 1 * 60000L;
     private long expired = 1 * 60000L;
     private boolean disabled = false;
+
+    public AllocationMonitor() {
+        Comparator<AllocationReference> comparator = Comparator.comparingLong(l -> l.expiredTime);
+        allocated = Collections.synchronizedSortedSet(new TreeSet<>(comparator));
+    }
 
     /**
      * The listener MUST not have any reference to obj.  Pay special attention especially when
@@ -45,13 +47,27 @@ public class AllocationMonitor {
      * @param obj the object to be monitor
      * @param listener an AllocationListener
      */
-    public void monitor(long timeout, Object obj, AllocationListener listener) {
+    public void monitorLeak(long timeout, Object obj, LeakListener listener) {
         if (disabled)
             return;
         long realTimeout = timeout;
         if (realTimeout <= 0)
             realTimeout = expired;
         allocated.add(new AllocationReference(realTimeout, obj, phantoms, listener));
+        checkGCThread();
+    }
+
+    /**
+     * The listener MUST not have any reference to obj.  Pay special attention especially when
+     * the listener is in the form of lambda expression.
+     *
+     * @param obj the object to be monitor
+     * @param listener an AllocationListener
+     */
+    public void monitorDealloc(Object obj, DeallocationListener listener) {
+        if (disabled)
+            return;
+        allocated.add(new AllocationReference(0, obj, phantoms, listener));
         checkGCThread();
     }
 
@@ -79,25 +95,22 @@ public class AllocationMonitor {
         this.disabled = disabled;
     }
 
+    public synchronized void shutdown() {
+        if (deallocThread.isAlive()) {
+            deallocThread.interrupt();
+        }
+        allocated.clear();
+        phantoms = new ReferenceQueue<>();
+    }
+
     @SuppressWarnings({"squid:S2276", "squid:S3776", "squid:S1188", "squid:S134"}) // we really want the thread to sleep, not wait
     protected synchronized void checkGCThread() {
-        if (gcThread.isAlive())
+        if (deallocThread.isAlive())
             return;
-        gcThread = new Thread(() -> {
-            try {
-                Thread.sleep(checkInterval);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+        Thread leakThread = new Thread(() -> {
+            Object wait = new Object();
             while (true) {
                 try {
-                    Reference ref = phantoms.poll();
-                    while (ref != null) {
-                        ref = phantoms.remove();
-                        allocated.remove(ref);
-                        ref = phantoms.poll();
-                    }
-
                     synchronized (allocated) {
                         Iterator<AllocationReference> iterator = allocated.iterator();
                         while (iterator.hasNext()) {
@@ -105,21 +118,44 @@ public class AllocationMonitor {
                             if (System.currentTimeMillis() > alloc.expiredTime) {
                                 alloc.getListener().onPotentialLeak();
                                 iterator.remove();
+                            } else {
+                                break;
                             }
                         }
                     }
-                    Thread.sleep(checkInterval);
+                    synchronized (wait) {
+                        wait.wait(checkInterval);
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
                 }
             }
         });
-        gcThread.setDaemon(true);
-        gcThread.start();
+
+        deallocThread = new Thread(() -> {
+            try {
+                while (true) {
+                    Reference<?> ref = phantoms.remove();
+                    allocated.remove(ref);
+                    if (ref instanceof AllocationReference) {
+                        AllocationReference alloc = (AllocationReference) ref;
+                        alloc.listener.onDeallocated();
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                leakThread.interrupt();
+            }
+        });
+        leakThread.setDaemon(true);
+        leakThread.start();
+
+        deallocThread.setDaemon(true);
+        deallocThread.start();
     }
 
-    static class AllocationReference extends PhantomReference {
+    static class AllocationReference extends PhantomReference<Object> {
         AllocationListener listener;
         long startTime;
         long expiredTime;
@@ -127,7 +163,10 @@ public class AllocationMonitor {
         @SuppressWarnings("unchecked")
         public AllocationReference(long timeout, Object referent, ReferenceQueue q, AllocationListener listener) {
             super(referent, q);
-            expiredTime = System.currentTimeMillis() + timeout;
+            if (timeout == 0)
+                expiredTime = Long.MAX_VALUE;
+            else
+                expiredTime = System.currentTimeMillis() + timeout;
             this.listener = listener;
         }
 
@@ -139,12 +178,12 @@ public class AllocationMonitor {
             return startTime;
         }
 
+        @Override
         public boolean equals(Object object) {
-            if (!(object instanceof  AllocationReference))
-                return false;
-            return System.identityHashCode(this) == System.identityHashCode(object);
+            return this == object;
         }
 
+        @Override
         public int hashCode() {
             return System.identityHashCode(this);
         }

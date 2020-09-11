@@ -67,7 +67,6 @@ public class Schema {
     private Provision provision;
     private List<Map<String, String>> codecs = new ArrayList<>();
     private boolean dropColumn = false;
-    private ExecutorService threadPool;
     private int threadSize = 1;
     private long validationWait = 1000L;
 
@@ -77,10 +76,6 @@ public class Schema {
 
     public void setThreadSize(int threadSize) {
         this.threadSize = threadSize;
-        if (threadPool != null) {
-            threadPool.shutdown();
-            threadPool = null;
-        }
     }
 
     public Schema threadSize(int threadSize) {
@@ -385,48 +380,52 @@ public class Schema {
 
     public void extract(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
         Map<Class<Strategy>, ETLContext> map = scan(packageName, recursive, customizer);
-        if (threadPool == null) {
-            threadPool = Executors.newFixedThreadPool(threadSize);
-        }
-        List<Future> futures = new LinkedList();
-        for (Map.Entry<Class<Strategy>, ETLContext> entry : map.entrySet()) {
-            Future<?> future = threadPool.submit(() -> {
-                try {
-                    Strategy strategy = entry.getKey().getDeclaredConstructor().newInstance();
-                    strategy.run(entry.getValue());
-                } catch (Exception e) {
-                    logger.error("Cannot extract {}", entry.getKey());
-                    throw new SystemException(e);
-                }
-            });
-            futures.add(future);
-        }
-
-        for (Future future : futures) {
-            try {
-                future.get();
-            } catch (InterruptedException e) {
-                logger.warn("Interrupted", e);
-                Thread.currentThread().interrupt();
-            } catch (ExecutionException e) {
-                if (e.getCause() instanceof RuntimeException)
-                    throw (RuntimeException) e.getCause();
-                else
-                    throw new SystemException(e.getCause());
+        ExecutorService threadPool = null;
+        try {
+            int totalEntries = map.size();
+            if (totalEntries == 0)
+                return;
+            int threadNeeded = threadSize;
+            if (threadNeeded > map.size())
+                threadNeeded = map.size();
+            threadPool = Executors.newFixedThreadPool(threadNeeded);
+            List<Future<?>> futures = new LinkedList<>();
+            for (Map.Entry<Class<Strategy>, ETLContext> entry : map.entrySet()) {
+                Future<?> future = threadPool.submit(() -> {
+                    try {
+                        Strategy strategy = entry.getKey().getDeclaredConstructor().newInstance();
+                        strategy.run(entry.getValue());
+                    } catch (Exception e) {
+                        logger.error("Cannot extract {}", entry.getKey());
+                        throw new SystemException(e);
+                    }
+                });
+                futures.add(future);
             }
+
+            for (Future<?> future : futures) {
+                try {
+                    future.get();
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted", e);
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException e) {
+                    if (e.getCause() instanceof RuntimeException)
+                        throw (RuntimeException) e.getCause();
+                    else
+                        throw new SystemException(e.getCause());
+                }
+            }
+        } finally {
+            if (threadPool != null)
+                threadPool.shutdown();
         }
     }
 
     public Map<Class<Strategy>, ETLContext> scan(String packageName, boolean recursive, Consumer<ETLContext> customizer) {
         PackageScanner scanner = new PackageScanner();
-        List<Class> classList = new ArrayList<>();
         Class[] classes = recursive ? scanner.getTopLevelClassesRecursive(provision.getPluginClassLoader(), packageName)
                 : scanner.getTopLevelClasses(provision.getPluginClassLoader(), packageName);
-        for (Class cls : classes) {
-            if (Strategy.class.isAssignableFrom(cls)) {
-                classList.add(cls);
-            }
-        }
 
         Map<Class, Class> map = new LinkedHashMap<>();
         List<Class> list = new ArrayList<>();

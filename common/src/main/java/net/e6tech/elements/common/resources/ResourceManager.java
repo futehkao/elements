@@ -754,6 +754,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         } catch (Exception e) {
             // don't care at this point.
         }
+        getAllocationMonitor().shutdown();
     }
 
     Map<Class, ClassInjectionInfo> getInjections() {
