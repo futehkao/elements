@@ -21,15 +21,15 @@ import akka.actor.typed.Behavior;
 import akka.actor.typed.Props;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
+import net.e6tech.elements.common.util.SystemException;
 
-
-public class Spawn<T, B extends Receptor<T,B>> {
+public class Spawn<T, B extends Receptor<T, B>> {
 
     private String name;
-    private Receptor<?,?> parent;
+    private Receptor<?, ?> parent;
     private Props props;
 
-    public Spawn(Receptor<?,?> parent) {
+    public Spawn(Receptor<?, ?> parent) {
         this.parent = parent;
     }
 
@@ -43,8 +43,8 @@ public class Spawn<T, B extends Receptor<T,B>> {
         return this;
     }
 
-    public B spawnNow(B common) {
-        ActorRef<T> ref = spawn(common);
+    public B spawnNow(B child) {
+        ActorRef<T> ref = spawn(child);
         ExtensionEvents.ExtensionsResponse extensions = parent.getGuardian().talk(ref, ExtensionEvents.class).askAndWait(ExtensionEvents.Extensions::new);
         return extensions.getOwner();
     }
@@ -53,23 +53,47 @@ public class Spawn<T, B extends Receptor<T,B>> {
      * Note, the factory is called in a separated thread.  Akka retrieves messages from its mailbox
      * and process the spawn message.
      */
-    public ActorRef<T> spawn(B common) {
-        ActorContext<?> context = parent.getContext();
-        if (name != null) {
-            if (props != null)
-                return context.spawn(setup(common), name, props);
-            else
-                return context.spawn(setup(common), name);
-        } else {
-            if (props != null)
-                return context.spawnAnonymous(setup(common), props);
-            else
-                return context.spawnAnonymous(setup(common));
+    public ActorRef<T> spawn(B child) {
+        try {
+            return spawnChild(child);
+        } catch (UnsupportedOperationException ex) {
+            return spawnExternally(child);
         }
     }
 
-    protected Behavior<T> setup(B common) {
+    protected ActorRef<T> spawnChild(B child) {
+        ActorContext<?> context = parent.getContext();
+        if (name != null) {
+            if (props != null)
+                return context.spawn(setup(child), name, props);
+            else
+                return context.spawn(setup(child), name);
+        } else {
+            if (props != null)
+                return context.spawnAnonymous(setup(child), props);
+            else
+                return context.spawnAnonymous(setup(child));
+        }
+    }
+
+    public B spawnNowExternally(B child) {
+        ActorRef<T> ref = spawnExternally(child);
+        ExtensionEvents.ExtensionsResponse extensions =
+                parent.getGuardian().talk((ActorRef<?>) ref, ExtensionEvents.class).askAndWait(ExtensionEvents.Extensions::new);
+        return extensions.getOwner();
+    }
+
+    public ActorRef<T> spawnExternally(B child) {
+        try {
+            SpawnEvents.SpawnResponse resp = parent.talk(SpawnEvents.class).askAndWait(ref -> new SpawnEvents.SpawnRequest(ref, child, name, props));
+            return resp.getSpawned();
+        } catch (SystemException ex) {
+            throw ex;
+        }
+    }
+
+    protected Behavior<T> setup(B child) {
         return Behaviors.setup(
-                ctx -> common.setup(ctx, parent.getGuardian()));
+                ctx -> child.setup(ctx, parent.getGuardian()));
     }
 }

@@ -94,16 +94,4 @@ public class CassandraTest {
         context.setTimeLag(0);
         new TimeTransmutator().run(context);
     }
-
-    @Test
-    void schema() throws InterruptedException {
-        while (true) {
-            provision.newInstance(Schema.class)
-                    .threadSize(10)
-                    .extract("net.e6tech.elements.cassandra", false, etlContext -> {
-                    });
-            Thread.sleep(5000L);
-            System.gc();
-        }
-    }
 }

@@ -33,15 +33,22 @@ import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.common.util.SystemException;
 import org.objenesis.strategy.SerializingInstantiatorStrategy;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.invoke.SerializedLambda;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.Deflater;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class Serializer extends SerializerWithStringManifest {
-
+    private static final String CONFIG = "akka.actor.elements.serializer";
     private Pool<Kryo> pool;
     private Pool<Output> outputPool;
     private ActorRefSerializer actorRefSerializer;
     private TypedActorRefSerializer typedActorRefSerializer;
+    int compressionLevel = Deflater.BEST_SPEED;
     private Cache<String, Class> classCache = CacheBuilder.newBuilder()
             .concurrencyLevel(32)
             .initialCapacity(128)
@@ -50,8 +57,15 @@ public class Serializer extends SerializerWithStringManifest {
             .build();
 
     public Serializer(ExtendedActorSystem actorSystem) {
+        if (!actorSystem.settings().config().getIsNull(CONFIG + ".compression")) {
+            compressionLevel = actorSystem.settings().config().getInt(CONFIG + ".compression");
+        }
+
+        actorRefSerializer = new ActorRefSerializer(actorSystem);
+        typedActorRefSerializer = new TypedActorRefSerializer(actorSystem);
+
         pool = new Pool<Kryo>(true, false, 64) {
-            protected Kryo create () {
+            protected Kryo create() {
                 Kryo kryo = new Kryo();
                 kryo.setInstantiatorStrategy(new DefaultInstantiatorStrategy(new SerializingInstantiatorStrategy()));
                 kryo.setRegistrationRequired(false);
@@ -64,13 +78,10 @@ public class Serializer extends SerializerWithStringManifest {
         };
 
         outputPool = new Pool<Output>(true, false, 64) {
-            protected Output create () {
+            protected Output create() {
                 return new Output(4096, -1);
             }
         };
-
-        actorRefSerializer = new ActorRefSerializer(actorSystem);
-        typedActorRefSerializer = new TypedActorRefSerializer(actorSystem);
     }
 
     // Pick a unique identifier for your Serializer,
@@ -91,12 +102,22 @@ public class Serializer extends SerializerWithStringManifest {
     public byte[] toBinary(Object obj) {
         Kryo kryo = pool.obtain();
         Output output = outputPool.obtain();
-        kryo.writeObject(output, obj);
-        output.close();
-        byte[] bytes = output.toBytes();
-        pool.free(kryo);
-        outputPool.free(output);
-        return bytes;
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             GZIPOutputStream zos = new GZIPOutputStream(bos) {
+                 {
+                     this.def.setLevel(compressionLevel);
+                 }
+             }) {
+            output.setOutputStream(zos);
+            kryo.writeObject(output, obj);
+            output.close();
+            return bos.toByteArray();
+        } catch (IOException ex) {
+            throw new SystemException(ex);
+        } finally {
+            pool.free(kryo);
+            outputPool.free(output);
+        }
     }
 
     // "fromBinary" deserializes the given array,
@@ -115,12 +136,14 @@ public class Serializer extends SerializerWithStringManifest {
             }
         }
 
-        Input input = new Input();
-        input.setBuffer(bytes);
-        Object object = kryo.readObject(input, cls);
-        input.close();
-        pool.free(kryo);
-        return object;
+        try (GZIPInputStream zin = new GZIPInputStream(new ByteArrayInputStream(bytes));
+             Input input = new Input(zin)) {
+            return kryo.readObject(input, cls);
+        } catch (IOException ex) {
+            throw new SystemException(ex);
+        } finally {
+            pool.free(kryo);
+        }
     }
 
     public class ActorRefSerializer extends com.esotericsoftware.kryo.Serializer<ActorRef> {

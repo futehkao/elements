@@ -109,6 +109,14 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
         return new ExtensionEvents.ExtensionsResponse(getSelf(), this, new LinkedHashMap<>(extensions));
     }
 
+    @Typed
+    private SpawnEvents.SpawnResponse spawn(SpawnEvents.SpawnRequest request) {
+        ActorRef<?> ref = this.childActor(Receptor.class)
+                .withProps(request.getProps())
+                .spawnChild(request.getChild());
+        return new SpawnEvents.SpawnResponse(getSelf(), this, ref);
+    }
+
     private void saveEventClass(Class cls, Receptor implementation) {
         // deduce event class
         Class c = cls;

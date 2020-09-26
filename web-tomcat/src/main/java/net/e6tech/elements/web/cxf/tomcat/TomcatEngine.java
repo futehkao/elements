@@ -194,10 +194,10 @@ public class TomcatEngine implements ServerEngine {
     protected Connector createConnector(CXFServer cxfServer, URL url) {
         Connector connector = tomcatSSL.createConnector();
         connector.setPort(url.getPort());
-        connector.setAttribute("maxThreads", maxThreads);  // default 200
-        connector.setAttribute("maxConnections", maxConnections); // default 10000
-        connector.setAttribute("minSpareThreads", minSpareThreads); // default 10
-        connector.setAttribute("address", url.getHost());
+        connector.setProperty("maxThreads", String.valueOf(maxThreads));  // default 200
+        connector.setProperty("maxConnections", String.valueOf(maxConnections)); // default 10000
+        connector.setProperty("minSpareThreads", String.valueOf(minSpareThreads)); // default 10
+        connector.setProperty("address", url.getHost());
         tomcatSSL.initialize(cxfServer, url, connector);
         return connector;
     }

@@ -35,9 +35,9 @@ public class TomcatSSL {
         if ("https".equals(url.getProtocol())) {
             connector.setSecure(true);
             connector.setScheme("https");
-            connector.setAttribute("protocol", "HTTP/1.1");
-            connector.setAttribute("SSLEnabled", true);
-            connector.setAttribute("defaultSSLHostConfigName", url.getHost());
+            connector.setProperty("protocol", "HTTP/1.1");
+            connector.setProperty("SSLEnabled", "true");
+            connector.setProperty("defaultSSLHostConfigName", url.getHost());
             if (cxfServer.getKeyStoreFile() == null &&
                     cxfServer.getKeyStore() == null &&
                     cxfServer.getSelfSignedCert() == null)

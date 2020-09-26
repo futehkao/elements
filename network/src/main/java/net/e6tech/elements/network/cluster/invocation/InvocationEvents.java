@@ -23,7 +23,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import net.e6tech.elements.common.actor.typed.Ask;
 import net.e6tech.elements.common.util.CompressionSerializer;
-import net.e6tech.elements.common.util.SystemException;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -89,14 +88,7 @@ public interface InvocationEvents extends Serializable {
         }
 
         public void write(Kryo kryo, Output out) {
-            CompressionSerializer serializer = new CompressionSerializer();
-            byte[] payload;
-            try {
-                payload = serializer.toBytes(arguments);
-            } catch (Exception e) {
-                throw new SystemException(e);
-            }
-            kryo.writeObjectOrNull(out, payload, byte[].class);
+            kryo.writeObjectOrNull(out, arguments, Object[].class);
             kryo.writeObjectOrNull(out, reference, RegisterReference.class);
             kryo.writeObjectOrNull(out, getSender(), ActorRef.class);
             kryo.writeObject(out, timeout);
@@ -104,15 +96,10 @@ public interface InvocationEvents extends Serializable {
 
         @SuppressWarnings({"unchecked", "squid:S2674"})
         public void read(Kryo kryo, Input in) {
-            byte[] buffer = kryo.readObjectOrNull(in, byte[].class);
+            arguments = kryo.readObjectOrNull(in, Object[].class);
             reference = kryo.readObjectOrNull(in, RegisterReference.class);
             setSender(kryo.readObjectOrNull(in, ActorRef.class));
             timeout = kryo.readObject(in, Long.class);
-            try {
-                arguments = CompressionSerializer.fromBytes(buffer);
-            } catch (Exception e) {
-                throw new SystemException(e);
-            }
         }
 
         private void writeObject(java.io.ObjectOutputStream out)

@@ -16,15 +16,24 @@
 
 package net.e6tech.elements.network.cluster;
 
+import akka.actor.typed.ActorRef;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
+import net.e6tech.elements.network.cluster.catalyst.Reactor;
+import net.e6tech.elements.network.cluster.invocation.Invoker;
 import net.e6tech.elements.network.cluster.invocation.Registry;
 import org.junit.jupiter.api.Test;
 
+import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.
@@ -78,8 +87,10 @@ public class RegistryTest {
         Thread.sleep(2000L);
 
         Async<Function> async = registry.async("blah",  Function.class, 100l);
-        async.apply(svc -> svc.apply("One more time"))
-                .thenAccept(result -> System.out.println(result));
+        async.apply(svc ->
+                svc.apply("One more time"))
+                .thenAccept(result ->
+                        System.out.println(result));
         Thread.sleep(2000L);
     }
 
@@ -122,16 +133,13 @@ public class RegistryTest {
         Thread.sleep(2000L);
     }
 
-    // For the following test, start asyncVM1, asyncVM1_1 and then asyncVM2.
-    // asyncVM2 will then submit jobs to the cluster.
-    @Test
-    public void asyncVM1() throws Exception {
-        ClusterNode clusterNode = create(2551);
+    private Registry createX(int port) {
+        ClusterNode clusterNode = create(port);
         Registry registry = clusterNode.getRegistry();
-
         registry.register("blah", X.class, new X() {
             @Override
             public int doSomething(int x) {
+                System.out.println("serviced by port=" + port + ", value=" + x);
                 return x * x;
             }
 
@@ -146,6 +154,15 @@ public class RegistryTest {
                 return response;
             }
         });
+        return registry;
+    }
+
+    // For the following test, start asyncVM1, asyncVM1_1 and then asyncVM2.
+    // asyncVM2 will then submit jobs to the cluster.
+    @Test
+    public void asyncVM1() throws Exception {
+        Registry registry = createX(2551);
+
         synchronized (this) {
             wait();
         }
@@ -153,26 +170,7 @@ public class RegistryTest {
 
     @Test
     public void asyncVM1_1() throws Exception {
-        ClusterNode clusterNode = create(2553);
-        Registry registry = clusterNode.getRegistry();
-
-        registry.register("blah", X.class, new X() {
-            @Override
-            public int doSomething(int x) {
-                return x * x;
-            }
-
-            @Override
-            public void returnsVoid(int x) {
-            }
-
-            @Override
-            public Response request(Request request) {
-                Response response = new Response();
-                response.map = request.map;
-                return response;
-            }
-        });
+        Registry registry = createX(2553);
         synchronized (this) {
             wait();
         }
@@ -183,30 +181,25 @@ public class RegistryTest {
     public void asyncVM2() throws Exception {
         ClusterNode clusterNode = create(2552);
         Registry registry = clusterNode.getRegistry();
-        long start = System.currentTimeMillis();
-        AtomicInteger member = new AtomicInteger(0);
+        registry.discover("blah", X.class);
 
-        synchronized (member) {
-            while (member.get() == 0) {
-                member.wait();
-            }
-        }
-        System.out.println("Detected announcement in " + (System.currentTimeMillis() - start) + "ms");
+        registry.waitForRoutes("blah", X.class, coll -> coll.size() >= 1, 60000L);
 
         Collection routes = registry.routes("blah", X.class);
 
         for (int i = 0; i< 10; i++) {
-            ClusterAsync<X> async = registry.async("blah", X.class, 5000L);
+            Async<X> async = registry.async("blah", X.class, 5000L);
             int arg = i;
-            async.ask(p -> p.doSomething(arg))
+            async.apply(p -> p.doSomething(arg))
                     .thenAccept(result -> {
-                        System.out.println("value=" + result.getValue() + " sender=" + result.getResponder());
+                        System.out.println("value=" + result);
                     });
         }
 
         Async<X> async = registry.async("blah", X.class, 5000L);
         Request request = new Request();
         request.map.put("key", "value");
+        request.map.put("key2", new byte[4096]);
         async.apply(p -> p.request(request))
                 .thenAccept(result -> {
                     System.out.println(((Response) result).map);
@@ -221,7 +214,7 @@ public class RegistryTest {
         Thread.sleep(2000L);
     }
 
-    interface X {
+    public interface X {
         int doSomething(int x);
         void returnsVoid(int x);
         Response request(Request request);
@@ -231,7 +224,7 @@ public class RegistryTest {
         Map map = new HashMap();
     }
 
-    public static class Response  {
+    public static class Response {
         Map map = new HashMap();
     }
 

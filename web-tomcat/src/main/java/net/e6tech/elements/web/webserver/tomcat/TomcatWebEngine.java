@@ -135,17 +135,17 @@ public class TomcatWebEngine implements WebEngine {
     protected Connector createConnector(WebServer server, URL url) {
         Connector connector = new Connector("HTTP/1.1");
         connector.setPort(url.getPort());
-        connector.setAttribute("maxThreads", maxThreads);  // default 200
-        connector.setAttribute("maxConnections", maxConnections); // default 10000
-        connector.setAttribute("minSpareThreads", minSpareThreads); // default 10
-        connector.setAttribute("address", url.getHost());
+        connector.setProperty("maxThreads", String.valueOf(maxThreads));  // default 200
+        connector.setProperty("maxConnections", String.valueOf(maxConnections)); // default 10000
+        connector.setProperty("minSpareThreads", String.valueOf(minSpareThreads)); // default 10
+        connector.setProperty("address", url.getHost());
 
         if ("https".equals(url.getProtocol())) {
             connector.setSecure(true);
             connector.setScheme("https");
-            connector.setAttribute("protocol", "HTTP/1.1");
-            connector.setAttribute("SSLEnabled", true);
-            connector.setAttribute("defaultSSLHostConfigName", url.getHost());
+            connector.setProperty("protocol", "HTTP/1.1");
+            connector.setProperty("SSLEnabled", String.valueOf(true));
+            connector.setProperty("defaultSSLHostConfigName", url.getHost());
             if (server.getKeyStoreFile() == null)
                 throw new IllegalArgumentException("Missing keyStoreFile or keyStore");
 

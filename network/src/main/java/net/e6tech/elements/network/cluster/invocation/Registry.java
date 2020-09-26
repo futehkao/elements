@@ -97,6 +97,9 @@ public interface Registry {
 
     <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation);
 
+    // discover when other nodes have register the interfaceClass
+    <T, U> CompletionStage<List<U>> discover(String qualifier, Class<T> interfaceClass);
+
     <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker);
 
     Function<Object[], CompletionStage<InvocationEvents.Response>> route(String qualifier, Class interfaceClass, Method method, long timeout);

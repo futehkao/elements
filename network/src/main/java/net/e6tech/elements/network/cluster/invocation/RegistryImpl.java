@@ -26,6 +26,7 @@ import net.e6tech.elements.network.cluster.RouteListener;
 import scala.concurrent.ExecutionContextExecutor;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -71,14 +72,16 @@ public class RegistryImpl implements Registry {
 
     void onAnnouncement(String path) {
         dispatcher.execute(() -> {
-            for (RouteListener l : listeners)
+            List<RouteListener> list = new ArrayList<>(listeners);
+            for (RouteListener l : list)
                 l.onAnnouncement(path);
         });
     }
 
     void onTerminated(String path, ActorRef actor) {
         dispatcher.execute(() -> {
-            for (RouteListener l : listeners)
+            List<RouteListener> list = new ArrayList<>(listeners);
+            for (RouteListener l : list)
                 l.onTerminated(path, actor.path().toString());
         });
     }
@@ -134,6 +137,11 @@ public class RegistryImpl implements Registry {
         return register(qualifier, interfaceClass, implementation, null);
     }
 
+    @Override
+    public <T, U> CompletionStage<List<U>> discover(String qualifier, Class<T> interfaceClass) {
+        return register(qualifier, interfaceClass, null, null);
+    }
+
     /**
      *
      * @param qualifier a unique name for the service
@@ -146,7 +154,9 @@ public class RegistryImpl implements Registry {
     @Override
     public <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker) {
         if (!interfaceClass.isInterface())
-            throw new IllegalArgumentException("interfaceClass needs to be an interface");
+            throw new IllegalArgumentException("interfaceClass " + interfaceClass.getName() + " needs to be an interface.");
+        if (!Modifier.isPublic(interfaceClass.getModifiers()))
+            throw new IllegalArgumentException("interfaceClass " + interfaceClass.getName() + " needs to be public.");
 
         ArrayList<CompletableFuture<U>> list = new ArrayList<>();
         for (Method method : interfaceClass.getMethods()) {
@@ -158,6 +168,9 @@ public class RegistryImpl implements Registry {
                     || "equals".equals(methodName) && method.getParameterCount() == 1
                     || "toString".equals(methodName) && method.getParameterCount() == 0) {
                 // ignored
+            } else if (implementation == null)  {
+                // not expecting
+                register(fullyQualify(qualifier, interfaceClass, method), null).toCompletableFuture();
             } else {
                 if (customizedInvoker == null) {
                     customizedInvoker = new Invoker();
