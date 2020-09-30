@@ -31,6 +31,8 @@ dependencies {
     compile("com.datastax.oss:java-driver-mapper-processor:${cassandraDriver4Version}") {
         exclude group: 'org.slf4j'
         exclude group: 'com.github.jnr'
+        exclude group: 'org.apache.tinkerpop', module: 'gremlin-core'
+        exclude group: 'org.apache.tinkerpop', module: 'tinkergraph-gremlin'
     }
 
     // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: "$cassandraDriver4Version"

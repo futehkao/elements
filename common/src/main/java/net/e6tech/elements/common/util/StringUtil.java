@@ -67,4 +67,21 @@ public class StringUtil {
 
         return s.substring(start, end + 1);
     }
+
+    public static boolean isNotBlank(String str) {
+        return !StringUtil.isBlank(str);
+    }
+
+    public static boolean isBlank(String str) {
+        int strLen;
+        if (str == null || (strLen = str.length()) == 0) {
+            return true;
+        }
+        for (int i = 0; i < strLen; i++) {
+            if ((Character.isWhitespace(str.charAt(i)) == false)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

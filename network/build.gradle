@@ -34,9 +34,11 @@ dependencies {
     compile (group: 'com.typesafe.akka', name: "akka-cluster-typed_${akkaScalaVersion}", version: "${akkaVersion}") {
         exclude group: 'com.github.jnr'
         exclude group: 'org.ow2.asm'
+        exclude group: 'com.hierynomus', module: 'asn-one'
     }
     compile("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}") {
         exclude group: 'com.typesafe.akka', module: "akka-distributed-data_${akkaScalaVersion}"
+        exclude group: 'com.hierynomus', module: 'asn-one'
     }
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"

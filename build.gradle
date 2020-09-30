@@ -1,4 +1,4 @@
-ext.elementsVersion = '2.6.11'
+ext.elementsVersion = '2.6.12'
 ext.junitPlatformLauncherVersion = '1.6.2'
 ext.junitJupiterVersion = '5.6.2'
 ext.snakeyamlVersion = '1.27'
@@ -36,6 +36,18 @@ ext.bouncycastleVersion = '1.66'
 ext.jaxbVersion = '2.3.0'
 ext.jaxbRuntime = '2.3.3'
 ext.jnrffiVersion = '2.1.16'  // cassandra and akka cluster typed
+
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath 'org.owasp:dependency-check-gradle:6.0.2'
+    }
+}
 
 allprojects {
     group 'net.e6tech'
@@ -80,6 +92,11 @@ subprojects {
     javadoc {
         source = sourceSets.main.allJava
         classpath = configurations.compile
+    }
+
+    apply plugin: 'org.owasp.dependencycheck'
+    dependencyCheck {
+        suppressionFile = 'owasp.xml'
     }
 
     task sourcesJar(type: Jar) {

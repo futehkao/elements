@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
+    <suppress>
+        <notes><![CDATA[
+   file name: cxf-core-3.1.9.jar
+   ]]></notes>
+        <gav regex="true">^org\.apache\.cxf:cxf-core:.*$</gav>
+        <cve>CVE-2012-5786</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bcpg-jdk15on-1.52.jar
+   ]]></notes>
+        <gav regex="true">^org\.bouncycastle:bcpg-jdk15on:.*$</gav>
+        <cve>CVE-2005-0366</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bcpg-jdk15on-1.52.jar
+   ]]></notes>
+        <gav regex="true">^org\.bouncycastle:bcpg-jdk15on:.*$</gav>
+        <cve>CVE-2001-0381</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bcpg-jdk15on-1.52.jar
+   ]]></notes>
+        <gav regex="true">^org\.bouncycastle:bcpg-jdk15on:.*$</gav>
+        <cve>CVE-2001-0265</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: commons-collections-3.2.1.jar
+   ]]></notes>
+        <gav regex="true">^commons-collections:commons-collections:.*$</gav>
+        <cve>CVE-2015-6420</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: groovy-all-2.4.7.jar
+   ]]></notes>
+        <gav regex="true">^org\.codehaus\.groovy:groovy-all:.*$</gav>
+        <cve>CVE-2016-6497</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-6664</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-6663</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-6662</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5635</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5634</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5633</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5632</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5631</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5630</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5629</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5628</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5627</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5626</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5625</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5612</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5609</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5584</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5507</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5444</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-5440</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-3615</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-3521</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-3495</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-3492</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-3477</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-3452</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0666</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0650</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0649</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0648</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0647</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0646</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0644</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0643</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0641</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0640</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0616</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0610</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0609</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0608</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0606</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0600</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0598</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0597</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0596</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0546</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2016-0505</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2015-3152</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-6559</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-6507</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-6500</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-6496</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-6494</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-6491</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-6469</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-6464</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2014-0001</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: mariadb-java-client-1.5.5.jar
+   ]]></notes>
+        <gav regex="true">^org\.mariadb\.jdbc:mariadb-java-client:.*$</gav>
+        <cve>CVE-2017-3302</cve>
+    </suppress>
+</suppressions>
