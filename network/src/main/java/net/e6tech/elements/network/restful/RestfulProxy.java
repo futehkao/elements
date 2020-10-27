@@ -71,6 +71,7 @@ public class RestfulProxy {
 
     public void setPrinter(PrintWriter printer) {
         this.printer = printer;
+        client.setPrinter(printer);
     }
 
     public String getHostAddress() {
@@ -166,16 +167,6 @@ public class RestfulProxy {
 
         @Override
         public Object invoke(CallFrame frame) throws Throwable {
-            if (proxy.printer != null) {
-                String signature = methodSignatures.computeIfAbsent(frame.getMethod(), this::methodSignature);
-                String caller = Reflection.<String, Boolean>mapCallingStackTrace(e -> {
-                    if (e.state().isPresent()) return e.get().toString(); // previous element match.
-                    if (e.get().getMethodName().equals(frame.getMethod().getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
-                    return null;
-                }).orElse("Cannot detect caller");
-                proxy.printer.println("Called by: " + caller);
-                proxy.printer.println(signature);
-            }
             Request request = proxy.client.create();
             if (presentation != null)
                 request.setPresentation(presentation);
@@ -197,6 +188,18 @@ public class RestfulProxy {
             try {
                 forwarder = methodForwarders.computeIfAbsent(frame.getMethod(),
                         key -> new MethodForwarder(ctx, key));
+                if (proxy.printer != null) {
+                    proxy.printer.println("CALLING RESTFUL METHOD -------------");
+                    String signature = methodSignatures.computeIfAbsent(frame.getMethod(), this::methodSignature);
+                    String caller = Reflection.<String, Boolean>mapCallingStackTrace(e -> {
+                        if (e.state().isPresent()) return e.get().toString(); // previous element match.
+                        if (e.get().getMethodName().equals(frame.getMethod().getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
+                        return null;
+                    }).orElse("Cannot detect caller");
+                    proxy.printer.println("Called by: " + caller);
+                    proxy.printer.println("Method: " + signature);
+                    proxy.printer.println();
+                }
             } catch (IllegalArgumentException ex) {
                 // this is clearly not a restful method
                 if (frame.getTarget() != null)
