@@ -273,8 +273,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     @SuppressWarnings("squid:CommentedOutCodeLine")
     public Atom createAtom(String atomName, Consumer<Atom> consumer, Atom prototypeAtom, boolean prototype) {
-        if (name != null && atoms.get(atomName) != null)
+        if (name != null && atoms.get(atomName) != null) {
+            logger.warn("Atom named " + atomName + " already exists!", new Throwable());
             return atoms.get(atomName);
+        }
         Atom atom = new Atom(this, prototypeAtom);
         atom.setPrototype(prototype);
         atom.setName(atomName);

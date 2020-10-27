@@ -164,7 +164,7 @@ public class Scripting {
             String file;
 
             if (scriptPath.isClassPath()) {
-                InputStream stream = getClass().getClassLoader().getResourceAsStream(scriptPath.getFileName());
+                InputStream stream = engine.shell.getClassLoader().getResourceAsStream(scriptPath.getFileName());
                 if (stream == null)
                     throw new IOException("File not found: " + scriptPath.getClassPath());
                 reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
@@ -370,7 +370,7 @@ public class Scripting {
         String[] paths;
         try {
             String path = normalizePath(originalPath);
-            paths = FileUtil.listFiles(path, getExtension());
+            paths = FileUtil.listFiles(engine.shell.getClassLoader(), path, getExtension());
             if ((paths == null || paths.length == 0) && !(path.endsWith("**") || path.endsWith("*")))
                 throw new IOException("Script not found " + originalPath);
         } catch (IOException e) {

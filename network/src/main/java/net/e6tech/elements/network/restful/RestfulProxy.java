@@ -95,23 +95,23 @@ public class RestfulProxy {
 
     public  <T> T newProxy(Class<T> serviceClass) {
         client.setPrinter(printer);
-        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, null, printer));
+        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, null));
     }
 
     public  <T> T newProxy(Class<T> serviceClass, Presentation presentation) {
         client.setPrinter(printer);
-        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, presentation, printer));
+        return interceptor.newInstance(serviceClass, new InvocationHandler(this, serviceClass, presentation));
     }
 
     public  <T> T newProxy(Class<T> serviceClass, InterceptorListener listener) {
         client.setPrinter(printer);
-        return interceptor.instanceBuilder(serviceClass, new InvocationHandler(this, serviceClass, null, printer))
+        return interceptor.instanceBuilder(serviceClass, new InvocationHandler(this, serviceClass, null))
                 .listener(listener).build();
     }
 
     public  <T> T newProxy(Class<T> serviceClass, Presentation presentation, InterceptorListener listener) {
         client.setPrinter(printer);
-        return interceptor.instanceBuilder(serviceClass, new InvocationHandler(this, serviceClass, presentation, printer))
+        return interceptor.instanceBuilder(serviceClass, new InvocationHandler(this, serviceClass, presentation))
                 .listener(listener)
                 .build();
     }
@@ -144,18 +144,16 @@ public class RestfulProxy {
         return client;
     }
 
-    private static class InvocationHandler implements InterceptorHandler {
+    public static class InvocationHandler implements InterceptorHandler {
         private RestfulProxy proxy;
         private String context;
         private Map<Method, MethodForwarder> methodForwarders = new ConcurrentHashMap<>();
         private Map<Method, String> methodSignatures = new ConcurrentHashMap<>();
         private Presentation presentation;
-        private PrintWriter printer;
 
-        InvocationHandler(RestfulProxy proxy, Class<?> serviceClass, Presentation presentation, PrintWriter printer) {
+        InvocationHandler(RestfulProxy proxy, Class<?> serviceClass, Presentation presentation) {
             this.proxy = proxy;
             this.presentation = presentation;
-            this.printer = printer;
             Path path = serviceClass.getAnnotation(Path.class);
             if (path != null) {
                 this.context = path.value();
@@ -168,15 +166,15 @@ public class RestfulProxy {
 
         @Override
         public Object invoke(CallFrame frame) throws Throwable {
-            if (printer != null) {
+            if (proxy.printer != null) {
                 String signature = methodSignatures.computeIfAbsent(frame.getMethod(), this::methodSignature);
                 String caller = Reflection.<String, Boolean>mapCallingStackTrace(e -> {
                     if (e.state().isPresent()) return e.get().toString(); // previous element match.
                     if (e.get().getMethodName().equals(frame.getMethod().getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
                     return null;
                 }).orElse("Cannot detect caller");
-                printer.println("Called by: " + caller);
-                printer.println(signature);
+                proxy.printer.println("Called by: " + caller);
+                proxy.printer.println(signature);
             }
             Request request = proxy.client.create();
             if (presentation != null)
@@ -195,12 +193,33 @@ public class RestfulProxy {
             }
 
             final String ctx = fullContext;
-            MethodForwarder forwarder = methodForwarders.computeIfAbsent(frame.getMethod(), key ->  new MethodForwarder(ctx, key) );
+            MethodForwarder forwarder;
+            try {
+                forwarder = methodForwarders.computeIfAbsent(frame.getMethod(),
+                        key -> new MethodForwarder(ctx, key));
+            } catch (IllegalArgumentException ex) {
+                // this is clearly not a restful method
+                if (frame.getTarget() != null)
+                    return frame.invoke(frame.getTarget());
+                return null;
+            }
             Pair<Response, Object> pair = forwarder.forward(request, frame.getArguments());
             synchronized (proxy) {
                 proxy.lastResponse = pair.key();
             }
             return pair.value();
+        }
+
+        public RestfulProxy getProxy() {
+            return proxy;
+        }
+
+        public Presentation getPresentation() {
+            return presentation;
+        }
+
+        public void setPresentation(Presentation presentation) {
+            this.presentation = presentation;
         }
 
         String methodSignature(Method method) {
