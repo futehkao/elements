@@ -26,6 +26,8 @@ import java.net.MalformedURLException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * This class is used to launch JaxRSServer programmatically
@@ -94,6 +96,13 @@ public class JaxRSLauncher {
         return this;
     }
 
+    public <T> JaxRSLauncher shareInstanceService(T prototype) {
+        add(new JaxResource(prototype.getClass())
+                .prototypeInstance(prototype)
+                .singleton());
+        return this;
+    }
+
     public <T> JaxRSLauncher perInstanceService(Class<T> cls) {
         add(new JaxResource(cls));
         return this;
@@ -104,6 +113,19 @@ public class JaxRSLauncher {
                 .prototype(Integer.toString(instanceId)));
         instances.put(Integer.toString(instanceId), prototype);
         instanceId ++;
+        return this;
+    }
+
+    public JaxRSLauncher accept(Consumer<JaxRSLauncher> consumer) {
+        consumer.accept(this);
+        return this;
+    }
+
+    public JaxRSLauncher accept(BiConsumer<JaxRSLauncher, JaxResource> consumer) {
+        JaxResource last = null;
+        if (!server.getJaxResources().isEmpty())
+            last = server.getJaxResources().get(server.getJaxResources().size() - 1);
+        consumer.accept(this, last);
         return this;
     }
 

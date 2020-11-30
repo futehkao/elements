@@ -47,6 +47,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * Created by futeh.
@@ -72,6 +73,7 @@ public class JaxRSServer extends CXFServer {
     private ClassLoader classLoader;
     private LogEventSender logEventSender;
     private ResourcesFactory resourcesFactory;
+    private Consumer<JAXRSServerFactoryBean> customizer;
 
     public static Logger getLogger() {
         return logger;
@@ -161,6 +163,14 @@ public class JaxRSServer extends CXFServer {
         this.resourcesFactory = resourcesFactory;
     }
 
+    public Consumer<JAXRSServerFactoryBean> getCustomizer() {
+        return customizer;
+    }
+
+    public void setCustomizer(Consumer<JAXRSServerFactoryBean> customizer) {
+        this.customizer = customizer;
+    }
+
     private List<JaxRSServerController> updateServerControllers() throws URISyntaxException {
         List<JaxRSServerController> entryList = new ArrayList<>();
         synchronized (entries) {
@@ -196,7 +206,8 @@ public class JaxRSServer extends CXFServer {
 
     private ResourceProvider initResourceProvider(Resources res, JaxResource jaxResource, Observer hObserver) {
         Object prototype = jaxResource.resolvePrototype(classLoader, resolver);
-        ResourceProvider resourceProvider ;
+        ResourceProvider resourceProvider;
+
         if (jaxResource.isSingleton()) {
             injectInitialize(res, prototype);
             resourceProvider = new SharedResourceProvider(this, prototype, hObserver);
@@ -232,7 +243,7 @@ public class JaxRSServer extends CXFServer {
         resources.forEach(m -> add(JaxResource.from(m)));
         List<Class<?>> resourceClasses = new ArrayList<>();
         for (JaxResource jaxResource : jaxResources) {
-            Class resourceClass = jaxResource.resolveResourceClass(classLoader, resolver);
+            Class<?> resourceClass = jaxResource.resolveResourceClass(classLoader, resolver);
 
             // determine if we should bind header observer or not
             Observer hObserver = initBindHeaderObserver(res, jaxResource);
@@ -275,7 +286,7 @@ public class JaxRSServer extends CXFServer {
 
         // create a list of JAXRSServerFactoryBean
         List<JAXRSServerFactoryBean> beans = new LinkedList<>();
-        List<ServerController> controllers = new LinkedList<>();
+        List<ServerController<?>> controllers = new LinkedList<>();
         synchronized (entries) {
             for (URL url : getURLs()) {
                 JaxRSServerController controller = entries.get(url.getPort());
@@ -323,11 +334,15 @@ public class JaxRSServer extends CXFServer {
         for (JAXRSServerFactoryBean bean: beans)
             bean.setProvider(new InternalExceptionMapper(getExceptionMapper()));
 
+        if (customizer != null)
+            for (JAXRSServerFactoryBean bean: beans)
+                customizer.accept(bean);
+
         for (JAXRSServerFactoryBean bean: beans)
             logger.info("Starting Restful at address {} {} ", bean.getAddress(), bean.getResourceClasses());
 
         // add controller
-        for (ServerController controller: controllers) {
+        for (ServerController<?> controller: controllers) {
             addController(controller);
         }
 
@@ -353,14 +368,14 @@ public class JaxRSServer extends CXFServer {
     @Provider
     private static class InternalExceptionMapper implements javax.ws.rs.ext.ExceptionMapper<Exception> {
 
-        ExceptionMapper mapper;
+        ExceptionMapper<?> mapper;
 
-        InternalExceptionMapper(ExceptionMapper mapper) {
+        InternalExceptionMapper(ExceptionMapper<?> mapper) {
             this.mapper = mapper;
         }
 
         private Response.Status toStatus(Exception exception) {
-            Response.Status status = Response.Status.BAD_REQUEST;
+            Response.Status status;
             if (exception instanceof BadRequestException) {
                 status = Response.Status.BAD_REQUEST;
             } else if (exception instanceof NotAuthorizedException) {
@@ -379,6 +394,8 @@ public class JaxRSServer extends CXFServer {
                 status = Response.Status.INTERNAL_SERVER_ERROR;
             } else if (exception instanceof ServiceUnavailableException) {
                 status = Response.Status.SERVICE_UNAVAILABLE;
+            } else {
+                status = Response.Status.BAD_REQUEST;
             }
             return status;
         }

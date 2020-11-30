@@ -19,10 +19,15 @@ package net.e6tech.elements.web.cxf;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.e6tech.elements.common.reflection.ClassSignature;
+import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.reflection.Signature;
 import net.e6tech.elements.common.resources.Configuration;
 import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.lang.annotation.Annotation;
+import java.util.HashMap;
 import java.util.Map;
 
 public class JaxResource {
@@ -37,6 +42,7 @@ public class JaxResource {
     private String name;
     private String prototypeResolver;
     private boolean bindHeaderObserver = true;
+    private Object prototypeInstance;
 
     public JaxResource() {
     }
@@ -86,6 +92,11 @@ public class JaxResource {
 
     public JaxResource prototype(String prototype) {
         setPrototypeResolver(prototype);
+        return this;
+    }
+
+    public JaxResource prototypeInstance(Object prototype) {
+        setPrototypeInstance(prototype);
         return this;
     }
 
@@ -164,7 +175,7 @@ public class JaxResource {
         this.name = name;
     }
 
-    @JsonProperty("prototype")
+    @JsonProperty("prototype") // for compatibility when creating from a Map as in JaxResource.from
     public String getPrototypeResolver() {
         return prototypeResolver;
     }
@@ -172,6 +183,14 @@ public class JaxResource {
     @JsonProperty("prototype")
     public void setPrototypeResolver(String prototypeResolver) {
         this.prototypeResolver = prototypeResolver;
+    }
+
+    public Object getPrototypeInstance() {
+        return prototypeInstance;
+    }
+
+    public void setPrototypeInstance(Object prototypeInstance) {
+        this.prototypeInstance = prototypeInstance;
     }
 
     public boolean isBindHeaderObserver() {
@@ -184,11 +203,25 @@ public class JaxResource {
 
     public Class resolveResourceClass(ClassLoader externalLoader, Configuration.Resolver resolver) {
         Class cls = getResourceClass();
-        if (cls != null)
+        if (cls != null) {
+            resolveSingleton();
             return cls;
+        }
 
-        if (getResourceClassName() == null)
-            throw new SystemException("Missing resource class in resources map");
+        if (getResourceClassName() == null) {
+            Object prototype = getPrototypeInstance();
+            if (prototype == null && prototypeResolver != null && resolver != null) {
+                prototype = resolver.resolve(prototypeResolver);
+            }
+            if (prototype != null) {
+                setPrototypeInstance(prototype);
+                setResourceClass(prototype.getClass());
+                resolveSingleton();
+                return prototype.getClass();
+            } else
+                throw new SystemException("Missing resource class in resources map");
+        }
+
         try {
             ClassLoader loader = getClassLoaderDelegate();
             String classLoaderExpression = getClassLoaderResolver();
@@ -205,19 +238,30 @@ public class JaxResource {
 
             cls = loader.loadClass(getResourceClassName());
             setResourceClass(cls);
+            resolveSingleton();
         } catch (ClassNotFoundException e) {
             throw new SystemException(e);
         }
         return getResourceClass();
     }
 
+    private void resolveSingleton() {
+        if (!singleton) {
+            Map<Signature, Map<Class<? extends Annotation>, Annotation>> annotations = Reflection.getAnnotations(resourceClass);
+            if (annotations.getOrDefault(new ClassSignature(resourceClass), new HashMap<>()).get(Singleton.class) != null) {
+                singleton = true;
+            }
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public Object resolvePrototype(ClassLoader externalLoader, Configuration.Resolver resolver) {
-        Object prototype = null;
-
-        if (prototypeResolver != null && resolver != null) {
+        Object prototype = getPrototypeInstance();
+        if (prototype == null && prototypeResolver != null && resolver != null) {
             prototype = resolver.resolve(prototypeResolver);
         }
+        if (prototype != null)
+            return prototype;
 
         if (prototype == null && isSingleton()) {
             if (resourceClass == null)

@@ -22,6 +22,7 @@ import net.e6tech.sample.web.cxf.HelloWorld
 import net.e6tech.sample.web.cxf.HelloWorldRoles
 import javax.ws.rs.*
 import javax.ws.rs.core.MediaType
+import org.apache.cxf.jaxrs.JAXRSServerFactoryBean
 
 helloWorldPort = 19001
 roleMap = [(HelloWorld.getName()): HelloWorldRoles]
@@ -44,5 +45,8 @@ atom("helloWorld") {
     _prototype = HelloWorld
     _securityAnnotation = SecurityAnnotationEngine
     _helloWorld = JaxRSServer
+    _helloWorld.customizer = (JAXRSServerFactoryBean b) -> {
+        b.getInInterceptors()
+    }
 }
 

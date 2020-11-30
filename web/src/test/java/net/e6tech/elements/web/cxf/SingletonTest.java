@@ -23,6 +23,10 @@ import org.junit.jupiter.api.Test;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SingletonTest {
 
@@ -39,19 +43,42 @@ public class SingletonTest {
         setupServer(9000);
         RestfulProxy proxy = new RestfulProxy("http://localhost:9000/restful");
         HelloWorldRS hello = proxy.newProxy(HelloWorldRS.class);
+        wait(() -> {
+            proxy.setRequestProperty("HELLO", "1");
+            hello.sayHi("hi");
+        });
+
+        proxy.setRequestProperty("HELLO", "2");
+        hello.sayHi("hi");
+    }
+
+    @Test
+    void viaAnnotation() {
+        SingletonRS singletonRS = new SingletonRS();
+        JaxRSLauncher launcher = JaxRSLauncher.create(new ResourceManager(), "http://0.0.0.0:" + 9001 + "/restful/")
+                .perInstanceService(singletonRS) // should be converted to singleton because its @Singleton annotation
+                .start();
+
+        RestfulProxy proxy = new RestfulProxy("http://localhost:9001/restful");
+        SingletonRS singleton = proxy.newProxy(SingletonRS.class);
+        AtomicInteger id1 = new AtomicInteger(0);
+        wait(() -> {
+            id1.set(singleton.identity());
+        });
+        assertEquals(id1.get(), singletonRS.identity());
+        launcher.stop();
+    }
+
+    private void wait(Runnable runnable) {
         while (true) {
             try {
                 Thread.sleep(100L);
-                proxy.setRequestProperty("HELLO", "1");
-                hello.sayHi("hi");
+                runnable.run();
                 break;
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
         }
-
-        proxy.setRequestProperty("HELLO", "2");
-        hello.sayHi("hi");
     }
 
     private static class MyObserver extends Observer {

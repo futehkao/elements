@@ -37,16 +37,16 @@ class VerifyARQCTest extends CommandTest<VerifyARQC> {
         fields[2] = simulator.asAKB(simulator.IMK_ARQC).getKeyBlock();
         fields[3] = "9901234567890123";
         fields[4] = "45";
-        fields[5] = "1234567890123456";
-        fields[6] = "922F3E83125EB46B";
+        fields[5] = "1234000012345678";
+        fields[6] = "1F6BA35EE3DDD871";
         fields[7] = "0123456789ABCDEF0123456789ABCDEF";
         fields[8] = "0000";
         fields[9] = "";
         getCommand().setFields(fields);
         Message message = getCommand().process();
-        assertTrue(message.getField(1).equals("8AE6E836084B0E80"));
+        assertTrue(message.getField(1).equals("73B46C01BEC191F7"));
 
-        fields[1] = "2";
+        fields[1] = "0";
         fields[8] = "0001";
         fields[9] = "0123";
 
