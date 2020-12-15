@@ -29,11 +29,11 @@ public class ChangePIN extends Command {
     @Override
     protected String doProcess() throws CommandException {
         if (!"1".equals(getField(2)))
-            return "000200"; // only supports ANSI block type
+            return "00#000200#"; // only supports ANSI block type
 
         if ("2".equals(getField(1))) { // ibm 3624
             if (getField(7).length() != 12)
-                return "001200"; // validation data needs to be 12 digit partial pan.
+                return "00#001200#"; // validation data needs to be 12 digit partial pan.
             return ibm3624();
         } else  if ("3".equals(getField(1))) { // visa pvv
             return visaPVV();
@@ -47,6 +47,9 @@ public class ChangePIN extends Command {
         String oldOffset = getField(6);
         String validation = getField(7); // need to match ansi pin block acct length
         String pad = getField(8);
+        int pinLength = Integer.parseInt(getField(9), 16);
+        if (pinLength < 4 || pinLength > 12)
+            return "00#030983#";
 
         IBM3624PINOffset ibm = new IBM3624PINOffset();
         // decTab
@@ -74,7 +77,7 @@ public class ChangePIN extends Command {
             offset = ibm.generateOffset(pvvKey, validation, pad.charAt(0), ansiPinBlock.getPIN());
         } catch (GeneralSecurityException e) {
             Logger.suppress(e);
-            return "001000";
+            return "00#001000#";
         }
 
         return "47#Y#" + offset ;
@@ -111,7 +114,7 @@ public class ChangePIN extends Command {
             offset = visa.generatePVV(pvvKey, partialPan, pvki, ansiPinBlock.getPIN());
         } catch (GeneralSecurityException e) {
             Logger.suppress(e);
-            return "001000";
+            return "00#001000#";
         }
 
         return "47#Y#" + offset ;

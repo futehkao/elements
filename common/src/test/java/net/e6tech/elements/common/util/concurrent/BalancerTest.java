@@ -17,15 +17,16 @@
 package net.e6tech.elements.common.util.concurrent;
 
 import net.e6tech.elements.common.Tags;
+import net.e6tech.elements.common.util.SystemException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("all")
 @Tags.Common
-public class BalancerTest {
+class BalancerTest {
 
     volatile int success = 0;
 
@@ -35,15 +36,15 @@ public class BalancerTest {
         balancer.setThreadSafe(true);
         balancer.setTimeout(100L);
         balancer.setRecoveryPeriod(50L);
-        balancer.addService(new Service());
-        balancer.addService(new Service());
-        balancer.addService(new Service());
-        balancer.addService(new Service());
-        balancer.addService(new Service());
-        balancer.addService(new Service());
-        balancer.addService(new Service());
-        balancer.addService(new Service());
-        balancer.addService(new Service());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
         balancer.start();
         int available = balancer.getAvailable();
 
@@ -61,7 +62,7 @@ public class BalancerTest {
             });
         }
 
-       long start = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
         for (int i = 0; i < count; i++) {
             threads[i].start();
         }
@@ -74,6 +75,52 @@ public class BalancerTest {
 
         Thread.sleep(1000L);
         assertTrue(balancer.getAvailable() == available);
+    }
+
+    @Test
+    void exception() throws Exception {
+        MyBalancer balancer = new MyBalancer();
+        balancer.setTimeout(100L);
+        balancer.setRecoveryPeriod(100L);
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.addService(new ServiceImpl());
+        balancer.start();
+        int available = balancer.getAvailable();
+
+        int count = 100;
+        Thread[] threads = new Thread[count];
+        for (int i = 0; i < count; i++) {
+            int k = i;
+            threads[i] = new Thread(() -> {
+                if (k % 5 == 0) {
+                    assertThrows(Exception.class, () ->
+                            balancer.getService().puke());
+                } else {
+                    for (int j = 0; j < 10; j++) {
+                        try {
+                            balancer.execute(service -> service.run());
+                        } catch (Throwable th) {
+                        }
+                    }
+                }
+            });
+        }
+        for (int i = 0; i < count; i++) {
+            threads[i].start();
+        }
+        for (int i = 0; i < count; i++) {
+            threads[i].join();
+        }
+
+        Thread.sleep(1000L);
+        assertEquals(available, balancer.getAvailable());
     }
 
     public static class MyBalancer extends Balancer<Service> {
@@ -89,7 +136,16 @@ public class BalancerTest {
         }
     }
 
-    public static class Service {
+
+    public static interface Service {
+        void start();
+        void stop();
+        int run() throws IOException;
+        void puke();
+    }
+
+
+    public static class ServiceImpl implements Service {
         volatile int count = 0;
 
         public int run() throws IOException {
@@ -103,6 +159,10 @@ public class BalancerTest {
 
             }
             return count;
+        }
+
+        public void puke() {
+            throw new SystemException("intentional");
         }
 
         public void start() {

@@ -202,6 +202,9 @@ public abstract class Balancer<T> {
                         recover(service);
                     }
                 } else {
+                    if (owner) {
+                        liveList.offer(service);
+                    }
                     if (ex instanceof SystemException) {
                         error = (SystemException) ex;
                     } else if (ex instanceof InvocationTargetException) {

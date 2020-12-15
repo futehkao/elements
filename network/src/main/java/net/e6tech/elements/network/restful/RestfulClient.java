@@ -585,9 +585,10 @@ public class RestfulClient {
         return response;
     }
 
-    @SuppressWarnings("squid:MethodCyclomaticComplexity")
+    @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:SwitchLastCaseIsDefaultCheck"})
     protected void checkResponseCode(int code, String message) {
         javax.ws.rs.core.Response.Status status = javax.ws.rs.core.Response.Status.fromStatusCode(code);
+
         if (code == 500)
             throw new InternalServerErrorException();
         if (code > 500)
@@ -609,6 +610,16 @@ public class RestfulClient {
             case RESET_CONTENT:
             case PARTIAL_CONTENT:
                 return;
+        }
+
+        if (printer != null) {
+            String msg = (message != null && message.length() > 0) ? message : "NA";
+            printer.println("ERROR RESPONSE ----------------------");
+            printer.println("Response Code=" + code + " Message=" + msg);
+            printer.println();
+        }
+
+        switch (status) {
             case BAD_REQUEST: throw new BadRequestException(message);
             case UNAUTHORIZED: throw new NotAuthorizedException(javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.UNAUTHORIZED).build());
             case PAYMENT_REQUIRED:

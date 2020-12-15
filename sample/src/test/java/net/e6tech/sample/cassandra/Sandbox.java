@@ -18,6 +18,7 @@ package net.e6tech.sample.cassandra;
 
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.e6tech.elements.cassandra.annotations.ClusteringColumn;
 import net.e6tech.elements.cassandra.annotations.PartitionKey;
 import net.e6tech.elements.common.inject.Inject;
@@ -40,6 +41,7 @@ public class Sandbox {
 
     @Test
     void test() {
+        System.out.println(new String(Base64.getEncoder().encode(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})));
         Map<Signature, Map<Class<? extends Annotation>, Annotation>> annotations = Reflection.getAnnotationsByName(Y.class);
         System.out.println(annotations);
     }
