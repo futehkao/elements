@@ -34,12 +34,15 @@ public class EMVPINChange extends Command {
         Request request = this.new Request();
         Response response = this.new Response();
 
-        if ("1".equals(request.getDerivationType())) {
+        if ("0".equals(request.getDerivationType())) {
+            // Common Core Definition PIN block - Specification Update Bulletin 46 derivation with ISO format 2 PIN block with mandatory padding
+            return processCommonSession(request, response, false);
+        } else if ("1".equals(request.getDerivationType())) {
             // Legacy VISA derivation technique with VISA PIN block
             return processDerivationType1(request, response);
         } else if ("8".equals(request.getDerivationType())) {
             // Common Core Definition PIN block - Specification Update Bulletin 46 derivation with ISO format 2 PIN block with mandatory padding
-            return processDerivationType8(request, response);
+            return processCommonSession(request, response, true);
         }
 
         return "000100"; // only supports Derivation Type 1 for now
@@ -132,7 +135,7 @@ public class EMVPINChange extends Command {
         return response.output();
     }
 
-    protected String processDerivationType8(Request request, Response response) throws CommandException {
+    protected String processCommonSession(Request request, Response response, boolean withMandatoryPadding) throws CommandException {
         // == KPE check digits
         try {
             String kpeDigits = CryptoUtil.calculateCheckDigits(simulator, request.getKpe(), 6);
@@ -147,18 +150,20 @@ public class EMVPINChange extends Command {
         // - N: Pin length
         // - P: Pin Digit
         // - F: 'F'
-        // padded with hexadecimal digits 80 followed by 14 zero
-        byte[] paddedPINBytes = new byte[16];
+        // If with mandatory padding, pad with hexadecimal digits 80 followed by 14 zero
+        byte[] paddedPINBytes = new byte[withMandatoryPadding ? 16 : 8];
         try {
             byte[] newPINBlockByte = simulator.decrypt(new AKB(request.getKpe()), Hex.toBytes(request.getNewPINBlock()));
             AnsiPinBlock ansiPinBlock = new AnsiPinBlock(newPINBlockByte, request.getPinBlockBlockData());
             String newPIN = ansiPinBlock.getPIN();
             paddedPINBytes[0] = (byte) (0x20 + newPIN.length());
+            if (newPIN.length() % 2 == 1)
+                newPIN = newPIN + "F";
             byte[] newPINBytes = Hex.toBytes(newPIN);
-            // Currently only for pin length with even length
             System.arraycopy(newPINBytes, 0, paddedPINBytes, 1, newPINBytes.length);
             Arrays.fill(paddedPINBytes, 1 + newPINBytes.length, 8, (byte) 0xFF);
-            paddedPINBytes[8] = (byte)0x80;
+            if (withMandatoryPadding)
+                paddedPINBytes[8] = (byte)0x80;
             // the rest are already 0x00
         } catch (GeneralSecurityException e) {
             throw new CommandException(8, e);
@@ -335,7 +340,8 @@ public class EMVPINChange extends Command {
             // 14, [PIN Block Data]
             pinBlockBlockData = getField(14);
             // 15, [EKPE(old PIN Block)
-            oldPINBlockBlockData = getField(15);
+            if (fields.length > 15)
+                oldPINBlockBlockData = getField(15);
         }
 
         // getter and setter
