@@ -18,6 +18,7 @@ package net.e6tech.sample.cassandra;
 
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.e6tech.elements.cassandra.annotations.ClusteringColumn;
 import net.e6tech.elements.cassandra.annotations.PartitionKey;
@@ -27,9 +28,11 @@ import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.reflection.Signature;
 import org.junit.jupiter.api.Test;
 
+import javax.ws.rs.core.GenericType;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -44,6 +47,22 @@ public class Sandbox {
         System.out.println(new String(Base64.getEncoder().encode(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})));
         Map<Signature, Map<Class<? extends Annotation>, Annotation>> annotations = Reflection.getAnnotationsByName(Y.class);
         System.out.println(annotations);
+    }
+
+    @Test
+    <T> void test2() throws Exception {
+        GenericType<List<String>> type = new GenericType<List<String>>() {};
+        type.getType();
+        List<String> list = new ArrayList<>();
+        list.add("abc");
+        list.add("def");
+        ObjectMapper mapper = new ObjectMapper();
+        String encoded = mapper.writeValueAsString(list);
+        TypeReference<T> ref = new TypeReference<T>() {
+            public Type getType() { return type.getType(); }
+        };
+        list =(List) mapper.readValue(encoded, ref);
+        assertTrue(list.size() > 0);
     }
 
     @Test

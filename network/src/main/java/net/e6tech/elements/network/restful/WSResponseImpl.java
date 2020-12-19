@@ -64,7 +64,11 @@ public class WSResponseImpl extends javax.ws.rs.core.Response {
 
     @Override
     public <T> T readEntity(GenericType<T> entityType) {
-        throw new UnsupportedOperationException();
+        try {
+            return response.read(entityType.getType());
+        } catch (IOException e) {
+            throw new SystemException(e);
+        }
     }
 
     @Override

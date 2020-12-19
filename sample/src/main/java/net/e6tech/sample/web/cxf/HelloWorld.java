@@ -30,6 +30,7 @@ import javax.annotation.security.PermitAll;
 import javax.persistence.EntityManager;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -185,5 +186,21 @@ public class HelloWorld {
         map.put("1", data);
         return map;
     }
+
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/response")
+    @EntityManagerConfig(disable = true)
+    public Response response() {
+        List<HelloData> list = new ArrayList<>();
+        HelloData data = new HelloData();
+        data.setData("hello");
+        list.add(data);
+        data = new HelloData();
+        data.setData("hello2");
+        list.add(data);
+        return Response.ok(list).build();
+    }
+
 
 }

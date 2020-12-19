@@ -15,12 +15,14 @@ limitations under the License.
 */
 package net.e6tech.elements.network.restful;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +73,16 @@ public class Response implements Serializable {
         if (result == null || cls.isAssignableFrom(String.class))
             return (T) result;
         return mapper.readValue(result, cls);
+    }
+
+    public <T> T read(Type type) throws IOException {
+        if (result == null || (type instanceof Class && ((Class)type).isAssignableFrom(String.class)))
+            return (T) result;
+        TypeReference<T> ref = new TypeReference<T>() {
+            @Override
+            public Type getType() { return type; }
+        };
+        return mapper.readValue(result, ref);
     }
 
     public String toString() {

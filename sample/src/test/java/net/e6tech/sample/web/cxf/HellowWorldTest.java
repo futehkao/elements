@@ -25,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.BadRequestException;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.Response;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -134,5 +136,12 @@ public class HellowWorldTest extends BaseCase {
     @Test
     public void map() {
         Map<String, HelloData> map = helloWorld.map();
+    }
+
+    @Test
+    public void response() {
+        Response res = helloWorld.response();
+        List<HelloData> list = res.readEntity(new GenericType<List<HelloData>>() {});
+        assertTrue(list.get(0) instanceof HelloData);
     }
 }
