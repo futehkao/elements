@@ -161,6 +161,9 @@ public class JettyEngine implements ServerEngine {
             } catch (Exception ex) {
                 logger.warn("Cannot start ActorThreadPool", ex);
             }
+        } else {
+            queuedThreadPool = new QueuedThreadPool(256, 10, 120000);
+            engine.setThreadPool(queuedThreadPool);
         }
     }
 

@@ -37,6 +37,7 @@ import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.concurrent.ObjectPool;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -428,6 +429,7 @@ public class Interceptor {
     }
 
     static class InterceptorHandlerWrapper implements Handler {
+        private static ObjectPool<CallFrame> objectPool = new ObjectPool<CallFrame>().factory(CallFrame::new).build();
         InterceptorHandler handler;
         InterceptorListener listener;
         Object target;
@@ -465,20 +467,29 @@ public class Interceptor {
         }
 
         public Object handle(MethodHandle methodHandle, Method method, @RuntimeType  Object[] arguments) throws Throwable {
-            CallFrame frame = new CallFrame(target, methodHandle, method, arguments);
-            if (listener != null)
-                listener.preInvocation(frame);
-            Object ret = null;
+            CallFrame frame = null;
             try {
-                ret = handler.invoke(frame);
-            } catch (Throwable throwable) {
+                frame = objectPool.checkOut();
+                frame.initialize(target, methodHandle, method, arguments);
                 if (listener != null)
-                    return listener.onException(frame, throwable);
-                else throw throwable;
+                    listener.preInvocation(frame);
+                Object ret;
+                try {
+                    ret = handler.invoke(frame);
+                } catch (Throwable throwable) {
+                    if (listener != null)
+                        return listener.onException(frame, throwable);
+                    else throw throwable;
+                }
+                if (listener != null)
+                    ret = listener.postInvocation(frame, ret);
+                return ret;
+            } finally {
+                if (frame != null) {
+                    frame.clear();
+                    objectPool.checkIn(frame);
+                }
             }
-            if (listener != null)
-                ret = listener.postInvocation(frame, ret);
-            return ret;
         }
     }
 }

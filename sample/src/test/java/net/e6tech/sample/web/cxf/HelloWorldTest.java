@@ -17,6 +17,7 @@
 package net.e6tech.sample.web.cxf;
 
 import net.e6tech.elements.common.resources.Atom;
+import net.e6tech.elements.common.util.concurrent.ObjectPool;
 import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.elements.web.cxf.SecurityAnnotationEngine;
 import net.e6tech.sample.BaseCase;
@@ -38,12 +39,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * Created by futeh.
  */
 @Tags.Sample
-public class HellowWorldTest extends BaseCase {
+class HelloWorldTest extends BaseCase {
     HelloWorld helloWorld;
     RestfulProxy proxy;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         proxy = new RestfulProxy("http://localhost:19001/restful");
         proxy.setSkipCertCheck(true);
         // proxy.setPrinter(new PrintWriter(System.out, true));
@@ -66,12 +67,12 @@ public class HellowWorldTest extends BaseCase {
     }
 
     @Test
-    public void withParam() {
+    void withParam() {
         helloWorld.withParam("1234", "WWWWWWWWWWWW");
     }
 
     @Test
-    public void withSecurity() throws Exception {
+    void withSecurity() throws Exception {
         Atom atom = provision.getResourceManager().getAtom("helloWorld");
         SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
         assertTrue(engine.getSecurityProvider(HelloWorld.class).equals(HelloWorldRoles.class));
@@ -88,7 +89,7 @@ public class HellowWorldTest extends BaseCase {
 
     // even though the method is annotated with DenyAll, a user with PermitAll can still access
     @Test
-    public void readOnly() throws Exception {
+    void readOnly() throws Exception {
         Atom atom = provision.getResourceManager().getAtom("helloWorld");
         SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
         Method method = HelloWorld.class.getDeclaredMethod("post", HelloData.class);
@@ -96,7 +97,7 @@ public class HellowWorldTest extends BaseCase {
     }
 
     @Test
-    public void permitAll() throws Exception {
+    void permitAll() throws Exception {
         Atom atom = provision.getResourceManager().getAtom("helloWorld");
         SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
         Method method = HelloWorld.class.getDeclaredMethod("withSecurity", String.class);
@@ -104,7 +105,7 @@ public class HellowWorldTest extends BaseCase {
     }
 
     @Test
-    public void post() {
+    void post() {
         HelloData data = new HelloData();
         data.setData("hello");
         data = helloWorld.post(data);
@@ -112,7 +113,7 @@ public class HellowWorldTest extends BaseCase {
     }
 
     @Test
-    public void badPost() {
+    void badPost() {
         provision.suppressLogging(() -> {
             assertThrows(BadRequestException.class, () -> helloWorld.post(null));
             assertThrows(BadRequestException.class, () -> helloWorld.badPost(new HelloData()));
@@ -120,7 +121,7 @@ public class HellowWorldTest extends BaseCase {
     }
 
     @Test
-    public void delete() {
+    void delete() {
         HelloData data = new HelloData();
         data.setData("hello");
         helloWorld.delete("does not matter", data);
@@ -129,19 +130,55 @@ public class HellowWorldTest extends BaseCase {
     }
 
     @Test
-    public void list() {
+    void list() {
         List<HelloData> list = helloWorld.list();
     }
 
     @Test
-    public void map() {
+    void map() {
         Map<String, HelloData> map = helloWorld.map();
     }
 
+    @SuppressWarnings("squid:S2925")
     @Test
-    public void response() {
-        Response res = helloWorld.response();
-        List<HelloData> list = res.readEntity(new GenericType<List<HelloData>>() {});
-        assertTrue(list.get(0) instanceof HelloData);
+    void response() throws InterruptedException {
+        helloWorld.echo("");
+
+        ObjectPool<?> pool = net.e6tech.elements.network.restful.Response.objectPool;
+        pool.idleTimeout(4000);
+
+        Runnable runnable = () -> {
+            try {
+                Response res = helloWorld.response();
+                List<HelloData> list = res.readEntity(new GenericType<List<HelloData>>() {
+                });
+                assertTrue(list.get(0) instanceof HelloData);
+            } catch (Exception ex ) {
+                ex.printStackTrace();
+            }
+        };
+        Thread[] threads = new Thread[100];
+        for (int i = 0; i < threads.length; i++) {
+            threads[i] = new Thread(runnable);
+        }
+
+        long start = System.currentTimeMillis();
+        for (int i = 0; i < threads.length; i++) {
+            threads[i].start();
+        }
+
+        for (int i = 0; i < threads.length; i++) {
+            threads[i].join();
+        }
+
+        System.out.println("Before pool cleanup " + pool.size());
+
+        Thread.sleep(4000);
+
+        pool.cleanup();
+
+        System.out.println("After pool cleanup " + pool.size());
+
+        assertTrue(pool.size() <= pool.getLimit());
     }
 }

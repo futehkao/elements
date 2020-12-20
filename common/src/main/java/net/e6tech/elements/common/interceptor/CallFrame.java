@@ -34,7 +34,10 @@ public class CallFrame {
     private Method method;
     private Invoke invoke;
 
-    CallFrame(Object target, MethodHandle handle, Method method, Object[] arguments) {
+    CallFrame() {
+    }
+
+    CallFrame initialize(Object target, MethodHandle handle, Method method, Object[] arguments) {
         this.target = target;
         this.handle = handle;
         this.method = method;
@@ -45,6 +48,15 @@ public class CallFrame {
         } else {
             invoke = t -> getMethod().invoke(t, arguments);
         }
+        return this;
+    }
+
+    void clear() {
+        this.target = null;
+        this.handle = null;
+        this.method = null;
+        this.arguments = EMPTY_ARGS;
+        invoke = null;
     }
 
     public Object[] getArguments() {

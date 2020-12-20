@@ -31,6 +31,7 @@ ext.quartzVersion = '2.3.2'
 ext.hikariVersion = '3.4.5'
 ext.mariadbClientVersion = '2.6.2'
 ext.javaeeApiVersion = '8.0.1'
+ext.javamailVersion = '1.4.7'
 ext.hibernateVersion = '5.4.21.Final'  // note 5.4.6 - 5.4.8 have major stack overflow issues
 ext.bouncycastleVersion = '1.66'
 ext.jaxbVersion = '2.3.0'

@@ -279,6 +279,7 @@ public class JaxRSServer extends CXFServer {
         }
     }
 
+
     @Override
     public void start() {
         if (isStarted())
@@ -299,36 +300,9 @@ public class JaxRSServer extends CXFServer {
             }
         }
 
-        // use Jackson as the provider
-        for (JAXRSServerFactoryBean bean: beans)
-            bean.getBus().setProperty("skip.default.json.provider.registration", true);
-
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.disable(SerializationFeature.WRAP_ROOT_VALUE)
-                .enable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        JacksonJaxbJsonProvider jackson = new JacksonJaxbJsonProvider(mapper, JacksonJaxbJsonProvider.DEFAULT_ANNOTATIONS);
-        for (JAXRSServerFactoryBean bean: beans)
-            bean.setProvider(jackson);
-
-        // setup Cors
-        if (isCorsFilter()) {
-            logger.info("enabling CORS filter");
-            CrossOriginResourceSharingFilter cf = new CrossOriginResourceSharingFilter();
-            for (JAXRSServerFactoryBean bean: beans)
-                bean.setProvider(cf);
-        }
-
-        // logging
-        LoggingFeature feature = new LoggingFeature();
-        DefaultLogEventSender sender = new DefaultLogEventSender();
-        feature.setInSender(sender);
-        feature.setOutSender(sender);
-        for (JAXRSServerFactoryBean bean: beans) {
-            bean.getFeatures().add(feature);
-        }
+        setupJsonProvider(beans);
+        setupCorsFilter(beans);
+        setupLogging(beans);
 
         // setup exception mapper
         for (JAXRSServerFactoryBean bean: beans)
@@ -350,14 +324,55 @@ public class JaxRSServer extends CXFServer {
         super.start();
     }
 
+    private void setupJsonProvider(List<JAXRSServerFactoryBean> beans) {
+        // use Jackson as the provider
+        for (JAXRSServerFactoryBean bean: beans)
+            bean.getBus().setProperty("skip.default.json.provider.registration", true);
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.disable(SerializationFeature.WRAP_ROOT_VALUE)
+                .enable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        JacksonJaxbJsonProvider jackson = new JacksonJaxbJsonProvider(mapper, JacksonJaxbJsonProvider.DEFAULT_ANNOTATIONS);
+        for (JAXRSServerFactoryBean bean: beans)
+            bean.setProvider(jackson);
+    }
+
+    private void setupCorsFilter(List<JAXRSServerFactoryBean> beans) {
+        if (isCorsFilter()) {
+            logger.info("enabling CORS filter");
+            CrossOriginResourceSharingFilter cf = new CrossOriginResourceSharingFilter();
+            for (JAXRSServerFactoryBean bean: beans)
+                bean.setProvider(cf);
+        }
+    }
+
+    private void setupLogging(List<JAXRSServerFactoryBean> beans) {
+        // logging
+        LoggingFeature feature = new LoggingFeature();
+        DefaultLogEventSender sender = new DefaultLogEventSender();
+        feature.setInSender(sender);
+        feature.setOutSender(sender);
+        for (JAXRSServerFactoryBean bean: beans) {
+            bean.getFeatures().add(feature);
+        }
+    }
+
     private class DefaultLogEventSender implements LogEventSender {
 
         @Override
         public void send(LogEvent event) {
-            if (messageLogger.isTraceEnabled())
-                messageLogger.trace(getLogMessage(event));
-            if (logEventSender != null)
-                logEventSender.send(event);
+            try {
+                if (messageLogger.isTraceEnabled())
+                    messageLogger.trace(getLogMessage(event));
+
+                if (logEventSender != null)
+                    logEventSender.send(event);
+            } catch (Exception ex) {
+                logger.warn("Unable to send LogEvent", ex);
+            }
         }
 
         private String getLogMessage(LogEvent event) {

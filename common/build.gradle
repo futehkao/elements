@@ -39,6 +39,7 @@ dependencies {
     compile "javax.cache:cache-api:${javaCacheApiVerison}"
     compile ("com.typesafe.akka:akka-actor-typed_${akkaScalaVersion}:${akkaVersion}")
     compile group: 'com.typesafe.akka', name: "akka-actor_${akkaScalaVersion}", version: "${akkaVersion}"
+    compile "javax.mail:mail:${javamailVersion}"
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"

@@ -130,33 +130,38 @@ public class LogHandler implements InvocationHandler {
         if (slf4jLogger != null)
             return slf4jLogger;
 
-        if (loggingClass == null && loggingName == null)
-            return null;
+        synchronized (this) {
+            if (slf4jLogger != null)
+                return slf4jLogger;
 
-        if (System.getProperty("log4j.configurationFile") == null) {
-            return consoleLogger;
-        }
+            if (loggingClass == null && loggingName == null)
+                return null;
 
-        // if logDir is not configured we should just use consoleLogger.
-        if (ThreadContext.get(LOG_DIR) == null) {
-            if (logDir == null) {
-                if (System.getProperty(LOG_DIR) != null)
-                    logDir = System.getProperty(LOG_DIR);
-                else if (System.getProperty(Logger.logDir) != null)
-                    logDir = System.getProperty(Logger.logDir);
-            }
-            if (logDir == null)
+            if (System.getProperty("log4j.configurationFile") == null) {
                 return consoleLogger;
-            else ThreadContext.put(LOG_DIR, logDir);
-        }
+            }
 
-        // calling LoggerFactory.getLogger will trigger log4j being initialized.
-        if (loggingClass != null)
-            slf4jLogger = LoggerFactory.getLogger(loggingClass);
-        else
-            slf4jLogger = LoggerFactory.getLogger(loggingName);
-        loggingClass = null;
-        loggingName = null;
+            // if logDir is not configured we should just use consoleLogger.
+            if (ThreadContext.get(LOG_DIR) == null) {
+                if (logDir == null) {
+                    if (System.getProperty(LOG_DIR) != null)
+                        logDir = System.getProperty(LOG_DIR);
+                    else if (System.getProperty(Logger.logDir) != null)
+                        logDir = System.getProperty(Logger.logDir);
+                }
+                if (logDir == null)
+                    return consoleLogger;
+                else ThreadContext.put(LOG_DIR, logDir);
+            }
+
+            // calling LoggerFactory.getLogger will trigger log4j being initialized.
+            if (loggingClass != null)
+                slf4jLogger = LoggerFactory.getLogger(loggingClass);
+            else
+                slf4jLogger = LoggerFactory.getLogger(loggingName);
+            loggingClass = null;
+            loggingName = null;
+        }
         return slf4jLogger;
     }
 
