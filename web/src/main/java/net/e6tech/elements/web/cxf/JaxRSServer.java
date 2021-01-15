@@ -28,6 +28,7 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.ResourcesFactory;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.network.restful.RestfulClient;
 import org.apache.cxf.ext.logging.LoggingFeature;
 import org.apache.cxf.ext.logging.event.LogEvent;
 import org.apache.cxf.ext.logging.event.LogEventSender;
@@ -40,12 +41,8 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.net.*;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -322,6 +319,14 @@ public class JaxRSServer extends CXFServer {
 
         // start servers
         super.start();
+
+        for (URL url : getURLs()) {
+            try {
+                kickStart(url);
+            } catch (Exception ex) {
+                // ignore
+            }
+        }
     }
 
     private void setupJsonProvider(List<JAXRSServerFactoryBean> beans) {
@@ -357,6 +362,30 @@ public class JaxRSServer extends CXFServer {
         feature.setOutSender(sender);
         for (JAXRSServerFactoryBean bean: beans) {
             bean.getFeatures().add(feature);
+        }
+    }
+
+    private void kickStart(URL url) throws SocketException {
+        Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+        for (NetworkInterface netint : Collections.list(nets)) {
+            Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
+            for (InetAddress inetAddress : Collections.list(inetAddresses)) {
+                if (inetAddress instanceof Inet6Address)
+                    continue;
+                try {
+                    new RestfulClient(url.getProtocol() + "://"
+                            + inetAddress.getHostAddress() + ":"
+                            + url.getPort() + url.getPath())
+                            .get("");
+                } catch (Exception ex) {
+                    // ignore
+                }
+            }
+        }
+        try {
+            new RestfulClient(url.getProtocol() + "://localhost:" + url.getPort() + url.getPath()).get("");
+        } catch (Exception ex) {
+            // ignore
         }
     }
 

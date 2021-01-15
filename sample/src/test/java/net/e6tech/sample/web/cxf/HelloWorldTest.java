@@ -142,7 +142,7 @@ class HelloWorldTest extends BaseCase {
     @SuppressWarnings("squid:S2925")
     @Test
     void response() throws InterruptedException {
-        helloWorld.echo("");
+        //helloWorld.echo("");
 
         ObjectPool<?> pool = net.e6tech.elements.network.restful.Response.objectPool;
         pool.idleTimeout(4000);
