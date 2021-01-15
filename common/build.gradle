@@ -34,7 +34,7 @@ dependencies {
     compile "com.fasterxml.jackson.module:jackson-module-jaxb-annotations:${jacksonVersion}"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${jacksonVersion}"
     compile "net.bytebuddy:byte-buddy:${bytebuddyVersion}"
-    compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: "${jaxbRuntime}"
+    compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: "${jaxbRuntimeVersion}"
     compile ("org.ehcache:ehcache:${ehcacheVersion}")
     compile "javax.cache:cache-api:${javaCacheApiVerison}"
     compile ("com.typesafe.akka:akka-actor-typed_${akkaScalaVersion}:${akkaVersion}")

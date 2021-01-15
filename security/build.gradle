@@ -20,8 +20,11 @@ dependencies {
     compile "org.bouncycastle:bcpkix-jdk15on:${bouncycastleVersion}"
     compile "org.bouncycastle:bcmail-jdk15on:${bouncycastleVersion}"
     compile "javax.xml.bind:jaxb-api:${jaxbVersion}"
-    compile "com.sun.xml.bind:jaxb-core:${jaxbVersion}"
-    compile "com.sun.xml.bind:jaxb-impl:${jaxbVersion}"
+
+    // Below as put in because java 11 and above don't come with jaxb.  But, glassfish's jaxb provides the implementation
+    // left the comments in place in case of issues when we move to java 17.
+    // compile "com.sun.xml.bind:jaxb-core:${jaxbOldVersion}" // don't need this because of glassfish jaxb-runtime
+    // compile "com.sun.xml.bind:jaxb-impl:${jaxbOldVersion}"      // replaced by glasshfish jaxb-runtime
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"

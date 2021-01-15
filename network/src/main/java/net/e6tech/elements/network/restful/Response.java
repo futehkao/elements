@@ -33,6 +33,7 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("unchecked")
 public class Response implements Serializable {
     private static final long serialVersionUID = 775319303475963086L;
     public static final ObjectMapper mapper = new ObjectMapper();
