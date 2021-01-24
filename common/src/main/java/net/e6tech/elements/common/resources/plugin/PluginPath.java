@@ -30,7 +30,7 @@ public class PluginPath<T> {
     private String name;
     private String toString;
     private int hash = 0;
-    private LinkedList<PluginPath> path;
+    private LinkedList<PluginPath<?>> path;
 
     protected PluginPath(Class<T> cls, String name) {
         this.type = cls;
@@ -43,6 +43,25 @@ public class PluginPath<T> {
 
     public static <T> PluginPath<T> of(Class<T> cls, String name) {
         return new PluginPath<>(cls, name);
+    }
+
+    public static PluginPath<?> from(ClassLoader loader, String str) throws ClassNotFoundException {
+        String[] strings = str.split("/");
+        PluginPath<?> path = null;
+        for (int i = 0; i < strings.length; i+=2) {
+            String name = null;
+            if (i+1 < strings.length)
+                name = strings[i+1];
+            if (path == null)
+                path = PluginPath.of(loader.loadClass(strings[i]), name);
+            else
+                path = path.and(loader.loadClass(strings[i]), name);
+        }
+        return path;
+    }
+
+    public static PluginPath<?> from(String str) throws ClassNotFoundException {
+        return from(PluginPath.class.getClassLoader(), str);
     }
 
     public Class<T> getType() {
@@ -77,7 +96,16 @@ public class PluginPath<T> {
         return child;
     }
 
-    public List<PluginPath> list() {
+    public <R> PluginPath<R> concat(PluginPath<R> rear) {
+        List<PluginPath<?>> list = rear.list();
+        PluginPath<?> node = this;
+        for (PluginPath<?> p : list)
+            node = node.and(p.getType(), p.getName());
+
+        return (PluginPath<R>) node;
+    }
+
+    public List<PluginPath<?>> list() {
         if (path != null)
             return path;
         path = new LinkedList<>();
@@ -89,14 +117,37 @@ public class PluginPath<T> {
         return path;
     }
 
+    public <P extends Plugin> PluginPath<P> changeRoot(Class rootClass, String rootName) {
+        List<PluginPath<?>> list = list();
+        PluginPath newPath = PluginPath.of(rootClass, rootName);
+        for (int i = 1 ; i < list.size(); i++) {
+            PluginPath p = list.get(i);
+            newPath = newPath.and(p.getType(), p.getName());
+        }
+        return newPath;
+    }
+
+    public <R> PluginPath<R> trimRoot() {
+        List<PluginPath<?>> list = list();
+        PluginPath<?> sub = null;
+        for (int i = 1 ; i < list.size(); i++) {
+            PluginPath<?> p = list.get(i);
+            if (sub == null)
+                sub = PluginPath.of(p.getType(), p.getName());
+            else
+                sub = sub.and(p.getType(), p.getName());
+        }
+        return (PluginPath<R>) sub;
+    }
+
     public String path() {
         if (toString != null)
             return toString;
 
         StringBuilder builder = new StringBuilder();
-        List<PluginPath> list = list();
+        List<PluginPath<?>> list = list();
         boolean first = true;
-        for (PluginPath p : list) {
+        for (PluginPath<?> p : list) {
             if (first) {
                 first  = false;
             } else {
@@ -118,9 +169,9 @@ public class PluginPath<T> {
     @Override
     public int hashCode() {
         if (hash == 0) {
-            List<PluginPath> list = list();
+            List<PluginPath<?>> list = list();
             int result = 1;
-            for (PluginPath p : list)
+            for (PluginPath<?> p : list)
                 result = 31 * result + (p == null ? 0 : Objects.hash(p.type, name));
             hash = result;
         }
@@ -132,13 +183,13 @@ public class PluginPath<T> {
     public boolean equals(Object object) {
         if (!(object instanceof  PluginPath))
             return false;
-        PluginPath p = (PluginPath) object;
-        List<PluginPath> l1 = list();
-        List<PluginPath> l2 = p.list();
+        PluginPath<?> p = (PluginPath) object;
+        List<PluginPath<?>> l1 = list();
+        List<PluginPath<?>> l2 = p.list();
         if (l1.size() == l2.size()) {
             for (int i = 0; i < l1.size(); i++) {
-                PluginPath p1 = l1.get(i);
-                PluginPath p2 = l2.get(i);
+                PluginPath<?> p1 = l1.get(i);
+                PluginPath<?> p2 = l2.get(i);
                 if (p1 != null && p2 != null) {
                     if (!(Objects.equals(p1.name, p2.name) && Objects.equals(p1.type, p2.type)))
                         return false;
@@ -150,18 +201,22 @@ public class PluginPath<T> {
         return false;
     }
 
-    public boolean startsWith(PluginPath p) {
-        List<PluginPath> l1 = list();
-        List<PluginPath> l2 = p.list();
+    public boolean startsWith(PluginPath<?> p) {
+        List<PluginPath<?>> l1 = list();
+        List<PluginPath<?>> l2 = p.list();
 
         if (l1.size() < l2.size())
             return false;
 
         for (int i = 0; i < l2.size(); i++) {
-            PluginPath p1 = l1.get(i);
-            PluginPath p2 = l2.get(i);
+            PluginPath<?> p1 = l1.get(i);
+            PluginPath<?> p2 = l2.get(i);
             if (p1 != null && p2 != null) {
-                if (!(Objects.equals(p1.name, p2.name) && Objects.equals(p1.type, p2.type)))
+                if (p2.type == null && p2.name != null && Objects.equals(p1.name, p2.name))
+                    continue;
+                else if (p2.type != null && p2.name == null && Objects.equals(p1.type, p2.type))
+                    continue;
+                else if (!(Objects.equals(p1.name, p2.name) && Objects.equals(p1.type, p2.type)))
                     return false;
             } else if (p1 != p2 ) { // if only one of them is null
                 return false;

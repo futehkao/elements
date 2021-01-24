@@ -193,6 +193,10 @@ public class Provision {
         return resourceManager.inject(obj);
     }
 
+    public PluginManager getPluginManager() {
+        return resourceManager.getPluginManager();
+    }
+
     public ClassLoader getPluginClassLoader() {
         return resourceManager.getPluginClassLoader();
     }

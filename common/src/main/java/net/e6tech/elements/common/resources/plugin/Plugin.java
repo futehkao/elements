@@ -25,6 +25,10 @@ public interface Plugin {
         return false;
     }
 
+    default String description() {
+        return getClass().getSimpleName();
+    }
+
     default void initialize(PluginPath path) {
     }
 }

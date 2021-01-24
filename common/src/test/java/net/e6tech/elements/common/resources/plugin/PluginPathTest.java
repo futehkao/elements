@@ -21,13 +21,23 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class PluginPathTest {
+class PluginPathTest {
 
     @Test
-    public void equalsTest() {
+    void equalsTest() throws Exception {
         PluginPath p1 = PluginPath.of(String.class, "A").and(Long.class, "1");
         PluginPath p2 = PluginPath.of(String.class, "A").and(Long.class, "1");
 
+        assertTrue(p1.equals(p2));
+        assertTrue(p1.hashCode() == p2.hashCode());
+
+        p1 = PluginPath.of(String.class, "A").and(Long.class);
+        p2 = PluginPath.of(String.class, "A").and(Long.class);
+
+        assertTrue(p1.equals(p2));
+        assertTrue(p1.hashCode() == p2.hashCode());
+
+        p1 = PluginPath.from(p1.path());
         assertTrue(p1.equals(p2));
         assertTrue(p1.hashCode() == p2.hashCode());
 

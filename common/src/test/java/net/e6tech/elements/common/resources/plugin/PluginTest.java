@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Created by futeh.
  */
 @SuppressWarnings("unchecked")
-public class PluginTest {
+class PluginTest {
 
     @Test
     void loadJars() throws Exception {
