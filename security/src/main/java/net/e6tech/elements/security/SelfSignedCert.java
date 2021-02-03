@@ -27,22 +27,31 @@ import java.security.KeyStore;
 public class SelfSignedCert {
 
     private String alias = "cert";
-    private String dn = "CN=localhost.net,OU=IT,O=Unemployed,L=Austin,ST=Texas,C=US";
+    private String dn = "CN=localhost,OU=IT,O=Unemployed,L=Austin,ST=Texas,C=US";
     private int expiration = 3; // 3 years
     private JavaKeyStore javaKeyStore;
     private String format = JavaKeyStore.DEFAULT_FORMAT;
     private char[] password = Password.generateRandomPassword(9, 15);
 
-    public void init() throws GeneralSecurityException {
+    public static SelfSignedCert newInstance() throws GeneralSecurityException {
+        return new SelfSignedCert().init();
+    }
+
+    public SelfSignedCert init() throws GeneralSecurityException {
         if (password == null)
             password = Password.generateRandomPassword(9, 15);
         javaKeyStore = new JavaKeyStore(format);
         javaKeyStore.createSelfSignedCertificate(alias, dn, password, expiration);
         javaKeyStore.init(password);
+        return this;
     }
 
     public char[] getPassword() {
         return password;
+    }
+
+    public void setPassword(char[] password) {
+        this.password = password;
     }
 
     public void init(JavaKeyStore javaKeyStore) {
@@ -91,6 +100,10 @@ public class SelfSignedCert {
 
     public KeyStore getKeyStore() {
         return javaKeyStore.getKeyStore();
+    }
+
+    public JavaKeyStore getJavaKeyStore() {
+        return javaKeyStore;
     }
 
 }

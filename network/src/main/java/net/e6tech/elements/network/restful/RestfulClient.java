@@ -21,8 +21,10 @@ import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.JavaKeyStore;
+import net.e6tech.elements.security.SSLSocketConfig;
 
-import javax.net.ssl.*;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
 import javax.ws.rs.*;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -31,8 +33,6 @@ import java.beans.PropertyDescriptor;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyStore;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +46,6 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();
-    private static final X509Certificate[] EMPTY_CERTIFICATES = new X509Certificate[0];
 
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
@@ -67,7 +66,8 @@ public class RestfulClient {
     private int proxyPort = -1;
     private Marshaller marshaller = new JsonMarshaller<>(ErrorResponse.class);
 
-    public RestfulClient() {}
+    public RestfulClient() {
+    }
 
     public RestfulClient(String address) {
         setAddress(address);
@@ -153,7 +153,7 @@ public class RestfulClient {
 
     public RestfulClient trustStorePassword(char[] trustStorePassword) {
         setTrustStorePassword(trustStorePassword);
-        return  this;
+        return this;
     }
 
     public boolean isSkipHostnameCheck() {
@@ -305,7 +305,7 @@ public class RestfulClient {
     private Param[] toParams(Object object) {
 
         if (object instanceof Param) {
-            return new Param[] { (Param) object};
+            return new Param[]{(Param) object};
         }
 
         List<Param> params = new ArrayList<>();
@@ -318,7 +318,7 @@ public class RestfulClient {
                 throw new SystemException(e);
             }
             for (PropertyDescriptor desc : beanInfo.getPropertyDescriptors()) {
-                if (desc.getReadMethod()!= null) {
+                if (desc.getReadMethod() != null) {
                     try {
                         Object value = desc.getReadMethod().invoke(object);
                         if (value != null)
@@ -340,15 +340,15 @@ public class RestfulClient {
         return get(context, toParams(object)); // toParams make sure it calls the right vararg method
     }
 
-    public Response get(String context, Param ... params) throws Exception {
+    public Response get(String context, Param... params) throws Exception {
         return new Request(this).get(context, params);
     }
 
-    public Response delete(String context, Object data, Param ... params) throws Exception {
+    public Response delete(String context, Object data, Param... params) throws Exception {
         return new Request(this).delete(context, data, params);
     }
 
-    public Response delete(String context, Param ... params) throws Exception {
+    public Response delete(String context, Param... params) throws Exception {
         return new Request(this).delete(context, params);
     }
 
@@ -356,7 +356,7 @@ public class RestfulClient {
         return put(context, data, toParams(object)); // toParams make sure it calls the right vararg method
     }
 
-    public Response put(String context, Object data,  Param ... params) throws Exception {
+    public Response put(String context, Object data, Param... params) throws Exception {
         return new Request(this).put(context, data, params);
     }
 
@@ -364,11 +364,11 @@ public class RestfulClient {
         return post(context, data, toParams(object)); // toParams make sure it calls the right vararg method
     }
 
-    public Response post(String context, Object data, Param ... params) throws Exception {
+    public Response post(String context, Object data, Param... params) throws Exception {
         return new Request(this).post(context, data, params);
     }
 
-    private String constructPath(String destination, String ctx, Param ... params) {
+    private String constructPath(String destination, String ctx, Param... params) {
         String dest = destination;
         String context = ctx;
         String fullPath = null;
@@ -385,10 +385,10 @@ public class RestfulClient {
 
         while (fullPath.endsWith("/"))
             fullPath = fullPath.substring(0, fullPath.length() - 1);
-        if (params !=  null) {
+        if (params != null) {
             StringBuilder builder = new StringBuilder();
             List<Param> list = new ArrayList<>();
-            for(Param param : params)
+            for (Param param : params)
                 if (param.getValue() != null)
                     list.add(param);
             for (int i = 0; i < list.size(); i++) {
@@ -400,11 +400,11 @@ public class RestfulClient {
             }
             fullPath = fullPath + builder.toString();
         }
-        return fullPath ;
+        return fullPath;
     }
 
     @SuppressWarnings("squid:S3510")
-    HttpURLConnection open(String dest, String context, Param ... params) throws IOException {
+    HttpURLConnection open(String dest, String context, Param... params) throws IOException {
         String fullPath = constructPath(dest, context, params);
         URL url = null;
         try {
@@ -435,11 +435,11 @@ public class RestfulClient {
         }
     }
 
-    protected Response submit(String context, String method, Map<String, String> requestProperties, PostData postData, Param ... params) throws Exception {
+    protected Response submit(String context, String method, Map<String, String> requestProperties, PostData postData, Param... params) throws Exception {
         return _submit(staticAddress, context, method, requestProperties, postData, params);
     }
 
-    protected Response _submit(String dest, String context, String method,  Map<String, String>  requestProperties, PostData postData, Param ... params) throws Exception {
+    protected Response _submit(String dest, String context, String method, Map<String, String> requestProperties, PostData postData, Param... params) throws Exception {
         if (postData == null)
             postData = new PostData();
         Response response = null;
@@ -484,7 +484,7 @@ public class RestfulClient {
         return response;
     }
 
-    private void printRequest(HttpURLConnection conn, String dest, String context, String method,  Map<String, String>  requestProperties, PostData postData, Param ... params)
+    private void printRequest(HttpURLConnection conn, String dest, String context, String method, Map<String, String> requestProperties, PostData postData, Param... params)
             throws Exception {
         if (printer != null) {
             printer.println("REQUEST ----------------------------");
@@ -503,7 +503,7 @@ public class RestfulClient {
         if (printer != null) {
             printer.println("RESPONSE ----------------------------");
             List<String> statusList = response.getHeaderFields().get(null);
-            if (statusList != null  && !statusList.isEmpty())
+            if (statusList != null && !statusList.isEmpty())
                 printer.println(statusList.get(0));
             printer.println("Response Code=" + response.getResponseCode());
             printHeaders(response.getHeaderFields());
@@ -620,16 +620,24 @@ public class RestfulClient {
         }
 
         switch (status) {
-            case BAD_REQUEST: throw new BadRequestException(message);
-            case UNAUTHORIZED: throw new NotAuthorizedException(javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.UNAUTHORIZED).build());
+            case BAD_REQUEST:
+                throw new BadRequestException(message);
+            case UNAUTHORIZED:
+                throw new NotAuthorizedException(javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.UNAUTHORIZED).build());
             case PAYMENT_REQUIRED:
-            case FORBIDDEN: throw new ForbiddenException(message);
-            case NOT_FOUND: throw new NotFoundException(message);
-            case METHOD_NOT_ALLOWED: throw new NotAllowedException(message,
-                    javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.METHOD_NOT_ALLOWED).build());
-            case NOT_ACCEPTABLE: throw new NotAcceptableException(message);
-            case UNSUPPORTED_MEDIA_TYPE: throw new NotSupportedException(message);
-            default: throw new ServerErrorException(message, status);
+            case FORBIDDEN:
+                throw new ForbiddenException(message);
+            case NOT_FOUND:
+                throw new NotFoundException(message);
+            case METHOD_NOT_ALLOWED:
+                throw new NotAllowedException(message,
+                        javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.METHOD_NOT_ALLOWED).build());
+            case NOT_ACCEPTABLE:
+                throw new NotAcceptableException(message);
+            case UNSUPPORTED_MEDIA_TYPE:
+                throw new NotSupportedException(message);
+            default:
+                throw new ServerErrorException(message, status);
         }
     }
 
@@ -664,14 +672,14 @@ public class RestfulClient {
         printer.flush();
     }
 
-    private void setConnectionProperties(HttpURLConnection conn)  {
+    private void setConnectionProperties(HttpURLConnection conn) {
         conn.setDoInput(true);
         conn.setUseCaches(false);
         conn.setAllowUserInteraction(false);
         conn.setRequestProperty("Accept", marshaller.getAccept());
     }
 
-    private void loadRequestProperties(HttpURLConnection conn,  Map<String, String>  properties) {
+    private void loadRequestProperties(HttpURLConnection conn, Map<String, String> properties) {
         for (Map.Entry<String, String> entry : properties.entrySet())
             conn.setRequestProperty(entry.getKey(), entry.getValue());
     }
@@ -679,44 +687,20 @@ public class RestfulClient {
     private SSLSocketFactory getSSLSocketFactory() {
         if (sslSocketFactory != null)
             return sslSocketFactory;
-        TrustManager[] trustManagers = null;
-        KeyManager[] keyManagers = null;
-        if (skipCertCheck) {
-            trustManagers = new TrustManager[] { new AcceptAllTrustManager()};
-        } else {
-            try {
-                if (trustStore != null) {
-                    JavaKeyStore javaKeyStore = new JavaKeyStore(trustStore, trustStorePassword, trustStoreFormat);
-                    javaKeyStore.init(privateKeyPassword);
-                    trustManagers = javaKeyStore.getTrustManagers();
-                    keyManagers = javaKeyStore.getKeyManagers();
-                    if (privateKeyPassword != null) {
-                        for (int i = 0 ; i < privateKeyPassword.length; i++)
-                            privateKeyPassword[i] = 0;
-                        privateKeyPassword = null;
-                    }
-                } else {
-                    TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                    trustManagerFactory.init((KeyStore)null);
-                    trustManagers = trustManagerFactory.getTrustManagers();
-                    KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-                    keyManagerFactory.init(null, null);
-                    keyManagers = keyManagerFactory.getKeyManagers();
-                }
-            } catch (Exception ex) {
-                throw logger.systemException(ex);
-            }
-        }
-
-        SSLContext ctx = null;
+        SSLSocketConfig config = new SSLSocketConfig();
+        config.setKeyStore(trustStore);
+        config.setKeyStorePassword(trustStorePassword);
+        config.setKeyStoreFormat(trustStoreFormat);
+        config.setSkipCertCheck(skipCertCheck);
+        config.setKeyManagerPassword(privateKeyPassword);
+        config.setErasePasswords(true);
         try {
-            ctx = SSLContext.getInstance(getTLSProtocol());
-            ctx.init(keyManagers, trustManagers, null);
-            sslSocketFactory = ctx.getSocketFactory();
-            return sslSocketFactory;
+            sslSocketFactory = config.getSSLSocketFactory();
+            privateKeyPassword = null;
         } catch (Exception e) {
             throw logger.systemException(e);
         }
+        return sslSocketFactory;
     }
 
 
@@ -725,19 +709,4 @@ public class RestfulClient {
         this.sslSocketFactory = sslSocketFactory;
     }
 
-    @SuppressWarnings("squid:S4424")
-    public class AcceptAllTrustManager implements X509TrustManager {
-
-        public void checkClientTrusted(X509Certificate[] chain, String authType) {
-            // do nothing
-        }
-
-        public void checkServerTrusted(X509Certificate[] chain, String authType) {
-            // do nothing
-        }
-
-        public X509Certificate[] getAcceptedIssuers() {
-            return EMPTY_CERTIFICATES;
-        }
-    }
 }

@@ -26,7 +26,7 @@ atom("helloworld_selfsigned") {
         keyStorePassword: password
         keyManagerPassword: password
         selfSignedCert: ^_selfSignedCert
-        keyStoreFormat: JKS
+        keyStoreFormat: PKCS12
     _helloworld.addresses:
         - "https://0.0.0.0:9000/restful/"
     _helloworld.resources:

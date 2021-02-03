@@ -19,7 +19,10 @@ package net.e6tech.elements.common.resources.plugin;
 /**
  * Created by futeh.
  */
+@SuppressWarnings("squid:S1214")
 public interface Plugin {
+
+    String PLUGIN_DESCRIPTION = "pluginDescription";
 
     default boolean isPrototype() {
         return false;

@@ -118,6 +118,9 @@ public class PluginManager {
                 }
                 t = t.getSuperclass();
             }
+
+            // no default static variable named defaultPlugin
+            // see if type implements AutoPlugin.  If so, associate type with itself.
             if (lookup == null
                     && type != null
                     && AutoPlugin.class.isAssignableFrom(type)) {
@@ -153,29 +156,34 @@ public class PluginManager {
         return map;
     }
 
-    public <T extends Plugin> Optional<PluginEntry> getEntry(PluginPath<T> path) {
+    public <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPath<T> path) {
         return Optional.ofNullable(plugins.get(path));
     }
 
-    public <T extends Plugin> Optional<T> get(PluginPaths<T> paths, Object... args) {
-        PluginEntry lookup = null;
-        PluginPath<T> pluginPath = null;
-
+    public <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPaths<T> paths) {
+        PluginEntry<T> lookup = null;
         // look up from paths
         for (PluginPath path : paths.getPaths()) {
             lookup = plugins.get(path);
             if (lookup != null) {
-                pluginPath = path;
                 break;
             }
         }
+        return Optional.ofNullable(lookup);
+    }
+
+    public <T extends Plugin> Optional<T> get(PluginPaths<T> paths, Object... args) {
+        PluginEntry<T> lookup = getEntry(paths).orElse(null);
+        PluginPath<T> pluginPath = null;
 
         // if still null, look up from default plugin
         Object instance = null;
         if (lookup == null) {
             pluginPath = PluginPath.of(paths.getType(), DEFAULT_PLUGIN);
-        } else
+        } else {
+            pluginPath = lookup.getPath();
             instance = lookup.getPlugin();
+        }
         return Optional.ofNullable(createInstance(pluginPath, instance, args));
     }
 
