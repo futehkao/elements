@@ -154,12 +154,12 @@ public class Rule {
     }
 
     public void run(RuleContext context) {
-        boolean result = _run(context, true) == Failed;
+        boolean result = runInternal(context, true) == Failed;
         context.setCompleted(!result);
     }
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S134", "squid:S00100", "squid:S3776"})
-    private ControlFlow _run(RuleContext context, boolean root) {
+    protected ControlFlow runInternal(RuleContext context, boolean root) {
         long start = System.currentTimeMillis();
         boolean cond = true;
         context.setCurrentRule(this);
@@ -195,7 +195,7 @@ public class Rule {
                         context.ruleHalted(child);
                     } else if (flow == Continue) {
                         try {
-                            flow = child._run(context, false);
+                            flow = child.runInternal(context, false);
                         } catch (Exception ex) {
                             context.ruleHalted(child);
                             flow = Failed;

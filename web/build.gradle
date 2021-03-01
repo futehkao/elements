@@ -13,12 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 dependencies {
     compile project(':common')
     compile project(':security')
     compile project(':network')
-    
-    compile "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${jacksonVersion}"
+
+    compile ("com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${jacksonVersion}")
     
     // jetty
     compile "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
@@ -31,11 +32,9 @@ dependencies {
 
     // compile 'javax.ws.rs:jsr311-api:1.1.1'
     compile "org.apache.httpcomponents:httpclient:${httpclientVersion}"
-    compile ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}") {
-        exclude group: 'org.glassfish.jaxb', module: 'jaxb-runtime' // from common
-    }
+    compile ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}")
     compile group: 'org.slf4j', name: 'jcl-over-slf4j', version: "${slf4jVersion}"
-    compile "org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}"
+    compile ("org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}")
     compile "org.apache.cxf:cxf-rt-transports-local:${cxfVersion}"
     compile "org.apache.cxf:cxf-rt-transports-http:${cxfVersion}"
     compile "org.apache.cxf:cxf-rt-transports-http-hc:${cxfVersion}"

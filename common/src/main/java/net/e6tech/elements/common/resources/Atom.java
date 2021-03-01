@@ -269,7 +269,7 @@ public class Atom implements Map<String, Object> {
 
         run(boundInstances.get(PRE_INIT));
 
-        // call initialized for beans that implment Initializable
+        // call initialized for beans that implements Initializable
         for (Map.Entry<String, Object> entry : boundInstances.entrySet()) {
             Object value = entry.getValue();
             if (value instanceof Initializable && !beanLifecycle.isBeanInitialized(value)) {

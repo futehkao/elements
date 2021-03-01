@@ -22,9 +22,7 @@ import groovy.lang.MissingMethodException;
 import net.e6tech.elements.common.logging.Logger;
 import org.codehaus.groovy.runtime.InvokerHelper;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 import static net.e6tech.elements.rules.ControlFlow.Continue;
 import static net.e6tech.elements.rules.ControlFlow.Failed;
@@ -45,7 +43,7 @@ public class RuleContext implements GroovyObject {
     private Map<String, Object> properties = new HashMap<>();
     private Map<String, Rule> rulesHalted = new LinkedHashMap<>();
     private Map<String, Rule> rulesExecuted = new LinkedHashMap<>();
-    private Rule ruleFailed;
+    private List<FailedRule> failedRules = new LinkedList<>();
     private String failedMessage;
     private Throwable exception;
     private RuleSet ruleSet;
@@ -101,26 +99,30 @@ public class RuleContext implements GroovyObject {
 
     // rule threw an exception
     void ruleFailed(Rule rule, String failedMessage) {
-        ruleFailed = rule;
-        if (this.failedMessage == null) {
-            if (failedMessage == null) {
-                this.failedMessage = RULE_FAILED_MSG + rule.getName() + ".";
-            } else {
-                this.failedMessage = RULE_FAILED_MSG + rule.getName() + " - " + failedMessage;
-            }
+        String message;
+        if (failedMessage == null) {
+            message = RULE_FAILED_MSG + rule.getName() + ".";
+        } else {
+            message = RULE_FAILED_MSG + rule.getName() + " - " + failedMessage;
         }
+        if (this.failedMessage == null) {
+            this.failedMessage = message;
+        }
+        failedRules.add(new FailedRule(rule, message));
     }
 
     void ruleFailed(Rule rule, Throwable throwable) {
         exception = throwable;
-        ruleFailed = rule;
-        if (this.failedMessage == null) {
-            if (throwable == null) {
-                this.failedMessage = RULE_FAILED_MSG + rule.getName() + ".";
-            } else {
-                this.failedMessage = RULE_FAILED_MSG + rule.getName() + " - " + throwable.getMessage();
-            }
+        String message = null;
+        if (throwable == null) {
+            message = RULE_FAILED_MSG + rule.getName() + ".";
+        } else {
+            message = RULE_FAILED_MSG + rule.getName() + " - " + throwable.getMessage();
         }
+        if (this.failedMessage == null) {
+            this.failedMessage = message;
+        }
+        failedRules.add(new FailedRule(rule, throwable, message));
         if (throwable != null) {
             logger.debug(throwable.getMessage(), throwable);
         }
@@ -135,7 +137,7 @@ public class RuleContext implements GroovyObject {
     }
 
     public Rule getRuleFailed() {
-        return ruleFailed;
+        return failedRules.isEmpty() ? null : failedRules.get(0).getRule();
     }
 
     public Throwable getException() {
@@ -212,6 +214,14 @@ public class RuleContext implements GroovyObject {
         }
     }
 
+    public Map<String, Object> getProperties() {
+        return properties;
+    }
+
+    public void setProperties(Map<String, Object> properties) {
+        this.properties = properties;
+    }
+
     @Override
     public Object getProperty(String property) {
         if ("result".equals(property))
@@ -245,5 +255,4 @@ public class RuleContext implements GroovyObject {
     public void setMetaClass(MetaClass metaClass) {
         throw new UnsupportedOperationException();
     }
-
 }

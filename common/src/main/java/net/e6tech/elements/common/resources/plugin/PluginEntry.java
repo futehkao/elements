@@ -29,6 +29,7 @@ public class PluginEntry<T> {
     public PluginEntry() {
     }
 
+    @SuppressWarnings("unchecked")
     public PluginEntry(PluginPath<T> path, Object plugin) {
         this.path = path;
         this.plugin = plugin;

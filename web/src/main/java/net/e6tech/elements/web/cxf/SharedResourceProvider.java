@@ -47,8 +47,8 @@ class SharedResourceProvider extends SingletonResourceProvider {
     @SuppressWarnings({"squid:S1188", "squid:S3776"})
     public Object getInstance(Message m) {
         messageThreadLocal.set(m);
-        Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
         if (proxy == null) {
+            Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
             proxy = server.getInterceptor().newInterceptor(super.getInstance(null), frame -> {
                 Message message = messageThreadLocal.get();
                 try {

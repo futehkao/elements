@@ -156,7 +156,7 @@ public abstract class AbstractScriptShell {
         return Optional.ofNullable(nullableVar(key));
     }
 
-    public  Map<String, List<String>> defineKnownEnvironments(String str) {
+    public Map<String, List<String>> defineKnownEnvironments(String str) {
         knownEnvironments = Configuration.defineEnvironments(str);
         return knownEnvironments;
     }

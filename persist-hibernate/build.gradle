@@ -16,18 +16,9 @@ limitations under the License.
 
 dependencies {
     compile project(':persist')
-    compile ("org.hibernate:hibernate-core:${hibernateVersion}") {
-        exclude group: 'xml-apis'
-        exclude group: 'org.glassfish.jaxb' // from common
-    }
-    compile ("org.hibernate:hibernate-entitymanager:${hibernateVersion}") {
-        exclude group: 'xml-apis'
-        exclude group: 'org.glassfish.jaxb' // from common
-    }
-    compile ("org.hibernate:hibernate-jcache:${hibernateVersion}") {
-        exclude group: 'xml-apis'
-        exclude group: 'org.glassfish.jaxb'  // from common
-    }
+    compile ("org.hibernate:hibernate-core:${hibernateVersion}")
+    compile ("org.hibernate:hibernate-entitymanager:${hibernateVersion}")
+    compile ("org.hibernate:hibernate-jcache:${hibernateVersion}")
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"

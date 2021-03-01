@@ -17,9 +17,6 @@ dependencies {
     compile project(':common')
     compile ("com.zaxxer:HikariCP:${hikariVersion}")
     compile "org.mariadb.jdbc:mariadb-java-client:${mariadbClientVersion}"
-    compile (group: 'javax', name: 'javaee-api', version: "${javaeeApiVersion}") {
-        exclude group: 'com.sun.mail'
-    }
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"

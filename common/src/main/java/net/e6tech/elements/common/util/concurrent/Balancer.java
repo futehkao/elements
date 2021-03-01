@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2021 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,8 +34,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by futeh.
  */
-public abstract class Balancer<T> {
-
+public class Balancer<T> {
     private static Logger logger= Logger.getLogger();
     private BlockingQueue<T> liveList = new LinkedBlockingQueue<>();
     private ConcurrentLinkedQueue<T> processingList = new ConcurrentLinkedQueue<>();
@@ -45,6 +44,8 @@ public abstract class Balancer<T> {
     private Thread recoveryThread;
     private volatile boolean stopped = false;
     private boolean threadSafe = false;
+    private ServiceHandler<T> starter;
+    private ServiceHandler<T> stopper;
 
     @SuppressWarnings({"unchecked"})
     public T getService() {
@@ -61,12 +62,22 @@ public abstract class Balancer<T> {
         this.timeout = timeout;
     }
 
+    public Balancer<T> timeout(long timeout) {
+        setTimeout(timeout);
+        return this;
+    }
+
     public long getRecoveryPeriod() {
         return recoveryPeriod;
     }
 
     public void setRecoveryPeriod(long recoveryPeriod) {
         this.recoveryPeriod = recoveryPeriod;
+    }
+
+    public Balancer<T> recoveryPeriod(long recoveryPeriod) {
+        setRecoveryPeriod(recoveryPeriod);
+        return this;
     }
 
     public boolean isThreadSafe() {
@@ -77,12 +88,48 @@ public abstract class Balancer<T> {
         this.threadSafe = threadSafe;
     }
 
+    public Balancer<T> threadSafe(boolean threadSafe) {
+        setThreadSafe(threadSafe);
+        return this;
+    }
+
     public void addService(T service) {
         liveList.add(service);
     }
 
+    public Balancer<T> timeout(T service) {
+        addService(service);
+        return this;
+    }
+
     public int getAvailable() {
         return liveList.size();
+    }
+
+    public ServiceHandler<T> getStarter() {
+        return starter;
+    }
+
+    public void setStarter(ServiceHandler<T> starter) {
+        this.starter = starter;
+    }
+
+    public Balancer<T> starter(ServiceHandler<T> starter) {
+        setStarter(starter);
+        return this;
+    }
+
+    public ServiceHandler<T> getStopper() {
+        return stopper;
+    }
+
+    public void setStopper(ServiceHandler<T> stopper) {
+        this.stopper = stopper;
+    }
+
+    public Balancer<T> stopper(ServiceHandler<T> stopper) {
+        setStopper(stopper);
+        return this;
     }
 
     public void start() {
@@ -104,9 +151,19 @@ public abstract class Balancer<T> {
         stopped = true;
     }
 
-    protected abstract void start(T service) throws IOException;
+    protected void start(T service) throws IOException {
+        if (starter != null)
+            starter.handle(service);
+        if (service instanceof BalancerAware)
+            ((BalancerAware) service).start();
+    }
 
-    protected abstract void stop(T service) throws IOException;
+    protected void stop(T service) throws IOException {
+        if (stopper != null)
+            stopper.handle(service);
+        if (service instanceof BalancerAware)
+            ((BalancerAware) service).stop();
+    }
 
     @SuppressWarnings("squid:S899")
     private void recoverTask() {
@@ -225,5 +282,10 @@ public abstract class Balancer<T> {
     protected boolean shouldRecover(Exception exception) {
         Throwable throwable = ExceptionMapper.unwrap(exception);
         return throwable instanceof IOException;
+    }
+
+    // provides a way for an external system to start or to stop a service.
+    public interface ServiceHandler<T> {
+        void handle(T t) throws IOException;
     }
 }

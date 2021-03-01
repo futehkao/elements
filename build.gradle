@@ -1,4 +1,4 @@
-ext.elementsVersion = '2.6.21'
+ext.elementsVersion = '2.6.22'
 ext.junitPlatformLauncherVersion = '1.6.2'
 ext.junitJupiterVersion = '5.6.2'
 ext.snakeyamlVersion = '1.27'
@@ -15,6 +15,9 @@ ext.kryoVersion = '5.0.0-RC9'
 ext.bytebuddyVersion = '1.10.16'
 ext.ehcacheVersion = '3.9.0'
 ext.javaCacheApiVerison = '1.1.1'
+ext.javamailVersion = '1.6.2'
+ext.javaxWsRsApiVersion = '2.1.6'
+ext.javaeeApiVersion = '8.0.1'
 ext.jacksonVersion = '2.11.2'
 ext.jettyVersion =  '9.4.35.v20201120'
 ext.tomcatVersion = '9.0.38'
@@ -23,7 +26,6 @@ ext.log4jVersion = '2.13.3'
 ext.cxfVersion = '3.4.2'
 ext.httpclientVersion = '4.5.13'
 ext.asmVersion = '9.0'  // network
-ext.javaxWsRsApiVersion = '2.1.6'
 ext.cassandraDriver4Version = '4.9.0'
 ext.reactiveStreamsVersion = '1.0.3'
 ext.opendmkVersion = '1.0-b02'
@@ -31,8 +33,6 @@ ext.simplejmxVersion = '1.17'
 ext.quartzVersion = '2.3.2'
 ext.hikariVersion = '3.4.5'
 ext.mariadbClientVersion = '2.6.2'
-ext.javaeeApiVersion = '8.0.1'
-ext.javamailVersion = '1.4.7'
 ext.hibernateVersion = '5.4.27.Final'  // note 5.4.6 - 5.4.8 have major stack overflow issues
 ext.bouncycastleVersion = '1.68'
 ext.jaxbVersion = '2.3.1'      // security
@@ -67,6 +67,15 @@ allprojects {
     repositories {
         mavenCentral()
     }
+
+    configurations {
+        compile.exclude(group: 'jakarta.annotation') // replaced with javaee-api, which used by hibernate
+        compile.exclude(group: 'jakarta.activation') // in javaee
+        compile.exclude group: 'javax.activation' // in javaee, but we need an implementation, which is in jaxb-runtime
+        compile.exclude(group: 'jakarta.ws.rs') // replaced with javaee-api from network
+        compile.exclude(group: 'javax.xml.bind') // replaced with jakarta.xml.bind which comes from org.glassfish.jaxb:jaxb-runtime
+        compile.exclude(group: 'javax.persistence')    // in javaee
+        // compile.exclude(group: 'javax.servlet') // This is needed because LocalStrings resource bundle is missing from javaee
 }
 
 dependencies {

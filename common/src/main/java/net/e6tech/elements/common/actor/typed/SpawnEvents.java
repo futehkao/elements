@@ -22,7 +22,7 @@ import akka.actor.typed.Props;
 public interface SpawnEvents {
 
     class SpawnRequest extends Ask implements SpawnEvents {
-        private Receptor<?,?> child;
+        private transient Receptor<?,?> child;
         private String name;
         private Props props;
         public SpawnRequest(ActorRef<SpawnResponse> sender, Receptor<?,?> child, String name, Props props) {
@@ -32,7 +32,7 @@ public interface SpawnEvents {
             this.props = props;
         }
 
-        public Receptor<?, ?> getChild() {
+        public Receptor getChild() {
             return child;
         }
 
@@ -56,6 +56,7 @@ public interface SpawnEvents {
             this.spawned = spawned;
         }
 
+        @SuppressWarnings("unchecked")
         public <T extends Receptor<?,?>> T getOwner() {
             return (T) owner;
         }
