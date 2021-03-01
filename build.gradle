@@ -73,9 +73,11 @@ allprojects {
         compile.exclude(group: 'jakarta.activation') // in javaee
         compile.exclude group: 'javax.activation' // in javaee, but we need an implementation, which is in jaxb-runtime
         compile.exclude(group: 'jakarta.ws.rs') // replaced with javaee-api from network
-        compile.exclude(group: 'javax.xml.bind') // replaced with jakarta.xml.bind which comes from org.glassfish.jaxb:jaxb-runtime
+        compile.exclude(group: 'javax.xml.bind')
+        // replaced with jakarta.xml.bind which comes from org.glassfish.jaxb:jaxb-runtime
         compile.exclude(group: 'javax.persistence')    // in javaee
         // compile.exclude(group: 'javax.servlet') // This is needed because LocalStrings resource bundle is missing from javaee
+    }
 }
 
 dependencies {
