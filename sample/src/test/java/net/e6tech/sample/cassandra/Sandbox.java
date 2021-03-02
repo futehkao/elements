@@ -23,36 +23,35 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.e6tech.elements.cassandra.annotations.ClusteringColumn;
 import net.e6tech.elements.cassandra.annotations.PartitionKey;
 import net.e6tech.elements.common.inject.Inject;
-import net.e6tech.elements.common.reflection.Accessor;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.reflection.Signature;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.core.GenericType;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings("unchecked")
 public class Sandbox {
 
     @Test
     void test() {
-        System.out.println(new String(Base64.getEncoder().encode(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})));
+        System.out.println(new String(Base64.getEncoder().encode(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})));
         Map<Signature, Map<Class<? extends Annotation>, Annotation>> annotations = Reflection.getAnnotationsByName(Y.class);
         System.out.println(annotations);
     }
 
     @Test
     <T> void test2() throws Exception {
-        GenericType<List<String>> type = new GenericType<List<String>>() {};
+        GenericType<List<String>> type = new GenericType<List<String>>() {
+        };
         type.getType();
         List<String> list = new ArrayList<>();
         list.add("abc");
@@ -60,9 +59,11 @@ public class Sandbox {
         ObjectMapper mapper = new ObjectMapper();
         String encoded = mapper.writeValueAsString(list);
         TypeReference<T> ref = new TypeReference<T>() {
-            public Type getType() { return type.getType(); }
+            public Type getType() {
+                return type.getType();
+            }
         };
-        list =(List) mapper.readValue(encoded, ref);
+        list = (List) mapper.readValue(encoded, ref);
         assertTrue(list.size() > 0);
     }
 
@@ -135,6 +136,7 @@ public class Sandbox {
 
     interface A extends B, C {
         int getA();
+
         void setA(int a);
     }
 
@@ -147,12 +149,14 @@ public class Sandbox {
 
     interface C extends D {
         String getC();
+
         void setC(String c);
     }
 
     interface D {
         @Inject
         String getD();
+
         void setD(String c);
     }
 }
