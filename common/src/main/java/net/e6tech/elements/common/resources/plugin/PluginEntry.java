@@ -22,13 +22,15 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 public class PluginEntry<T> {
-    private static final String PLUGIN_DESCRIPTION = "pluginDescription";
-
     private PluginPath<T> path;
     private Object plugin;
     private String description;
 
-    PluginEntry(PluginPath<T> path, Object plugin) {
+    public PluginEntry() {
+    }
+
+    @SuppressWarnings("unchecked")
+    public PluginEntry(PluginPath<T> path, Object plugin) {
         this.path = path;
         this.plugin = plugin;
         if (plugin instanceof Class) {
@@ -43,7 +45,7 @@ public class PluginEntry<T> {
             throw new IllegalArgumentException("Instance of type " + plugin.getClass() + " does not implement Plugin");
     }
 
-    PluginEntry(PluginPath<T> path, Object plugin, String description) {
+    public PluginEntry(PluginPath<T> path, Object plugin, String description) {
         this.path = path;
         this.plugin = plugin;
         this.description = description;
@@ -55,6 +57,10 @@ public class PluginEntry<T> {
         return plugin;
     }
 
+    public void setPlugin(Object plugin) {
+        this.plugin = plugin;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -63,7 +69,7 @@ public class PluginEntry<T> {
         this.description = description;
     }
 
-    public PluginEntry description(String description) {
+    public PluginEntry<T> description(String description) {
         setDescription(description);
         return this;
     }
@@ -72,7 +78,11 @@ public class PluginEntry<T> {
         return path;
     }
 
-    public static Plugin validateClass(Class<?> type) {
+    protected void setPath(PluginPath<T> path) {
+        this.path = path;
+    }
+
+    public static void validateClass(Class<?> type) {
         final String CLASS = "Class ";
         if (!Plugin.class.isAssignableFrom(type))
             throw new IllegalArgumentException(CLASS + type + " does not implement Plugin.");
@@ -85,7 +95,7 @@ public class PluginEntry<T> {
         if (!Modifier.isPublic(type.getModifiers()))
             throw new IllegalArgumentException(CLASS + type + " is not public; cannot be instantiated later.");
         try {
-            return (Plugin) type.getDeclaredConstructor().newInstance();
+            type.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new IllegalArgumentException("Fail to instantiate class " + type + ": " + e.getMessage(), e);
         }
@@ -95,7 +105,7 @@ public class PluginEntry<T> {
         Class<?> t = type;
         while (t != null && !t.equals(Object.class)) {
             try {
-                Field field = t.getField(PLUGIN_DESCRIPTION);
+                Field field = t.getField(Plugin.PLUGIN_DESCRIPTION);
                 Object desc = field.get(null);
                 if (desc != null) {
                     description = desc.toString();

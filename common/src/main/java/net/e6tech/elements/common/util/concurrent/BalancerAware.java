@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2021 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,11 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.common.resources.plugin;
+package net.e6tech.elements.common.util.concurrent;
 
-/**
- * Created by futeh.
- */
-@SuppressWarnings("squid:S1214")
-public interface Plugin {
+import java.io.IOException;
 
-    String PLUGIN_DESCRIPTION = "pluginDescription";
-
-    default boolean isPrototype() {
-        return false;
-    }
-
-    default String description() {
-        return getClass().getSimpleName();
-    }
-
-    default void initialize(PluginPath path) {
-    }
+public interface BalancerAware {
+    void start() throws IOException;
+    void stop() throws IOException;
 }

@@ -83,6 +83,7 @@ public class Spawn<T, B extends Receptor<T, B>> {
         return extensions.getOwner();
     }
 
+    @SuppressWarnings("unchecked")
     public ActorRef<T> spawnExternally(B child) {
         try {
             SpawnEvents.SpawnResponse resp = parent.talk(SpawnEvents.class).askAndWait(ref -> new SpawnEvents.SpawnRequest(ref, child, name, props));

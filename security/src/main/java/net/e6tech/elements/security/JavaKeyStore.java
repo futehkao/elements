@@ -99,9 +99,9 @@ public class JavaKeyStore {
     }
 
     // CN=www.companyname.com,OU=IT,O=<Company Name>,L=Austin,ST=Texas,C=US,E=user@companyname.com
-    public static X509Certificate generateSelfSignedCertificate(String info, KeyPair pair, int years){
+    public static X509Certificate generateSelfSignedCertificate(String info, KeyPair pair, int years) {
         try {
-            X500Principal principal=new X500Principal(info);
+            X500Principal principal = new X500Principal(info);
             Date notBefore = new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000L);
             Date notAfter = new Date(System.currentTimeMillis() + years * 365 * 24 * 60 * 60 * 1000L);
             BigInteger serial = BigInteger.valueOf(System.currentTimeMillis());
@@ -116,7 +116,7 @@ public class JavaKeyStore {
             cert.verify(cert.getPublicKey());
             return cert;
         } catch (Exception t) {
-            throw new SystemException("Failed to generate self-signed certificate!",t);
+            throw new SystemException("Failed to generate self-signed certificate!", t);
         }
     }
 
@@ -125,13 +125,14 @@ public class JavaKeyStore {
     }
 
     // if there is the key managers are not password protected, the argument password needs to be an empty char array.
-    public void init(char[] password) throws GeneralSecurityException {
+    public JavaKeyStore init(char[] password) throws GeneralSecurityException {
         if (password != null) {
             KeyManagerFactory factory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             factory.init(keyStore, password);
             keyManagers = factory.getKeyManagers();
         }
         initTrustManagers();
+        return this;
     }
 
     public boolean isIncludeSystem() {
@@ -140,6 +141,11 @@ public class JavaKeyStore {
 
     public void setIncludeSystem(boolean includeSystem) {
         this.includeSystem = includeSystem;
+    }
+
+    public JavaKeyStore includeSystem(boolean includeSystem) {
+        setIncludeSystem(includeSystem);
+        return this;
     }
 
     public KeyManager[] getKeyManagers() {
@@ -164,7 +170,7 @@ public class JavaKeyStore {
         if (includeSystem) {
             if (trustManagersWithSystem == null) {
                 TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                factory.init((KeyStore)null);
+                factory.init((KeyStore) null);
                 TrustManager[] system = factory.getTrustManagers();
                 trustManagersWithSystem = new TrustManager[system.length + trustManagers.length];
                 System.arraycopy(trustManagers, 0, trustManagersWithSystem, 0, trustManagers.length);
@@ -176,14 +182,23 @@ public class JavaKeyStore {
     }
 
     /**
-     *
-     * @param protocol for example "TLSv1.2"
+     * @param tlsProtocol for example "TLSv1.2"
      * @return SSLSocketFactory
      */
-    public SSLSocketFactory createSocketFactory(String protocol) throws GeneralSecurityException {
-        SSLContext ctx = SSLContext.getInstance(protocol);
+    public SSLSocketFactory createSocketFactory(String tlsProtocol) throws GeneralSecurityException {
+        SSLContext ctx = SSLContext.getInstance(tlsProtocol);
         ctx.init(getKeyManagers(), getTrustManagers(), null);
         return ctx.getSocketFactory();
+    }
+
+    /**
+     * @param tlsProtocol for example "TLSv1.2"
+     * @return SSLServerSocketFactory
+     */
+    public SSLServerSocketFactory createServerSocketFactory(String tlsProtocol) throws GeneralSecurityException {
+        SSLContext ctx = SSLContext.getInstance(tlsProtocol);
+        ctx.init(getKeyManagers(), getTrustManagers(), null);
+        return ctx.getServerSocketFactory();
     }
 
     public Key getKey(String alias, char[] password) throws GeneralSecurityException {
@@ -201,7 +216,7 @@ public class JavaKeyStore {
         return (X509Certificate) keyStore.getCertificate(alias);
     }
 
-    public void setCertificate(String name, X509Certificate certificate) throws GeneralSecurityException{
+    public void setCertificate(String name, X509Certificate certificate) throws GeneralSecurityException {
         keyStore.setCertificateEntry(name, certificate);
     }
 
@@ -249,7 +264,7 @@ public class JavaKeyStore {
     }
 
     @SuppressWarnings("all")
-    public static void main(String ... args) throws Exception {
+    public static void main(String... args) throws Exception {
         char[] password = "password".toCharArray();
         KeyStore.ProtectionParameter protectionParameter = new KeyStore.PasswordProtection(password);
 

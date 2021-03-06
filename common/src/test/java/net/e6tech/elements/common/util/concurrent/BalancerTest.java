@@ -136,14 +136,12 @@ class BalancerTest {
         }
     }
 
-
     public static interface Service {
         void start();
         void stop();
         int run() throws IOException;
         void puke();
     }
-
 
     public static class ServiceImpl implements Service {
         volatile int count = 0;

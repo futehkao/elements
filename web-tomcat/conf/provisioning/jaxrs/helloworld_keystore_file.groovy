@@ -23,8 +23,8 @@ atom("helloworld_keystore_file") {
     _helloworld:
         keyStorePassword: password
         keyManagerPassword: password
-        keyStoreFile: $__dir/../../selfsigned.jks
-        keyStoreFormat: JKS
+        keyStoreFile: $__dir/../../selfsigned.pkcs12
+        keyStoreFormat: PKCS12
     _helloworld.addresses:
         - "https://0.0.0.0:9000/restful/"
     _helloworld.resources:

@@ -17,8 +17,11 @@
 package net.e6tech.elements.security.hsm;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.security.SSLServerSocketConfig;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
@@ -32,6 +35,7 @@ public abstract class Simulator {
     private int port = 7000;
     private boolean stopped = true;
     private ExecutorService threadPool;
+    private SSLServerSocketConfig sslConfig = new SSLServerSocketConfig();
 
     public boolean isStopped() {
         return stopped;
@@ -53,6 +57,14 @@ public abstract class Simulator {
         this.threadPool = threadPool;
     }
 
+    public SSLServerSocketConfig getSslConfig() {
+        return sslConfig;
+    }
+
+    public void setSslConfig(SSLServerSocketConfig sslConfig) {
+        this.sslConfig = sslConfig;
+    }
+
     public void start() {
         if (threadPool == null) {
             threadPool = Executors.newCachedThreadPool(runnable -> {
@@ -69,11 +81,11 @@ public abstract class Simulator {
     @SuppressWarnings({"squid:S134", "squid:S1141", "squid:S2589", "squid:S2189"})
     protected void startServer() {
         try {
-            serverSocket = new ServerSocket(port);
+            serverSocket = sslConfig.createServerSocket(port);
             stopped = false;
             while (!stopped) {
                 final Socket socket = serverSocket.accept();
-                threadPool.execute(()-> {
+                threadPool.execute(() -> {
                     try {
                         process(socket.getInputStream(), socket.getOutputStream());
                         logger.info("{} client exited", getClass().getSimpleName());

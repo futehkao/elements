@@ -16,13 +16,14 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
+import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.ResourceManager;
+import net.e6tech.elements.common.resources.Resources;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PluginManagerTest {
 
@@ -39,6 +40,25 @@ class PluginManagerTest {
 
         Map<PluginPath, PluginEntry> map = rm.getPluginManager().startsWith(PluginPath.of(String.class));
         assertNotNull(map.get(path));
+    }
+
+    @Test
+    void pluginModel() {
+        ResourceManager rm = new ResourceManager();
+        rm.loadProvision(Provision.class);
+        rm.getInstance(Provision.class).open().accept(Resources.class, resources -> {
+            DefaultPluginModel model = resources.newInstance(DefaultPluginModel.class);
+            model.registerPlugin(PluginX.class, new PluginX());
+            PluginEntry<PluginX> entry = model.getPluginEntry(PluginX.class).orElse(null);
+            assertNotNull(entry);
+            assertTrue(entry.getPlugin() instanceof PluginX);
+
+            // level 2
+            model.registerPlugin(Void.class, "A", PluginX.class, new PluginX());
+            entry = model.getLevel2PluginEntry(Void.class, "A", PluginX.class).orElse(null);
+            assertNotNull(entry);
+            assertTrue(entry.getPlugin() instanceof PluginX);
+        });
     }
 
     public static class PluginX implements Plugin {

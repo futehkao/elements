@@ -124,6 +124,7 @@ public class ObjectPool<T> {
         return this;
     }
 
+    @SuppressWarnings("unchecked")
     public T create() {
         if (factory != null)
             return factory.create();

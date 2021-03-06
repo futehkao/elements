@@ -19,7 +19,7 @@ dependencies {
     compile "org.bouncycastle:bcpg-jdk15on:${bouncycastleVersion}"
     compile "org.bouncycastle:bcpkix-jdk15on:${bouncycastleVersion}"
     compile "org.bouncycastle:bcmail-jdk15on:${bouncycastleVersion}"
-    compile "javax.xml.bind:jaxb-api:${jaxbVersion}"
+    // compile ("javax.xml.bind:jaxb-api:${jaxbVersion}")
 
     // Below as put in because java 11 and above don't come with jaxb.  But, glassfish's jaxb provides the implementation
     // left the comments in place in case of issues when we move to java 17.

@@ -29,11 +29,11 @@ public class RuleSetTest {
     public void test() throws Exception {
         RuleSet ruleSet = new RuleSet(new Properties());
         ruleSet.load("classpath://net/e6tech/elements/rules/test.groovy");
-        RuleContext attributes = new RuleContext();
-        attributes.setProperty("a", "abc");
-        attributes.setProperty("result", new ResultMap());
-        ruleSet.runRule("test", attributes);
-        System.out.println(attributes);
+        RuleContext context = new RuleContext();
+        context.setProperty("a", "abc");
+        // attributes.setProperty("result", new ResultMap());
+        ruleSet.runRule("test", context);
+        System.out.println(context);
     }
 
 

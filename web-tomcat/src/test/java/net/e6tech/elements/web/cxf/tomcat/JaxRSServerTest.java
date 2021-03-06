@@ -19,8 +19,10 @@ package net.e6tech.elements.web.cxf.tomcat;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.restful.RestfulClient;
 import net.e6tech.elements.network.restful.RestfulProxy;
+import net.e6tech.elements.security.SelfSignedCert;
 import net.e6tech.elements.web.cxf.HelloWorldRS;
 import net.e6tech.elements.web.cxf.HelloWorldRS2;
 import net.e6tech.elements.web.cxf.JaxRSServer;
@@ -30,6 +32,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.PrintWriter;
 
 /**
@@ -128,36 +132,39 @@ public class JaxRSServerTest {
     @ParameterizedTest
     @ValueSource(strings = {"net.e6tech.elements.web.cxf.tomcat.TomcatEngine", "net.e6tech.elements.web.cxf.jetty.JettyEngine"})
     public void httpsKeyStore(String input) {
+        generatePKCS12();
         new LaunchController().launchScript("conf/provisioning/jaxrs/helloworld_keystore.groovy")
                 .property("serverEngineClass", input)
                 .inject(this).launch();
-        runHttps();
+        runHttps(false);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"net.e6tech.elements.web.cxf.tomcat.TomcatEngine", "net.e6tech.elements.web.cxf.jetty.JettyEngine"})
     public void httpsKeyStoreFile(String input) {
+        generatePKCS12();
         new LaunchController().launchScript("conf/provisioning/jaxrs/helloworld_keystore_file.groovy")
                 .property("serverEngineClass", input)
                 .inject(this).launch();
-        runHttps();
+        runHttps(false);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"net.e6tech.elements.web.cxf.tomcat.TomcatEngine", "net.e6tech.elements.web.cxf.jetty.JettyEngine"})
     public void httpsSelfSigned(String input) {
+        generatePKCS12();
         new LaunchController().launchScript("conf/provisioning/jaxrs/helloworld_selfsigned.groovy")
                 .property("serverEngineClass", input)
                 .inject(this).launch();
-        runHttps();
+        runHttps(true);
     }
 
-    private void runHttps() {
+    private void runHttps(boolean skipCert) {
         RestfulProxy proxy = new RestfulProxy("https://localhost:" + 9000 + "/restful");
         RestfulClient client = proxy.getClient();
-        client.setTrustStore("conf/selfsigned.jks");
+        client.setTrustStore("conf/selfsigned.pkcs12");
         client.setTrustStorePassword("password".toCharArray());
-        proxy.setSkipCertCheck(true);
+        proxy.setSkipCertCheck(skipCert);
         proxy.setPrinter(new PrintWriter(System.out, true));
         HelloWorldRS api = proxy.newProxy(HelloWorldRS.class);
         api.sayHi("Mr. Jones");
@@ -166,5 +173,26 @@ public class JaxRSServerTest {
         data.setStringValue("Hello");
         api.putMethod("Test" , data);
         provision.getResourceManager().shutdown();
+        removePKCS12();
+    }
+
+    void removePKCS12() {
+        File f = new File("conf/selfsigned.pkcs12");
+        if (f.exists())
+            f.delete();
+    }
+
+    void generatePKCS12() {
+        try {
+            SelfSignedCert cert = new SelfSignedCert();
+            cert.setPassword("password".toCharArray());
+            cert.init();
+            FileOutputStream out = new FileOutputStream("conf/selfsigned.pkcs12");
+            cert.getKeyStore().store(out, "password".toCharArray());
+            out.flush();
+            out.close();
+        } catch (Exception ex) {
+            throw new SystemException(ex);
+        }
     }
 }

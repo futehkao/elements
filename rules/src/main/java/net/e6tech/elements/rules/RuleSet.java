@@ -23,10 +23,7 @@ import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.jmx.JMXService;
 
 import javax.script.ScriptException;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * Created by futeh.
@@ -73,7 +70,7 @@ public class RuleSet extends AbstractScriptShell {
 
     // override load to clear out rules
     @Override
-    public void load(String str) throws ScriptException {
+    public synchronized void load(String str) throws ScriptException {
         rules = new LinkedHashMap<>();
         super.load(str);
         registerMBean(getMbeanPrefix(), root);
@@ -154,6 +151,7 @@ public class RuleSet extends AbstractScriptShell {
             throw new SystemException("ruleSet " + ruleSet + " not found");
         try {
             context.setRuleSet(this);
+            context.getProperties().putAll(getScripting().getVariables());
             rootSet.get(ruleSet).run(context);
         } finally {
             context.setRuleSet(null);

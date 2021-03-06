@@ -34,7 +34,7 @@ atom("helloworld_keystore") {
           bindHeaderObserver: false
  """
     _serverEngine = serverEngineClass
-    _keystore = new JavaKeyStore("$__dir/../../selfsigned.jks".toString(), 'password'.toCharArray(), 'JKS')
+    _keystore = new JavaKeyStore("$__dir/../../selfsigned.pkcs12".toString(), 'password'.toCharArray(), 'PKCS12')
     _helloworld = JaxRSServer
 
 }
