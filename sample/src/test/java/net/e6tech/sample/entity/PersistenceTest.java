@@ -18,9 +18,11 @@ package net.e6tech.sample.entity;
 
 import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.persist.EntityManagerBuilder;
 import net.e6tech.elements.persist.EntityManagerConfig;
 import net.e6tech.elements.persist.EntityManagerInfo;
+import net.e6tech.elements.persist.EntityManagerMonitor;
 import net.e6tech.elements.persist.criteria.Select;
 import net.e6tech.sample.BaseCase;
 import net.e6tech.sample.Tags;
@@ -29,8 +31,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
+import javax.persistence.LockTimeoutException;
 import javax.persistence.NoResultException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -65,6 +71,53 @@ public class PersistenceTest extends BaseCase {
 
         department = new Department();
         department.setName("Test");
+    }
+
+    @Test
+    void selectForUpdate() {
+
+        provision.open().accept(EntityManager.class, Resources.class,  (em, res) -> {
+            SessionImpl session = em.unwrap(SessionImpl.class);
+            session.setJdbcBatchSize(20);
+            em.persist(employee);
+            em.persist(employee2);
+            em.flush();
+        });
+
+        UnitOfWork uow1 = new UnitOfWork(provision.getResourceManager());
+        uow1.annotate(EntityManagerConfig.class, EntityManagerConfig::names, (String[]) null);
+        UnitOfWork uow2 = new UnitOfWork(provision.getResourceManager());
+        uow2.annotate(EntityManagerConfig.class, EntityManagerConfig::names, (String[]) null)
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::timeout, 10000L);
+        Map<String,Object> timeoutProperties = new HashMap<>();
+        timeoutProperties.put("javax.persistence.lock.timeout", 1000);
+
+        Resources r1 = uow1.open();
+        Resources r2 = uow2.open();
+
+        EntityManager em = r1.getInstance(EntityManager.class);
+
+        Employee e = em.find(Employee.class, employee.getId(), LockModeType.PESSIMISTIC_WRITE, timeoutProperties);
+
+        try {
+            EntityManager em2 = r2.getInstance(EntityManager.class);
+            //em2.createNativeQuery("SET SESSION innodb_lock_wait_timeout = 0")
+            //        .executeUpdate();
+            EntityManagerMonitor monitor = r2.getMapVariable(EntityManagerMonitor.class).get("default");
+            monitor.expire(500L);
+            em2.createQuery("select p from Employee p where p.id = :id ")
+                    .setHint("javax.persistence.lock.timeout", 0)
+                    .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                    .setParameter("id", employee.getId())
+                    .getSingleResult();
+            // Employee e2 = em2.find(Employee.class, employee.getId(), LockModeType.PESSIMISTIC_WRITE, timeoutProperties);
+        } catch (LockTimeoutException ex){
+            ex.printStackTrace();
+        }
+
+        r1.abort();
+        r2.abort();
+
     }
 
     @Test

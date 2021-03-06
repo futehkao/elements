@@ -51,6 +51,11 @@ public class EntityManagerMonitor {
         return expiration;
     }
 
+    public EntityManagerMonitor expire(long exp) {
+        expiration = System.currentTimeMillis() + exp;
+        return this;
+    }
+
     public void addExpiration(long extension) {
         expiration += extension;
     }
