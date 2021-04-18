@@ -268,9 +268,41 @@ public class VaultManager {
     }
 
     public String generateKey(DualEntry dualEntry) throws GeneralSecurityException {
+        return generateKey(dualEntry, false);
+    }
+
+    public String generateKey(DualEntry dualEntry, boolean asymmetricKey) throws GeneralSecurityException {
+        return asymmetricKey ? generateAsymmetricKey(dualEntry) : generateSymmetricKey(dualEntry);
+    }
+
+    private String generateSymmetricKey(DualEntry dualEntry) throws GeneralSecurityException {
         byte[] plain = symmetricCipher.generateKeySpec().getEncoded();
         checkAccess(dualEntry);
         return internalEncrypt(MASTER_KEY_ALIAS, null, plain);
+    }
+
+    private String generateAsymmetricKey(DualEntry dualEntry) throws GeneralSecurityException {
+        byte[] plain = generateEncodedAsymmetricKey(asymmetricCipher);
+        checkAccess(dualEntry);
+        return internalEncrypt(MASTER_KEY_ALIAS, null, plain);
+    }
+
+    /**
+     * Generate an asymmetric key pair, return encoded key components
+     * @param asymmetricCipher the AsymmetricCipher
+     * @return the generated encoded key pair
+     * @throws GeneralSecurityException general exception
+     */
+    public static byte[] generateEncodedAsymmetricKey(AsymmetricCipher asymmetricCipher) throws GeneralSecurityException {
+        KeyPair keyPair = asymmetricCipher.generateKeySpec();
+        KeyFactory fact = asymmetricCipher.getKeyFactory();
+        RSAPublicKeySpec pub = fact.getKeySpec(keyPair.getPublic(), RSAPublicKeySpec.class);
+        RSAPrivateKeySpec priv = fact.getKeySpec(keyPair.getPrivate(), RSAPrivateKeySpec.class);
+        String encoded = AsymmetricCipher.ALGORITHM_RSA
+                + "$M=" + priv.getModulus().toString(16)         // M: Modulus
+                + "$D=" + priv.getPrivateExponent().toString(16) // D: Decryption
+                + "$E=" + pub.getPublicExponent().toString(16);  // E: Encryption
+        return encoded.getBytes();
     }
 
     /**
@@ -281,7 +313,46 @@ public class VaultManager {
      * @return encrypted key
      */
     public String importKey(DualEntry dualEntry, String plainKey, String iv) throws GeneralSecurityException {
-        return importKey(dualEntry, plainKey, iv, null);
+        return importKey(dualEntry, plainKey, iv, false);
+    }
+
+    /**
+     * Imports a plan key.  It's stored encrypted by latest master ky.
+     * @param dualEntry dual entry
+     * @param plainKey plain key
+     * @param iv initialization vector.  If null, randomly generated
+     * @param version  key version.  If null, randomly generated
+     * @return encrypted key
+     */
+    public String importKey(DualEntry dualEntry, String plainKey, String iv, String version) throws GeneralSecurityException {
+        return importKey(dualEntry, plainKey, iv, false, version);
+    }
+
+    /**
+     * Imports a plan key.  It's stored encrypted by latest master ky.
+     * @param dualEntry dual entry
+     * @param plainKey plain key
+     * @param iv initialization vector.  If null, randomly generated
+     * @param asymmetricKey  whether the key is asymmetric key
+     * @return encrypted key
+     */
+    public String importKey(DualEntry dualEntry, String plainKey, String iv, boolean asymmetricKey) throws GeneralSecurityException {
+        return importKey(dualEntry, plainKey, iv, asymmetricKey, null);
+    }
+
+    /**
+     * Imports a plan key.  It's stored encrypted by latest master ky.
+     * @param dualEntry dual entry
+     * @param plainKey plain key
+     * @param iv initialization vector.  If null, randomly generated
+     * @param asymmetricKey  whether the key is asymmetric key
+     * @param version  key version.  If null, randomly generated
+     * @return encrypted key
+     */
+    public String importKey(DualEntry dualEntry, String plainKey, String iv, boolean asymmetricKey, String version) throws GeneralSecurityException {
+        return asymmetricKey ?
+                importAsymmetricKey(dualEntry, plainKey, iv, version)
+                : importSymmetricKey(dualEntry, plainKey, iv, version);
     }
 
     /**
@@ -290,9 +361,41 @@ public class VaultManager {
      * @param version version of the master key.  If null, use the latest version.
      * @param plainKey the plain key to be imported
      * @param iv  initialization vector.  If null, randomly generated
+     * @param version  key version.  If null, randomly generated
      * @return encrypted key
      */
-    public String importKey(DualEntry dualEntry, String plainKey, String iv, String version) throws GeneralSecurityException {
+    private String importAsymmetricKey(DualEntry dualEntry, String plainKey, String iv, String version) throws GeneralSecurityException {
+        byte[] plain = symmetricCipher.toBytes(plainKey);
+        String[] keyValuesParts = new String(plain).split("\\$");
+        if (keyValuesParts.length != 4)
+            throw new GeneralSecurityException("Invalid key format: expecting the key to be 4 components separated by \\$");
+
+        // try to create private and public key
+        try {
+            RSAPrivateKeySpec privateKeySpec = new RSAPrivateKeySpec(new BigInteger(keyValuesParts[1].substring(2), 16), new BigInteger(keyValuesParts[2].substring(2), 16));
+            RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(new BigInteger(keyValuesParts[1].substring(2), 16), new BigInteger(keyValuesParts[3].substring(2), 16));
+
+            asymmetricCipher.getKeyFactory().generatePrivate(privateKeySpec);
+            asymmetricCipher.getKeyFactory().generatePublic(publicKeySpec);
+        } catch (Exception e) {
+            throw new SystemException("Can't create private and public key", e);
+        }
+
+        checkAccess(dualEntry);
+
+        return internalEncrypt(MASTER_KEY_ALIAS, version, plain, iv);
+    }
+
+    /**
+     *
+     * @param dualEntry dual entry
+     * @param version version of the master key.  If null, use the latest version.
+     * @param plainKey the plain key to be imported
+     * @param iv  initialization vector.  If null, randomly generated
+     * @param version  key version.  If null, randomly generated
+     * @return encrypted key
+     */
+    private String importSymmetricKey(DualEntry dualEntry, String plainKey, String iv, String version) throws GeneralSecurityException {
         byte[] plain = symmetricCipher.toBytes(plainKey);
         byte[] plain2 = symmetricCipher.generateKeySpec().getEncoded();
         String iv2 = symmetricCipher.generateIV();

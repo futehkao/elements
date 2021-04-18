@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Episode Six
+ * Copyright 2020 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
 import net.e6tech.elements.security.Hex;
@@ -66,7 +65,7 @@ public class EMVGenerateMAC extends Command {
         private String imkSmMac;
         // 3, [Application PAN]
         // - the Primary Account Number for the application. This field is also used to indicate the Master Key derivation method.
-        //  If this field contains the letter “B” followed by 17 to 19 digits, method B will be used, otherwise method A will be used.
+        //  If this field contains the letter "B" followed by 17 to 19 digits, method B will be used, otherwise method A will be used.
         private String pan;
         // 4, Application PAN Sequence Number
         private String panSequenceNumber;
@@ -92,8 +91,8 @@ public class EMVGenerateMAC extends Command {
         private String continuationIV;
         // #8, Padded Data
         // - the data used to calculate the MAC
-        // - Per the EMV specification, the data should be right-padded with a single byte (expressed as two hexadecimal characters “80”),
-        //   followed by a variable number of binary zeros bytes (expressed as two hexadecimal characters “00”) to make the total data length a multiple of 8 bytes (16 hexadecimal characters)
+        // - Per the EMV specification, the data should be right-padded with a single byte (expressed as two hexadecimal characters "80"),
+        //   followed by a variable number of binary zeros bytes (expressed as two hexadecimal characters "00") to make the total data length a multiple of 8 bytes (16 hexadecimal characters)
         private String paddedData;
 
         // These next three fields are used only if the derivation type is 9.

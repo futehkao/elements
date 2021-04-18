@@ -51,12 +51,12 @@ public class KeyClientTest {
         Resources res = rm.open(null);
         VaultManager manager = new VaultManager();
         DualEntry dualEntry = new DualEntry(user1.getUser(), user1.getPassword(), "user2", "password2".toCharArray());
-        String tmpVaultFilename = "/tmp/test-" + System.currentTimeMillis() + ".vault";
+        String tmpVaultFilename = System.getProperty("java.io.tmpdir") + "/test-" + System.currentTimeMillis() + ".vault";
 
         FileStore keyDataStore = new FileStore();
         keyDataStore.setFileName(tmpVaultFilename);
         FileStore userLocalStore = new FileStore();
-        tmpVaultFilename = "/tmp/test-" +(System.currentTimeMillis() + 1) + ".vault";
+        tmpVaultFilename = System.getProperty("java.io.tmpdir") + "/test-" +(System.currentTimeMillis() + 1) + ".vault";
         userLocalStore.setFileName(tmpVaultFilename);
 
         manager.setKeyDataStore(keyDataStore);
@@ -73,7 +73,7 @@ public class KeyClientTest {
         ct.setBytes("db-password".getBytes(StandardCharsets.UTF_8));
         ct.setProperty("username", "user");
         manager.passphraseLock(dualEntry, "db", ct);
-       // manager.getUserLocalStore().save();
+        // manager.getUserLocalStore().save();
 
         // set up a secret
         ClearText clearText = new ClearText();

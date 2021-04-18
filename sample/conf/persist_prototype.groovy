@@ -71,5 +71,32 @@ prototype("persist")
             _entityManagerProvider.register('tableId', _tableId)
                     .register('tableId2', _tableId2)
 
+            def close = { em ->
+                if (em.get('lockTimeout') != null) {
+                    em.lockTimeout(em.get('lockTimeout'))
+                    em.remove('lockTimeout')
+                }
+            }
+            _entityManagerProvider.extensions = [
+                    setLockTimeout: { em, millis ->
+                        if (em.get('lockTimeout') == null) {
+                            em.put('lockTimeout', em.lockTimeout())
+                        }
+
+                        int second = millis / 1000
+                        em.createNativeQuery("SET SESSION innodb_lock_wait_timeout = :v")
+                                .setParameter('v', second)
+                                .executeUpdate()
+                        return null
+                    },
+                    getLockTimeout: { em ->
+                        return em.createNativeQuery("select @@innodb_lock_wait_timeout")
+                                .getSingleResult()
+                                .longValue() * 1000
+                    },
+                    onCommit: close,
+                    onAbort: close
+            ]
+
             resourceManager.registerBean(beanName, _entityManagerProvider)
         }

@@ -16,15 +16,8 @@
 
 package net.e6tech.elements.persist;
 
-import net.e6tech.elements.common.resources.Resources;
 
-public interface EntityManagerInfo {
+import javax.persistence.EntityManager;
 
-    Resources getResources();
-
-    String getAlias();
-
-    EntityManagerProvider getProvider();
-
-    EntityManagerConfig getConfig();
+public interface EntityManagerExtension extends EntityManager, EntityManagerSupport {
 }

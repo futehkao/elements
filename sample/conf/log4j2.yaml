@@ -69,6 +69,12 @@ configuration:
       AppenderRef:
         - ref: Console
 
+    - name: org.hibernate.event.internal.DefaultLoadEventListener
+      level: 'off'   # to turn on message logging the level needs to be trace
+      additivity: false
+      AppenderRef:
+        - ref: Console
+
     - name: akka.actor.typed.ActorSystem
       level: info
       additivity: false

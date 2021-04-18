@@ -1,23 +1,26 @@
 package net.e6tech.elements.security.vault;
 
+import net.e6tech.elements.security.AsymmetricCipher;
 import net.e6tech.elements.security.SymmetricCipher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Security;
+import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Created by futeh.
@@ -29,13 +32,13 @@ public class VaultManagerTest {
 
     @BeforeEach
     public void setup() throws Exception {
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get("/tmp"), "test-*.{vault}")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(System.getProperty("java.io.tmpdir")), "test-*.{vault}")) {
             for (Path entry: stream) {
                 entry.toFile().delete();
             }
         }
 
-        String tmpVaultFilename = "/tmp/test-" + System.currentTimeMillis() + ".vault";
+        String tmpVaultFilename = Paths.get(System.getProperty("java.io.tmpdir"), "test-" + System.currentTimeMillis() + ".vault").toString();
         File file = new File(tmpVaultFilename);
         if (file.exists())
             file.delete();
@@ -43,6 +46,8 @@ public class VaultManagerTest {
         ((FileStore) manager.getUserLocalStore()).setFileName(tmpVaultFilename);
         dualEntry = new DualEntry("user1", "password1".toCharArray(), "user2", "password2".toCharArray());
         manager.open(dualEntry);
+
+        Security.setProperty("crypto.policy", "unlimited");
     }
 
     protected void reopen() throws Exception {
@@ -78,19 +83,34 @@ public class VaultManagerTest {
     }
 
     @Test
-    public void genKey() throws Exception {
+    public void genSymmetricKeyKey() throws Exception {
         SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
         String key = manager.generateKey(dualEntry);
-        testEncrypt(key);
+        testSymmetricEncrypt(key);
     }
 
     @Test
-    public void importKey() throws Exception {
+    public void genAsymmetricKeyKey() throws Exception {
+        String key = manager.generateKey(dualEntry, true);
+        testAsymmetricEncrypt(dualEntry, key);
+    }
+
+    @Test
+    public void importSymmetricKey() throws Exception {
         SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
         byte[] plain = cipher.generateKeySpec().getEncoded();
         String iv = cipher.generateIV();
         String key = manager.importKey(dualEntry, cipher.toString(plain), iv);
-        testEncrypt(key);
+        testSymmetricEncrypt(key);
+    }
+
+    @Test
+    public void importAsymmetricKey() throws Exception {
+        SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
+        byte[] plain = VaultManager.generateEncodedAsymmetricKey(AsymmetricCipher.getInstance(AsymmetricCipher.ALGORITHM_RSA));
+        String iv = cipher.generateIV();
+        String key = manager.importKey(dualEntry, cipher.toString(plain), iv, true);
+        testAsymmetricEncrypt(dualEntry, key);
     }
 
     @Test
@@ -111,7 +131,7 @@ public class VaultManagerTest {
         assertThrows(Exception.class, () -> manager.importKey(de, cipher.toString(plain), iv));
     }
 
-    private void testEncrypt(String key) throws Exception {
+    private void testSymmetricEncrypt(String key) throws Exception {
         SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
         String iv = cipher.generateIV();
         String text = "Hello World!";
@@ -119,6 +139,21 @@ public class VaultManagerTest {
         String encrypted = manager.encrypt(dualEntry.getUser1(), key, data, iv);
         byte[] decrypted = manager.decrypt(dualEntry.getUser1(), key, encrypted, iv);
         assertTrue(new String(decrypted, StandardCharsets.UTF_8).equals(text));
+    }
+
+    private void testAsymmetricEncrypt(DualEntry dualEntry, String key) throws Exception {
+        String decyptedKeyValue = new String(manager.decrypt(dualEntry.getUser1(), key), StandardCharsets.UTF_8);
+        String[] keyValuesParts = decyptedKeyValue.split("\\$");
+        assertEquals(4, keyValuesParts.length);
+        RSAPrivateKeySpec privateKeySpec = new RSAPrivateKeySpec(new BigInteger(keyValuesParts[1].substring(2), 16), new BigInteger(keyValuesParts[2].substring(2), 16));
+        RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(new BigInteger(keyValuesParts[1].substring(2), 16), new BigInteger(keyValuesParts[3].substring(2), 16));
+        PublicKey publicKey = manager.getAsymmetricCipher().getKeyFactory().generatePublic(publicKeySpec);
+        PrivateKey privateKey = manager.getAsymmetricCipher().getKeyFactory().generatePrivate(privateKeySpec);
+        String plain = UUID.randomUUID().toString();
+
+        byte[] encryptedBytes = manager.getAsymmetricCipher().encryptBytes(publicKey, plain.getBytes());
+        byte[] deryptedBytes = manager.getAsymmetricCipher().decryptBytes(privateKey, encryptedBytes);
+        assertEquals(plain, new String(deryptedBytes));
     }
 
     @Test

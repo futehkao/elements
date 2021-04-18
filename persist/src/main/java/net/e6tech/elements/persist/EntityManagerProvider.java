@@ -15,12 +15,14 @@ limitations under the License.
 */
 package net.e6tech.elements.persist;
 
+import groovy.lang.Closure;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.NotificationCenter;
 import net.e6tech.elements.common.reflection.Annotator;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.subscribe.Broadcast;
+import net.e6tech.elements.common.util.SystemException;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -57,6 +59,7 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     private ResourceManager resourceManager;
     private InvocationListener<EntityManager> entityManagerListener;
     private InvocationListener<Query> queryListener;
+    private Map<String, Extension> extensions = new HashMap<>();
 
     public EntityManagerProvider() {
     }
@@ -174,6 +177,14 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         this.queryListener = queryListener;
     }
 
+    public Map<String, Extension> getExtensions() {
+        return extensions;
+    }
+
+    public void setExtensions(Map<String, Extension> extensions) {
+        this.extensions = extensions;
+    }
+
     protected void evictCollectionRegion(EvictCollectionRegion notification) {
     }
 
@@ -200,6 +211,20 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
             if (em != null)
                 em.close();
         }
+
+        Map<String, Extension> ext = new HashMap<>();
+        for (String key : extensions.keySet()) {
+            Object v = extensions.get(key);
+            if (v instanceof Closure) {
+                Closure c = (Closure) v;
+                ext.put(key, args -> c.call(args));
+            } else if (v instanceof Extension) {
+                ext.put(key, (Extension) v);
+            } else {
+                throw new SystemException("Expecting either Closure or Extension in extensions for key=" + key);
+            }
+        }
+        extensions = ext;
 
         NotificationCenter center = resources.getNotificationCenter();
         center.subscribe(EvictCollectionRegion.class,
@@ -320,13 +345,17 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         emHandler.setIgnoreInitialLongTransactions(ignoreInitialLongTransactions);
 
         EntityManager proxy = (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
-                new Class[]{EntityManager.class, EntityManagerInfo.class}, emHandler);
+                new Class[]{EntityManager.class, EntityManagerExtension.class}, emHandler);
 
         // first come first win unless it is the DEFAULT
         if (!resources.hasInstance(EntityManager.class)) {
             resources.bind(EntityManager.class, proxy);
-        } else if (alias.equals(DEFAULT_NAME)) {
+            resources.bind(EntityManagerExtension.class, (EntityManagerExtension) proxy);
+        }
+
+        if (alias.equals(DEFAULT_NAME)) {
             resources.rebind(EntityManager.class, proxy);
+            resources.rebind(EntityManagerExtension.class, (EntityManagerExtension) proxy);
         }
 
         resources.getMapVariable(EntityManager.class)
@@ -430,7 +459,10 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     protected void onCommit(Resources resources, String alias) {
         try {
             EntityManager em = resources.getMapVariable(EntityManager.class).get(alias);
+            EntityManagerInvocationHandler h = (EntityManagerInvocationHandler) Proxy.getInvocationHandler(em);
+            h.onCommit();
             em.getTransaction().commit();
+            h.onClose();
             em.clear();
             em.close();
         } catch (InstanceNotFoundException ex) {
@@ -456,7 +488,10 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
     protected void onAbort(Resources resources, String alias) {
         try {
             EntityManager em = resources.getMapVariable(EntityManager.class).get(alias);
+            EntityManagerInvocationHandler h = (EntityManagerInvocationHandler) Proxy.getInvocationHandler(em);
+            h.onAbort();
             em.getTransaction().rollback();
+            h.onClose();
             em.clear();
             em.close();
         } catch (Exception th) {

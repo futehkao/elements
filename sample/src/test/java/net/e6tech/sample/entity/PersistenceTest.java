@@ -16,13 +16,10 @@
 
 package net.e6tech.sample.entity;
 
-import net.e6tech.elements.cassandra.Session;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
-import net.e6tech.elements.persist.EntityManagerBuilder;
 import net.e6tech.elements.persist.EntityManagerConfig;
-import net.e6tech.elements.persist.EntityManagerInfo;
-import net.e6tech.elements.persist.EntityManagerMonitor;
+import net.e6tech.elements.persist.EntityManagerExtension;
 import net.e6tech.elements.persist.criteria.Select;
 import net.e6tech.sample.BaseCase;
 import net.e6tech.sample.Tags;
@@ -32,11 +29,9 @@ import org.junit.jupiter.api.Test;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
-import javax.persistence.LockTimeoutException;
 import javax.persistence.NoResultException;
-import java.util.HashMap;
+import javax.persistence.Query;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -76,7 +71,7 @@ public class PersistenceTest extends BaseCase {
     @Test
     void selectForUpdate() {
 
-        provision.open().accept(EntityManager.class, Resources.class,  (em, res) -> {
+        provision.open().accept(EntityManager.class, Resources.class, (em, res) -> {
             SessionImpl session = em.unwrap(SessionImpl.class);
             session.setJdbcBatchSize(20);
             em.persist(employee);
@@ -85,48 +80,60 @@ public class PersistenceTest extends BaseCase {
         });
 
         UnitOfWork uow1 = new UnitOfWork(provision.getResourceManager());
-        uow1.annotate(EntityManagerConfig.class, EntityManagerConfig::names, (String[]) null);
+        uow1.annotate(EntityManagerConfig.class, EntityManagerConfig::names, (String[]) null)
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::timeout, 100000L);
         UnitOfWork uow2 = new UnitOfWork(provision.getResourceManager());
         uow2.annotate(EntityManagerConfig.class, EntityManagerConfig::names, (String[]) null)
-                .annotate(EntityManagerConfig.class, EntityManagerConfig::timeout, 10000L);
-        Map<String,Object> timeoutProperties = new HashMap<>();
-        timeoutProperties.put("javax.persistence.lock.timeout", 1000);
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::timeout, 100000L);
 
         Resources r1 = uow1.open();
         Resources r2 = uow2.open();
 
-        EntityManager em = r1.getInstance(EntityManager.class);
+        EntityManagerExtension em1 = r1.getInstance(EntityManagerExtension.class);
+        em1.lockTimeout(2000L);
+        Employee e = em1.find(Employee.class, employee.getId(), LockModeType.PESSIMISTIC_WRITE);
 
-        Employee e = em.find(Employee.class, employee.getId(), LockModeType.PESSIMISTIC_WRITE, timeoutProperties);
+        long start = 0;
+        EntityManagerExtension em2 = r2.getInstance(EntityManagerExtension.class);
+        r2.getInstance(EntityManagerExtension.class).lockTimeout(0);
+        Query query = em2.createQuery("select p.id from Employee p where p.id = :id")
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .setParameter("id", employee.getId());
+        try {
+            start = System.currentTimeMillis();
+            query.getSingleResult();
+            // Employee e3 = em2.find(Employee.class, employee.getId(), LockModeType.PESSIMISTIC_WRITE);
+        } catch (Throwable ex) {
+            System.out.println("lock timeout duration=" + (System.currentTimeMillis() - start));
+        }
 
         try {
-            EntityManager em2 = r2.getInstance(EntityManager.class);
-            //em2.createNativeQuery("SET SESSION innodb_lock_wait_timeout = 0")
-            //        .executeUpdate();
-            EntityManagerMonitor monitor = r2.getMapVariable(EntityManagerMonitor.class).get("default");
-            monitor.expire(500L);
-            em2.createQuery("select p from Employee p where p.id = :id ")
-                    .setHint("javax.persistence.lock.timeout", 0)
-                    .setLockMode(LockModeType.PESSIMISTIC_WRITE)
-                    .setParameter("id", employee.getId())
-                    .getSingleResult();
-            // Employee e2 = em2.find(Employee.class, employee.getId(), LockModeType.PESSIMISTIC_WRITE, timeoutProperties);
-        } catch (LockTimeoutException ex){
-            ex.printStackTrace();
+            start = System.currentTimeMillis();
+            query.getSingleResult();
+        } catch (Throwable ex) {
+            System.out.println("lock timeout duration=" + (System.currentTimeMillis() - start));
         }
 
         r1.abort();
         r2.abort();
+
+        for (int i = 0; i < 20; i++) {
+            UnitOfWork uow = new UnitOfWork(provision.getResourceManager());
+            Resources r = uow.open();
+            EntityManagerExtension em = r.getInstance(EntityManagerExtension.class);
+            Number num = (Number) em.createNativeQuery("select @@innodb_lock_wait_timeout").getSingleResult();
+            System.out.println("innodb_lock_wait_timeout=" + num);
+        }
 
     }
 
     @Test
     void otherPersistence() {
         provision.open()
-                .annotate(EntityManagerConfig.class, EntityManagerConfig::names, new String[] {"default", "sample-rw"})
-                .accept(EntityManager.class, Resources.class,  (em, res) -> {
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::names, new String[]{"default", "sample-rw"})
+                .accept(EntityManager.class, Resources.class, (em, res) -> {
                     assertNotNull(res.getMapVariable(EntityManager.class).get("sample-rw"));
-                    EntityManagerInfo info = (EntityManagerInfo) res.getMapVariable(EntityManager.class).get("sample-rw");
+                    EntityManagerExtension info = (EntityManagerExtension) res.getMapVariable(EntityManager.class).get("sample-rw");
                     assertNotNull(info.getAlias());
                     assertNotNull(info.getResources());
                     assertNotNull(info.getProvider());
@@ -137,22 +144,22 @@ public class PersistenceTest extends BaseCase {
 
         provision
                 .open()
-                .annotate(EntityManagerConfig.class, EntityManagerConfig::names,  new String[] {"sample-rw"})
-                .accept(EntityManager.class, Resources.class,  (em, res) -> {
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::names, new String[]{"sample-rw"})
+                .accept(EntityManager.class, Resources.class, (em, res) -> {
                     EntityManager emDefault = res.getMapVariable(EntityManager.class).get("sample-rw");
                     assertTrue(em == emDefault);
                 });
 
         provision.open()
                 .annotate(EntityManagerConfig.class, EntityManagerConfig::names, (String[]) null)
-                .accept(EntityManager.class, Resources.class,  (em, res) -> {
+                .accept(EntityManager.class, Resources.class, (em, res) -> {
                     EntityManager emOther = res.getMapVariable(EntityManager.class).get("default");
                     assertTrue(em == emOther);
                 });
 
         provision.open()
-                .annotate(EntityManagerConfig.class, EntityManagerConfig::names,  new String[] {"delegate"})
-                .accept(EntityManager.class, Resources.class,  (em, res) -> {
+                .annotate(EntityManagerConfig.class, EntityManagerConfig::names, new String[]{"delegate"})
+                .accept(EntityManager.class, Resources.class, (em, res) -> {
                     EntityManager emOther = res.getMapVariable(EntityManager.class).get("delegate");
                     assertTrue(em == emOther);
                 });
@@ -162,7 +169,7 @@ public class PersistenceTest extends BaseCase {
 
     @Test
     void insert() {
-        provision.open().accept(EntityManager.class, Resources.class,  (em, res) -> {
+        provision.open().accept(EntityManager.class, Resources.class, (em, res) -> {
             SessionImpl session = em.unwrap(SessionImpl.class);
             session.setJdbcBatchSize(20);
             em.persist(employee);
@@ -193,17 +200,17 @@ public class PersistenceTest extends BaseCase {
         provision.open()
                 .annotate(EntityManagerConfig.class, EntityManagerConfig::timeoutExtension, 100000L)
                 .accept(EntityManager.class, (em) -> {
-            try {
-                Department d = Select.create(em, Department.class)
-                        .where(new Department() {{
-                            setName(department.getName());
-                        }})
-                        .getSingleResult();
-                department = d;
-            } catch (NoResultException ex) {
-                em.persist(department);
-            }
-        });
+                    try {
+                        Department d = Select.create(em, Department.class)
+                                .where(new Department() {{
+                                    setName(department.getName());
+                                }})
+                                .getSingleResult();
+                        department = d;
+                    } catch (NoResultException ex) {
+                        em.persist(department);
+                    }
+                });
 
         int size = provision.open().apply(EntityManager.class, (em) -> {
             em.persist(employee);
@@ -220,12 +227,12 @@ public class PersistenceTest extends BaseCase {
 
     @Test
     void isNull() {
-        provision.open().accept(EntityManager.class, Resources.class,  (em, res) -> {
+        provision.open().accept(EntityManager.class, Resources.class, (em, res) -> {
             employee.setAdditionalInfo(null);
             em.persist(employee);
         });
 
-        provision.open().accept(EntityManager.class, Resources.class,  (em, res) -> {
+        provision.open().accept(EntityManager.class, Resources.class, (em, res) -> {
             List<Employee> list = Select.create(em, Employee.class)
                     .where(new Employee() {{
                         setAdditionalInfo(null);
@@ -237,7 +244,7 @@ public class PersistenceTest extends BaseCase {
     @Test
     void entityManagerInfo() {
         provision.open().accept(EntityManager.class, em -> {
-            EntityManagerInfo info = (EntityManagerInfo) em;
+            EntityManagerExtension info = (EntityManagerExtension) em;
             assertNotNull(info.getAlias());
             assertNotNull(info.getResources());
             assertNotNull(info.getProvider());

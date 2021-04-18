@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Episode Six
+ * Copyright 2020 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ public class EMVPINChange extends Command {
     protected String processDerivationType1(Request request, Response response) throws CommandException {
         // == Using the UDK-A, the issuer creates a 16-hexadecimal digit PIN block as .
         // - a. Input bytes based on UDK-A
-        // Create a 16-hexadecimal digit block of data by extracting the eight right-most digits of the card application’s Unique DEA Key A (UDK-A) and zero-filling it on the left with '00 00 00 00'
+        // Create a 16-hexadecimal digit block of data by extracting the eight right-most digits of the card application's Unique DEA Key A (UDK-A) and zero-filling it on the left with '00 00 00 00'
         byte[] inputBytesBasedOnUDKA = new byte[8];
         Arrays.fill(inputBytesBasedOnUDKA, 0, 4, (byte) 0x00);
         try {
@@ -256,7 +256,7 @@ public class EMVPINChange extends Command {
         // - 3, EMV2000-Tree with IS0 format 2 PIN block
         // - 4, EMV2000-Tree with Visa PIN block
         // - 5, EMV2000-Tree with Visa8 PIN block
-        // - 6, Proprietary – similar to UnionPay International except exclusive Or Session Key Left with PIN block
+        // - 6, Proprietary - similar to UnionPay International except exclusive Or Session Key Left with PIN block
         // - 7, UnionPay International
         // - 8, Common Core Definition PIN block - Specification Update Bulletin 46 derivation with ISO format 2 PIN block with mandatory padding, JCB CVN 04, and Visa CVN 22
         private String derivationType;
@@ -282,11 +282,11 @@ public class EMVPINChange extends Command {
         // 8, EKPE(new PIN Block)
         private String newPINBlock;
         // 9, [PIN Issue Number]
-        // - This field is optional. If field 2 contains the value ‘L’ this field will contain a decimal value between 000-255. Otherwise this field should be empty
+        // - This field is optional. If field 2 contains the value 'L' this field will contain a decimal value between 000-255. Otherwise this field should be empty
         private String pinIssueNumber;
         // 10, Application PAN
         // - the Primary Account Number for the application. This field is also used to indicate the Master Key derivation method.
-        //  If this field contains the letter “B” followed by 17 to 19 digits, method B will be used, otherwise method A will be used.
+        //  If this field contains the letter "B" followed by 17 to 19 digits, method B will be used, otherwise method A will be used.
         private String pan;
         // 11, PAN Sequence Number
         String panSequenceNumber;
@@ -299,7 +299,7 @@ public class EMVPINChange extends Command {
         // - the APP Data field may contain the 5-byte EMV command message header (CLA, INS, P1, P2, and Lc) followed by other optional items such as the Application Transaction Counter (ATC), or the Application Cryptogram (ARQC).
         private String applicationData;
         // 14, [PIN Block Data]
-        // - Its contents depend on the PIN block type. If field 2 contains ‘0’ or 'L' this field must be empty; otherwise it must contain the 12-digit PAN used to create the ANSI PIN block.
+        // - Its contents depend on the PIN block type. If field 2 contains '0' or 'L' this field must be empty; otherwise it must contain the 12-digit PAN used to create the ANSI PIN block.
         private String pinBlockBlockData;
         // 15, [EKPE(old PIN Block)
         private String oldPINBlockBlockData;
