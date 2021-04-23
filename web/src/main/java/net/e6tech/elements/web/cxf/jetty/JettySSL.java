@@ -79,9 +79,11 @@ public class JettySSL {
         tlsParams.setKeyManagers(keyManagers);
         tlsParams.setTrustManagers(trustManagers);
 
-        ClientAuthentication ca = new ClientAuthentication();
-        ca.setRequired(false);
-        ca.setWant(false);
+        ClientAuthentication ca = getClientAuthentication(server);
+        if (ca.isRequired() == null)
+            ca.setRequired(false);
+        if (ca.isWant() == null)
+            ca.setWant(false);
         tlsParams.setClientAuthentication(ca);
 
         JettyHTTPServerEngineFactory factory = new JettyHTTPServerEngineFactory();
@@ -110,27 +112,7 @@ public class JettySSL {
 
                     existingParams.setKeyManagers(keyManagerSet.toArray(new KeyManager[0]));
                     existingParams.setTrustManagers(trustManagerSet.toArray(new TrustManager[0]));
-                    ClientAuthentication clientAuthentication = new ClientAuthentication();
-                    String value = server.getClientAuth();
-                    if ("true".equalsIgnoreCase(value) ||
-                            "yes".equalsIgnoreCase(value) ||
-                            "require".equalsIgnoreCase(value) ||
-                            "required".equalsIgnoreCase(value)) {
-                        clientAuthentication.setRequired(true);
-                    } else if ("optional".equalsIgnoreCase(value) ||
-                            "want".equalsIgnoreCase(value)) {
-                        clientAuthentication.setWant(true);
-                    } else if ("false".equalsIgnoreCase(value) ||
-                            "no".equalsIgnoreCase(value) ||
-                            "none".equalsIgnoreCase(value) ||
-                            value == null) {
-                        // do nothing
-                    } else {
-                        // Could be a typo. Don't default to NONE since that is not
-                        // secure. Force user to fix config. Could default to REQUIRED
-                        // instead.
-                        throw new IllegalArgumentException("Invalid ClientAuth value: " + value);
-                    }
+                    ClientAuthentication clientAuthentication = getClientAuthentication(server);
                     if (clientAuthentication.isRequired() != null || clientAuthentication.isWant() != null)
                         existingParams.setClientAuthentication(clientAuthentication);
                     customize(server, existingParams);
@@ -140,6 +122,31 @@ public class JettySSL {
                 }
             }
         }
+    }
+
+    protected ClientAuthentication getClientAuthentication(CXFServer server) {
+        ClientAuthentication clientAuthentication = new ClientAuthentication();
+        String value = server.getClientAuth();
+        if ("true".equalsIgnoreCase(value) ||
+                "yes".equalsIgnoreCase(value) ||
+                "require".equalsIgnoreCase(value) ||
+                "required".equalsIgnoreCase(value)) {
+            clientAuthentication.setRequired(true);
+        } else if ("optional".equalsIgnoreCase(value) ||
+                "want".equalsIgnoreCase(value)) {
+            clientAuthentication.setWant(true);
+        } else if ("false".equalsIgnoreCase(value) ||
+                "no".equalsIgnoreCase(value) ||
+                "none".equalsIgnoreCase(value) ||
+                value == null) {
+            // do nothing
+        } else {
+            // Could be a typo. Don't default to NONE since that is not
+            // secure. Force user to fix config. Could default to REQUIRED
+            // instead.
+            throw new IllegalArgumentException("Invalid ClientAuth value: " + value);
+        }
+        return clientAuthentication;
     }
 
     protected void customize(CXFServer server, TLSServerParameters tlsParams) {

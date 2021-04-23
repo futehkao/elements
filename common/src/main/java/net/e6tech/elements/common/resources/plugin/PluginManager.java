@@ -214,8 +214,8 @@ public class PluginManager {
     private <T extends Plugin> T createFromClass(PluginPath<T> pluginPath, Class cls, Object... args) {
         try {
             T plugin = (T) cls.getDeclaredConstructor().newInstance();
-            plugin.initialize(pluginPath);
             inject(plugin, args);
+            plugin.initialize(pluginPath);
             return plugin;
         } catch (Exception e) {
             throw new SystemException(e);
@@ -224,8 +224,8 @@ public class PluginManager {
 
     private <T extends Plugin> T createFromFactory(PluginPath<T> pluginPath, PluginFactory factory, Object... args) {
         T plugin = factory.create(this);
-        plugin.initialize(pluginPath);
         inject(plugin, args);
+        plugin.initialize(pluginPath);
         return plugin;
     }
 
@@ -234,14 +234,14 @@ public class PluginManager {
         T prototype = (T) obj;
         if (prototype instanceof Prototype) {
             plugin = (T) ((Prototype) prototype).newInstance();
-            plugin.initialize(pluginPath);
             inject(plugin, args);
+            plugin.initialize(pluginPath);
         } else if (prototype.isPrototype()) {
             try {
                 plugin = (T) prototype.getClass().getDeclaredConstructor().newInstance();
                 Reflection.copyInstance(plugin, prototype);
-                plugin.initialize(pluginPath);
                 inject(plugin, args);
+                plugin.initialize(pluginPath);
             } catch (Exception e) {
                 throw new SystemException(e);
             }

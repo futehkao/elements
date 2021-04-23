@@ -32,23 +32,24 @@ public class SSLSocketConfig extends SSLBaseConfig {
             return sslSocketFactory;
         TrustManager[] trustManagers;
         KeyManager[] keyManagers = null;
+
+        if (getKeyStore() != null) {
+            JavaKeyStore javaKeyStore = new JavaKeyStore(getKeyStore(), getKeyStorePassword(), getKeyStoreFormat())
+                    .includeSystem(isIncludeSystem())
+                    .init(getKeyManagerPassword());
+            trustManagers = javaKeyStore.getTrustManagers();
+            keyManagers = javaKeyStore.getKeyManagers();
+        } else {
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            trustManagerFactory.init((KeyStore) null);
+            trustManagers = trustManagerFactory.getTrustManagers();
+            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            keyManagerFactory.init(null, null);
+            keyManagers = keyManagerFactory.getKeyManagers();
+        }
+
         if (skipCertCheck) {
             trustManagers = new TrustManager[]{new AcceptAllTrustManager()};
-        } else {
-            if (getKeyStore() != null) {
-                JavaKeyStore javaKeyStore = new JavaKeyStore(getKeyStore(), getKeyStorePassword(), getKeyStoreFormat())
-                        .includeSystem(isIncludeSystem())
-                        .init(getKeyManagerPassword());
-                trustManagers = javaKeyStore.getTrustManagers();
-                keyManagers = javaKeyStore.getKeyManagers();
-            } else {
-                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                trustManagerFactory.init((KeyStore) null);
-                trustManagers = trustManagerFactory.getTrustManagers();
-                KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-                keyManagerFactory.init(null, null);
-                keyManagers = keyManagerFactory.getKeyManagers();
-            }
         }
 
         erasePasswords();
