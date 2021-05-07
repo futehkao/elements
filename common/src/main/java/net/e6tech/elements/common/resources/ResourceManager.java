@@ -274,11 +274,12 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     @SuppressWarnings("squid:CommentedOutCodeLine")
     public Atom createAtom(String atomName, Consumer<Atom> consumer, Atom prototypeAtom, boolean prototype) {
         if (name != null && atoms.get(atomName) != null) {
-            logger.warn("Atom named " + atomName + " already exists!", new Throwable());
+            if (logger.isWarnEnabled())
+                logger.warn(String.format("Atom named %s already exists!", atomName), new Throwable());
             return atoms.get(atomName);
         }
         Atom atom = new Atom(this, prototypeAtom);
-        atom.setPrototype(prototype);
+        atom.setPrototypeAtom(prototype);
         atom.setName(atomName);
         // Groovy script holds on to closures that have references to atoms so that they are not
         // GC'ed.  Make sure lambda doesn't reference atom.

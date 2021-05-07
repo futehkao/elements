@@ -268,6 +268,7 @@ public class Measurement implements Serializable, MeasurementMXBean {
         StringBuilder builder = new StringBuilder();
         builder.append("count=" + count + " ");
         builder.append("average=" + average + " ");
+        builder.append("median=" + median + " ");
         builder.append("stddev=" + stdDev + " ");
         builder.append("failureCount=" + failures.size() + " ");
         builder.append("windowWidth=" + windowWidth + " ");

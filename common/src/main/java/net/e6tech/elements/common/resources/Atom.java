@@ -128,7 +128,7 @@ public class Atom implements Map<String, Object> {
 
         if (prototype == null)
             return;
-        if (!prototype.isPrototype())
+        if (!prototype.isPrototypeAtom())
             throw new IllegalArgumentException("Atom named " + prototype.getName() + " is not a prototype.");
         resources = prototype.resources;
         boundInstances = prototype.boundInstances;
@@ -146,11 +146,11 @@ public class Atom implements Map<String, Object> {
         return resourceManager.bind(cls, resource);
     }
 
-    public boolean isPrototype() {
+    public boolean isPrototypeAtom() {
         return prototype;
     }
 
-    public void setPrototype(boolean prototype) {
+    public void setPrototypeAtom(boolean prototype) {
         this.prototype = prototype;
     }
 
@@ -255,7 +255,7 @@ public class Atom implements Map<String, Object> {
 
     @SuppressWarnings({"squid:S134", "squid:MethodCyclomaticComplexity"})
     public Atom build() {
-        if (isPrototype())
+        if (isPrototypeAtom())
             return this;
 
         long start = System.currentTimeMillis();

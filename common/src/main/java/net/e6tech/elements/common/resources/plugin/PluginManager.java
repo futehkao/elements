@@ -201,47 +201,44 @@ public class PluginManager {
         }
 
         T plugin;
+        boolean singleton = false;
         if (obj instanceof Class) {
-            plugin = createFromClass(pluginPath, (Class) obj, args);
+            plugin = createFromClass((Class) obj);
         } else if (obj instanceof PluginFactory) {
-            plugin = createFromFactory(pluginPath, (PluginFactory) obj, args);
+            plugin = createFromFactory((PluginFactory) obj);
         } else {
-            plugin = createFromInstance(pluginPath, obj, args);
+            singleton = isSingleton(obj);
+            plugin = createFromInstance(obj);
+        }
+
+        if (!singleton) {
+            inject(plugin, args);
+            plugin.initialize(pluginPath);
         }
         return plugin;
     }
 
-    private <T extends Plugin> T createFromClass(PluginPath<T> pluginPath, Class cls, Object... args) {
+    private <T extends Plugin> T createFromClass(Class cls) {
         try {
-            T plugin = (T) cls.getDeclaredConstructor().newInstance();
-            inject(plugin, args);
-            plugin.initialize(pluginPath);
-            return plugin;
+            return (T) cls.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new SystemException(e);
         }
     }
 
-    private <T extends Plugin> T createFromFactory(PluginPath<T> pluginPath, PluginFactory factory, Object... args) {
-        T plugin = factory.create(this);
-        inject(plugin, args);
-        plugin.initialize(pluginPath);
-        return plugin;
+    private <T extends Plugin> T createFromFactory(PluginFactory factory) {
+        return factory.create(this);
     }
 
-    private <T extends Plugin> T createFromInstance(PluginPath<T> pluginPath, Object obj, Object... args) {
+    private <T extends Plugin> T createFromInstance(Object obj) {
         T plugin;
         T prototype = (T) obj;
         if (prototype instanceof Prototype) {
             plugin = (T) ((Prototype) prototype).newInstance();
-            inject(plugin, args);
-            plugin.initialize(pluginPath);
         } else if (prototype.isPrototype()) {
             try {
                 plugin = (T) prototype.getClass().getDeclaredConstructor().newInstance();
                 Reflection.copyInstance(plugin, prototype);
-                inject(plugin, args);
-                plugin.initialize(pluginPath);
             } catch (Exception e) {
                 throw new SystemException(e);
             }
@@ -250,6 +247,11 @@ public class PluginManager {
             plugin = prototype;
         }
         return plugin;
+    }
+
+    private <T extends Plugin> boolean isSingleton(Object obj) {
+        T prototype = (T) obj;
+        return !(prototype instanceof Prototype || prototype.isPrototype());
     }
 
     @SuppressWarnings("squid:S3776")

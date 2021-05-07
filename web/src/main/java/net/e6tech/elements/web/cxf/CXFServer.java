@@ -84,7 +84,8 @@ public class CXFServer implements Initializable, Startable {
     public void setAddresses(List<String> addresses) throws MalformedURLException {
         for (String address : addresses) {
             URL url = new URL(address);
-            urls.add(url);
+            if (!urls.contains(url))
+                urls.add(url);
         }
     }
 

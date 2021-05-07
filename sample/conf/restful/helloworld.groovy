@@ -45,6 +45,11 @@ atom("helloWorld") {
     _prototype = HelloWorld
     _securityAnnotation = SecurityAnnotationEngine
     _helloWorld = JaxRSServer
+    _helloWorld.with {
+        addresses = ['' + "http://0.0.0.0:${helloWorldPort}/restful/"]
+        prototype = _prototype
+        singleton = false
+    }
     _helloWorld.customizer = (JAXRSServerFactoryBean b) -> {
         b.getInInterceptors()
     }
