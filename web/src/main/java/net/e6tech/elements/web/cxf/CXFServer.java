@@ -70,6 +70,7 @@ public class CXFServer implements Initializable, Startable {
     private String sslProtocol = "TLS";
     private String clientAuth;
     private SelfSignedCert selfSignedCert;
+    private boolean sendServerVersion = false;
     private boolean initialized = false;
     private boolean started = false;
     private boolean measurement = false;
@@ -175,6 +176,14 @@ public class CXFServer implements Initializable, Startable {
         this.selfSignedCert = selfSignedCert;
     }
 
+    public boolean isSendServerVersion() {
+        return sendServerVersion;
+    }
+
+    public void setSendServerVersion(boolean sendServerVersion) {
+        this.sendServerVersion = sendServerVersion;
+    }
+
     public boolean isMeasurement() {
         return measurement;
     }
@@ -257,7 +266,7 @@ public class CXFServer implements Initializable, Startable {
         if (serverEngine == null) {
             try {
                 Class cls = (serverEngineClass != null) ? serverEngineClass :
-                         getClass().getClassLoader().loadClass("net.e6tech.elements.web.cxf.jetty.JettyEngine");
+                        getClass().getClassLoader().loadClass("net.e6tech.elements.web.cxf.jetty.JettyEngine");
                 serverEngine = (ServerEngine) cls.getConstructor().newInstance();
             } catch (Exception ex) {
                 throw new SystemException(ex);

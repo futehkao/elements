@@ -19,6 +19,8 @@ package net.e6tech.elements.jmx.stat;
 import net.e6tech.elements.common.util.datastructure.BinarySearchList;
 
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.LinkedList;
 
 
@@ -38,7 +40,7 @@ public class Measurement implements Serializable, MeasurementMXBean {
     private double sum =0.0;
     private double sum_x_2 = 0.0;  //i.e. sum of x^2, which is not sum^2!!!
     private double stdDev = 0.0;
-    private long windowWidth = 300000l;  // default is 5 minutes
+    private long windowWidth = 300000L;  // default is 5 minutes
     private int windowMaxCount = Integer.MAX_VALUE;     // limits the total number of samples in the window
     private boolean dirty = false;
     private boolean enabled = true;
@@ -80,32 +82,27 @@ public class Measurement implements Serializable, MeasurementMXBean {
     }
 
     public long getCount() {
-        if (dirty)
-            recalculate();
+        recalculate();
         return count;
     }
 
     public double getAverage() {
-        if (dirty)
-            recalculate();
+        recalculate();
         return average;
     }
 
     public double getMedian() {
-        if (dirty)
-            recalculate();
+        recalculate();
         return median;
     }
 
     public double getSum() {
-        if (dirty)
-            recalculate();
+        recalculate();
         return sum;
     }
 
     public double getStdDev() {
-        if (dirty)
-            recalculate();
+        recalculate();
         return stdDev;
     }
 
@@ -126,8 +123,7 @@ public class Measurement implements Serializable, MeasurementMXBean {
     }
 
     public long getFailureCount() {
-        if (dirty)
-            recalculate();
+        recalculate();
         return failures.size();
     }
 
@@ -161,6 +157,10 @@ public class Measurement implements Serializable, MeasurementMXBean {
     }
 
     synchronized void recalculate() {
+        if (!dirty && (!sortedByTime.isEmpty() && sortedByTime.getFirst().getTimestamp() >= System.currentTimeMillis() - windowWidth)) {
+            return;
+        }
+
         trimFailures();
         trimData();
 
@@ -244,7 +244,6 @@ public class Measurement implements Serializable, MeasurementMXBean {
     }
 
     public String dump() {
-
         StringBuilder builder = new StringBuilder();
         builder.append("count=" + sortedByValue.size() + " ");
         boolean first = true;
@@ -262,16 +261,31 @@ public class Measurement implements Serializable, MeasurementMXBean {
     }
 
     public String toString() {
-        if (dirty)
-            recalculate();
+        recalculate();
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd kk:mm:ss.SSS");
 
         StringBuilder builder = new StringBuilder();
-        builder.append("count=" + count + " ");
-        builder.append("average=" + average + " ");
-        builder.append("median=" + median + " ");
-        builder.append("stddev=" + stdDev + " ");
-        builder.append("failureCount=" + failures.size() + " ");
-        builder.append("windowWidth=" + windowWidth + " ");
+        builder.append("count=" + count + ", ");
+        builder.append("average=" + average + ", ");
+        builder.append("median=" + median + ", ");
+        builder.append("stddev=" + stdDev + ", ");
+        builder.append("failureCount=" + failures.size() + ", ");
+        DataPoint first = null;
+        DataPoint last = null;
+        synchronized (this) {
+            if (!sortedByTime.isEmpty()) {
+                first = sortedByTime.getFirst();
+                last = sortedByTime.getLast();
+            }
+        }
+        if (first != null) {
+            builder.append("windowWidth=" + windowWidth + ", ");
+            builder.append("first=" + dateFormat.format(new Date(first.getTimestamp())) + ", ");
+            builder.append("last=" + dateFormat.format(new Date(last.getTimestamp())) + " ");
+        } else {
+            builder.append("windowWidth=" + windowWidth + " ");
+        }
         return builder.toString();
     }
 }

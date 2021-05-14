@@ -138,22 +138,33 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                 if (!ignored) {
                     long start = System.currentTimeMillis();
                     result = uow.submit(() -> {
-                        if (observer != null) {
-                            uow.getResources().inject(observer);
-                            CachedOutputStream cachedOutputStream = message.getContent(CachedOutputStream.class);
-                            if (cachedOutputStream != null) {
-                                pair.key().setAttribute("Content", cachedOutputStream.getBytes());
+                        try {
+                            if (observer != null) {
+                                uow.getResources().inject(observer);
+                                CachedOutputStream cachedOutputStream = message.getContent(CachedOutputStream.class);
+                                if (cachedOutputStream != null) {
+                                    pair.key().setAttribute("Content", cachedOutputStream.getBytes());
+                                }
+                                observer.beforeInvocation(pair.key(), pair.value(), frame.getTarget(), frame.getMethod(), frame.getArguments());
                             }
-                            observer.beforeInvocation(pair.key(), pair.value(), frame.getTarget(), frame.getMethod(), frame.getArguments());
+                            uow.getResources().inject(frame.getTarget());
+                            Object ret = frame.invoke();
+                            if (observer != null)
+                                observer.afterInvocation(ret);
+                            return ret;
+                        } catch (Exception th) {
+                            if (observer != null) { // this code is here so that the Resources object has not been clean up
+                                                    // so that the observer can still use the Resources to retrieve information.
+                                try {
+                                    observer.onException(th);
+                                } catch (Exception ex) {
+                                    Logger.suppress(ex);
+                                }
+                            }
+                            // uow will abort the resources and do clean up after this
+                            throw th;
                         }
-                        uow.getResources().inject(frame.getTarget());
-                        Object ret = frame.invoke();
-                        if (observer != null)
-                            observer.afterInvocation(ret);
-
-                        return ret;
                     });
-
                     long duration = System.currentTimeMillis() - start;
                     server.computePerformance(frame.getMethod(), methods, duration);
                 } else {
@@ -161,13 +172,6 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                     result = frame.invoke();
                 }
             } catch (Exception th) {
-                if (!ignored && observer != null) {
-                    try {
-                        observer.onException(th);
-                    } catch (Exception ex) {
-                        Logger.suppress(ex);
-                    }
-                }
                 server.recordFailure(frame.getMethod(), methods);
                 abort = true;
                 server.getProvision().log(JaxRSServer.getLogger(), LogLevel.DEBUG, th.getMessage(), th);

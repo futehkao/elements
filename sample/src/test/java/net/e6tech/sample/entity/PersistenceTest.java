@@ -117,7 +117,7 @@ public class PersistenceTest extends BaseCase {
         r1.abort();
         r2.abort();
 
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 10; i++) {
             UnitOfWork uow = new UnitOfWork(provision.getResourceManager());
             Resources r = uow.open();
             EntityManagerExtension em = r.getInstance(EntityManagerExtension.class);

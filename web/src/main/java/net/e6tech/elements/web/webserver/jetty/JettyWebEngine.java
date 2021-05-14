@@ -65,7 +65,9 @@ public class JettyWebEngine implements WebEngine {
         if (webServer.getHttpPort() >= 0) {
             // see http://www.eclipse.org/jetty/documentation/current/embedding-jetty.html
             // in the Embedding Connectors section
-            ServerConnector http = new ServerConnector(server);
+            HttpConfiguration httpConfig = new HttpConfiguration();
+            httpConfig.setSendServerVersion(webServer.isSendServerVersion());
+            ServerConnector http = new ServerConnector(server, new HttpConnectionFactory(httpConfig));
             http.setHost(webServer.getHost());
             http.setPort(webServer.getHttpPort());
 
@@ -101,6 +103,7 @@ public class JettyWebEngine implements WebEngine {
             httpsConfig.setSecurePort(webServer.getHttpsPort());
             httpsConfig.setSendDateHeader(false);
             httpsConfig.addCustomizer(new SecureRequestCustomizer());
+            httpsConfig.setSendServerVersion(webServer.isSendServerVersion());
 
             // SSL Connector
             ServerConnector sslConnector = new ServerConnector(server,

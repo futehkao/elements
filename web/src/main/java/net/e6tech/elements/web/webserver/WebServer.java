@@ -49,6 +49,7 @@ public class WebServer implements Startable {
     private Object serverData;
     private String host = "0.0.0.0";
     private String clientAuth;
+    private boolean sendServerVersion = false;
     private Provision provision;
     private boolean started = false;
 
@@ -191,6 +192,14 @@ public class WebServer implements Startable {
 
     public void setClientAuth(String clientAuth) {
         this.clientAuth = clientAuth;
+    }
+
+    public boolean isSendServerVersion() {
+        return sendServerVersion;
+    }
+
+    public void setSendServerVersion(boolean sendServerVersion) {
+        this.sendServerVersion = sendServerVersion;
     }
 
     public Provision getProvision() {

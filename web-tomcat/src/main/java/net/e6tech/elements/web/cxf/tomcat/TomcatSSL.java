@@ -55,6 +55,8 @@ public class TomcatSSL {
             customize(cxfServer, connector, config);
             connector.addSslHostConfig(config);
         }
+        if (!cxfServer.isSendServerVersion())
+            connector.setProperty("server", "Elements");
         return connector;
     }
 

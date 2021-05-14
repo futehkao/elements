@@ -26,6 +26,7 @@ import net.e6tech.elements.common.interceptor.InterceptorListener;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.datastructure.Pair;
+import net.e6tech.elements.jmx.stat.Gauge;
 import org.ehcache.impl.internal.concurrent.ConcurrentHashMap;
 
 import javax.ws.rs.*;
@@ -40,12 +41,13 @@ import java.util.*;
  */
 @SuppressWarnings("unchecked")
 public class RestfulProxy {
-
+    private static final long GAUGE_PERIOD = 15 * 60 * 1000L;
     private RestfulClient client;
     private Interceptor interceptor;
     private Map<String, String> requestProperties = new LinkedHashMap<>();
     private PrintWriter printer;
     private Response lastResponse;
+    private Gauge gauge;
 
     public RestfulProxy(String hostAddress) {
         client = new RestfulClient(hostAddress);
@@ -117,6 +119,46 @@ public class RestfulProxy {
                 .build();
     }
 
+    public Gauge getGauge() {
+        return gauge;
+    }
+
+    public void setGauge(Gauge gauge) {
+        this.gauge = gauge;
+    }
+
+    public void enableMeasurement(boolean enable) {
+        if (enable) {
+            if (gauge == null) {
+                gauge = new Gauge();
+                gauge.setPeriod(GAUGE_PERIOD);
+                gauge.initialize(null);
+            }
+        } else {
+            gauge.cancel();
+            gauge = null;
+        }
+    }
+
+    public Gauge getGauge(Object service) {
+        InterceptorHandler handler = Interceptor.getInterceptorHandler(service);
+        if (handler instanceof InvocationHandler)
+            return ((InvocationHandler) handler).gauge;
+        return null;
+    }
+
+    public void enableGauge(Object service) {
+        InterceptorHandler handler = Interceptor.getInterceptorHandler(service);
+        if (handler instanceof InvocationHandler)
+            ((InvocationHandler) handler).enableGauge();
+    }
+
+    public void disableGauge(Object service) {
+        InterceptorHandler handler = Interceptor.getInterceptorHandler(service);
+        if (handler instanceof InvocationHandler)
+            ((InvocationHandler) handler).disableGauge();
+    }
+
     public Map<String, String> getRequestProperties() {
         return Collections.unmodifiableMap(requestProperties);
     }
@@ -146,15 +188,18 @@ public class RestfulProxy {
     }
 
     public static class InvocationHandler implements InterceptorHandler {
-        private RestfulProxy proxy;
+        private Gauge gauge;
+        private final RestfulProxy proxy;
         private String context;
         private Map<Method, MethodForwarder> methodForwarders = new ConcurrentHashMap<>();
         private Map<Method, String> methodSignatures = new ConcurrentHashMap<>();
         private Presentation presentation;
+        private String serviceClass;
 
         InvocationHandler(RestfulProxy proxy, Class<?> serviceClass, Presentation presentation) {
             this.proxy = proxy;
             this.presentation = presentation;
+            this.serviceClass = serviceClass.getName();
             Path path = serviceClass.getAnnotation(Path.class);
             if (path != null) {
                 this.context = path.value();
@@ -162,6 +207,30 @@ public class RestfulProxy {
                     this.context = path.value() + "/";
             } else {
                 context = "/";
+            }
+
+            if (proxy.gauge != null) {
+                gauge = new Gauge();
+                Reflection.copyInstance(gauge, proxy.gauge);
+                gauge.setFormat((k, m) -> String.format("Restful Service %s path=%s: %s", this.serviceClass, k, m));
+                gauge.initialize(null);
+            }
+        }
+
+        void enableGauge() {
+            if (gauge == null) {
+                gauge = new Gauge();
+                if (proxy.gauge != null)
+                    Reflection.copyInstance(gauge, proxy.gauge);
+                gauge.setFormat((k, m) -> String.format("Restful Service %s path=%s: %s", this.serviceClass, k, m));
+                gauge.initialize(null);
+            }
+        }
+
+        void disableGauge() {
+            if (gauge != null) {
+                gauge.cancel();
+                gauge = null;
             }
         }
 
@@ -174,43 +243,47 @@ public class RestfulProxy {
                 request.setRequestProperty(entry.getKey(), entry.getValue());
             }
 
-            String fullContext = context;
-            Path path = frame.getAnnotation(Path.class);
-            if (path != null) {
-                String subctx = path.value();
-                while (subctx.startsWith("/"))
-                    subctx = subctx.substring(1);
-                fullContext = context + subctx;
-            }
-
-            final String ctx = fullContext;
             MethodForwarder forwarder;
             try {
-                forwarder = methodForwarders.computeIfAbsent(frame.getMethod(),
-                        key -> new MethodForwarder(ctx, key));
-                if (proxy.printer != null) {
-                    proxy.printer.println("CALLING RESTFUL METHOD -------------");
-                    String signature = methodSignatures.computeIfAbsent(frame.getMethod(), this::methodSignature);
-                    String caller = Reflection.<String, Boolean>mapCallingStackTrace(e -> {
-                        if (e.state().isPresent()) return e.get().toString(); // previous element match.
-                        if (e.get().getMethodName().equals(frame.getMethod().getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
-                        return null;
-                    }).orElse("Cannot detect caller");
-                    proxy.printer.println("Called by: " + caller);
-                    proxy.printer.println("Method: " + signature);
-                    proxy.printer.println();
+                forwarder = methodForwarders.get(frame.getMethod());
+                if (forwarder == null) {
+                    forwarder = new MethodForwarder(this, frame.getMethod());
+                    methodForwarders.put(frame.getMethod(), forwarder);
                 }
+                printRequest(frame);
             } catch (IllegalArgumentException ex) {
                 // this is clearly not a restful method
                 if (frame.getTarget() != null)
                     return frame.invoke(frame.getTarget());
                 return null;
             }
+
+            long start = System.currentTimeMillis();
             Pair<Response, Object> pair = forwarder.forward(request, frame.getArguments());
+            Gauge g = gauge;
+            if (g != null) {
+                g.add(forwarder.destination, System.currentTimeMillis() - start);
+            }
+
             synchronized (proxy) {
                 proxy.lastResponse = pair.key();
             }
             return pair.value();
+        }
+
+        private void printRequest(CallFrame frame) {
+            if (proxy.printer != null) {
+                proxy.printer.println("CALLING RESTFUL METHOD -------------");
+                String signature = methodSignatures.computeIfAbsent(frame.getMethod(), this::methodSignature);
+                String caller = Reflection.<String, Boolean>mapCallingStackTrace(e -> {
+                    if (e.state().isPresent()) return e.get().toString(); // previous element match.
+                    if (e.get().getMethodName().equals(frame.getMethod().getName())) e.state(Boolean.TRUE); // match, but we are interested in the next one.
+                    return null;
+                }).orElse("Cannot detect caller");
+                proxy.printer.println("Called by: " + caller);
+                proxy.printer.println("Method: " + signature);
+                proxy.printer.println();
+            }
         }
 
         public RestfulProxy getProxy() {
@@ -259,12 +332,15 @@ public class RestfulProxy {
         ParameterizedType parameterizedReturnType;
         Class[] paramTypes;
         Parameter[] params;
+        String destination;
         String context;
         QueryParam[] queryParams;
         PathParam[] pathParams;
         BeanParam[] beanParams;
 
-        MethodForwarder(String context, Method method) {
+        MethodForwarder(InvocationHandler handler, Method method) {
+            initContext(handler, method);
+
             returnType = method.getReturnType();
             if (method.getGenericReturnType() instanceof ParameterizedType)
                 parameterizedReturnType = (ParameterizedType) method.getGenericReturnType();
@@ -305,6 +381,28 @@ public class RestfulProxy {
             } else {
                 throw new IllegalArgumentException("Method " + method + " is not annotated with GET, PUT, POST or DELETE.");
             }
+        }
+
+        private void initContext(InvocationHandler handler, Method method) {
+            String fullContext = handler.context;
+            Path path = method.getAnnotation(Path.class);
+            if (path != null) {
+                String subctx = path.value();
+                while (subctx.startsWith("/"))
+                    subctx = subctx.substring(1);
+                fullContext = handler.context + subctx;
+            }
+            context = fullContext;
+
+            destination = handler.proxy.client.getAddress();
+            if (!destination.endsWith("/"))
+                destination = destination + "/";
+
+            if (fullContext != null) {
+                while (fullContext.startsWith("/"))
+                    fullContext = fullContext.substring(1);
+            }
+            destination = destination + fullContext;
         }
 
         private Optional<Object> getValue(Object o, AccessibleObject a) {
@@ -367,7 +465,6 @@ public class RestfulProxy {
                         Param p = new Param(entry.getKey(), entry.getValue());
                         paramList.add(p);
                     }
-
                 }
 
                 if (pathParams[i] == null && queryParams[i] == null && beanParams[i] == null) {
@@ -376,7 +473,7 @@ public class RestfulProxy {
                 }
             }
 
-            Response response = null;
+            Response response;
             if (post) {
                 response = request.post(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
             } else if (put) {

@@ -47,14 +47,34 @@ class HelloWorldTest extends BaseCase {
     void setup() {
         proxy = new RestfulProxy("http://localhost:19001/restful");
         proxy.setSkipCertCheck(true);
+        proxy.enableMeasurement(true);
+        proxy.getGauge().setPeriod(200L);
+        proxy.getGauge().setWindowWidth(200L);
         // proxy.setPrinter(new PrintWriter(System.out, true));
         helloWorld = proxy.newProxy(HelloWorld.class);
     }
 
     @Test
-    void sayHello() {
+    void sayHello() throws Exception {
         String response = helloWorld.sayHello("hello");
         System.out.println(response);
+        Thread th = new Thread(() -> {
+            while (true) {
+                helloWorld.sayHello("hello");
+                try {
+                    Thread.sleep(50L);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+        });
+        th.start();
+        Thread.sleep(500L); // for printing out measurements.
+        th.interrupt();
+        System.out.println("Sleep again");
+        Thread.sleep(500L); // for printing out measurements.
+        helloWorld.sayHello("hello");
+        Thread.sleep(500L);
     }
 
     @Test

@@ -573,6 +573,9 @@ public class RestfulClient {
                     Logger.suppress(e);
                 }
             }
+            if (printer != null)
+                printer.println("FAILURE -----------------------------");
+            printResponse(response);
             if (mappedThrowable != null) {
                 if (mappedThrowable instanceof Exception)
                     throw (Exception) mappedThrowable;

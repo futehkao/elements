@@ -104,6 +104,9 @@ public class TomcatWebEngine implements WebEngine {
             }
         }
 
+        if (!server.isSendServerVersion())
+            tomcat.getConnector().setProperty("server", "Elements");
+
         try {
             tomcat.start();
         } catch (LifecycleException e) {

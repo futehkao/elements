@@ -137,6 +137,7 @@ public class JettyEngine implements ServerEngine {
             JettyHTTPDestination jetty = (JettyHTTPDestination) dest;
             if (jetty.getEngine() instanceof JettyHTTPServerEngine) {
                 engine = (JettyHTTPServerEngine) jetty.getEngine();
+                engine.setSendServerVersion(cxfServer.isSendServerVersion());
             }
         }
 
