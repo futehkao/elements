@@ -31,11 +31,11 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 
@@ -46,6 +46,7 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();
+    private static Field urlMethod;
 
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
@@ -65,6 +66,30 @@ public class RestfulClient {
     private String proxyHost;
     private int proxyPort = -1;
     private Marshaller marshaller = new JsonMarshaller<>(ErrorResponse.class);
+
+    static {
+        try {
+            Field methodsField = HttpURLConnection.class.getDeclaredField("methods");
+
+            Field modifiersField = Field.class.getDeclaredField("modifiers");
+            int modifier = modifiersField.getModifiers();
+            modifiersField.setAccessible(true);
+            modifiersField.setInt(methodsField, methodsField.getModifiers() & ~Modifier.FINAL);
+
+            methodsField.setAccessible(true);
+
+            String[] methods = new String[] {"PATCH"};
+            String[] oldMethods = (String[]) methodsField.get(null);
+            Set<String> methodsSet = new LinkedHashSet<>(Arrays.asList(oldMethods));
+            methodsSet.addAll(Arrays.asList(methods));
+            String[] newMethods = methodsSet.toArray(new String[0]);
+
+            methodsField.set(null, newMethods);
+            modifiersField.setInt(methodsField, modifier);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
     public RestfulClient() {
     }
@@ -451,7 +476,17 @@ public class RestfulClient {
                 conn.setRequestProperty("Content-Type", marshaller.getContentType());
             }
 
-            conn.setRequestMethod(method);
+            try {
+                conn.setRequestMethod(method);
+            } catch (ProtocolException ex) {
+                Field field = urlMethod;
+                if (field == null) {
+                    field = HttpURLConnection.class.getDeclaredField("method");
+                    field.setAccessible(true);
+                    urlMethod = field;
+                }
+                field.set(conn, method);
+            }
             setConnectionProperties(conn);
             loadRequestProperties(conn, requestProperties);
 

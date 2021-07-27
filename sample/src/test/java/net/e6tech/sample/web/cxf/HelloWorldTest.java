@@ -141,6 +141,22 @@ class HelloWorldTest extends BaseCase {
     }
 
     @Test
+    void put() {
+        HelloData data = new HelloData();
+        data.setData("hello");
+        data = helloWorld.put(data);
+        assertTrue(data.getData().equals("hello"));
+    }
+
+    @Test
+    void patch() {
+        HelloData data = new HelloData();
+        data.setData("hello");
+        data = helloWorld.patch(data);
+        assertTrue(data.getData().equals("hello"));
+    }
+
+    @Test
     void delete() {
         HelloData data = new HelloData();
         data.setData("hello");

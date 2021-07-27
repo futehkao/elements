@@ -34,4 +34,10 @@ public interface Plugin {
 
     default void initialize(PluginPath path) {
     }
+
+    default void onRegistered(PluginModel model) {
+    }
+
+    default void onUnregistered(PluginModel model) {
+    }
 }

@@ -25,7 +25,7 @@ public interface Injector {
         inject(object, true);
     }
 
-    void inject(Object object, boolean strict);
+    boolean inject(Object object, boolean strict);
 
     <T> T getInstance(Class<T> type);
 

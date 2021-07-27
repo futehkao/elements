@@ -173,8 +173,16 @@ public class PluginManager {
     }
 
     public <T extends Plugin> Optional<T> get(PluginPaths<T> paths, Object... args) {
+        return lookup(paths, true, args);
+    }
+
+    public <T extends Plugin> Optional<T> lookup(PluginPaths<T> paths) {
+        return lookup(paths, false);
+    }
+
+    private <T extends Plugin> Optional<T> lookup(PluginPaths<T> paths, boolean inject, Object... args) {
         PluginEntry<T> lookup = getEntry(paths).orElse(null);
-        PluginPath<T> pluginPath = null;
+        PluginPath<T> pluginPath;
 
         // if still null, look up from default plugin
         Object instance = null;
@@ -184,10 +192,14 @@ public class PluginManager {
             pluginPath = lookup.getPath();
             instance = lookup.getPlugin();
         }
-        return Optional.ofNullable(createInstance(pluginPath, instance, args));
+        return Optional.ofNullable(createAndInject(pluginPath, instance, inject, args));
     }
 
     public <T extends Plugin> T createInstance(PluginPath<T> pluginPath, Object obj, Object... args) {
+        return createAndInject(pluginPath, obj, true, args);
+    }
+
+    private <T extends Plugin> T createAndInject(PluginPath<T> pluginPath, Object obj, boolean strictInject, Object... args) {
         if (obj == null && pluginPath == null)
             return null;
 
@@ -212,7 +224,7 @@ public class PluginManager {
         }
 
         if (!singleton) {
-            inject(plugin, args);
+            inject(plugin, strictInject, args);
             plugin.initialize(pluginPath);
         }
         return plugin;
@@ -255,7 +267,7 @@ public class PluginManager {
     }
 
     @SuppressWarnings("squid:S3776")
-    public void inject(Object instance, Object... args) {
+    public void inject(Object instance, boolean strict, Object... args) {
         if (instance != null && args != null && args.length > 0) {
             ModuleFactory factory = (resources != null) ? resources.getModule().getFactory() :
                     resourceManager.getModule().getFactory();
@@ -282,16 +294,20 @@ public class PluginManager {
                 injectionListener = (InjectionListener) instance;
                 injectionListener.preInject(resourcePool);
             }
-            injector.inject(instance, true);
+            injector.inject(instance, strict);
             if (injectionListener != null)
                 injectionListener.injected(resourcePool);
         } else if (instance != null && resources != null) {
-            resources.inject(instance);
+            resources.inject(instance, strict);
         }
     }
 
     public <T extends Plugin> Optional<T> get(PluginPath<T> path, Object... args) {
         return get(PluginPaths.of(path), args);
+    }
+
+    public <T extends Plugin> Optional<T> lookup(PluginPath<T> path) {
+        return lookup(PluginPaths.of(path));
     }
 
     public synchronized <T extends Plugin> PluginEntry<T> add(PluginPath<T> path, Class<T> cls) {

@@ -149,6 +149,22 @@ public class HelloWorld {
         throw new NullPointerException("test");
     }
 
+    @PUT
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello")
+    public HelloData put(HelloData data) {
+        if (data == null) throw new NullPointerException();
+        return data;
+    }
+
+    @PATCH
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello")
+    public HelloData patch(HelloData data) {
+        if (data == null) throw new NullPointerException();
+        return data;
+    }
+
     @DELETE
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/delete/{path}")

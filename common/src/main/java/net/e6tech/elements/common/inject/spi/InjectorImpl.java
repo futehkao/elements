@@ -108,24 +108,34 @@ public class InjectorImpl implements Injector {
     }
 
     @Override
-    public void inject(Object instance, boolean strict) {
+    public boolean inject(Object instance, boolean strict) {
         if (instance == null)
-            return;
+            return false;
         Class instanceClass = instance.getClass();
         List<InjectionPoint> points;
+        boolean allInjected = true;
         try {
             points = injectionPoints.get(instanceClass);
-            points.forEach(pt ->{
-                boolean injected = inject(pt, instance);
-                if (!injected && strict) {
+            for (InjectionPoint pt : points) {
+                boolean success = inject(pt, instance);
+                if (!success)
+                    allInjected = false;
+                if (!success && strict) {
                     throw new SystemException("Cannot inject " + pt + "; no instances bound to " + pt.getType());
                 }
-            });
+            }
         } catch (ExecutionException e) {
             throw new SystemException(e.getCause());
         }
+        return allInjected;
     }
 
+    /**
+     *
+     * @param point injection point
+     * @param instance object to be injected
+     * @return true for success, false for failure
+     */
     protected boolean inject(InjectionPoint point, Object instance) {
         InjectionAttempt attempt = point.inject(this, instance);
         if (attempt == InjectionAttempt.INJECTED)

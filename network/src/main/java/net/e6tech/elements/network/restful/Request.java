@@ -13,6 +13,7 @@ public class Request {
 
     static final String GET = "GET";
     static final String PUT = "PUT";
+    static final String PATCH = "PATCH";
     static final String POST = "POST";
     static final String DELETE = "DELETE";
 
@@ -60,6 +61,10 @@ public class Request {
 
     public Response put(String context, Object data,  Param ... params) throws Exception {
         return request(context, PUT, new PostData(data), params);
+    }
+
+    public Response patch(String context, Object data,  Param ... params) throws Exception {
+        return request(context, PATCH, new PostData(data), params);
     }
 
     public Response post(String context, Object data,  Param ... params) throws Exception {

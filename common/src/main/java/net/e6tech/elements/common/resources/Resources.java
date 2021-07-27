@@ -381,11 +381,15 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public <T> T inject(T object) {
-        return inject(object, new HashSet<>());
+        return inject(object, true);
+    }
+
+    public <T> T inject(T object, boolean strict) {
+        return inject(object, strict, new HashSet<>());
     }
 
     @SuppressWarnings("squid:S3776")
-    private <T> T inject(T object, Set<Integer> seen) {
+    private <T> T inject(T object, boolean strict, Set<Integer> seen) {
         if (object == null)
             return null;
         // the commented out line indicates that we cannot use seen.contains(object)
@@ -395,7 +399,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         // as a compromise, we use identifyHashCode
         if (seen.contains(System.identityHashCode(object)))
             return object;  // already been injected.
-        T injected = state.inject(this, object);
+        T injected = state.inject(this, object, strict);
         seen.add(System.identityHashCode(object));
         // seen.add(object);  object may not be initialized fully to compute hashCode.
 
@@ -440,7 +444,7 @@ public class Resources implements AutoCloseable, ResourcePool {
             try {
                 Object injectField = f.get(object);
                 if (injectField != null) {
-                    inject(injectField, seen);
+                    inject(injectField, strict, seen);
                 }
             } catch (IllegalAccessException e) {
                 throw new SystemException(e);
@@ -451,7 +455,7 @@ public class Resources implements AutoCloseable, ResourcePool {
             try {
                 Object injectProp = d.getReadMethod().invoke(object);
                 if (injectProp != null) {
-                    inject(injectProp, seen);
+                    inject(injectProp, strict, seen);
                 }
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new SystemException(e);

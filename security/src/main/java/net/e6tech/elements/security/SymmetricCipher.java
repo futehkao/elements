@@ -49,9 +49,9 @@ public class SymmetricCipher {
         initialize();
     }
 
-    protected SymmetricCipher(String algorithm, int keyLength) {
+    protected SymmetricCipher(String algorithm, String mode, String padding, int keyLength) {
         this.algorithm = algorithm;
-        this.transformation = algorithm + "/CBC/PKCS7PADDING";
+        this.transformation = algorithm + "/" + mode + "/" + padding;
         this.keyLength = keyLength;
         generateKeySpec(); // prime the pump
     }
@@ -61,8 +61,12 @@ public class SymmetricCipher {
     }
 
     public static SymmetricCipher getInstance(String algorithm, int keyLength) {
+        return getInstance(algorithm, "CBC", "PKCS7PADDING", keyLength);
+    }
+
+    public static SymmetricCipher getInstance(String algorithm, String mode, String padding, int keyLength) {
         if (ALGORITHM_AES.equalsIgnoreCase(algorithm)) {
-            return new SymmetricCipher(ALGORITHM_AES, keyLength);
+            return new SymmetricCipher(ALGORITHM_AES, mode, padding, keyLength);
         } else {
             throw new IllegalArgumentException(algorithm + " is not supported");
         }

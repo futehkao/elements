@@ -21,8 +21,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Type;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Created by futeh.
@@ -61,6 +60,25 @@ public class ResourceManagerTest {
         Map<String, Object> map = resourceManager.getModule().listBindings(X.class);
         assertTrue(!map.isEmpty());
         Map<Type, Map<String, Object>> bindings = resourceManager.getModule().listBindings();
+    }
+
+    @Test
+    public void eval() throws Exception{
+        ResourceManager resourceManager = new ResourceManager();
+        resourceManager.load("src/test/conf/simple.groovy");
+        resourceManager.getScripting().eval("quit= { println 'exit'}");
+        Object quit = resourceManager.nullableVar("quit");
+        resourceManager.getScripting().eval("{XX=123; YY='Hello World'}");
+        resourceManager.getScripting().eval("quit();");
+        resourceManager.getScripting().eval("binding.removeVariable('quit')");
+        assertThrows(Exception.class, () -> {
+            resourceManager.getScripting().eval("quit();");
+        });
+        resourceManager.getScripting().put("quit", quit);
+        resourceManager.getScripting().eval("quit()");
+
+        assertEquals(123, (int) resourceManager.nullableVar("XX"));
+        assertEquals("Hello World", resourceManager.nullableVar("YY"));
     }
 
     public static class X {

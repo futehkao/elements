@@ -327,6 +327,7 @@ public class RestfulProxy {
         boolean get;
         boolean post;
         boolean put;
+        boolean patch;
         boolean delete;
         Class returnType;
         ParameterizedType parameterizedReturnType;
@@ -374,6 +375,8 @@ public class RestfulProxy {
                 post = true;
             } else if (method.getAnnotation(PUT.class) != null) {
                 put = true;
+            } else if (method.getAnnotation(PATCH.class) != null) {
+                patch = true;
             } else if (method.getAnnotation(GET.class) != null) {
                 get = true;
             } else if (method.getAnnotation(DELETE.class) != null) {
@@ -478,6 +481,8 @@ public class RestfulProxy {
                 response = request.post(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
             } else if (put) {
                 response = request.put(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
+            } else if (patch) {
+                response = request.patch(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
             } else if (get) {
                 response = request.get(fullContext, paramList.toArray(new Param[paramList.size()]));
             } else if (delete) {

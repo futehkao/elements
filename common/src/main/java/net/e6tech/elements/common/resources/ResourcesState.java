@@ -100,11 +100,11 @@ class ResourcesState {
 
     protected void onOpen(Resources resources) {
         if (!injectionList.isEmpty()) {
-            createInjector(resources);
+            createInjector(resources, true);
         }
     }
 
-    protected Injector createInjector(Resources resources) {
+    protected Injector createInjector(Resources resources, boolean strict) {
         if (injector == null || !injectionList.isEmpty()) {
             injector = (resources.getResourceManager() != null) ?
                     getModule().build(resources.getResourceManager().getModule())
@@ -116,13 +116,17 @@ class ResourcesState {
                 // need to remove item because it may make resources dirty again calling bind or rebind.  In such a case
                 // onOpen will be call again.
                 Object obj = injectionList.remove();
-                privateInject(resources, injector, obj);
+                privateInject(resources, injector, obj, strict);
             }
         }
         return injector;
     }
 
     public <T> T inject(Resources resources, T object) {
+        return inject(resources, object, true);
+    }
+
+    public <T> T inject(Resources resources, T object, boolean strict) {
         if (object == null)
             return object;
 
@@ -130,19 +134,20 @@ class ResourcesState {
             // to be inject when resources is opened.
             injectionList.add(object);
         } else {
-            createInjector(resources);
-            privateInject(resources, injector, object);
+            createInjector(resources, strict);
+            privateInject(resources, injector, object, strict);
         }
         return object;
     }
 
-    protected void privateInject(Resources resources, Injector injector, Object object) {
+    protected void privateInject(Resources resources, Injector injector, Object object, boolean strict) {
         if (object instanceof InjectionListener) {
             ((InjectionListener) object).preInject(resources);
         }
-        injector.inject(object);
+        boolean completed = injector.inject(object, strict);
         if (object instanceof InjectionListener) {
-            ((InjectionListener) object).injected(resources);
+            if (strict || completed)
+                ((InjectionListener) object).injected(resources);
         }
     }
 
@@ -217,7 +222,7 @@ class ResourcesState {
             else if (resources.getResourceManager().getModule().getBoundNamedInstance(cls, name) != null)
                 instance = resources.getResourceManager().getModule().getBoundNamedInstance(cls, name);
         } else {
-            instance = createInjector(resources).getNamedInstance(cls, name);
+            instance = createInjector(resources, true).getNamedInstance(cls, name);
         }
         if (instance == null) {
             throw new InstanceNotFoundException("No instance for class " + cls.getName() +
@@ -246,7 +251,7 @@ class ResourcesState {
             else if (resources.getResourceManager().hasInstance(cls))
                 instance = resources.getResourceManager().getInstance(cls);
         } else {
-             instance = createInjector(resources).getInstance(cls);
+             instance = createInjector(resources, true).getInstance(cls);
         }
         if (instance == null) {
             throw new InstanceNotFoundException("No instance for class " + cls.getName() +

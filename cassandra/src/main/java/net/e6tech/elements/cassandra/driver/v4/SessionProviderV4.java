@@ -24,6 +24,7 @@ import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.mapper.entity.naming.NamingConvention;
+import com.datastax.oss.driver.internal.core.loadbalancing.DefaultLoadBalancingPolicy;
 import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.driver.Wrapper;
@@ -95,6 +96,10 @@ public class SessionProviderV4 extends SessionProvider {
         ProgrammaticDriverConfigLoaderBuilder configBuilder = DriverConfigLoader.programmaticBuilder();
         for (Map.Entry<String, ?> entry : driverOptions.entrySet()) {
             configBuilder.withString(DefaultDriverOption.valueOf(entry.getKey()), "" + entry.getValue());
+        }
+
+        if (driverOptions.get("LOAD_BALANCING_POLICY_CLASS") == null) {
+            configBuilder.withString(DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS, DefaultLoadBalancingPolicy.class.getName());
         }
 
         DriverConfigLoader loader = configBuilder.build();

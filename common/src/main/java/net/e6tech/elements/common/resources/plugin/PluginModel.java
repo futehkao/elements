@@ -27,44 +27,84 @@ import java.util.function.Function;
 
 @SuppressWarnings("unchecked")
 public interface PluginModel {
+
     Resources getResources();
 
     String getName();
 
+    default <P extends Plugin> PluginEntry<P> registerPlugin(PluginPath<P> path, P plugin) {
+        PluginManager pluginManager = getResources().getPluginManager();
+        PluginEntry<P> entry = pluginManager.add(path, plugin);
+        pluginManager.lookup(entry.getPath())
+                .ifPresent(p -> p.onRegistered(this));
+        return entry;
+    }
+
+    default <P extends Plugin> PluginEntry<P> registerPlugin(PluginPath<P> path, Class<? extends P> pluginClass) {
+        PluginManager pluginManager = getResources().getPluginManager();
+        PluginEntry<P> entry = pluginManager.add(path, (Class) pluginClass);
+        pluginManager.lookup(entry.getPath())
+                .ifPresent(p -> p.onRegistered(this));
+        return entry;
+    }
+
+    default <P extends Plugin> Object unregisterPlugin(PluginPath<P> path) {
+        PluginManager pluginManager = getResources().getPluginManager();
+        Object entry = pluginManager.remove(path);
+        pluginManager.lookup(path)
+                .ifPresent(p -> p.onUnregistered(this));
+        return entry;
+    }
+
     default <P extends Plugin> PluginEntry<P> registerPlugin(Class<P> pluginBaseClass, P plugin) {
-        return getResources().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pluginBaseClass), plugin);
+        return registerPlugin(PluginPath.of(getClass(), getName()).and(pluginBaseClass), plugin);
     }
 
     default <P extends Plugin> PluginEntry<P> registerPlugin(Class<P> pluginBaseClass, Class<? extends P> pluginClass) {
-        return getResources().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pluginBaseClass), (Class) pluginClass);
+        return registerPlugin(PluginPath.of(getClass(), getName()).and(pluginBaseClass), pluginClass);
     }
 
     default <P extends Plugin> Object unregisterPlugin(Class<P> pluginBaseClass) {
-        return getResources().getPluginManager().remove(PluginPath.of(getClass(), getName()).and(pluginBaseClass));
+        return unregisterPlugin(PluginPath.of(getClass(), getName()).and(pluginBaseClass));
     }
 
     default <P extends Plugin> PluginEntry<P> registerPlugin(Class pathClass, String pathAttribute, Class<P> pluginBaseClass, P plugin) {
-        return getResources().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass), plugin);
+        return registerPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass), plugin);
     }
 
     default <P extends Plugin> PluginEntry<P> registerPlugin(Class pathClass, String pathAttribute, Class<P> pluginBaseClass, Class<? extends P> pluginClass) {
-        return getResources().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass), (Class) pluginClass);
+        return registerPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass), (Class) pluginClass);
     }
 
     default <P extends Plugin> Object unregisterPlugin(Class pathClass, String pathAttribute, Class<P> pluginBaseClass) {
-        return getResources().getPluginManager().remove(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass));
+        return unregisterPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pluginBaseClass));
     }
 
     default <P extends Plugin> PluginEntry<P> registerPlugin(Class pathClass, String pathAttribute, Class pathClass2, String pathAttribute2, Class<P> pluginBaseClass, P plugin) {
-        return getResources().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pluginBaseClass), plugin);
+        return registerPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pluginBaseClass), plugin);
     }
 
     default <P extends Plugin> PluginEntry<P> registerPlugin(Class pathClass, String pathAttribute,  Class pathClass2, String pathAttribute2, Class<P> pluginBaseClass, Class<? extends P> pluginClass) {
-        return getResources().getPluginManager().add(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pluginBaseClass), (Class) pluginClass);
+        return registerPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pluginBaseClass), (Class) pluginClass);
     }
 
     default <P extends Plugin> Object unregisterPlugin(Class pathClass, String pathAttribute, Class pathClass2, String pathAttribute2, Class<P> pluginBaseClass) {
-        return getResources().getPluginManager().remove(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pluginBaseClass));
+        return unregisterPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pluginBaseClass));
+    }
+
+    default <P extends Plugin> PluginEntry<P> registerPlugin(Class pathClass, String pathAttribute, Class pathClass2, String pathAttribute2,
+                                                             Class pathClass3, String pathAttribute3, Class<P> pluginBaseClass, P plugin) {
+        return registerPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pathClass3, pathAttribute3).and(pluginBaseClass), plugin);
+    }
+
+    default <P extends Plugin> PluginEntry<P> registerPlugin(Class pathClass, String pathAttribute,  Class pathClass2, String pathAttribute2,
+                                                             Class pathClass3, String pathAttribute3, Class<P> pluginBaseClass, Class<? extends P> pluginClass) {
+        return registerPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pathClass3, pathAttribute3).and(pluginBaseClass), (Class) pluginClass);
+    }
+
+    default <P extends Plugin> Object unregisterPlugin(Class pathClass, String pathAttribute, Class pathClass2, String pathAttribute2,
+                                                       Class pathClass3, String pathAttribute3, Class<P> pluginBaseClass) {
+        return unregisterPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pathClass3, pathAttribute3).and(pluginBaseClass));
     }
 
     default <P extends Plugin> boolean isPluginRegistered(Class<P> pluginBaseClass) {
@@ -77,6 +117,11 @@ public interface PluginModel {
 
     default <P extends Plugin> boolean isPluginRegistered(Class pathClass, String pathAttribute, Class pathClass2, String pathAttribute2, Class<P> pluginBaseClass) {
         return getResources().getPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pluginBaseClass)).isPresent();
+    }
+
+    default <P extends Plugin> boolean isPluginRegistered(Class pathClass, String pathAttribute, Class pathClass2, String pathAttribute2,
+                                                          Class pathClass3, String pathAttribute3, Class<P> pluginBaseClass) {
+        return getResources().getPlugin(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pathClass3, pathAttribute3).and(pluginBaseClass)).isPresent();
     }
 
     default <P extends Plugin> PluginPaths<P> getPluginPaths(Class<P> cls) {
@@ -94,6 +139,13 @@ public interface PluginModel {
         return PluginPaths.of(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(cls));
     }
 
+    default <P extends Plugin> PluginPaths<P> getPluginPaths(Class pathClass, String pathAttribute,
+                                                             Class pathClass2, String pathAttribute2,
+                                                             Class pathClass3, String pathAttribute3,
+                                                             Class<P> cls) {
+        return PluginPaths.of(PluginPath.of(getClass(), getName()).and(pathClass, pathAttribute).and(pathClass2, pathAttribute2).and(pathClass3, pathAttribute3).and(cls));
+    }
+
     default <P extends Plugin> Optional<P> getPlugin(PluginPath<P> path, Object ... args) {
         Optional<P> optional = getResources().getPlugin(path, args);
         if (optional.isPresent())
@@ -109,9 +161,9 @@ public interface PluginModel {
     }
 
     default <P extends Plugin> Optional<P> getPlugin(Class<P> cls, Object ... args) {
-        Optional<P> optional = getResources().getPlugin(getPluginPaths(cls), args);
-        if (optional.isPresent())
-            return optional;
+            Optional<P> optional = getResources().getPlugin(getPluginPaths(cls), args);
+            if (optional.isPresent())
+                return optional;
 
         return DefaultPluginModel.from(getResources()).getPlugin(cls, args);
     }
@@ -140,6 +192,20 @@ public interface PluginModel {
                                                                         Class pathClass2, String pathAttribute2,
                                                                         Class<P> cls)  {
         return getResources().getPluginManager().getEntry(getPluginPaths(pathClass, pathAttribute, pathClass2, pathAttribute2, cls));
+    }
+
+    default <P extends Plugin> Optional<P> getLevel4Plugin(Class pathClass, String pathAttribute,
+                                                           Class pathClass2, String pathAttribute2,
+                                                           Class pathClass3, String pathAttribute3,
+                                                           Class<P> cls, Object ... args) {
+        return getResources().getPlugin(getPluginPaths(pathClass, pathAttribute, pathClass2, pathAttribute2, pathClass3, pathAttribute3, cls), args);
+    }
+
+    default <P extends Plugin> Optional<PluginEntry<P>> getLevel4PluginEntry(Class pathClass, String pathAttribute,
+                                                                             Class pathClass2, String pathAttribute2,
+                                                                             Class pathClass3, String pathAttribute3,
+                                                                             Class<P> cls)  {
+        return getResources().getPluginManager().getEntry(getPluginPaths(pathClass, pathAttribute, pathClass2, pathAttribute2, pathClass3, pathAttribute3, cls));
     }
 
     default <P extends Plugin> P newPlugin(Class<P> cls, Object ... args) {

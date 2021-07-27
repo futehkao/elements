@@ -39,6 +39,7 @@ atom("cassandra_session") {
         CONNECTION_MAX_REQUESTS: '32768'
         SOCKET_KEEP_ALIVE: 'true'
         LOAD_BALANCING_LOCAL_DATACENTER: 'datacenter1'
+        LOAD_BALANCING_POLICY_CLASS: com.datastax.oss.driver.internal.core.loadbalancing.DefaultLoadBalancingPolicy
 """
     _options = { t ->   } as Consumer
     _provider = SessionProviderV4
