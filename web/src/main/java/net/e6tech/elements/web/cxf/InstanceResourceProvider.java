@@ -114,7 +114,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
         @Override
         @SuppressWarnings("squid:S3776")
         public Object invoke(CallFrame frame) throws Throwable {
-            boolean abort = false;
+            boolean exception = false;
             Object result = null;
             boolean ignored = false;
 
@@ -173,12 +173,12 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                 }
             } catch (Exception th) {
                 server.recordFailure(frame.getMethod(), methods);
-                abort = true;
+                exception = true;
                 server.getProvision().log(JaxRSServer.getLogger(), LogLevel.DEBUG, th.getMessage(), th);
                 server.handleException(message, frame, th);
             } finally {
                 if (uowOpen) {
-                    if (abort)
+                    if (exception)
                         uow.abort();
                     else if (!uow.isAborted()) // application can call abort
                         uow.commit();

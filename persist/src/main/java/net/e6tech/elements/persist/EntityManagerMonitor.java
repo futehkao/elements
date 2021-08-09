@@ -81,10 +81,11 @@ public class EntityManagerMonitor {
 
             // rollback
             try {
-                if (entityManager.isOpen()) {
-                    entityManager.getTransaction().setRollbackOnly();
-                    entityManager.close();
-                    logger.warn("EntityManagerProvider timeout", throwable);
+                synchronized (entityManager) {
+                    if (entityManager.isOpen()) {
+                        provider.onAbort(resources, alias);
+                        logger.warn("EntityManagerProvider timeout", throwable);
+                    }
                 }
             } catch (Throwable ex) {
                 logger.warn("Unexpected exception in EntityManagerMonitor during rollback", throwable);

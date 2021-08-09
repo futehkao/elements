@@ -460,11 +460,24 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         try {
             EntityManager em = resources.getMapVariable(EntityManager.class).get(alias);
             EntityManagerInvocationHandler h = (EntityManagerInvocationHandler) Proxy.getInvocationHandler(em);
-            h.onCommit();
-            em.getTransaction().commit();
-            h.onClose();
-            em.clear();
-            em.close();
+            synchronized (h.getTarget()) {
+                if (!em.getTransaction().isActive()) {
+                    throw new IllegalStateException("Database transaction is closed.");
+                }
+                try {
+                    h.onCommit();
+                } catch (Exception ex) {
+                    logger.error("Unexpected exception in EntityManagerInvocationHandler.onCommit during commit.", ex);
+                }
+                em.getTransaction().commit();
+                try {
+                    h.onClose();
+                } catch (Exception ex) {
+                    logger.error("Unexpected exception in EntityManagerInvocationHandler.onClose during commit.", ex);
+                }
+                em.clear();
+                em.close();
+            }
         } catch (InstanceNotFoundException ex) {
             Logger.suppress(ex);
         } finally {
@@ -489,11 +502,25 @@ public abstract class EntityManagerProvider implements ResourceProvider, Initial
         try {
             EntityManager em = resources.getMapVariable(EntityManager.class).get(alias);
             EntityManagerInvocationHandler h = (EntityManagerInvocationHandler) Proxy.getInvocationHandler(em);
-            h.onAbort();
-            em.getTransaction().rollback();
-            h.onClose();
-            em.clear();
-            em.close();
+            synchronized (h.getTarget()) {
+                if (em.getTransaction().isActive()) {
+                    try {
+                        h.onAbort();
+                    } catch (Exception ex) {
+                        logger.error("Unexpected exception in EntityManagerInvocationHandler.onAbort during abort.", ex);
+                    }
+                    em.getTransaction().rollback();
+                    try {
+                        h.onClose();
+                    } catch (Exception ex) {
+                        logger.error("Unexpected exception in EntityManagerInvocationHandler.onClose during abort.", ex);
+                    }
+                    em.clear();
+                }
+
+                if (em.isOpen())
+                    em.close();
+            }
         } catch (Exception th) {
             Logger.suppress(th);
         }  finally {

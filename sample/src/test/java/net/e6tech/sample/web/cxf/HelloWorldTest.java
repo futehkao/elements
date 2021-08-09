@@ -87,6 +87,24 @@ class HelloWorldTest extends BaseCase {
     }
 
     @Test
+    void timeout() {
+        try {
+            helloWorld.timout("timeout");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    @Test
+    void abort() {
+        try {
+            helloWorld.abort("abort");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    @Test
     void withParam() {
         helloWorld.withParam("1234", "WWWWWWWWWWWW");
     }

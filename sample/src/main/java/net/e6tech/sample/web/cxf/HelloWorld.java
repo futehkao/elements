@@ -21,6 +21,7 @@ import net.e6tech.elements.common.resources.InstanceNotFoundException;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.persist.EntityManagerConfig;
+import net.e6tech.sample.entity.Employee;
 
 import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
@@ -84,6 +85,42 @@ public class HelloWorld {
     @Path("hello/echo")
     @EntityManagerConfig(disable = true)
     public String echo(@QueryParam("param") String echo) {
+        return echo;
+    }
+
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/timeout")
+    public String timout(@QueryParam("param") String echo) {
+        try {
+            Employee employee = new Employee();
+            employee.setFirstName("First" + System.currentTimeMillis());
+            employee.setLastName("Last" + System.currentTimeMillis());
+            employee.setGender('M');
+            employee.setBirthDate("19701101");
+            employee.setHireDate("20160101");
+            employee.setAdditionalInfo("info-" + System.currentTimeMillis());
+
+            EntityManager em = resources.getInstance(EntityManager.class);
+            em.persist(employee);
+            em.flush();
+            Thread.sleep(25000L);
+        } catch (InterruptedException e) {
+
+        }
+        return echo;
+    }
+
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("hello/abort")
+    public String abort(@QueryParam("param") String echo) {
+        try {
+            Thread.sleep(20000L);
+            resources.abort();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return echo;
     }
 

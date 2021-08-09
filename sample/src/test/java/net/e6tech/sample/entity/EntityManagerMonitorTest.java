@@ -59,7 +59,7 @@ public class EntityManagerMonitorTest extends BaseCase {
                         });
                     }
                 } catch (Exception ex) {
-
+                    ex.printStackTrace();
                 }
             });
             th.start();
@@ -67,6 +67,23 @@ public class EntityManagerMonitorTest extends BaseCase {
             System.out.println("EntityManagerMonitor count=" + provider.getEntityManagerMonitors().size());
             Thread.sleep(200L);
         }
+    }
+
+    @Test
+    @Disabled
+    void timeout() throws Exception {
+        provision.open().accept(Resources.class, res -> {
+            try {
+                Thread.sleep(30000L);
+            } catch (InterruptedException ex) {
+
+            }
+
+            if (res.isAborted()) {
+
+            }
+
+        });
     }
 
     @Test
