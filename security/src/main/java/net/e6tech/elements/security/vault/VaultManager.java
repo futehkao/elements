@@ -358,6 +358,31 @@ public class VaultManager {
     /**
      *
      * @param dualEntry dual entry
+     * @param plainData the plain data to be imported
+     * @param iv  initialization vector.  If null, randomly generated
+     * @return encrypted data
+     */
+    public String importData(DualEntry dualEntry, String plainData, String iv) throws GeneralSecurityException {
+        return importData(dualEntry, plainData, iv, null);
+    }
+
+    /**
+     *
+     * @param dualEntry dual entry
+     * @param version version of the master key.  If null, use the latest version.
+     * @param plainData the plain data to be imported
+     * @param iv  initialization vector.  If null, randomly generated
+     * @return encrypted data
+     */
+    public String importData(DualEntry dualEntry, String plainData, String iv, String version) throws GeneralSecurityException {
+        byte[] plain = symmetricCipher.toBytes(plainData);
+        checkAccess(dualEntry);
+        return internalEncrypt(MASTER_KEY_ALIAS, version, plain, iv);
+    }
+
+    /**
+     *
+     * @param dualEntry dual entry
      * @param version version of the master key.  If null, use the latest version.
      * @param plainKey the plain key to be imported
      * @param iv  initialization vector.  If null, randomly generated

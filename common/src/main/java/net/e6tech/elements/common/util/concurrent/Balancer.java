@@ -25,17 +25,21 @@ import net.e6tech.elements.common.util.function.FunctionWithException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Created by futeh.
  */
 public class Balancer<T> {
     private static Logger logger= Logger.getLogger();
+    private List<T> services = new ArrayList<>();
     private BlockingQueue<T> liveList = new LinkedBlockingQueue<>();
     private ConcurrentLinkedQueue<T> processingList = new ConcurrentLinkedQueue<>();
     private BlockingQueue<T>  deadList = new LinkedBlockingQueue<>();
@@ -95,6 +99,11 @@ public class Balancer<T> {
 
     public void addService(T service) {
         liveList.add(service);
+        services.add(service);
+    }
+
+    public void forEach(Consumer<T> consumer) {
+        services.forEach(consumer);
     }
 
     public Balancer<T> timeout(T service) {

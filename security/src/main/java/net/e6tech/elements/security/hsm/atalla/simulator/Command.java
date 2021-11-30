@@ -76,6 +76,9 @@ public abstract class Command extends Message {
 
     public Message process() {
         try {
+            if (fields != null && fields.length > 0 && fields[fields.length - 1].startsWith("^")) {
+                return new Message("<" + doProcess() + "#" + fields[fields.length - 1] + ">");
+            }
             return new Message("<" + doProcess() + ">");
         } catch (CommandException e) {
             Logger.suppress(e);

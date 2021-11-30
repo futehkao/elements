@@ -105,6 +105,16 @@ public class VaultManagerTest {
     }
 
     @Test
+    public void importData() throws Exception {
+        SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
+        byte[] plain = "hello world!".getBytes(StandardCharsets.UTF_8);
+        String iv = cipher.generateIV();
+        String key = manager.importData(dualEntry, cipher.toString(plain), iv);
+        byte[] decrypted = manager.decrypt(dualEntry.getUser1(), key);
+        assertArrayEquals(decrypted, plain);
+    }
+
+    @Test
     public void importAsymmetricKey() throws Exception {
         SymmetricCipher cipher = SymmetricCipher.getInstance(SymmetricCipher.ALGORITHM_AES);
         byte[] plain = VaultManager.generateEncodedAsymmetricKey(AsymmetricCipher.getInstance(AsymmetricCipher.ALGORITHM_RSA));

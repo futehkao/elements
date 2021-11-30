@@ -32,17 +32,24 @@ public class ChangePINTest extends CommandTest<ChangePIN> {
 
     @Test
     public void ibm3624() throws Exception {
-        Message message = ibm3624(simulator.DEC, "1PUNE000,1111 1111 1111 1111", "1V3NE000,3333 3333 3333 3333", "3053");
+        Message message = ibm3624(simulator.DEC, "1PUNE000,1111 1111 1111 1111", "1V3NE000,3333 3333 3333 3333", "3053", null);
         assertTrue("6140".equals(message.getField(2)));  // this is based on sample
     }
 
     @Test
     public void ibm3624_2() throws Exception {
-        Message message = ibm3624(simulator.DEC, simulator.KPE_INTERCHANGE, simulator.KPV_IBM3624, "1104");
+        Message message = ibm3624(simulator.DEC, simulator.KPE_INTERCHANGE, simulator.KPV_IBM3624, "1104", null);
         assertTrue("4291".equals(message.getField(2)));
     }
 
-    public Message ibm3624(String decPlain, String kpePlain, String kpvPlain, String offset) throws Exception {
+
+    @Test
+    public void fail() throws Exception {
+        Message message = ibm3624(simulator.DEC, simulator.KPE_INTERCHANGE, simulator.KPV_IBM3624, "1104", "hello");
+        assertTrue("^hello".equals(message.getField(3)));
+    }
+
+    public Message ibm3624(String decPlain, String kpePlain, String kpvPlain, String offset, String context) throws Exception {
         AKB decTab = simulator.asAKB(decPlain);
         AKB kpe = simulator.asAKB(kpePlain);
         AKB kpv3 = simulator.asAKB(kpvPlain);
@@ -50,7 +57,7 @@ public class ChangePINTest extends CommandTest<ChangePIN> {
         String partialPan = "123456123456";
         AnsiPinBlock oldPinBlock = new AnsiPinBlock(partialPan, "1234");
         AnsiPinBlock pinBlock = new AnsiPinBlock(partialPan, "4321");
-        String[] fields = new String[13];
+        String[] fields = context == null ? new String[13] : new String[14];
         fields[0] = "37";
         fields[1] = "2"; // ibm
         fields[2] = "1"; // ansi pin block
@@ -64,6 +71,8 @@ public class ChangePINTest extends CommandTest<ChangePIN> {
         fields[10] = kpv3.getKeyBlock(); // kpv_3
         fields[11] = Hex.toString(simulator.encrypt(kpe, pinBlock.getEncoding())); // new pin block
         fields[12] = partialPan; // partial pan
+        if (context != null)
+            fields[13] = "^" + context;
         getCommand().setFields(fields);
         return getCommand().process();
     }

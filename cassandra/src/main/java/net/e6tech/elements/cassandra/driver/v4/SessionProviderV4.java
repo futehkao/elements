@@ -36,6 +36,7 @@ import net.e6tech.elements.common.util.TextBuilder;
 import java.net.InetSocketAddress;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 public class SessionProviderV4 extends SessionProvider {
 
@@ -44,6 +45,7 @@ public class SessionProviderV4 extends SessionProvider {
     private Map<String, Object> driverOptions = new LinkedHashMap<>();
     private MappingManager mappingManager;
     private String namingConvention;
+    private Function<CqlSessionBuilder, CqlSessionBuilder> sessionCustomizer;
 
     public String getNamingConvention() {
         return namingConvention;
@@ -59,6 +61,14 @@ public class SessionProviderV4 extends SessionProvider {
 
     public void setDriverOptions(Map<String, Object> driverOptions) {
         this.driverOptions = driverOptions;
+    }
+
+    public Function<CqlSessionBuilder, CqlSessionBuilder> getSessionCustomizer() {
+        return sessionCustomizer;
+    }
+
+    public void setSessionCustomizer(Function<CqlSessionBuilder, CqlSessionBuilder> customizer) {
+        this.sessionCustomizer = customizer;
     }
 
     @Override
@@ -107,25 +117,28 @@ public class SessionProviderV4 extends SessionProvider {
                 .withConfigLoader(loader)
                 .addContactPoint(new InetSocketAddress(getHost(), getPort()));
         try {
-            session = builder
-                    .withKeyspace(getKeyspace())
-                    .build();
+            session = getSession(builder, getKeyspace());
         } catch (InvalidKeyspaceException ex) {
-            session = builder
-                    .withKeyspace((String) null)
-                    .build();
+            session = getSession(builder, null);
 
             // create keyspace
             createKeyspaceArguments.put("keyspace", getKeyspace());
             session.execute(TextBuilder.using(createKeyspace).build(createKeyspaceArguments));
             session.close();
 
-            session = builder
-                    .withKeyspace(getKeyspace())
-                    .build();
+            session = getSession(builder, getKeyspace());
         }
 
         mappingManager = new MappingManager(this, session, getKeyspace());
+    }
+
+    private CqlSession getSession(CqlSessionBuilder builder, String keyspace) {
+        CqlSessionBuilder b = builder
+                .withKeyspace(keyspace);
+
+        if (sessionCustomizer != null)
+            b = sessionCustomizer.apply(b);
+        return b.build();
     }
 
     @Override
