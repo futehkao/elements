@@ -46,6 +46,7 @@ public abstract class Command extends Message {
         commands.put("350", VerifyARQC.class);
         commands.put("351", EMVPINChange.class);
         commands.put("352", EMVGenerateMAC.class);
+        commands.put("39B", GenerateHMAC.class);
     }
 
     protected AtallaSimulator simulator;
