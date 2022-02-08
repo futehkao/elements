@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -92,6 +93,15 @@ public class JMXService {
         } catch (Exception ex) {
             logger.info("Cannot register {} as MBean", name, ex);
         }
+    }
+
+    public static int registerMBean(Object mbean, Function<Integer, String> function) {
+        int count = 1;
+        while (find(function.apply(count)).isPresent()) {
+            count ++ ;
+        }
+        registerMBean(mbean, function.apply(count));
+        return count;
     }
 
     public static ObjectInstance registerIfAbsent(String name, Supplier supplier) throws JMException {
