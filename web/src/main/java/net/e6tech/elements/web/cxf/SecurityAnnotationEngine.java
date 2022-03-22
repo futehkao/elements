@@ -108,8 +108,12 @@ public class SecurityAnnotationEngine {
             return true;
         }
 
-        if (userRoles.contains("ReadOnly") && method.getAnnotation(GET.class) == null && method.getAnnotation(ReadOnly.class) == null) {
-            return false;
+        if (userRoles.contains("ReadOnly")) {
+            // not a GET method but potentially with ReadOnly annotation
+            if (method.getAnnotation(GET.class) == null && method.getAnnotation(ReadOnly.class) == null)
+                return false;
+            else if (method.getAnnotation(GET.class) != null && method.getAnnotation(NotReadOnly.class) == null) // a GET method
+                return true;
         }
 
         if (userRoles.contains("PermitAll")) {
