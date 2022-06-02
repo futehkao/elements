@@ -112,8 +112,14 @@ public class SecurityAnnotationEngine {
             // not a GET method but potentially with ReadOnly annotation
             if (method.getAnnotation(GET.class) == null && method.getAnnotation(ReadOnly.class) == null)
                 return false;
-            else if (method.getAnnotation(GET.class) != null && method.getAnnotation(NotReadOnly.class) == null) // a GET method
-                return true;
+            else if (method.getAnnotation(GET.class) != null) { // a GET method
+                if (method.getAnnotation(ReadOnly.class) != null)
+                    return true;
+                else if (method.getAnnotation(NotReadOnly.class) == null
+                        && method.getDeclaringClass().getAnnotation(NotReadOnly.class) == null) {
+                    return true;
+                }
+            }
         }
 
         if (userRoles.contains("PermitAll")) {
