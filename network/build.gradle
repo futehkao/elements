@@ -13,35 +13,36 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 dependencies {
-    compile project(':common')
-    compile project(':security')
-    compile project(':jmx')
+    api project(':common')
+    api project(':security')
+    api project(':jmx')
 
-    compile "com.esotericsoftware:kryo:${kryoVersion}"
+    implementation "com.esotericsoftware:kryo:${kryoVersion}"
 
-    compile "org.ow2.asm:asm:${asmVersion}"
-    compile "org.ow2.asm:asm-commons:${asmVersion}"
-    compile "org.ow2.asm:asm-util:${asmVersion}"
+    implementation "org.ow2.asm:asm:${asmVersion}"
+    implementation "org.ow2.asm:asm-commons:${asmVersion}"
+    implementation "org.ow2.asm:asm-util:${asmVersion}"
 
-    compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
+    implementation ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
         exclude group: 'org.ow2.asm'
     }
 
-    compile group: 'io.aeron', name: "aeron-driver", version: "${aeronVersion}"
-    compile group: 'io.aeron', name: "aeron-client", version: "${aeronVersion}"
-    compile (group: 'com.typesafe.akka', name: "akka-cluster-typed_${akkaScalaVersion}", version: "${akkaVersion}") {
+    implementation group: 'io.aeron', name: "aeron-driver", version: "${aeronVersion}"
+    implementation group: 'io.aeron', name: "aeron-client", version: "${aeronVersion}"
+    implementation (group: 'com.typesafe.akka', name: "akka-cluster-typed_${akkaScalaVersion}", version: "${akkaVersion}") {
         exclude group: 'com.github.jnr'
         exclude group: 'org.ow2.asm'
         exclude group: 'com.hierynomus', module: 'asn-one'
     }
-    compile("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}") {
+    implementation("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}") {
         exclude group: 'com.typesafe.akka', module: "akka-distributed-data_${akkaScalaVersion}"
         exclude group: 'com.hierynomus', module: 'asn-one'
     }
 
-    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
-    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
-    testCompile group: 'com.typesafe.akka', name: "akka-testkit_${akkaScalaVersion}", version: "${akkaVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testImplementation "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    testImplementation group: 'com.typesafe.akka', name: "akka-testkit_${akkaScalaVersion}", version: "${akkaVersion}"
 }

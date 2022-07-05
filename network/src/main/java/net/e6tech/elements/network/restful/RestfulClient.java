@@ -32,10 +32,11 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.*;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 
@@ -67,16 +68,16 @@ public class RestfulClient {
     private int proxyPort = -1;
     private Marshaller marshaller = new JsonMarshaller<>(ErrorResponse.class);
 
+    /*
     static {
         try {
             Field methodsField = HttpURLConnection.class.getDeclaredField("methods");
-
-            Field modifiersField = Field.class.getDeclaredField("modifiers");
-            int modifier = modifiersField.getModifiers();
-            modifiersField.setAccessible(true);
-            modifiersField.setInt(methodsField, methodsField.getModifiers() & ~Modifier.FINAL);
-
             methodsField.setAccessible(true);
+
+            Unsafe unsafe;
+            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            unsafe = (Unsafe) unsafeField.get(null);
 
             String[] methods = new String[] {"PATCH"};
             String[] oldMethods = (String[]) methodsField.get(null);
@@ -84,12 +85,13 @@ public class RestfulClient {
             methodsSet.addAll(Arrays.asList(methods));
             String[] newMethods = methodsSet.toArray(new String[0]);
 
-            methodsField.set(null, newMethods);
-            modifiersField.setInt(methodsField, modifier);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
+            Object fieldBase = unsafe.staticFieldBase(methodsField);
+            long fieldOffset = unsafe.staticFieldOffset(methodsField);
+            unsafe.putObject(fieldBase, fieldOffset, newMethods);
+        } catch (Exception e) {
             throw new IllegalStateException(e);
         }
-    }
+    } */
 
     public RestfulClient() {
     }

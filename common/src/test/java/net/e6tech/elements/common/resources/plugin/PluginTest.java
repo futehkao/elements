@@ -34,7 +34,7 @@ class PluginTest {
     void loadJars() throws Exception {
         PluginManager manager = new PluginManager(new ResourceManager());
         manager.loadPlugins(new String[] { "./src/test/test-plugins/plugin-test.jar" } );
-        Plugin plugin = (Plugin) manager.getPluginClassLoader().loadClass("net.e6tech.elements.common.resources.plugin.SimplePlugin").newInstance();
+        Plugin plugin = (Plugin) manager.getPluginClassLoader().loadClass("net.e6tech.elements.common.resources.plugin.SimplePlugin").getDeclaredConstructor().newInstance();
         plugin.initialize(PluginPath.of(Plugin.class, "Test"));
     }
 
@@ -42,7 +42,7 @@ class PluginTest {
     void loadJars2() throws Exception {
         PluginManager manager = new PluginManager(new ResourceManager());
         manager.loadPlugins(new String[] { "./src/test/test-plugins/*" } );
-        Plugin plugin = (Plugin) manager.getPluginClassLoader().loadClass("net.e6tech.elements.common.resources.plugin.SimplePlugin").newInstance();
+        Plugin plugin = (Plugin) manager.getPluginClassLoader().loadClass("net.e6tech.elements.common.resources.plugin.SimplePlugin").getDeclaredConstructor().newInstance();
         plugin.initialize(PluginPath.of(Plugin.class, "Test"));
     }
 

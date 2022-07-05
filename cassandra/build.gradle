@@ -14,21 +14,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+plugins {
+    id 'java-library'
+}
 
 dependencies {
-    compile project(':common')
+    api project(":common")
+    api "org.ow2.asm:asm:${asmVersion}"
+    api "org.ow2.asm:asm-commons:${asmVersion}"
+    api "org.ow2.asm:asm-analysis:${asmVersion}"
+    api "org.ow2.asm:asm-util:${asmVersion}"
+    api "org.reactivestreams:reactive-streams:${reactiveStreamsVersion}"
 
-    compile "org.ow2.asm:asm:${asmVersion}"
-    compile "org.ow2.asm:asm-commons:${asmVersion}"
-    compile "org.ow2.asm:asm-analysis:${asmVersion}"
-    compile "org.ow2.asm:asm-util:${asmVersion}"
-    compile "org.reactivestreams:reactive-streams:${reactiveStreamsVersion}"
-
-    compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
+    api ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
         exclude group: 'org.ow2.asm'
     }
 
-    compile("com.datastax.oss:java-driver-mapper-processor:${cassandraDriver4Version}") {
+    api("com.datastax.oss:java-driver-mapper-processor:${cassandraDriver4Version}") {
         exclude group: 'org.slf4j'
         exclude group: 'com.github.jnr'
         exclude group: 'org.apache.tinkerpop', module: 'gremlin-core'
@@ -37,7 +39,7 @@ dependencies {
 
     // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: "$cassandraDriver4Version"
 
-    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
-    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testImplementation "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }

@@ -13,12 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-dependencies {
-    compile project(':common')
-    compile ("com.zaxxer:HikariCP:${hikariVersion}")
-    compile "org.mariadb.jdbc:mariadb-java-client:${mariadbClientVersion}"
 
-    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
-    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+dependencies {
+    api project(':common')
+    implementation ("com.zaxxer:HikariCP:${hikariVersion}")
+    implementation "org.mariadb.jdbc:mariadb-java-client:${mariadbClientVersion}"
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testImplementation "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }

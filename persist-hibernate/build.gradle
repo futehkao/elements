@@ -14,13 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-dependencies {
-    compile project(':persist')
-    compile ("org.hibernate:hibernate-core:${hibernateVersion}")
-    compile ("org.hibernate:hibernate-entitymanager:${hibernateVersion}")
-    compile ("org.hibernate:hibernate-jcache:${hibernateVersion}")
+plugins {
+    id 'java-library'
+}
 
-    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
-    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+dependencies {
+    api project(':persist')
+    api ("org.hibernate:hibernate-core:${hibernateVersion}")
+    api ("org.hibernate:hibernate-entitymanager:${hibernateVersion}")
+    api ("org.hibernate:hibernate-jcache:${hibernateVersion}")
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testImplementation "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }

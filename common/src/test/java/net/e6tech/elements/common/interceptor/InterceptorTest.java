@@ -121,7 +121,7 @@ public class InterceptorTest {
         TestClass prototype = new TestClass();
         prototype.setValue(10);
         Class cls = interceptor.newPrototypeClass(TestClass.class, prototype, null);
-        TestClass test = (TestClass) cls.newInstance();
+        TestClass test = (TestClass) cls.getDeclaredConstructor().newInstance();
         assertTrue(test.getValue() == 10);
         test.setValue(11);
         assertTrue(prototype.getValue() == 10);
@@ -134,7 +134,7 @@ public class InterceptorTest {
         TestClass singleton = new TestClass();
         singleton.setValue(10);
         Class cls = interceptor.newSingletonClass(TestClass.class, singleton);
-        TestClass test = (TestClass) cls.newInstance();
+        TestClass test = (TestClass) cls.getDeclaredConstructor().newInstance();
         assertTrue(test.getValue() == 10);
 
         test.setValue(11);

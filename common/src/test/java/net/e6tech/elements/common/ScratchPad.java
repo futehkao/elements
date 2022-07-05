@@ -70,7 +70,7 @@ public class ScratchPad {
 
         // Construct the Disruptor
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
-        Disruptor<LongEvent> disruptor = new Disruptor<>(LongEvent::new, bufferSize, executorService,
+        Disruptor<LongEvent> disruptor = new Disruptor<>(LongEvent::new, bufferSize, DaemonThreadFactory.INSTANCE,
                 ProducerType.SINGLE, new YieldingWaitStrategy());
 
         // Connect the handler

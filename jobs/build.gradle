@@ -14,18 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 dependencies {
-    compile project(':common')
-    compile project(':jmx')
-    compile("org.quartz-scheduler:quartz:${quartzVersion}") {
+    implementation project(':common')
+    implementation project(':jmx')
+    implementation("org.quartz-scheduler:quartz:${quartzVersion}") {
         exclude group: 'org.slf4j'
         exclude group: 'com.mchange'
         exclude group: 'com.zaxxer'
     }
-    compile("org.quartz-scheduler:quartz-jobs:${quartzVersion}") {
+    implementation("org.quartz-scheduler:quartz-jobs:${quartzVersion}") {
         exclude group: 'org.slf4j'
     }
 
-    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
-    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testImplementation "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }

@@ -23,8 +23,8 @@ import com.datastax.oss.driver.internal.core.util.concurrent.LazyReference;
 import com.datastax.oss.driver.internal.mapper.DefaultMapperContext;
 import net.e6tech.elements.cassandra.SessionProvider;
 import net.e6tech.elements.cassandra.etl.Inspector;
-import org.ehcache.impl.internal.concurrent.ConcurrentHashMap;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class MappingManager {

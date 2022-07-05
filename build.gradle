@@ -1,31 +1,33 @@
-ext.elementsVersion = '2.6.37'
-ext.junitPlatformLauncherVersion = '1.6.2'
-ext.junitJupiterVersion = '5.6.2'
-ext.snakeyamlVersion = '1.27'
+ext.elementsVersion = '3.0.0'
+ext.junitPlatformLauncherVersion = '1.8.2'
+ext.junitJupiterVersion = '5.8.2'
+ext.snakeyamlVersion = '1.30'
 ext.simplejndiVersion = '0.11.4.1'
 ext.findbugsVersion = '3.0.2'
-ext.lmaxDisruptorVerions = '3.4.2'
-ext.slf4jVersion = '1.7.30'
-ext.groovyVersion = '3.0.7'
-ext.guavaVerions = '30.1-jre'
+ext.lmaxDisruptorVerions = '3.4.4'
+ext.slf4jVersion = '1.7.36'
+ext.groovyVersion = '4.0.3'
+ext.guavaVerions = '31.1-jre'
 ext.akkaVersion = '2.6.9'
 ext.akkaScalaVersion = '2.13'
 ext.aeronVersion = '1.30.0'
 ext.kryoVersion = '5.0.0-RC9'
-ext.bytebuddyVersion = '1.10.16'
-ext.ehcacheVersion = '3.9.0'
+ext.bytebuddyVersion = '1.12.12'
+ext.ehcacheVersion = '3.10.0'
 ext.javaCacheApiVerison = '1.1.1'
 ext.javamailVersion = '1.6.2'
 ext.javaxWsRsApiVersion = '2.1.6'
+ext.javaxWsApiVersion = '2.3.1'
+ext.javaxJwsApiVersion = '1.1'
 ext.javaeeApiVersion = '8.0.1'
-ext.jacksonVersion = '2.11.2'
+ext.jacksonVersion = '2.13.3'
 ext.jettyVersion =  '9.4.43.v20210629'
 ext.tomcatVersion = '9.0.50'
 ext.tomcatLog4jVersion = '9.0.0.M6'
-ext.log4jVersion = '2.17.1'
-ext.cxfVersion = '3.4.4'
+ext.log4jVersion = '2.17.2'
+ext.cxfVersion = '3.5.2'
 ext.httpclientVersion = '4.5.13'
-ext.asmVersion = '9.0'  // network
+ext.asmVersion = '9.3'  // network
 ext.cassandraDriver4Version = '4.12.0'
 ext.reactiveStreamsVersion = '1.0.3'
 ext.opendmkVersion = '1.0-b02'
@@ -35,8 +37,8 @@ ext.hikariVersion = '3.4.5'
 ext.mariadbClientVersion = '2.6.2'
 ext.hibernateVersion = '5.4.27.Final'  // note 5.4.6 - 5.4.8 have major stack overflow issues
 ext.bouncycastleVersion = '1.68'
-ext.jaxbVersion = '2.3.1'      // security
-ext.jaxbRuntimeVersion = '2.3.3'
+ext.jaxbVersion = '2.4.0'      // security
+ext.jaxbRuntimeVersion = '2.3.5'
 ext.jaxbOldVersion = '2.3.0'
 ext.jnrffiVersion = '2.1.16'  // cassandra and akka cluster typed
 
@@ -53,12 +55,10 @@ buildscript {
 }
 
 allprojects {
-    group 'net.e6tech'
-    version '1.0-SNAPSHOT'
 
     apply plugin: 'java'
 
-    sourceCompatibility = 1.8
+    sourceCompatibility = 17
 
     tasks.withType(Javadoc) {
         options.addStringOption('Xdoclint:syntax', '-quiet')
@@ -69,120 +69,109 @@ allprojects {
     }
 
     configurations {
-        compile.exclude(group: 'jakarta.annotation') // replaced with javaee-api, which used by hibernate
-        compile.exclude(group: 'jakarta.activation') // in javaee
-        compile.exclude group: 'javax.activation' // in javaee, but we need an implementation, which is in jaxb-runtime
-        compile.exclude(group: 'jakarta.ws.rs') // replaced with javaee-api from network
-        compile.exclude(group: 'javax.xml.bind')
+        implementation.exclude(group: 'jakarta.annotation') // replaced with javaee-api, which used by hibernate
+        implementation.exclude(group: 'jakarta.activation') // in javaee
+        implementation.exclude group: 'javax.activation' // in javaee, but we need an implementation, which is in jaxb-runtime
+        implementation.exclude(group: 'jakarta.ws.rs') // replaced with javaee-api from network
+        implementation.exclude(group: 'javax.xml.bind')
         // replaced with jakarta.xml.bind which comes from org.glassfish.jaxb:jaxb-runtime
-        compile.exclude(group: 'javax.persistence')    // in javaee
+        implementation.exclude(group: 'javax.persistence')    // in javaee
         // compile.exclude(group: 'javax.servlet') // This is needed because LocalStrings resource bundle is missing from javaee
     }
 }
 
 dependencies {
-    testCompile("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
-    testCompile("org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}")
-    testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
+    testImplementation("org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
 }
 
 subprojects {
-
-    group 'net.e6tech'
-    version "${elementsVersion}"
-
-    apply plugin: 'groovy'
-    apply plugin: 'java'
-    apply plugin: 'maven-publish'
-    apply plugin: 'maven'
-    apply plugin: 'signing'
-
-    archivesBaseName = "elements-${project.name}"
-
-    signing {
-        sign configurations.archives
-    }
-
-    javadoc {
-        source = sourceSets.main.allJava
-        classpath = configurations.compile
-    }
-
     apply plugin: 'org.owasp.dependencycheck'
     dependencyCheck {
         suppressionFile = 'owasp.xml'
     }
 
-    task sourcesJar(type: Jar) {
-        archiveBaseName.set "elements-${project.name}"
-        archiveClassifier.set 'sources'
-        from sourceSets.main.allSource
-    }
+    apply plugin: 'signing'
+    apply plugin: 'maven-publish'
+    apply plugin: 'java-library'
 
-    task javadocJar(type: Jar) {
-        classifier = 'javadoc'
-        from javadoc
-    }
+    group 'net.e6tech'
+    version "$elementsVersion"
 
-    artifacts {
-        archives sourcesJar
-        archives javadocJar
-    }
+    if (project.name == 'sample')
+        return
 
-    publishing {
-        publications {
-            common(MavenPublication) {
-                from components.java
-                artifactId "elements-${project.name}"
+    plugins.withId('maven-publish') {
+        publishing {
+            publications {
+                mavenJava(MavenPublication) {
+                    suppressAllPomMetadataWarnings()
+                    from components.java
+                    artifactId = "elements-${project.name}"
 
-                artifact sourcesJar
-                artifact javadocJar
+                    pom {
+                        name = "$project.name"
+                        description = "elements-${project.name}"
+                        url = 'http://github.com/futehkao/elements.git'
+                        licenses {
+                            license {
+                                name = 'The Apache License, Version 2.0'
+                                url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            }
+                        }
+                        developers {
+                            developer {
+                                id = 'futeh'
+                                name = 'Futeh Kao'
+                                email = 'futeh@episodesix.com'
+                            }
+                        }
+                        scm {
+                            connection = 'scm:git:https://github.com/futehkao/elements.git'
+                            developerConnection = 'scm:git:https://github.com/futehkao/elements.git'
+                            url = 'https://github.com/futehkao/elements.git'
+                        }
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    credentials {
+                        username = ossrhUsername
+                        password = ossrhPassword
+                    }
+
+                    def releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+                    def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+                    url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                }
             }
         }
-    }
 
-    uploadArchives {
-        repositories {
-            mavenDeployer {
-                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+        signing {
+            sign publishing.publications.mavenJava
+        }
 
-                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                    authentication(userName: ossrhUsername, password: ossrhPassword)
-                }
+        // Nebula doesn't interface with Gradle's module format so just disable it for now.
+        tasks.withType(GenerateModuleMetadata) {
+            enabled = false
+        }
 
-                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                    authentication(userName: ossrhUsername, password: ossrhPassword)
-                }
+        java {
+            withJavadocJar()
+            withSourcesJar()
+        }
 
-                pom.project {
-                    name project.name
-                    description "elements-${project.name}"
-                    packaging 'jar'
-                    // optionally artifactId can be defined here. description 'A application used as an example on how to set up pushing its components to the Central Repository.'
-                    url 'http://github.com/futehkao/elements.git'
-
-                    scm {
-                        connection 'scm:git:https://github.com/futehkao/elements.git'
-                        developerConnection 'scm:git:https://github.com/futehkao/elements.git'
-                        url 'https://github.com/futehkao/elements.git'
-                    }
-
-                    licenses {
-                        license {
-                            name 'The Apache License, Version 2.0'
-                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                        }
-                    }
-
-                    developers {
-                        developer {
-                            id 'futeh'
-                            name 'Futeh Kao'
-                            email 'futeh@episodesix.com'
-                        }
-                    }
-                }
+        javadoc {
+            if (JavaVersion.current().isJava9Compatible()) {
+                options.addBooleanOption('html5', true)
             }
         }
     }
 }
+
+
+
+
+

@@ -31,8 +31,6 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
-import static org.apache.groovy.util.SystemUtil.getBooleanSafe;
-import static org.apache.groovy.util.SystemUtil.getSystemPropertySafe;
 
 /**
  * Created by futeh.

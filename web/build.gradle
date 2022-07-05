@@ -13,41 +13,43 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 dependencies {
-    compile project(':common')
-    compile project(':security')
-    compile project(':network')
+    api project(':common')
+    api project(':security')
+    api project(':network')
 
-    compile ("com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${jacksonVersion}")
+    implementation ("com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${jacksonVersion}")
     
     // jetty
-    compile "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-continuation:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-http:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-server:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-util:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-security:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-io:${jettyVersion}"
+    implementation "org.eclipse.jetty:jetty-webapp:$jettyVersion"
+    implementation "org.eclipse.jetty:jetty-continuation:$jettyVersion"
+    implementation "org.eclipse.jetty:jetty-http:$jettyVersion"
+    implementation "org.eclipse.jetty:jetty-server:$jettyVersion"
+    implementation "org.eclipse.jetty:jetty-util:$jettyVersion"
+    implementation "org.eclipse.jetty:jetty-security:$jettyVersion"
+    implementation "org.eclipse.jetty:jetty-io:$jettyVersion"
 
-    // compile 'javax.ws.rs:jsr311-api:1.1.1'
-    compile "org.apache.httpcomponents:httpclient:${httpclientVersion}"
-    compile ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}")
-    compile group: 'org.slf4j', name: 'jcl-over-slf4j', version: "${slf4jVersion}"
-    compile ("org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}")
-    compile "org.apache.cxf:cxf-rt-transports-local:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-transports-http:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-transports-http-hc:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-transports-http-jetty:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-rs-extension-providers:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-rs-client:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-rs-security-cors:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-features-logging:${cxfVersion}"
+    // implementation 'javax.ws.rs:jsr311-api:1.1.1'
+    implementation "org.apache.httpcomponents:httpclient:$httpclientVersion"
+    implementation ("org.apache.cxf:cxf-rt-frontend-jaxws:$cxfVersion")
+    implementation group: 'org.slf4j', name: 'jcl-over-slf4j', version: "$slf4jVersion"
+    implementation ("org.apache.cxf:cxf-rt-frontend-jaxrs:$cxfVersion")
+    implementation "org.apache.cxf:cxf-rt-transports-local:$cxfVersion"
+    implementation "org.apache.cxf:cxf-rt-transports-http:$cxfVersion"
+    implementation "org.apache.cxf:cxf-rt-transports-http-hc:$cxfVersion"
+    implementation "org.apache.cxf:cxf-rt-transports-http-jetty:$cxfVersion"
+    implementation "org.apache.cxf:cxf-rt-rs-extension-providers:$cxfVersion"
+    implementation "org.apache.cxf:cxf-rt-rs-client:$cxfVersion"
+    implementation "org.apache.cxf:cxf-rt-rs-security-cors:$cxfVersion"
+    implementation "org.apache.cxf:cxf-rt-features-logging:$cxfVersion"
 
-    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
-    testCompile "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"
-    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    implementation group: 'javax.xml.ws', name: 'jaxws-api', version: "$javaxWsApiVersion"
+    implementation group: 'javax.jws', name: 'javax.jws-api', version: "$javaxJwsApiVersion"
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion"
+    testImplementation "org.junit.platform:junit-platform-launcher:$junitPlatformLauncherVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
 }
 
 test {

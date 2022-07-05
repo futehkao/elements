@@ -1,0 +1,26 @@
+module elements.common {
+    requires java.desktop;
+    requires transitive javaee.api;
+    requires java.logging;
+    requires java.naming;
+    requires java.scripting;
+
+    requires akka.actor;
+    requires akka.actor.typed;
+    requires net.bytebuddy;
+    requires cache.api;
+    requires transitive com.fasterxml.jackson.databind;
+    requires disruptor;
+    requires com.google.common;
+    requires ehcache;
+    requires org.apache.groovy;
+    requires org.apache.logging.log4j;
+    requires org.slf4j;
+    requires org.yaml.snakeyaml;
+    requires scala.library;
+    requires simple.jndi;
+    requires typesafe.config;
+}
+
+Currently, there is a bug is Gradle 7.  It is not correctly picking up libraries from the class path for those that
+are intended to be treated as traditional jars.
