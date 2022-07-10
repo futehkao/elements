@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/**
- * Created by futeh.
- */
-public class TranslatePINBlockTest extends CommandTest<TranslatePINBlock> {
+public class TranslateISOPINBlockTest extends CommandTest<TranslateISOPINBlock> {
 
     @Test
     public void basic() throws Exception {
@@ -36,24 +33,26 @@ public class TranslatePINBlockTest extends CommandTest<TranslatePINBlock> {
         AKB kpeOut = simulator.asAKB(clearKpeOut);
         AnsiPinBlock pinBlock = new AnsiPinBlock("123456789012", "1234");
 
-        String[] fields = new String[10];
-        fields[0] = "335";
-        fields[1] = "";  // reserved
+        String[] fields = new String[12];
+        fields[0] = "3E";
+        fields[1] = "1";  // reserved
         fields[2] = "1"; // ansi block type
-        fields[3] = "";  // reserved
-        fields[4] = "1"; // ansi block type
-        fields[5] = kpeIn.getKeyBlock();
-        fields[6] = kpeOut.getKeyBlock();
-        fields[7] = Hex.toString(simulator.encrypt(kpeIn, pinBlock.getEncoding()));
-        fields[8] = "123456789012";
-        fields[9] = "012345678912";
+        fields[3] = kpeIn.getKeyBlock();;  // reserved
+        fields[4] = "M"; // ansi block type
+        fields[5] = ""; // incoming KSN
+        fields[6] = kpeOut.getKeyBlock(); // KSN
+        fields[7] = "M";
+        fields[8] = ""; // outgoing KSN;
+        fields[9] = Hex.toString(simulator.encrypt(kpeIn, pinBlock.getEncoding()));
+        fields[10] = "123456789012";
+        fields[11] = "012345678912";
 
         getCommand().setFields(fields);
         Message message = getCommand().process();
         String output = message.getField(1);
 
         byte[] pinBlockBytes = simulator.decrypt(kpeOut, output);
-        AnsiPinBlock result = new AnsiPinBlock(pinBlockBytes, fields[9]);
+        AnsiPinBlock result = new AnsiPinBlock(pinBlockBytes, fields[11]);
         assertEquals("1234", result.getPIN());
     }
 }
