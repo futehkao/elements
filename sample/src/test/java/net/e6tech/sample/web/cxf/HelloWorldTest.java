@@ -80,7 +80,7 @@ class HelloWorldTest extends BaseCase {
     @Test
     void echo() {
         String response = helloWorld.echo(null);
-        assertTrue(response == null);
+        assertNull(response);
 
         response = helloWorld.echo("hello");
         assertEquals(response, "hello");
@@ -113,7 +113,7 @@ class HelloWorldTest extends BaseCase {
     void withSecurity() throws Exception {
         Atom atom = provision.getResourceManager().getAtom("helloWorld");
         SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
-        assertTrue(engine.getSecurityProvider(HelloWorld.class).equals(HelloWorldRoles.class));
+        assertEquals(engine.getSecurityProvider(HelloWorld.class), HelloWorldRoles.class);
         Method method = HelloWorld.class.getDeclaredMethod("withSecurity", String.class);
         Set<String> roles = engine.lookupRoles(HelloWorld.class, method);
         assertTrue(roles.contains("role1"));
@@ -163,15 +163,16 @@ class HelloWorldTest extends BaseCase {
         HelloData data = new HelloData();
         data.setData("hello");
         data = helloWorld.put(data);
-        assertTrue(data.getData().equals("hello"));
+        assertEquals("hello", data.getData());
     }
 
+    // --add-open=java.base/java.net=ALL-UNNAMED
     @Test
     void patch() {
         HelloData data = new HelloData();
         data.setData("hello");
         data = helloWorld.patch(data);
-        assertTrue(data.getData().equals("hello"));
+        assertEquals("hello", data.getData());
     }
 
     @Test
@@ -196,7 +197,6 @@ class HelloWorldTest extends BaseCase {
     @SuppressWarnings("squid:S2925")
     @Test
     void response() throws InterruptedException {
-        //helloWorld.echo("");
 
         ObjectPool<?> pool = net.e6tech.elements.network.restful.Response.objectPool;
         pool.idleTimeout(4000);
@@ -216,14 +216,11 @@ class HelloWorldTest extends BaseCase {
             threads[i] = new Thread(runnable);
         }
 
-        long start = System.currentTimeMillis();
-        for (int i = 0; i < threads.length; i++) {
-            threads[i].start();
-        }
+        for (Thread th : threads)
+            th.start();
 
-        for (int i = 0; i < threads.length; i++) {
-            threads[i].join();
-        }
+        for (Thread th : threads)
+            th.join();
 
         System.out.println("Before pool cleanup " + pool.size());
 
