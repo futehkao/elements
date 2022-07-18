@@ -263,6 +263,11 @@ public class JaxRSServer extends CXFServer {
         for (JaxRSServerController controller : entryList)
             controller.addResourceClasses(resourceClasses);
 
+        if (customizer != null) {
+            for (JaxRSServerController controller : entryList)
+                customizer.accept(controller.getFactory());
+        }
+
         super.initialize(res);
     }
 
@@ -304,10 +309,6 @@ public class JaxRSServer extends CXFServer {
         // setup exception mapper
         for (JAXRSServerFactoryBean bean: beans)
             bean.setProvider(new InternalExceptionMapper(getExceptionMapper()));
-
-        if (customizer != null)
-            for (JAXRSServerFactoryBean bean: beans)
-                customizer.accept(bean);
 
         for (JAXRSServerFactoryBean bean: beans)
             logger.info("Starting Restful at address {} {} ", bean.getAddress(), bean.getResourceClasses());
