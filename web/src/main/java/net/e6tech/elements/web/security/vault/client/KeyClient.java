@@ -29,6 +29,8 @@ import net.e6tech.elements.security.vault.Credential;
 
 import javax.crypto.SecretKey;
 import javax.ws.rs.NotAuthorizedException;
+import java.io.IOException;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
@@ -42,6 +44,8 @@ import static net.e6tech.elements.security.vault.Constants.mapper;
  * Created by futeh.
  */
 public class KeyClient implements Startable {
+
+    private static Logger logger = Logger.getLogger();
     private Cache<String, SecretKey> cachedSecretKeys = CacheBuilder.newBuilder()
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .initialCapacity(50)
@@ -62,6 +66,10 @@ public class KeyClient implements Startable {
     private String authorization;
     private boolean started;
     private boolean remoteEncryption = true;
+
+    private int connectionRetries = 12;
+
+    private long connectionRetryWait = 10000L;
 
     public String getAddress() {
         return address;
@@ -87,6 +95,24 @@ public class KeyClient implements Startable {
         this.remoteEncryption = remoteEncryption;
     }
 
+    public int getConnectionRetries() {
+        return connectionRetries;
+    }
+
+    public void setConnectionRetries(int connectionRetries) {
+        if (connectionRetries < 0)
+            throw new IllegalArgumentException("Invalid retry number: " + connectionRetries);
+        this.connectionRetries = connectionRetries;
+    }
+
+    public long getConnectionRetryWait() {
+        return connectionRetryWait;
+    }
+
+    public void setConnectionRetryWait(long connectionRetryWait) {
+        this.connectionRetryWait = connectionRetryWait;
+    }
+
     public void start() {
         if (started)
             return;
@@ -100,17 +126,49 @@ public class KeyClient implements Startable {
         client = new RestfulClient();
         client.setAddress(address);
         PublicKey publicKey;
+        net.e6tech.elements.network.restful.Response response = null;
+        int numRetries = connectionRetries;
+        boolean connected = false;
+        while (!connected) {
+            try {
+                if (numRetries != connectionRetries) {
+                    logger.info("Retrying connection to key server at " + address);
+                }
 
+                response = client.get("publicKey");
+                connected = true;
+            } catch (IOException e) {
+                if (numRetries <= 0)
+                    throw new SystemException("Unable to connect with key server at " + address, e);
+                if (numRetries == connectionRetries) {
+                    logger.info("Key server is down.  Will retry connection to " + address + " " + numRetries + " times.");
+                }
+                numRetries--;
+                logger.info("Will retry connection to key server at " + address + " after " + connectionRetryWait + "ms.");
+                try {
+                    Thread.sleep(connectionRetryWait);
+                } catch (InterruptedException ex) {
+                    Logger.suppress(e);
+                }
+            } catch (Throwable e) {
+                logger.warn("Cannot connect to key server at " + address, e);
+                throw new SystemException("Unable to authenticate with key server at " + address, e);
+            }
+        }
+
+        logger.info("Connected to key server at " + address);
         try {
-            net.e6tech.elements.network.restful.Response response = client.get("publicKey");
             SharedKey sharedKey = response.read(SharedKey.class);
             RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(sharedKey.getModulus(), sharedKey.getPublicExponent());
             secretKey = sym.generateKeySpec();
             publicKey = asym.getKeyFactory().generatePublic(publicKeySpec);
             clientKey = asym.encrypt(publicKey, secretKey.getEncoded());
-        } catch (Throwable e) {
-            Logger.suppress(e);
-            throw new NotAuthorizedException("Unable to authenticate with key server at " + address);
+        } catch (IOException e) {
+            logger.warn("Unable to read shared key server at " + address, e);
+            throw new SystemException("Unable to read shared key from key server at " + address, e);
+        } catch (GeneralSecurityException e) {
+            logger.warn("Unable to generate public key for server at " + address, e);
+            throw new SystemException("Unable to generate public key for server at " + address, e);
         }
 
         try{

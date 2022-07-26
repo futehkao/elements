@@ -31,20 +31,18 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Created by futeh.
  */
 public class KeyClientTest {
 
-    static KeyClient client;
+    static volatile KeyClient client;
     static JaxRSServer server;
     static Credential user1 = new Credential("user1", "1234567890123456789012345678901234567890".toCharArray());
     static String appKey;
 
-    @BeforeAll
     static void startKeyServer() throws Exception {
         ResourceManager rm = new ResourceManager();
         rm.loadProvision(Provision.class);
@@ -98,29 +96,58 @@ public class KeyClientTest {
         server.initialize(res);
         server.start();
 
+        res.close();
+    }
+
+    static void startKeyClient() {
         client = new KeyClient();
         client.setAddress("http://localhost:1111/restful/keyserver/v1");
         client.setCredential(user1);
         client.start();
-
-        res.close();
     }
 
     @Test
-    public void basic() throws Exception {
+    void basic() throws Exception {
+        startKeyServer();
+        startKeyClient();
         ClearText ct = client.getSecret("secret");
-        assertTrue(ct.getProperty("test").equals("test"));
-        assertTrue(Arrays.equals(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, ct.getBytes()));
+        assertEquals("test", ct.getProperty("test"));
+        assertArrayEquals(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, ct.getBytes());
 
         ct = client.passwordUnlock("db");
-        assertTrue(ct.getProperty("username").equals("user"));
-        assertTrue(new String(ct.getBytes(), StandardCharsets.UTF_8).equals("db-password"));
+        assertEquals("user", ct.getProperty("username"));
+        assertEquals("db-password", new String(ct.getBytes(), StandardCharsets.UTF_8));
 
         String iv = SymmetricCipher.getInstance("AES").generateIV();
         String encrypted = client.encrypt(appKey, new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, iv);
 
         byte[] bytes = client.decrypt(appKey, encrypted, iv);
-        assertTrue(Arrays.equals(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, bytes));
+        assertArrayEquals(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, bytes);
+    }
+
+    @Test
+    void delayStart() throws Exception {
+        Thread thread = new Thread(() -> {
+            while (client == null) {
+                try {
+                    Thread.sleep(1000L);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            try {
+                startKeyServer();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        thread.start();
+        startKeyClient();
+
+        ClearText ct = client.getSecret("secret");
+        assertEquals("test", ct.getProperty("test"));
+        assertArrayEquals(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, ct.getBytes());
+
     }
 
 }

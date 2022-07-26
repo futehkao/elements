@@ -110,9 +110,9 @@ public class SecurityAnnotationEngine {
 
         if (userRoles.contains("ReadOnly")) {
             // not a GET method but potentially with ReadOnly annotation
-            if (method.getAnnotation(GET.class) == null && method.getAnnotation(ReadOnly.class) == null)
-                return false;
-            else if (method.getAnnotation(GET.class) != null) { // a GET method
+            if (method.getAnnotation(GET.class) == null) {
+                return method.getAnnotation(ReadOnly.class) != null;
+            } else if (method.getAnnotation(GET.class) != null) { // a GET method
                 if (method.getAnnotation(ReadOnly.class) != null)
                     return true;
                 else if (method.getAnnotation(NotReadOnly.class) == null
