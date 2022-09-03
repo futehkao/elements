@@ -130,20 +130,12 @@ public class Bootstrap extends GroovyObjectSupport {
         info.stage = stage;
         if (key instanceof Closure) {
             info.name = value.toString();
-            Closure closure = (Closure) key;
-            if (closure.isCase(EMPTY_OBJECT_ARRAY)) {
-                info.enabled = true;
-            } else {
-                info.enabled = false;
-            }
+            Closure<?> closure = (Closure<?>) key;
+            info.enabled = closure.isCase(EMPTY_OBJECT_ARRAY);
         } else {
             info.name = key.toString();
             Object on = expando.getProperty(key.toString());
-            if (Boolean.TRUE.equals(on)) {
-                info.enabled = true;
-            } else {
-                info.enabled = false;
-            }
+            info.enabled = Boolean.TRUE.equals(on);
         }
         return info;
     }
@@ -818,6 +810,10 @@ public class Bootstrap extends GroovyObjectSupport {
             if (components != null)
                 for (String component : components)
                     setProperty(component, false);
+        }
+
+        public Object execParallel(String path) throws ScriptException {
+            return resourceManager.getScripting().execParallel(path);
         }
     }
 

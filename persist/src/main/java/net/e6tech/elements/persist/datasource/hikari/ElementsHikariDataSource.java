@@ -20,26 +20,49 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.pool.HikariPool;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 import javax.sql.DataSource;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
-import java.sql.Statement;
+import java.lang.management.ManagementFactory;
+import java.lang.reflect.Field;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
+
+import net.e6tech.elements.common.logging.Logger;
 
 /**
  * Subclassed from HikariDataSource to support connectionInitStatments.
  */
 @SuppressWarnings("squid:S3077")
-public class ElementsHikariDataSource extends HikariDataSource  {
+public class ElementsHikariDataSource extends HikariDataSource {
+
+    private static Logger logger = Logger.getLogger();
+
+    private static Timer timer = new Timer(true);
 
     private List<String> connectionInitStatements = new ArrayList<>();
 
     private volatile DataSource dataSource;
     private volatile boolean externalPool = false;
+
+    private boolean resetPoolOnTimeout = true;
+
+    private long resetPoolShutdownDelay = 3000L;
+
+    private long resetPoolMaxFrequency = TimeUnit.MINUTES.toMillis(5); // default to no more than one pool reset every 5 minutes
+
+    private int resetPoolMaxAttempts = Integer.MAX_VALUE;  // limits how many resets
+
+    private long resetPoolTolerance = TimeUnit.SECONDS.toMillis(30); // Don't bother to reset pool if some other thread has already reset it within this window.
+
+    private volatile long lastReset = 0L;
+
+    private int resetCount = 0;
 
     public ElementsHikariDataSource() {
     }
@@ -57,6 +80,50 @@ public class ElementsHikariDataSource extends HikariDataSource  {
         this.connectionInitStatements = connectionInitStatements;
     }
 
+    public boolean isResetPoolOnTimeout() {
+        return resetPoolOnTimeout;
+    }
+
+    public void setResetPoolOnTimeout(boolean resetPoolOnTimeout) {
+        this.resetPoolOnTimeout = resetPoolOnTimeout;
+    }
+
+    public long getResetPoolShutdownDelay() {
+        return resetPoolShutdownDelay;
+    }
+
+    public void setResetPoolShutdownDelay(long resetPoolShutdownDelay) {
+        this.resetPoolShutdownDelay = resetPoolShutdownDelay;
+    }
+
+    public long getResetPoolMaxFrequency() {
+        return resetPoolMaxFrequency;
+    }
+
+    public void setResetPoolMaxFrequency(long resetPoolMaxFrequency) {
+        this.resetPoolMaxFrequency = resetPoolMaxFrequency;
+    }
+
+    public int getResetPoolMaxAttempts() {
+        return resetPoolMaxAttempts;
+    }
+
+    public void setResetPoolMaxAttempts(int resetPoolMaxAttempts) {
+        this.resetPoolMaxAttempts = resetPoolMaxAttempts;
+    }
+
+    public long getResetPoolTolerance() {
+        return resetPoolTolerance;
+    }
+
+    public void setResetPoolTolerance(long resetPoolTolerance) {
+        this.resetPoolTolerance = resetPoolTolerance;
+    }
+
+    public long getLastReset() {
+        return lastReset;
+    }
+
     @Override
     public Connection getConnection() throws SQLException {
         DataSource ds = dataSource;
@@ -65,6 +132,8 @@ public class ElementsHikariDataSource extends HikariDataSource  {
                 ds = dataSource;
                 if (ds == null) {
                     try {
+                        if (resetPoolOnTimeout && !isAllowPoolSuspension())
+                            setAllowPoolSuspension(true);
                         boolean registerMBean = isRegisterMbeans();
                         setRegisterMbeans(false);
                         HikariPool pool = new HikariPool(this);
@@ -84,7 +153,96 @@ public class ElementsHikariDataSource extends HikariDataSource  {
                 }
             }
         }
-        return super.getConnection();
+
+        try {
+            return super.getConnection();
+        } catch (Exception e) {
+            try {
+                if (e instanceof SQLTransientConnectionException && resetPool())
+                   return super.getConnection();
+                else
+                    throw e;
+            } catch (Exception ex) {
+                throw e;
+            }
+        }
+    }
+
+    synchronized protected boolean resetPool() throws Exception {
+        if (!resetPoolOnTimeout)
+            return false;
+
+        // some other thread has already reset it.  Also prevents multiple threads from trying to reset simultaneously
+        if (System.currentTimeMillis() - lastReset <= resetPoolTolerance)
+            return true;
+
+        // prevents runaway resetting due to DB connection error.
+        if (System.currentTimeMillis() - lastReset < resetPoolMaxFrequency) {
+            logger.warn("Reset HikariPool bypassed: last reset happened " + (System.currentTimeMillis() - lastReset) + " milli-seconds ago.");
+            return false;
+        }
+
+        // put an upper bound on how many resets.
+        if (resetCount >= resetPoolMaxAttempts) {
+            logger.warn("Reset HikariPool bypassed: resetPoolMaxAttempts=" + resetPoolMaxAttempts);
+            return false;
+        }
+
+        Field fastField = HikariDataSource.class.getDeclaredField("fastPathPool");
+        Field poolField = HikariDataSource.class.getDeclaredField("pool");
+        fastField.setAccessible(true);
+        poolField.setAccessible(true);
+        HikariPool pool = (HikariPool) fastField.get(this);
+        if (pool != null) {
+            fastField.set(this, null);
+        } else {
+            pool = (HikariPool) poolField.get(this);
+        }
+
+        if (pool != null) {
+            lastReset = System.currentTimeMillis();
+            resetCount++;
+            logger.warn("Reset HikariPool due to getConnection timeout.");
+            poolField.set(this, null);
+            if (isAllowPoolSuspension())
+                pool.suspendPool();
+            unregisterPool(pool);
+            final HikariPool p = pool;
+            TimerTask task = new TimerTask() {
+                public void run() {
+                    try {
+                        logger.warn("Shutting down unresponsive HikariPool: active="
+                                + p.getActiveConnections()
+                                + ", idle=" + p.getIdleConnections()
+                                + ", awaiting=" + p.getThreadsAwaitingConnection()
+                                + ", total=" + p.getTotalConnections());
+                        p.shutdown();
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            };
+            timer.schedule(task, resetPoolShutdownDelay);
+        }
+        return true;
+    }
+
+    void unregisterPool(final HikariPool pool) {
+        if (!isRegisterMbeans()) {
+            return;
+        }
+
+        try {
+            final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+            final ObjectName beanConfigName = new ObjectName("com.zaxxer.hikari:type=PoolConfig (" + getPoolName() + ")");
+            final ObjectName beanPoolName = new ObjectName("com.zaxxer.hikari:type=Pool (" + getPoolName() + ")");
+            if (mBeanServer.isRegistered(beanConfigName)) {
+                mBeanServer.unregisterMBean(beanConfigName);
+                mBeanServer.unregisterMBean(beanPoolName);
+            }
+        } catch (Exception e) {
+            logger.warn("{} - Failed to unregister beans.", getPoolName(), e);
+        }
     }
 
     protected void initConnection(final Connection connection) throws SQLException {
@@ -103,7 +261,7 @@ public class ElementsHikariDataSource extends HikariDataSource  {
         return new WrappedDataSource(ds);
     }
 
-    private class WrappedDataSource implements  DataSource {
+    private class WrappedDataSource implements DataSource {
 
         private DataSource dataSource;
 
@@ -146,7 +304,7 @@ public class ElementsHikariDataSource extends HikariDataSource  {
         }
 
         @Override
-        public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+        public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
             return dataSource.getParentLogger();
         }
 

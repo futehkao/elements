@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package net.e6tech.sample.resources;
+import net.e6tech.sample.jobs.SimpleJob
+import net.e6tech.elements.common.logging.Logger;
 
-import net.e6tech.sample.BaseCase;
-import org.junit.jupiter.api.Test;
+def logger = Logger.getLogger();
 
-public class ResourcesTest extends BaseCase {
-
-    @Test
-    void basic() {
-        provision.getResourceManager().exec("classpath:net/e6tech/sample/resources/*");
-    }
-
+atom("simpleJob2") {
+    configuration = """
+    job2:
+        targetMethod: 'run'
+        cronExpression: '0 0/5 * * * ?'
+"""
+    logger.info("starting job $__file")
+    job2 = jobServer.registerJob("simpleJob2", SimpleJob)
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,8 @@
  * limitations under the License.
  */
 
-package net.e6tech.sample.resources;
+package net.e6tech.elements.persist.mariadb;
 
-import net.e6tech.sample.BaseCase;
-import org.junit.jupiter.api.Test;
-
-public class ResourcesTest extends BaseCase {
-
-    @Test
-    void basic() {
-        provision.getResourceManager().exec("classpath:net/e6tech/sample/resources/*");
-    }
-
+public interface ConnectionListener {
+    void onConnect();
 }

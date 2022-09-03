@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.apache.groovy.util.SystemUtil.getBooleanSafe;
@@ -47,8 +48,10 @@ public class Scripting {
     public static final String __LOAD_DIR = "__load_dir";
     public static final String __LOAD_FILE = "__load_file";
     public static final String __SCRIPT = "__script";
-    private static Logger logger = Logger.getLogger();
+    private static final Logger logger = Logger.getLogger();
     private static final Set<String> reservedKeyWords = new HashSet<>();
+
+    private static final ThreadLocal<ScriptPath> scriptPath = new ThreadLocal<>();
 
     static {
         reservedKeyWords.add(__DIR);
@@ -58,7 +61,6 @@ public class Scripting {
     private GroovyEngine engine;
     private List runAfterList = new LinkedList<>();
     private List launchedList = new LinkedList<>();
-    private ScriptPath scriptPath;
     private boolean silent = false;
 
     protected Scripting() {
@@ -156,23 +158,23 @@ public class Scripting {
             prevRootFile = (String) get(__LOAD_FILE);
         }
 
-        ScriptPath prev = scriptPath;
-        scriptPath = new ScriptPath(normalizePath(script));
+        ScriptPath prev = scriptPath.get();
+        ScriptPath current = new ScriptPath(normalizePath(script));
         Reader reader = null;
         try {
-            String dir = scriptPath.getParent();
+            String dir = current.getParent();
             String file;
 
-            if (scriptPath.isClassPath()) {
-                InputStream stream = engine.shell.getClassLoader().getResourceAsStream(scriptPath.getFileName());
+            if (current.isClassPath()) {
+                InputStream stream = engine.shell.getClassLoader().getResourceAsStream(current.getFileName());
                 if (stream == null)
-                    throw new IOException("File not found: " + scriptPath.getClassPath());
+                    throw new IOException("File not found: " + current.getClassPath());
                 reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
-                file = scriptPath.getFileName();
+                file = current.getFileName();
             } else {
-                File f = new File(scriptPath.getFileName());
+                File f = new File(current.getFileName());
                 if (!f.exists())
-                    throw new IOException("File not found: " + scriptPath.getFileName());
+                    throw new IOException("File not found: " + current.getFileName());
                 dir = (new File(dir)).getCanonicalPath();
                 file = f.getCanonicalPath();
             }
@@ -186,9 +188,9 @@ public class Scripting {
 
             // reader is not null for classpath
             if (reader != null) {
-                return engine.eval(reader, scriptPath.getFileName());
+                return engine.eval(reader, current.getFileName());
             } else {
-                return engine.eval(scriptPath.getPath().toFile());
+                return engine.eval(current.getPath().toFile());
             }
         } catch (IOException e) {
             // rethrow to let caller handle it, instead of logging error
@@ -206,11 +208,13 @@ public class Scripting {
                 } catch (IOException e) {
                     logger.error(e.getMessage(), e);
                 }
-            scriptPath = prev;
+
             if (prev != null) {
+                scriptPath.set(prev);
                 privatePut(__DIR, prev.getParent());
                 privatePut(__FILE, prev.getFileName());
             } else {
+                scriptPath.remove();
                 privatePut(__DIR, null);
                 privatePut(__FILE, null);
             }
@@ -219,6 +223,7 @@ public class Scripting {
                 privatePut(__LOAD_DIR, prevRootDir);
                 privatePut(__LOAD_FILE, prevRootFile);
             }
+            engine.shell.clearThreadContext();
         }
     }
 
@@ -299,7 +304,7 @@ public class Scripting {
      * @throws ScriptException throws exception if there are errors.
      */
     public void load(String path) throws ScriptException {
-        exec(path, true);
+        exec(path, true, false);
         runAfter();
     }
 
@@ -319,7 +324,7 @@ public class Scripting {
             String file = (new File(path)).getCanonicalPath();
             privatePut(__LOAD_DIR, dir);
             privatePut(__FILE, file);
-            exec(path, false);
+            exec(path, false, false);
             runAfter();
         } catch (IOException e) {
             throw new ScriptException(e);
@@ -363,10 +368,14 @@ public class Scripting {
     }
 
     public Object exec(String path) throws ScriptException {
-        return exec(path, false);
+        return exec(path, false, false);
     }
 
-    private Object exec(String originalPath, boolean topLevel) throws ScriptException {
+    public Object execParallel(String path) throws ScriptException {
+        return exec(path, false, true);
+    }
+
+    private Object exec(String originalPath, boolean topLevel, boolean parallel) throws ScriptException {
         String[] paths;
         try {
             String path = normalizePath(originalPath);
@@ -377,15 +386,46 @@ public class Scripting {
             throw new ScriptException(e);
         }
 
-        Object ret = null;
-        for (String p : paths) {
-            if (!silent)
-                logger.info("Executing script: {}", p);
-            Object val = internalExec(p, topLevel);
-            if (val != null)
-                ret = val;
+        if (parallel && paths.length > 1) {
+            List<Object> rets = new ArrayList<>(paths.length);
+            List<Thread> threads = new ArrayList<>();
+            AtomicReference<ScriptException> exception = new AtomicReference<>(null);
+            for (String p : paths) {
+                threads.add(new Thread(() -> {
+                    if (!silent)
+                        logger.info("Executing script: {}", p);
+                    try {
+                        Object val = internalExec(p, topLevel);
+                        logger.info("Loaded script: {}", val);
+                        rets.add(val);
+                    } catch (ScriptException e) {
+                        if (exception.get() == null)
+                            exception.set(e);
+                    }
+                }));
+            }
+            threads.forEach(Thread::start);
+            for (Thread thread : threads) {
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            if (exception.get() != null)
+                throw exception.get();
+            return rets;
+        } else {
+            Object ret = null;
+            for (String p : paths) {
+                if (!silent)
+                    logger.info("Executing script: {}", p);
+                Object val = internalExec(p, topLevel);
+                if (val != null)
+                    ret = val;
+            }
+            return ret;
         }
-        return ret;
     }
 
     public ClassLoader getScriptLoader() {
@@ -394,7 +434,7 @@ public class Scripting {
 
     // This class encapsulates the differences between GroovyShell and GroovyScriptEngineImpl.
     private static class GroovyEngine {
-        GroovyShell shell;
+        ThreadLocalShell shell;
         CompilerConfiguration compilerConfig;
 
         public GroovyEngine(ClassLoader classLoader, Properties properties) {
@@ -424,7 +464,7 @@ public class Scripting {
             for (Map.Entry entry : properties.entrySet()) {
                 binding.setVariable(entry.getKey().toString(), entry.getValue());
             }
-            shell = new GroovyShell(loader, binding, compilerConfig);
+            shell = new ThreadLocalShell(loader, binding, compilerConfig);
         }
 
         private void setCompilerConfig(Properties properties, String key, Consumer<String> consumer) {
@@ -457,7 +497,7 @@ public class Scripting {
 
         public Map<String, Object> getVariables() {
             Map<String, Object> binding;
-            binding = shell.getContext().getVariables();
+            binding = shell.getVariables();
 
             Map<String, Object> variables = new LinkedHashMap<>();
             for (Map.Entry<String, Object> entry : binding.entrySet()) {
@@ -477,7 +517,11 @@ public class Scripting {
         }
 
         public Object remove(String key) {
-            return shell.getContext().getVariables().remove(key);
+            return shell.remove(key);
+        }
+
+        public void clearThreadContext() {
+            shell.clearThreadContext();
         }
 
         public Properties getProperties() {

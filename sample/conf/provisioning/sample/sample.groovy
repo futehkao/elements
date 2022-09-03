@@ -35,7 +35,7 @@ bootstrap.with {
                 registerBean('jobServer', JobServer)
              },
              jobServer: [],
-             jobs: "$__dir/../../jobs/**",
+             jobs: { execParallel("$__dir/../../jobs/**")},
              {true}: "$__dir/../bootstrap/boot_final.groovy"]
     defaultEnvironmentFile = "$__dir/../../environment.groovy"
     // defaultSystemProperties = ...

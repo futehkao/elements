@@ -60,7 +60,7 @@ public class JobServer {
         return jobs.get(jobName);
     }
 
-    public Scheduler getScheduler() {
+    public synchronized Scheduler getScheduler() {
         if (scheduler == null) {
             StdSchedulerFactory factory = new StdSchedulerFactory();
             try {

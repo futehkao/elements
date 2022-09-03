@@ -26,12 +26,16 @@ atom("datasource") {
     /* below is for Hikari */
     configuration = """
         dataSource:
-            driverClassName: org.mariadb.jdbc.Driver
+            driverClassName: net.e6tech.elements.persist.mariadb.Driver
             username: sample
             password: password
             jdbcUrl: "jdbc:mariadb://127.0.0.1:3306/sample"
             maximumPoolSize: $dataSourceMaxPoolSize
+            minimumIdle: 1
             transactionIsolation: 'TRANSACTION_READ_COMMITTED'
+            autoCommit: false
+            registerMbeans: true
+            connectionTimeout: 3000
     """
 
     /* below is for c3p0

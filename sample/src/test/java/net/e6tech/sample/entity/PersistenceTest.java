@@ -16,11 +16,14 @@
 
 package net.e6tech.sample.entity;
 
+import com.zaxxer.hikari.HikariDataSource;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.persist.EntityManagerConfig;
 import net.e6tech.elements.persist.EntityManagerExtension;
 import net.e6tech.elements.persist.criteria.Select;
+import net.e6tech.elements.persist.datasource.hikari.ElementsHikariDataSource;
+import net.e6tech.elements.persist.mariadb.ConnectionListener;
 import net.e6tech.sample.BaseCase;
 import net.e6tech.sample.Tags;
 import org.hibernate.internal.SessionImpl;
@@ -31,10 +34,17 @@ import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
 import javax.persistence.NoResultException;
 import javax.persistence.Query;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Created by futeh.
@@ -66,6 +76,92 @@ public class PersistenceTest extends BaseCase {
 
         department = new Department();
         department.setName("Test");
+    }
+
+    @Test
+    void resetPool() throws SQLException {
+        ElementsHikariDataSource ds = provision.getBean("dataSource");
+
+        long lastReset = ds.getLastReset();
+        String driverClassName = ds.getDriverClassName();
+        Enumeration<java.sql.Driver> drivers = DriverManager.getDrivers();
+        net.e6tech.elements.persist.mariadb.Driver driver = null;
+        while (drivers.hasMoreElements()) {
+            java.sql.Driver d = drivers.nextElement();
+            if (d.getClass().getName().equals(driverClassName)) {
+                driver = (net.e6tech.elements.persist.mariadb.Driver) d;
+                break;
+            }
+        }
+
+        int max = ds.getMaximumPoolSize();
+        evictConnections(ds);
+
+        AtomicBoolean bool = new AtomicBoolean(false);
+        ConnectionListener listener = () -> {
+            if (bool.get())
+                return;
+            bool.set(true);
+            try {
+                Thread.sleep(ds.getConnectionTimeout() + 500L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        List<Connection> connections = new ArrayList<>(max);
+        for (int i = 0; i < max / 2; i++) {
+            connections.add(ds.getConnection());
+        }
+
+        // now introduce a delay when getting a connection in the loop below
+        driver.addListener(listener);
+        for (int i = max / 2; i < max; i++) {
+            connections.add(ds.getConnection());
+        }
+        driver.removeListener(listener);
+
+        // verify we get all the connections successfully
+        assertEquals(connections.size(), max);
+
+        // clean up
+        for (Connection connection : connections) {
+            connection.close();
+        }
+        connections.clear();
+
+        // verify the pool was reset.
+        assertTrue(ds.getLastReset() > lastReset);
+
+        listener = () -> {
+            try {
+                Thread.sleep(ds.getConnectionTimeout() + 500L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        driver.addListener(listener);
+        try {
+            assertThrows(SQLException.class, () -> {
+                evictConnections(ds);
+                // now introduce a delay when getting a connection in the loop below
+                for (int i = 0; i < max; i++) {
+                    connections.add(ds.getConnection());
+                }
+            });
+        } finally {
+            driver.removeListener(listener);
+        }
+    }
+
+    private void evictConnections(ElementsHikariDataSource ds) throws SQLException {
+        int max = ds.getMaximumPoolSize();
+        List<Connection> connections = new ArrayList<>(max);
+        // clear out all connections in the pool
+        for (int i = 0; i < max; i++) {
+            connections.add(ds.getConnection());
+        }
+        connections.forEach(conn -> ds.evictConnection(conn));
+        connections.clear();
     }
 
     @Test

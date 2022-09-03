@@ -35,9 +35,4 @@ public class BaseCase {
                 .addLaunchListener(p -> provision = p.getInstance(Provision.class))
                 .launch();
     }
-
-    @Test
-    void basic() {
-
-    }
 }

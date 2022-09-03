@@ -210,6 +210,14 @@ public abstract class AbstractScriptShell {
         }
     }
 
+    public Object execParallel(String path) {
+        try {
+            return getScripting().execParallel(path);
+        } catch (ScriptException e) {
+            throw logger.systemException(e);
+        }
+    }
+
     public void exec(Object ... items) {
         Object value = null;
         for (Object item : items) {

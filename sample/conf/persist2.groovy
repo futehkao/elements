@@ -29,6 +29,7 @@ atom("datasource2") {
             jdbcUrl: "jdbc:mariadb://127.0.0.1:3306/sample"
             maximumPoolSize: $dataSourceMaxPoolSize
             transactionIsolation: 'TRANSACTION_READ_COMMITTED'
+            autoCommit: false
     """
 
     /* below is for c3p0
