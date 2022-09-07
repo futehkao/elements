@@ -18,6 +18,7 @@ package net.e6tech.elements.common.script;
 import groovy.lang.*;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.concurrent.ThreadLocalMap;
 import net.e6tech.elements.common.util.file.FileUtil;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.runtime.InvokerHelper;
@@ -31,9 +32,6 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-
-import static org.apache.groovy.util.SystemUtil.getBooleanSafe;
-import static org.apache.groovy.util.SystemUtil.getSystemPropertySafe;
 
 /**
  * Created by futeh.
@@ -51,7 +49,7 @@ public class Scripting {
     private static final Logger logger = Logger.getLogger();
     private static final Set<String> reservedKeyWords = new HashSet<>();
 
-    private static final ThreadLocal<ScriptPath> scriptPath = new ThreadLocal<>();
+    private static final ThreadLocal<ScriptPath> scriptPath = new InheritableThreadLocal<>();
 
     static {
         reservedKeyWords.add(__DIR);
@@ -91,10 +89,10 @@ public class Scripting {
     public void put(String key, Object val) {
         if (reservedKeyWords.contains(key))
             throw new SystemException(key + " is a reserved keyword");
-        privatePut(key, val);
+        putPrivate(key, val);
     }
 
-    public void privatePut(String key, Object val) {
+    public void putPrivate(String key, Object val) {
         engine.put(key, val);
     }
 
@@ -160,6 +158,7 @@ public class Scripting {
 
         ScriptPath prev = scriptPath.get();
         ScriptPath current = new ScriptPath(normalizePath(script));
+        scriptPath.set(current);
         Reader reader = null;
         try {
             String dir = current.getParent();
@@ -179,11 +178,11 @@ public class Scripting {
                 file = f.getCanonicalPath();
             }
 
-            privatePut(__DIR, dir);
-            privatePut(__FILE, file);
+            engine.putThreadLocal(__DIR, dir);
+            engine.putThreadLocal(__FILE, file);
             if (topLevel) {
-                privatePut(__LOAD_DIR, dir);
-                privatePut(__LOAD_FILE, file);
+                putPrivate(__LOAD_DIR, dir);
+                putPrivate(__LOAD_FILE, file);
             }
 
             // reader is not null for classpath
@@ -211,19 +210,18 @@ public class Scripting {
 
             if (prev != null) {
                 scriptPath.set(prev);
-                privatePut(__DIR, prev.getParent());
-                privatePut(__FILE, prev.getFileName());
+                engine.putThreadLocal(__DIR, prev.getParent());
+                engine.putThreadLocal(__FILE, prev.getFileName());
             } else {
                 scriptPath.remove();
-                privatePut(__DIR, null);
-                privatePut(__FILE, null);
+                engine.putThreadLocal(__DIR, null);
+                engine.putThreadLocal(__FILE, null);
             }
 
             if (topLevel) {
-                privatePut(__LOAD_DIR, prevRootDir);
-                privatePut(__LOAD_FILE, prevRootFile);
+                putPrivate(__LOAD_DIR, prevRootDir);
+                putPrivate(__LOAD_FILE, prevRootFile);
             }
-            engine.shell.clearThreadContext();
         }
     }
 
@@ -322,15 +320,15 @@ public class Scripting {
         try {
             String dir = (new File(loadDir)).getCanonicalPath();
             String file = (new File(path)).getCanonicalPath();
-            privatePut(__LOAD_DIR, dir);
-            privatePut(__FILE, file);
+            putPrivate(__LOAD_DIR, dir);
+            putPrivate(__LOAD_FILE, file);
             exec(path, false, false);
             runAfter();
         } catch (IOException e) {
             throw new ScriptException(e);
         } finally {
-            privatePut(__LOAD_DIR, prevRootDir);
-            privatePut(__LOAD_FILE, prevRootFile);
+            putPrivate(__LOAD_DIR, prevRootDir);
+            putPrivate(__LOAD_FILE, prevRootFile);
         }
     }
 
@@ -371,7 +369,7 @@ public class Scripting {
         return exec(path, false, false);
     }
 
-    public Object execParallel(String path) throws ScriptException {
+    public Object parallel(String path) throws ScriptException {
         return exec(path, false, true);
     }
 
@@ -396,11 +394,12 @@ public class Scripting {
                         logger.info("Executing script: {}", p);
                     try {
                         Object val = internalExec(p, topLevel);
-                        logger.info("Loaded script: {}", val);
                         rets.add(val);
                     } catch (ScriptException e) {
                         if (exception.get() == null)
                             exception.set(e);
+                    } finally {
+                        engine.clearThreadContext();
                     }
                 }));
             }
@@ -434,7 +433,7 @@ public class Scripting {
 
     // This class encapsulates the differences between GroovyShell and GroovyScriptEngineImpl.
     private static class GroovyEngine {
-        ThreadLocalShell shell;
+        GroovyShell shell;
         CompilerConfiguration compilerConfig;
 
         public GroovyEngine(ClassLoader classLoader, Properties properties) {
@@ -464,7 +463,8 @@ public class Scripting {
             for (Map.Entry entry : properties.entrySet()) {
                 binding.setVariable(entry.getKey().toString(), entry.getValue());
             }
-            shell = new ThreadLocalShell(loader, binding, compilerConfig);
+            binding = new Binding(new ThreadLocalMap(binding.getVariables()));
+            shell = new GroovyShell(loader, binding, compilerConfig);
         }
 
         private void setCompilerConfig(Properties properties, String key, Consumer<String> consumer) {
@@ -495,9 +495,16 @@ public class Scripting {
             shell.setVariable(key, val);
         }
 
+        public void putThreadLocal(String key, Object val) {
+            if (getBinding().getVariables() instanceof ThreadLocalMap) {
+                ((ThreadLocalMap)getBinding().getVariables()).putThreadLocal(key, val);
+            } else {
+                put(key, val);
+            }
+        }
+
         public Map<String, Object> getVariables() {
-            Map<String, Object> binding;
-            binding = shell.getVariables();
+            Map<String, Object> binding = shell.getContext().getVariables();
 
             Map<String, Object> variables = new LinkedHashMap<>();
             for (Map.Entry<String, Object> entry : binding.entrySet()) {
@@ -517,11 +524,25 @@ public class Scripting {
         }
 
         public Object remove(String key) {
-            return shell.remove(key);
+            return shell.getContext().getVariables().remove(key);
+        }
+
+        public void removeThreadLocal(String key) {
+            if (getBinding().getVariables() instanceof ThreadLocalMap) {
+                ((ThreadLocalMap)getBinding().getVariables()).removeThreadLocal(key);
+            } else {
+                remove(key);
+            }
         }
 
         public void clearThreadContext() {
-            shell.clearThreadContext();
+            if (shell.getContext().getVariables() instanceof ThreadLocalMap) {
+                ((ThreadLocalMap) shell.getContext().getVariables()).clearThreadLocal();
+            }
+        }
+
+        public Binding getBinding() {
+            return shell.getContext();
         }
 
         public Properties getProperties() {
@@ -541,15 +562,15 @@ public class Scripting {
             try {
                 GroovyCodeSource codeSource = new GroovyCodeSource(file, compilerConfig.getSourceEncoding());
                 Script script = shell.parse(codeSource);
-                put(__SCRIPT, script);
+                putThreadLocal(__SCRIPT, script);
                 return script.run();
             } catch (IOException ex) {
                 throw new ScriptException(ex);
             } finally {
                 if (previous != null)
-                    put(__SCRIPT, previous);
+                    putThreadLocal(__SCRIPT, previous);
                 else
-                    remove(__SCRIPT);
+                    removeThreadLocal(__SCRIPT);
             }
         }
 
@@ -558,16 +579,16 @@ public class Scripting {
             Script script = null;
             try {
                 script = shell.parse(reader, scriptName(fileName));
-                put(__SCRIPT, script);
+                putThreadLocal(__SCRIPT, script);
                 return script.run();
             } finally {
                 if (script != null) {
                     InvokerHelper.removeClass(script.getClass());
                 }
                 if (previous != null)
-                    put(__SCRIPT, previous);
+                    putThreadLocal(__SCRIPT, previous);
                 else
-                    remove(__SCRIPT);
+                    removeThreadLocal(__SCRIPT);
             }
         }
 
@@ -575,13 +596,13 @@ public class Scripting {
             Script previous = (Script) get(__SCRIPT);
             try {
                 Script script = shell.parse(scriptText);
-                put(__SCRIPT, script);
+                putThreadLocal(__SCRIPT, script);
                 return script.run();
             } finally {
                 if (previous != null)
-                    put(__SCRIPT, previous);
+                    putThreadLocal(__SCRIPT, previous);
                 else
-                    remove(__SCRIPT);
+                    removeThreadLocal(__SCRIPT);
             }
         }
 
@@ -591,13 +612,13 @@ public class Scripting {
                 GroovyCodeSource codeSource = new GroovyCodeSource(scriptText, "Scripting_Eval.groovy", GroovyShell.DEFAULT_CODE_BASE);
                 Class cls = shell.getClassLoader().parseClass(codeSource, shouldCache);
                 Script script = InvokerHelper.createScript(cls, shell.getContext());
-                put(__SCRIPT, script);
+                putThreadLocal(__SCRIPT, script);
                 return script.run();
             } finally {
                 if (previous != null)
-                    put(__SCRIPT, previous);
+                    putThreadLocal(__SCRIPT, previous);
                 else
-                    remove(__SCRIPT);
+                    removeThreadLocal(__SCRIPT);
             }
         }
 

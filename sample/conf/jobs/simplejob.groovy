@@ -15,9 +15,6 @@
  */
 
 import net.e6tech.sample.jobs.SimpleJob
-import net.e6tech.elements.common.logging.Logger;
-
-def logger = Logger.getLogger();
 
 atom("simpleJob") {
     configuration = """
@@ -25,6 +22,6 @@ atom("simpleJob") {
         targetMethod: 'run'
         cronExpression: '0 0/5 * * * ?'
 """
-    logger.info("starting job $__file")
+    println "starting job $__file"
     job = jobServer.registerJob("simpleJob", SimpleJob)
 }

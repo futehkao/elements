@@ -75,7 +75,7 @@ public class Guardian extends Receptor<Void, Guardian> {
             ExtensionEvents.ExtensionsResponse extensions = getExtensions(sys, timeout, sys.scheduler());
             // ask sys to give back an instance of Guardian
             Guardian guardian = extensions.getOwner();
-            logger.info("Staring Guardian in {}ms", System.currentTimeMillis() - start);
+            logger.info("Starting Guardian in {}ms", System.currentTimeMillis() - start);
             return guardian;
         } catch (Exception e) {
             throw new SystemException(e);

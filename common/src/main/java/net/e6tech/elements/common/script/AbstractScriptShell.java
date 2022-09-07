@@ -210,9 +210,9 @@ public abstract class AbstractScriptShell {
         }
     }
 
-    public Object execParallel(String path) {
+    public Object parallel(String path) {
         try {
-            return getScripting().execParallel(path);
+            return getScripting().parallel(path);
         } catch (ScriptException e) {
             throw logger.systemException(e);
         }

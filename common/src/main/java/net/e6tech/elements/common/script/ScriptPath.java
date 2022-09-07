@@ -73,4 +73,11 @@ public class ScriptPath {
     public Path getPath() {
         return Paths.get(fileName);
     }
+
+    public String toString() {
+        if (classPath)
+            return "classpath://" + fileName;
+        else
+            return fileName;
+    }
 }

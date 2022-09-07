@@ -812,8 +812,8 @@ public class Bootstrap extends GroovyObjectSupport {
                     setProperty(component, false);
         }
 
-        public Object execParallel(String path) throws ScriptException {
-            return resourceManager.getScripting().execParallel(path);
+        public Object parallel(String path) throws ScriptException {
+            return resourceManager.getScripting().parallel(path);
         }
     }
 
