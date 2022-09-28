@@ -50,7 +50,7 @@ public class AtallaSimulator extends Simulator {
     static String KPE_BANK = "1PUNE000,1111 1111 1111 1111 2222 2222 2222 2222";
     static String KCVV = "1CDNE000,0123 4567 89AB CDEF FEDC BA98 7654 3210";
     static String KMAC = "1M2NE000,0123 4567 89AB CDEF FEDC BA98 7654 3210";
-    static String KEK_KPE = "1PUNE000,0123 4567 89AB CDEF FEDC BA98 7654 3210";
+    static String KEK_KPE = "1PUNE0I0,0123 4567 89AB CDEF FEDC BA98 7654 3210";
     static String DEC = "1nCNE000,0123456789012345";
 
     static Logger logger = Logger.getLogger();
