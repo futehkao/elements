@@ -91,11 +91,16 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
     public void execute(WorkEvents.RunnableTask event) {
         if (!idleWorkers.isEmpty()) {
             Iterator<ActorRef<WorkEvents>> iterator = idleWorkers.iterator();
-            ActorRef worker = iterator.next();
-            iterator.remove();
-            busyWorkers.add(worker);
-            worker.tell(event);
-        } else if (workers.size() < config.getMaxCapacity()) {
+            if (iterator.hasNext()) {
+                ActorRef worker = iterator.next();
+                iterator.remove();
+                busyWorkers.add(worker);
+                worker.tell(event);
+                return;
+            }
+        }
+
+        if (workers.size() < config.getMaxCapacity()) {
             // put in waiting list.  When a work becomes idled, it will be picked up
             waiting.add(new Task(event.getSender(), event));
             newWorker();
@@ -166,14 +171,18 @@ public class WorkerPool extends Receptor<WorkEvents, WorkerPool> {
     @Typed
     private void cleanup(WorkEvents.Cleanup message) {
         int count = idleWorkers.size() - config.getInitialCapacity();
+        if (count < 0)
+            count = 0;
         Iterator<ActorRef<WorkEvents>> iterator = idleWorkers.iterator();
         List<ActorRef<WorkEvents>> stopList = new ArrayList<>(count);
 
         // collect workers to be stopped
         for (int i = 0; i < count; i++) {
-            ActorRef worker = iterator.next();
-            iterator.remove();
-            stopList.add(worker);
+            if (iterator.hasNext()) {
+                ActorRef worker = iterator.next();
+                iterator.remove();
+                stopList.add(worker);
+            }
         }
 
         // removed them from workers and then send stop

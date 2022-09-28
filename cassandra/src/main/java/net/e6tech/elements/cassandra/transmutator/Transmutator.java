@@ -204,13 +204,23 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         }
 
         for (Descriptor entry : descriptors) {
-            switch (entry.runType) {
-                case EACH_ENTRY:
-                    count += entry.strategy.run(entry.context);
-                    break;
-                case PARTITION:
-                    count += entry.strategy.runPartitions(entry.context);
-                    break;
+            try {
+                switch (entry.runType) {
+                    case EACH_ENTRY:
+                        count += entry.strategy.run(entry.context);
+                        break;
+                    case PARTITION:
+                        count += entry.strategy.runPartitions(entry.context);
+                        break;
+                }
+            } catch (Exception ex) {
+                String info = "";
+                if (entry.context != null) {
+                    info = "extractor=" + entry.context.extractor() +
+                            " sourceClass=" + entry.context.getSourceClass() +
+                            " tableName=" + entry.context.tableName();
+                }
+                logger.warn("Cannot transmutate " + info, ex);
             }
         }
         return count;
