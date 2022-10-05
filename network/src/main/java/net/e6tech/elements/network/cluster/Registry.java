@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.network.cluster;
 
-import net.e6tech.elements.network.cluster.Registry;
+import net.e6tech.elements.common.util.concurrent.Async;
 
-public class SimpleCatalyst extends Catalyst<Reactor> {
+import java.util.Collection;
 
-    public SimpleCatalyst(String qualifier,  Registry registry) {
-        super(qualifier, Reactor.class, registry);
-    }
+public interface Registry {
+    Collection routes(String qualifier, Class interfaceClass);
+    <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout);
 }

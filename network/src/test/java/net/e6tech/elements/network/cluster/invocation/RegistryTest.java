@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,17 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.network.cluster.invocation;
 
-import akka.actor.typed.ActorRef;
-import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
-import net.e6tech.elements.network.cluster.catalyst.Reactor;
-import net.e6tech.elements.network.cluster.invocation.Invoker;
-import net.e6tech.elements.network.cluster.invocation.Registry;
+import net.e6tech.elements.network.cluster.ClusterNode;
+import net.e6tech.elements.network.cluster.ClusterNodeTest;
 import org.junit.jupiter.api.Test;
 
-import java.io.Serializable;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Created by futeh.
@@ -49,7 +40,7 @@ public class RegistryTest {
     @Test
     public void simple1() throws Exception {
         ClusterNode clusterNode = create(2552);
-        Registry registry = clusterNode.getRegistry();
+        RegistryImpl registry = (RegistryImpl) clusterNode.getRegistry();
 
         registry.register("blah", (actor, sv) -> {
             return ((String)sv[0]).toUpperCase();

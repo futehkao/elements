@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.invocation;
+package net.e6tech.elements.network.cluster;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

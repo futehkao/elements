@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,8 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
-import net.e6tech.elements.common.resources.Provision;
-import net.e6tech.elements.network.cluster.Local;
-
+import java.io.Serializable;
 import java.util.function.Function;
 
-public interface Reactor {
-
-    @Local
-    default Provision getProvision() {
-        return null;
-    }
-
-    @Local
-    default <T> T get(Class<T> cls) {
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    default <R> R apply(SerializableFunction<? extends Reactor, R> function) {
-        Function<Reactor, R> capture = (Function) function;
-        return capture.apply(this);
-    }
+public interface SerializableFunction<T, R> extends Function<T, R>, Serializable {
 }

@@ -17,12 +17,30 @@
 package net.e6tech.elements.network.cluster.catalyst.scalar;
 
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
+import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 
 @SuppressWarnings("squid:S00119")
 public class Count<Re extends Reactor, T, R> extends Scalar<Re, T, R, Integer> {
 
     public Count() {
         setMapping((reactor, collection) -> collection.size());
+    }
+
+    public Scalar<Re, T, R, Integer> gatherer() {
+        Add<Re, T> add = new Add<>();
+        add.setSeries((Series) getSeries());
+        return (Scalar) add;
+    }
+
+    public class Add<Re extends Reactor, T> extends Scalar<Re, T, Integer, Integer> {
+        public Add() {
+            setMapping((reactor, collection) -> {
+                int n = 0;
+                for (Integer i : collection)
+                    n += i;
+                return n;
+            });
+        }
     }
 }
 

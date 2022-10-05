@@ -4,17 +4,20 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Objects;
 
 public class Member {
     private String memberId;
     private String name;
-    private String hostAddress;
+    private String address;
     private long expiration;
     private String toString;
 
-    public static String formatISODateTime(long timeMillis, ZoneId zoneId) {
-        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeMillis), zoneId));
+    private List<String> services = new LinkedList<>();
+
+    public Member() {
     }
 
     public String getMemberId() {
@@ -25,6 +28,35 @@ public class Member {
         this.memberId = memberId;
     }
 
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address.trim();
+        while (this.address.endsWith("/"))
+            this.address = this.address.substring(0, this.address.length() - 1);
+    }
+
+    public List<String> getServices() {
+        return services;
+    }
+
+    public void setServices(List<String> services) {
+        this.services = services;
+    }
+
+
+    public static String formatISODateTime(long timeMillis, ZoneId zoneId) {
+        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeMillis), zoneId));
+    }
+
+    public Member memberId(String memberId) {
+        setMemberId(memberId);
+        return this;
+    }
+
+
     public String getName() {
         return name;
     }
@@ -33,14 +65,14 @@ public class Member {
         this.name = name;
     }
 
-    public String getHostAddress() {
-        return hostAddress;
+    public Member name(String name) {
+        setName(name);
+        return this;
     }
 
-    public void setHostAddress(String address) {
-        this.hostAddress = address.trim();
-        while (hostAddress.endsWith("/"))
-            hostAddress = hostAddress.substring(0, hostAddress.length() - 1);
+    public Member address(String address) {
+        setAddress(address);
+        return this;
     }
 
     public long getExpiration() {
@@ -52,25 +84,30 @@ public class Member {
         toString = null;
     }
 
+    public Member expiration(long exp) {
+        setExpiration(exp);
+        return this;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Member member = (Member) o;
-        return memberId.equals(member.memberId) &&
-                hostAddress.equals(member.hostAddress);
+        return getMemberId().equals(member.getMemberId()) &&
+                getAddress().equals(member.getAddress());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(memberId, hostAddress);
+        return Objects.hash(getMemberId(), getAddress());
     }
 
     @Override
     public String toString() {
         if (toString == null) {
-            toString = "memberId=" + memberId
-                    + ",hostAddress='" + hostAddress
+            toString = "memberId=" + getMemberId()
+                    + ",hostAddress='" + getAddress()
                     + "',expiration=" + formatISODateTime(expiration, ZoneId.systemDefault());
         }
         return toString;

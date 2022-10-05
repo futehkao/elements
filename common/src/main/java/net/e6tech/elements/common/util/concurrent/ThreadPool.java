@@ -79,6 +79,14 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
                 new ThreadPool(name, p -> Executors.newFixedThreadPool(nThreads, p)));
     }
 
+    public static synchronized ThreadPool fixedThreadPool(String name, int core, int max, long keepAlive) {
+        return fixedThreadPools.computeIfAbsent(name, poolName ->
+                new ThreadPool(name, p -> new ThreadPoolExecutor(core, max,
+                        keepAlive, TimeUnit.MILLISECONDS,
+                        new LinkedBlockingQueue<>(),
+                        p)));
+    }
+
     public ThreadPool daemon() {
         return daemon(true);
     }

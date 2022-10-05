@@ -2,56 +2,30 @@ package net.e6tech.elements.web.federation;
 
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.InterceptorListener;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.restful.RestfulProxy;
-import net.e6tech.elements.security.SymmetricCipher;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HailingFrequency {
-    protected static SymmetricCipher cipher = SymmetricCipher.getInstance("AES");
-
+    static Logger logger = Logger.getLogger();
     private Member member;
     private Map<Class, Object> services = new ConcurrentHashMap<>();
-    private RestfulProxy proxy;
-    private AuthObserver observer;
-    private MyInterceptorListener listener = new MyInterceptorListener();
-    private int connectionTimeout = 15000; // 15 seconds
-    private int readTimeout = 10000; // 10 seconds
+    private Collective collective;
 
-    public HailingFrequency() {
-    }
-
-    public HailingFrequency(Member member, AuthObserver observer) {
+    public HailingFrequency(Member member, Collective federation) {
+        this.collective = federation;
         setMember(member);
-        this.observer = observer;
     }
 
-    public int getConnectionTimeout() {
-        return connectionTimeout;
-    }
-
-    public void setConnectionTimeout(int connectionTimeout) {
-        this.connectionTimeout = connectionTimeout;
-    }
-
-    public HailingFrequency connectionTimeout(int connectionTimeout) {
-        setConnectionTimeout(connectionTimeout);
-        return this;
-    }
-
-    public int getReadTimeout() {
-        return readTimeout;
-    }
-
-    public void setReadTimeout(int readTimeout) {
-        this.readTimeout = readTimeout;
-    }
-
-    public HailingFrequency readTimeout(int readTimeout) {
-        setReadTimeout(readTimeout);
-        return this;
+    public HailingFrequency(String hostAddress, Collective federation) {
+        this.collective = federation;
+        Member m = new Member();
+        m.setMemberId("seed");
+        m.setAddress(hostAddress);
+        setMember(m);
     }
 
     public Member getMember() {
@@ -60,11 +34,27 @@ public class HailingFrequency {
 
     public void setMember(Member member) {
         this.member = member;
-        if (proxy == null || !proxy.getClient().getAddress().equals(member.getHostAddress())) {
-            proxy = new RestfulProxy(member.getHostAddress());
-            services.put(BeaconAPI.class, proxy.newProxy(BeaconAPI.class, listener));
-            proxy.getClient().setReadTimeout(readTimeout);
-            proxy.getClient().setConnectionTimeout(connectionTimeout);
+
+        for (String serviceClass : member.getServices()) {
+            createRemoteService(serviceClass);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object createRemoteService(String serviceClass) {
+        RestfulProxy proxy = new RestfulProxy(member.getAddress());
+        try {
+            Class cls = getClass().getClassLoader().loadClass(serviceClass);
+            MyInterceptorListener listener = new MyInterceptorListener();
+            listener.proxy = proxy;
+            Object service = proxy.newProxy(cls, listener);
+            services.put(cls, service);
+            proxy.getClient().setReadTimeout(collective.getReadTimeout());
+            proxy.getClient().setConnectionTimeout(collective.getConnectionTimeout());
+            return service;
+        } catch (ClassNotFoundException e) {
+            // warn
+            return null;
         }
     }
 
@@ -74,7 +64,10 @@ public class HailingFrequency {
 
     @SuppressWarnings("unchecked")
     public <T> T getService(Class<T> cls) {
-        return (T) services.computeIfAbsent(cls, serviceClass -> proxy.newProxy(cls, listener));
+        if (cls.equals(BeaconAPI.class) && !services.containsKey(cls))
+            return (T) createRemoteService(BeaconAPI.class.getName());
+
+        return (T) services.get(cls);
     }
 
     @SuppressWarnings("unchecked")
@@ -87,8 +80,10 @@ public class HailingFrequency {
     }
 
     private class MyInterceptorListener implements InterceptorListener {
+        RestfulProxy proxy;
 
         public void preInvocation(CallFrame frame) {
+            AuthObserver observer = collective.getAuthObserver();
             if (observer == null)
                 return;
             observer.authorize(proxy);
@@ -96,6 +91,7 @@ public class HailingFrequency {
 
         @Override
         public Object onException(CallFrame frame, Throwable throwable) {
+            logger.warn("Error executing " + frame.getMethod().getName() + " memberId=" + member.getMemberId() + " address=" + member.getAddress() , throwable);
             throw new SystemException(throwable);
         }
     }

@@ -46,7 +46,11 @@ public class JaxRSLauncher {
 
     public static JaxRSLauncher create(Provision provision, String url) {
         JaxRSLauncher launcher = new JaxRSLauncher();
-        launcher.server = provision.newInstance(JaxRSServer.class);
+        if (provision != null) {
+            launcher.server = provision.newInstance(JaxRSServer.class);
+        } else {
+            launcher.server = new JaxRSServer();
+        }
         launcher.provision = provision;
         try {
             launcher.server.setAddresses(Arrays.asList(url));
@@ -136,10 +140,15 @@ public class JaxRSLauncher {
     }
 
     public JaxRSLauncher start() {
-        provision.open().accept(Resources.class, res -> {
-            server.initialize(res);
+        if (provision != null) {
+            provision.open().accept(Resources.class, res -> {
+                server.initialize(res);
+                server.start();
+            });
+        } else {
+            server.initialize(null);
             server.start();
-        });
+        }
         return this;
     }
 

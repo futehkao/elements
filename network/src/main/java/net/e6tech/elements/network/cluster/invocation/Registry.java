@@ -16,9 +16,8 @@
 
 package net.e6tech.elements.network.cluster.invocation;
 
-import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.actor.typed.Guardian;
-import net.e6tech.elements.network.cluster.ClusterAsync;
+import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.RouteListener;
 
 import java.lang.reflect.Method;
@@ -26,12 +25,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeoutException;
-import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public interface Registry {
+public interface Registry extends net.e6tech.elements.network.cluster.Registry {
 
     void start(Guardian guardian);
 
@@ -93,8 +91,6 @@ public interface Registry {
         waitLoop(() -> predicate.test(routes(qualifier, interfaceClass)), timeout);
     }
 
-    <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function);
-
     <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation);
 
     // discover when other nodes have register the interfaceClass
@@ -106,7 +102,8 @@ public interface Registry {
 
     Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout);
 
-    <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass);
+    <T> Async<T> async(String qualifier, Class<T> interfaceClass);
 
-    <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass, long timeout);
+    @Override
+    <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout);
 }

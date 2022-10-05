@@ -1,8 +1,5 @@
 package net.e6tech.elements.web.federation;
 
-import net.e6tech.elements.common.inject.Inject;
-import net.e6tech.elements.common.resources.Provision;
-
 import javax.annotation.Nonnull;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -11,17 +8,14 @@ import java.util.Collection;
 @Path("/v1/beacon")
 public class BeaconAPI {
 
-    @Inject
-    private Provision provision;
+    private Collective collective;
 
-    private Federation federation;
-
-    public Federation getFederation() {
-        return federation;
+    public Collective getCollective() {
+        return collective;
     }
 
-    public void setFederation(Federation federation) {
-        this.federation = federation;
+    public void setCollective(Collective collective) {
+        this.collective = collective;
     }
 
     @GET
@@ -29,7 +23,7 @@ public class BeaconAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("hosts")
     public Collection<Member> hosts() {
-        return federation.getHostedMembers().values();
+        return collective.getHostedMembers().values();
     }
 
     @GET
@@ -37,7 +31,7 @@ public class BeaconAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("members")
     public Collection<Member> members() {
-        return federation.members();
+        return collective.members();
     }
 
     @POST
@@ -45,6 +39,6 @@ public class BeaconAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("events")
     public void onEvent(@Nonnull Event event) {
-        federation.onEvent(event);
+        collective.onEvent(event);
     }
 }

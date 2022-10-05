@@ -19,6 +19,7 @@ package net.e6tech.elements.network.cluster.catalyst.scalar;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.cluster.catalyst.Mapping;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
+import net.e6tech.elements.network.cluster.catalyst.SerializableFunction;
 import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 
 import java.io.Serializable;
@@ -26,7 +27,7 @@ import java.util.Collection;
 import java.util.function.Function;
 
 @SuppressWarnings({"squid:S00119", "squid:S2975"})
-public class Scalar<Re extends Reactor, T, R, U> implements Cloneable, Function<Re, U>, Serializable {
+public class Scalar<Re extends Reactor, T, R, U> implements Cloneable, SerializableFunction<Re, U>, Serializable {
     private static final long serialVersionUID = 1676649613567136786L;
     private Series<Re, T, R> series;
     private Mapping<Re, Collection<R>, U> mapping;
@@ -46,13 +47,16 @@ public class Scalar<Re extends Reactor, T, R, U> implements Cloneable, Function<
         return m.apply(reactor, collection);
     }
 
-    @SuppressWarnings("unchecked")
     public Scalar<Re, T, R, U> clone() {
         try {
             return (Scalar) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new SystemException(e);
         }
+    }
+
+    public Scalar<Re, T, R, U> gatherer() {
+        return clone();
     }
 
     public Series<Re, T, R> getSeries() {

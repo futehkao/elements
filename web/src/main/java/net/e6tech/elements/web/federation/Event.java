@@ -12,20 +12,33 @@ public class Event {
         REMOVE
     }
 
+    private String clusterName;
+
     private UUID uuid = UUID.randomUUID();
     private Set<String> visited = new HashSet<>();
     private List<Member> members;
     private Type type;
+    private Collective.Type collectiveType;
     private int cycle = 4;
 
     public Event() {
     }
 
-    public Event(Type type, List<Member> members, int cycle) {
+    public Event(String clusterName, Type type, Collective.Type collectiveType, List<Member> members, int cycle) {
+        this.clusterName = clusterName;
         this.type = type;
+        this.collectiveType = collectiveType;
         this.members = members;
         members.forEach(m -> visited.add(m.getMemberId()));
         this.cycle = cycle;
+    }
+
+    public String getClusterName() {
+        return clusterName;
+    }
+
+    public void setClusterName(String clusterName) {
+        this.clusterName = clusterName;
     }
 
     public UUID getUuid() {
@@ -36,12 +49,17 @@ public class Event {
         this.uuid = uuid;
     }
 
-    public Set<String> getVisited() {
-        return visited;
+    public synchronized Set<String> getVisited() {
+        return new HashSet<>(visited);
     }
 
-    public void setVisited(Set<String> visited) {
+    public synchronized void setVisited(Set<String> visited) {
         this.visited = visited;
+    }
+
+    public synchronized Event addVisited(Set<String> visited) {
+        this.visited.addAll(visited);
+        return this;
     }
 
     public List<Member> getMembers() {
@@ -60,6 +78,14 @@ public class Event {
         this.type = type;
     }
 
+    public Collective.Type getCollectiveType() {
+        return collectiveType;
+    }
+
+    public void setCollectiveType(Collective.Type collectiveType) {
+        this.collectiveType = collectiveType;
+    }
+
     public int getCycle() {
         return cycle;
     }
@@ -70,6 +96,6 @@ public class Event {
 
     @Override
     public String toString() {
-        return "type=" + type + "," + members.toString();
+        return "collective=" + collectiveType + ",type=" + type + "," + members.toString();
     }
 }

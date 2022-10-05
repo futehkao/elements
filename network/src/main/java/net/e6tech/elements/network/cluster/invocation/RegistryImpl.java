@@ -19,10 +19,7 @@ package net.e6tech.elements.network.cluster.invocation;
 import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.network.cluster.AsyncImpl;
-import net.e6tech.elements.network.cluster.ClusterAsync;
-import net.e6tech.elements.network.cluster.ClusterNode;
-import net.e6tech.elements.network.cluster.RouteListener;
+import net.e6tech.elements.network.cluster.*;
 import scala.concurrent.ExecutionContextExecutor;
 
 import java.lang.reflect.Method;
@@ -127,8 +124,7 @@ public class RegistryImpl implements Registry {
     }
 
     @SuppressWarnings("unchecked")
-    @Override
-    public <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function) {
+    protected <R, U> CompletionStage<U> register(String path, BiFunction<ActorRef, Object[], R> function) {
         return registrar.talk(timeout).ask(ref -> new InvocationEvents.Registration(ref, path,  (BiFunction<ActorRef, Object[], Object>)function));
     }
 

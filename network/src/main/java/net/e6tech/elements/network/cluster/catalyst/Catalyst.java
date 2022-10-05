@@ -18,13 +18,13 @@ package net.e6tech.elements.network.cluster.catalyst;
 
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
+import net.e6tech.elements.network.cluster.Registry;
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segments;
 import net.e6tech.elements.network.cluster.catalyst.scalar.Scalar;
 import net.e6tech.elements.network.cluster.catalyst.transform.Series;
-import net.e6tech.elements.network.cluster.invocation.Registry;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -77,11 +77,12 @@ public class Catalyst<Re extends Reactor> {
         Series<Re, U, U> emptySeries = new Series<>();
         Scalar<Re, U, U, U> copy;
         try {
-            copy = (Scalar) scalar.clone();
+            copy = (Scalar) scalar.gatherer();
             copy.setSeries(emptySeries.allocate(new CollectionDataSet<>(result).segment(this)));
         } catch (Exception e) {
             throw new SystemException(e);
         }
+
         return async.apply(p -> p.apply(copy))
                 .toCompletableFuture().join();
     }
@@ -143,7 +144,7 @@ public class Catalyst<Re extends Reactor> {
         return gatherer.collection;
     }
 
-    private <T, O> List<Work<T, O>> prepareWork(DataSet<T> dataSet, Function<Segments<T>, Function<? extends Reactor, O>> work) {
+    private <T, O> List<Work<T, O>> prepareWork(DataSet<T> dataSet, Function<Segments<T>, SerializableFunction<? extends Reactor, O>> work) {
         Segments<T> segments = dataSet.segment(this);
         List<Work<T, O>> workLoad = new ArrayList<>();
         for (int i = 0; i < segments.size(); i++) {
@@ -156,10 +157,10 @@ public class Catalyst<Re extends Reactor> {
         Async<Reactor> async;
         Segments<T> segments;
         CompletableFuture<R> future;
-        Function<Segments<T>, Function<? extends Reactor, R>> work;
-        Function<? extends Reactor, R> function;
+        Function<Segments<T>, SerializableFunction<? extends Reactor, R>> work;
+        SerializableFunction<? extends Reactor, R> function;
 
-        Work(Async<Reactor> async, Segments<T> segments, Function<Segments<T>, Function<? extends Reactor, R>> work) {
+        Work(Async<Reactor> async, Segments<T> segments, Function<Segments<T>, SerializableFunction<? extends Reactor, R>> work) {
             this.async = async;
             this.segments = segments;
             this.work = work;

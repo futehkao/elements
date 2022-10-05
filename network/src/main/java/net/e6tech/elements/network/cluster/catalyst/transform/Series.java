@@ -20,6 +20,7 @@ import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.cluster.catalyst.Catalyst;
 import net.e6tech.elements.network.cluster.catalyst.Gatherer;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
+import net.e6tech.elements.network.cluster.catalyst.SerializableFunction;
 import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
@@ -40,7 +41,7 @@ import java.util.stream.Stream;
  * @param <R> Output type
  */
 @SuppressWarnings({"unchecked", "squid:S00119",  "squid:S2975", "squid:S1948"})
-public class Series<Re extends Reactor, T, R> implements Serializable, Cloneable, Function<Re, Collection<R>> {
+public class Series<Re extends Reactor, T, R> implements Cloneable, SerializableFunction<Re, Collection<R>> {
     private static final long serialVersionUID = 5420350641543073437L;
 
     protected Segment<T> segment;
