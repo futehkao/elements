@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster.catalyst;
+package net.e6tech.elements.common.federation;
 
-import net.e6tech.elements.common.federation.Registry;
+public interface Frequency {
 
-public class SimpleCatalyst extends Catalyst<Reactor> {
+    <T> T getService(Class<T> cls);
 
-    public SimpleCatalyst(String qualifier,  Registry registry) {
-        super(qualifier, Reactor.class, registry);
+    Member getMember();
+
+    default String memberId() {
+        return getMember().getMemberId();
     }
+
 }

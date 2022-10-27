@@ -1,6 +1,7 @@
 
 package net.e6tech.elements.web.federation;
 
+import net.e6tech.elements.common.federation.Member;
 import net.e6tech.elements.common.logging.ConsoleLogger;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
@@ -18,7 +19,7 @@ import java.util.List;
 public class FederationTest {
 
     private static final int SERVERS = 10;
-    private static final List<Federation> federations = Collections.synchronizedList(new ArrayList<>(SERVERS));
+    private static final List<FederationImpl> federations = Collections.synchronizedList(new ArrayList<>(SERVERS));
 
     @BeforeAll
     public static void setup() {
@@ -38,7 +39,7 @@ public class FederationTest {
         ResourceManager rm = new ResourceManager();
         rm.loadProvision(Provision.class);
 
-        Federation federation = rm.newInstance(Federation.class);
+        FederationImpl federation = rm.newInstance(FederationImpl.class);
         federation.setHostAddress("http://127.0.0.1:" + port + "/restful");
         federation.setHosts(new Host[]{ new Host("" + port) });
         federation.setSeeds(new String[]{"http://127.0.0.1:3909/restful"});
@@ -50,7 +51,7 @@ public class FederationTest {
     @AfterAll
     public static void tearDown() {
         try {
-            federations.forEach(Federation::shutdown);
+            federations.forEach(FederationImpl::shutdown);
         } finally {
             federations.clear();
         }
@@ -95,7 +96,7 @@ public class FederationTest {
             if (total == SERVERS * SERVERS && ! printed) {
                 System.out.println("Converge in " + (System.currentTimeMillis() - start));
                 printed = true;
-                Collective federation = federations.get(SERVERS / 2);
+                CollectiveImpl federation = federations.get(SERVERS / 2);
                 Collection<Member> m = federation.members();
                 System.out.println(m);
             }

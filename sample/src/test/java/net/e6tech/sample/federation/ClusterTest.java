@@ -20,9 +20,9 @@ import net.e6tech.elements.common.launch.LaunchController;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.elements.web.federation.BeaconAPI;
-import net.e6tech.elements.web.federation.Cluster;
-import net.e6tech.elements.web.federation.Collective;
-import net.e6tech.elements.web.federation.Member;
+import net.e6tech.elements.web.federation.ClusterImpl;
+import net.e6tech.elements.web.federation.CollectiveImpl;
+import net.e6tech.elements.common.federation.Member;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -43,11 +43,11 @@ public class ClusterTest {
 
     @Test
     void basic() throws InterruptedException {
-        List<Cluster> clusters = provision.getResourceManager().getBean("clusters");
+        List<ClusterImpl> clusters = provision.getResourceManager().getBean("clusters");
 
         BeaconAPI[] apis = new BeaconAPI[clusters.size()];
         for (int i = 0; i < clusters.size(); i ++) {
-            Cluster cluster = clusters.get(i);
+            ClusterImpl cluster = clusters.get(i);
             RestfulProxy proxy = new RestfulProxy(cluster.getHostAddress());
             apis[i] = proxy.newProxy(BeaconAPI.class);
         }
@@ -84,7 +84,7 @@ public class ClusterTest {
             if (total == clusters.size() * clusters.size() && ! printed) {
                 System.out.println("Converge in " + (System.currentTimeMillis() - start));
                 printed = true;
-                Collective cluster = clusters.get(clusters.size() / 2);
+                CollectiveImpl cluster = clusters.get(clusters.size() / 2);
                 Collection<Member> m = cluster.members();
                 System.out.println(m);
             }

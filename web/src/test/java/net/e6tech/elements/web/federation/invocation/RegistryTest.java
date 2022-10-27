@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.web.federation.invocation;
 
+import net.e6tech.elements.common.federation.Member;
 import net.e6tech.elements.common.logging.ConsoleLogger;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
@@ -35,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class RegistryTest {
     private static final int SERVERS = 3;
-    private static final List<Federation> federations = Collections.synchronizedList(new ArrayList<>(SERVERS));
+    private static final List<FederationImpl> federations = Collections.synchronizedList(new ArrayList<>(SERVERS));
 
     @BeforeAll
     public static void setup() {
@@ -55,7 +56,7 @@ public class RegistryTest {
         ResourceManager rm = new ResourceManager();
         rm.loadProvision(Provision.class);
 
-        Federation federation = rm.newInstance(Federation.class);
+        FederationImpl federation = rm.newInstance(FederationImpl.class);
         federation.setHostAddress("http://127.0.0.1:" + port + "/restful");
         federation.setHosts(new Host[] { new Host("" + port)});
         federation.setSeeds(new String[]{ "http://127.0.0.1:3909/restful"});
@@ -70,7 +71,7 @@ public class RegistryTest {
     @AfterAll
     public static void tearDown() {
         try {
-            federations.forEach(Federation::shutdown);
+            federations.forEach(FederationImpl::shutdown);
         } finally {
             federations.clear();
         }
@@ -113,7 +114,7 @@ public class RegistryTest {
             routes.forEach(r -> {});
         }
 
-        for (Collective fed : federations) {
+        for (CollectiveImpl fed : federations) {
             InvokerRegistry registry = fed.getServiceProvider(InvokerRegistry.class);
             assertNotNull(registry);
             Async<X> async = registry.async("x", X.class);
@@ -128,9 +129,9 @@ public class RegistryTest {
 
     public static class XImpl implements X {
 
-        private Collective federation;
+        private CollectiveImpl federation;
 
-        public XImpl(Collective federation) {
+        public XImpl(CollectiveImpl federation) {
             this.federation = federation;
         }
 

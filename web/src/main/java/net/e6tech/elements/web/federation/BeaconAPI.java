@@ -1,5 +1,7 @@
 package net.e6tech.elements.web.federation;
 
+import net.e6tech.elements.common.federation.Member;
+
 import javax.annotation.Nonnull;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -8,13 +10,13 @@ import java.util.Collection;
 @Path("/v1/beacon")
 public class BeaconAPI {
 
-    private Collective collective;
+    private CollectiveImpl collective;
 
-    public Collective getCollective() {
+    public CollectiveImpl getCollective() {
         return collective;
     }
 
-    public void setCollective(Collective collective) {
+    public void setCollective(CollectiveImpl collective) {
         this.collective = collective;
     }
 

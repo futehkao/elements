@@ -20,6 +20,7 @@ import net.e6tech.elements.common.logging.Logger;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
+import javax.script.ScriptException;
 import java.util.Map;
 import java.util.Properties;
 
@@ -123,21 +124,18 @@ public class ConfigurationTest {
     }
 
     @Test
-    public void properties() {
-        Configuration config = new Configuration();
-        String yaml = ""
-                + "x.properties.a: a";
-        config.load(yaml);
-        X x = new X();
-        config.configure(x, "x", null, null);
-        assertTrue(x.getProperties().getProperty("a").equals("a"));
+    public void properties() throws ScriptException {
+        ResourceManager resourceManager = new ResourceManager();
+        resourceManager.load("src/test/conf/properties.groovy");
+        X x = (X) resourceManager.getAtom("properties").get("_prop");
+        x.getProperties().get("date");
     }
 
-    private static class X {
+    public static class X {
         String a;
         String b;
         X child;
-        Properties properties;
+        Properties properties = new Properties();
 
         public String getA() {
             return a;

@@ -1,26 +1,31 @@
 package net.e6tech.elements.web.federation;
 
+import net.e6tech.elements.common.federation.Frequency;
+import net.e6tech.elements.common.federation.Member;
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.InterceptorListener;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.restful.RestfulProxy;
 
+import java.net.ConnectException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class HailingFrequency {
+public class HailingFrequency implements Frequency {
     static Logger logger = Logger.getLogger();
     private Member member;
     private Map<Class, Object> services = new ConcurrentHashMap<>();
-    private Collective collective;
+    private CollectiveImpl collective;
+    private long lastConnectionError = 0L;
+    private int consecutiveError = 0;
 
-    public HailingFrequency(Member member, Collective federation) {
+    public HailingFrequency(Member member, CollectiveImpl federation) {
         this.collective = federation;
         setMember(member);
     }
 
-    public HailingFrequency(String hostAddress, Collective federation) {
+    public HailingFrequency(String hostAddress, CollectiveImpl federation) {
         this.collective = federation;
         Member m = new Member();
         m.setMemberId("seed");
@@ -28,6 +33,7 @@ public class HailingFrequency {
         setMember(m);
     }
 
+    @Override
     public Member getMember() {
         return member;
     }
@@ -38,6 +44,14 @@ public class HailingFrequency {
         for (String serviceClass : member.getServices()) {
             createRemoteService(serviceClass);
         }
+    }
+
+    public long getLastConnectionError() {
+        return lastConnectionError;
+    }
+
+    public int getConsecutiveError() {
+        return consecutiveError;
     }
 
     @SuppressWarnings("unchecked")
@@ -62,6 +76,7 @@ public class HailingFrequency {
         return getService(BeaconAPI.class);
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public <T> T getService(Class<T> cls) {
         if (cls.equals(BeaconAPI.class) && !services.containsKey(cls))
@@ -75,10 +90,6 @@ public class HailingFrequency {
         return (T) services.remove(cls);
     }
 
-    public String memberId() {
-        return member.getMemberId();
-    }
-
     private class MyInterceptorListener implements InterceptorListener {
         RestfulProxy proxy;
 
@@ -89,9 +100,21 @@ public class HailingFrequency {
             observer.authorize(proxy);
         }
 
+        public Object postInvocation(CallFrame frame, Object returnValue) {
+            lastConnectionError = 0L;
+            consecutiveError = 0;
+            return returnValue;
+        }
+
         @Override
         public Object onException(CallFrame frame, Throwable throwable) {
-            logger.warn("Error executing " + frame.getMethod().getName() + " memberId=" + member.getMemberId() + " address=" + member.getAddress() , throwable);
+            if (!(throwable instanceof ConnectException)) {
+                logger.warn("Error executing " + frame.getMethod().getName() + " memberId=" + member.getMemberId() + " address=" + member.getAddress(), throwable);
+            } else {
+                lastConnectionError = System.currentTimeMillis();
+                if (consecutiveError < Integer.MAX_VALUE / 2)
+                    consecutiveError ++;
+            }
             throw new SystemException(throwable);
         }
     }

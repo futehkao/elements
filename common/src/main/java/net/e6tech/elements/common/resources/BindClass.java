@@ -28,6 +28,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({ TYPE })
 @Retention(RUNTIME)
 public @interface BindClass {
-    Class value() default void.class;
+    Class[] value() default {};
     boolean generics() default false;
 }

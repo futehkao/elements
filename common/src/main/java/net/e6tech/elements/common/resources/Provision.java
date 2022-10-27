@@ -16,6 +16,8 @@ limitations under the License.
 
 package net.e6tech.elements.common.resources;
 
+import net.e6tech.elements.common.federation.Cluster;
+import net.e6tech.elements.common.federation.Registry;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.LogLevel;
 import net.e6tech.elements.common.logging.Logger;
@@ -31,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 /**
@@ -98,7 +101,7 @@ public class Provision {
             if (from != null) {
                 try {
                     f.setAccessible(true);
-                    f.set(this, converter.convert(from, f, null));
+                    f.set(this, converter.convert(from, f, null, null));
                     f.setAccessible(false);
                 } catch (Exception e) {
                     throw new SystemException(e);
@@ -130,6 +133,10 @@ public class Provision {
     @Inject
     public void setResourceManager(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
+    }
+
+    public Executor getExecutor() {
+        return resourceManager.getExecutor();
     }
 
     public <T> T getComponentResource(String componentName, String resourceName) {
@@ -237,5 +244,13 @@ public class Provision {
         ResourcesFactory factory = new ResourcesFactory();
         inject(factory);
         return factory;
+    }
+
+    public <T> void registerInCluster(String qualifier, Class<T> interfaceClass, T implementation) {
+        if (getResourceManager().hasInstance(Cluster.class)) {
+            getResourceManager().getInstance(Cluster.class)
+                    .getServiceProvider(Registry.class)
+                    .register(qualifier, interfaceClass, implementation);
+        };
     }
 }

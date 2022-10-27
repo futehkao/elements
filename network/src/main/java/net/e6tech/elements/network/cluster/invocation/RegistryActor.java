@@ -19,9 +19,14 @@ package net.e6tech.elements.network.cluster.invocation;
 import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.network.cluster.*;
+import net.e6tech.elements.common.util.concurrent.Async;
+import net.e6tech.elements.network.cluster.AsyncImpl;
+import net.e6tech.elements.network.cluster.ClusterNode;
+import net.e6tech.elements.network.cluster.Local;
+import net.e6tech.elements.network.cluster.RouteListener;
 import scala.concurrent.ExecutionContextExecutor;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -30,11 +35,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public class RegistryImpl implements Registry {
+public class RegistryActor implements Registry {
     private static String path = "registry";
     public static final String REGISTRY_DISPATCHER = "registry-dispatcher";
     private Guardian guardian;
@@ -48,7 +55,7 @@ public class RegistryImpl implements Registry {
     }
 
     public static void setPath(String path) {
-        RegistryImpl.path = path;
+        RegistryActor.path = path;
     }
 
     public long getTimeout() {
@@ -129,12 +136,25 @@ public class RegistryImpl implements Registry {
     }
 
     @Override
-    public <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation) {
+    public <T> List<String> register(String qualifier, Class<T> interfaceClass, T implementation) {
         return register(qualifier, interfaceClass, implementation, null);
     }
 
     @Override
-    public <T, U> CompletionStage<List<U>> discover(String qualifier, Class<T> interfaceClass) {
+    public <T> List<String> register(String qualifier, Class<T> interfaceClass, T implementation, InvocationHandler customizedInvoker) {
+        CompletionStage<List<Object>> stage = internalRegister(qualifier, interfaceClass, implementation, customizedInvoker);
+        try {
+            List<Object> list = stage.toCompletableFuture().get();
+            return list.stream().map(r -> r.toString()).collect(Collectors.toList());
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public <T> List<String> discover(String qualifier, Class<T> interfaceClass) {
         return register(qualifier, interfaceClass, null, null);
     }
 
@@ -147,8 +167,7 @@ public class RegistryImpl implements Registry {
      * @param <T> type of implementation
      */
     @SuppressWarnings({"unchecked", "squid:S1067", "squid:S3776"})
-    @Override
-    public <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker) {
+    public <T, U> CompletionStage<List<U>> internalRegister(String qualifier, Class<T> interfaceClass, T implementation, InvocationHandler customizedInvoker) {
         if (!interfaceClass.isInterface())
             throw new IllegalArgumentException("interfaceClass " + interfaceClass.getName() + " needs to be an interface.");
         if (!Modifier.isPublic(interfaceClass.getModifiers()))
@@ -169,18 +188,26 @@ public class RegistryImpl implements Registry {
                 register(fullyQualify(qualifier, interfaceClass, method), null).toCompletableFuture();
             } else {
                 if (customizedInvoker == null) {
-                    customizedInvoker = new Invoker();
+                    customizedInvoker = (target, meth, args) -> meth.invoke(target, args);
                 }
-                Invoker invoker = customizedInvoker;
+                InvocationHandler invoker = customizedInvoker;
                 list.add((CompletableFuture) register(fullyQualify(qualifier, interfaceClass, method),
-                        (actor, args) -> invoker.invoke(actor, implementation, method, args)).toCompletableFuture());
+                        (actor, args) -> {
+                            try {
+                                return invoker.invoke(implementation, method, args);
+                            } catch (Throwable e) {
+                                if (e instanceof RuntimeException)
+                                    throw (RuntimeException)e;
+                                throw new SystemException(e);
+                            }
+                        }).toCompletableFuture());
             }
         }
         return CompletableFuture.supplyAsync(() -> {
             List<U> results = new ArrayList<>();
             for (CompletableFuture<U> stage : list) {
                 try {
-                    results.add(stage.get(getTimeout(), TimeUnit.MILLISECONDS));
+                    results.add(stage.get(timeout, TimeUnit.MILLISECONDS));
                 } catch (Exception e) {
                     throw new SystemException(e);
                 }
@@ -190,41 +217,26 @@ public class RegistryImpl implements Registry {
     }
 
     String fullyQualify(String qualifier, Class interfaceClass, Method method) {
-        StringBuilder builder = new StringBuilder();
-        String normalizedQualifier = (qualifier == null) ? "" : qualifier.trim();
-        if (normalizedQualifier.length() > 0) {
-            builder.append(normalizedQualifier);
-            builder.append("@");
-        }
-        builder.append(interfaceClass.getName());
-        builder.append("::");
-        builder.append(method.getName());
-        boolean first = true;
-        for (Class param : method.getParameterTypes()) {
-            if (first) {
-                first = false;
-                builder.append("+");
-            } else {
-                builder.append(",");
-            }
-            builder.append(param.getTypeName());
-        }
-        return builder.toString();
+        return net.e6tech.elements.common.federation.Registry.fullyQualify(qualifier, interfaceClass, method);
     }
 
+    @Override
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String qualifier, Class interfaceClass, Method method, long timeout) {
         return route(fullyQualify(qualifier, interfaceClass, method), timeout);
     }
 
+    @Override
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout) {
         return arguments -> registrar.talk(timeout).ask(ref -> new InvocationEvents.Request(ref, path, timeout, arguments));
     }
 
-    public <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass) {
-        return new AsyncImpl<>(this, qualifier, interfaceClass, getTimeout());
+    @Override
+    public <T> Async<T> async(String qualifier, Class<T> interfaceClass) {
+        return new AsyncImpl<>(this, qualifier, interfaceClass, timeout, Routing.random);
     }
 
-    public <T> ClusterAsync<T> async(String qualifier, Class<T> interfaceClass, long timeout) {
-        return new AsyncImpl<>(this, qualifier, interfaceClass, timeout);
+    @Override
+    public <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout, Routing routing) {
+        return new AsyncImpl<>(this, qualifier, interfaceClass, timeout, routing);
     }
 }

@@ -26,7 +26,6 @@ import net.e6tech.elements.common.script.Scripting;
 import net.e6tech.elements.common.util.InitialContextFactory;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.Terminal;
-import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import org.apache.logging.log4j.ThreadContext;
 
 import javax.script.ScriptException;
@@ -364,6 +363,9 @@ public class Bootstrap extends GroovyObjectSupport {
         if (initBoot != null && !initBoot.isEmpty()) {
             initBoot();  // set by bootstrap script
         }
+
+        //
+        setupThreadPool("ThreadPool-" + resourceManager.getName());
 
         // preBoot
         if (preBoot != null && !preBoot.isEmpty()) {
@@ -727,15 +729,7 @@ public class Bootstrap extends GroovyObjectSupport {
 
     // convenient method for initBoot
     public void setupThreadPool(String threadPoolName) {
-        ThreadPool threadPool = ThreadPool.cachedThreadPool(threadPoolName);
-
-        // resourceManager is a special case
-        // that you cannot use component to inject instances.
-        logger.info(LINE_SEPARATOR);
-        logger.info("Setting up thread pool {}", threadPoolName);
-        logger.info(LINE_SEPARATOR);
-        resourceManager.registerBean(threadPoolName, threadPool);
-        resourceManager.bind(ThreadPool.class, resourceManager.getBean(threadPoolName));
+        resourceManager.setupThreadPool(threadPoolName);
     }
 
     // send a shutdown message to a server

@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.common.actor.concurrent;
 
-import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPool;
@@ -45,7 +45,7 @@ public class ActorExecutor implements Executor {
     public synchronized void start() {
         if (running)
             return;
-        Guardian guardian = new Genesis(provision, workerPoolConfig).getGuardian();
+        Guardian guardian = new GenesisActor(provision, workerPoolConfig).getGuardian();
 
         if (!guardian.isEmbedded()) {
             // using system guardian.  create a separate worker pool

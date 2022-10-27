@@ -17,9 +17,9 @@
 package net.e6tech.elements.network.cluster.invocation;
 
 import net.e6tech.elements.common.actor.typed.Guardian;
-import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.RouteListener;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
@@ -29,7 +29,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public interface Registry extends net.e6tech.elements.network.cluster.Registry {
+public interface Registry extends net.e6tech.elements.common.federation.Registry {
 
     void start(Guardian guardian);
 
@@ -44,8 +44,6 @@ public interface Registry extends net.e6tech.elements.network.cluster.Registry {
     void removeRouteListener(RouteListener listener);
 
     Collection routes(String path);
-
-    Collection routes(String qualifier, Class interfaceClass);
 
     default void waitLoop(BooleanSupplier test, long timeout) throws TimeoutException {
         Object monitor = new Object();
@@ -91,19 +89,13 @@ public interface Registry extends net.e6tech.elements.network.cluster.Registry {
         waitLoop(() -> predicate.test(routes(qualifier, interfaceClass)), timeout);
     }
 
-    <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation);
-
     // discover when other nodes have register the interfaceClass
-    <T, U> CompletionStage<List<U>> discover(String qualifier, Class<T> interfaceClass);
+    <T> List<String > discover(String qualifier, Class<T> interfaceClass);
 
-    <T, U> CompletionStage<List<U>> register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker);
+    <T> List<String> register(String qualifier, Class<T> interfaceClass, T implementation, InvocationHandler customizedInvoker);
 
     Function<Object[], CompletionStage<InvocationEvents.Response>> route(String qualifier, Class interfaceClass, Method method, long timeout);
 
     Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout);
 
-    <T> Async<T> async(String qualifier, Class<T> interfaceClass);
-
-    @Override
-    <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout);
 }

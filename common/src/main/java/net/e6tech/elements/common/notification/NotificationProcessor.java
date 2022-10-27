@@ -16,7 +16,7 @@ limitations under the License.
 
 package net.e6tech.elements.common.notification;
 
-import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutorService;
 public class NotificationProcessor implements NotificationListener {
 
     private ExecutorService threadPool;
-    private Genesis genesis;
+    private GenesisActor genesis;
     private NotificationCenter notificationCenter;
     private Provision provision;
 
@@ -73,12 +73,12 @@ public class NotificationProcessor implements NotificationListener {
         this.threadPool = threadPool;
     }
 
-    public Genesis getGenesis() {
+    public GenesisActor getGenesis() {
         return genesis;
     }
 
     @Inject(optional = true)
-    public void setGenesis(Genesis genesis) {
+    public void setGenesis(GenesisActor genesis) {
         this.genesis = genesis;
     }
 

@@ -2,21 +2,22 @@ package net.e6tech.elements.web.federation;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import jnr.a64asm.Mem;
+import net.e6tech.elements.common.federation.Member;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.subscribe.Notice;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class Beacon {
     public static Logger logger = Logger.getLogger();
-    private Collective collective;
+    private CollectiveImpl collective;
 
     private Cache<UUID, Event> events;
     private final Random random = new Random();
@@ -26,11 +27,11 @@ public class Beacon {
     private Thread eventThread;
     private Map<String, HailingFrequency> frequencies = new ConcurrentHashMap<>(128); // memberId to frequency
 
-    public Collective getCollective() {
+    public CollectiveImpl getCollective() {
         return collective;
     }
 
-    public void setCollective(Collective collective) {
+    public void setCollective(CollectiveImpl collective) {
         this.collective = collective;
     }
 
@@ -81,7 +82,7 @@ public class Beacon {
                 f.setMember(member);
 
             HailingFrequency f2 = f;
-            CompletableFuture.runAsync(() -> collective.getListeners().forEach(listener -> listener.added(f2)));
+            collective.getExecutor().execute(() -> collective.getListeners().forEach(listener -> listener.added(f2)));
         } else if (f.getMember().getExpiration() < member.getExpiration()) {
             f.setMember(member);
         }
@@ -98,7 +99,7 @@ public class Beacon {
     protected void removeFrequency(HailingFrequency frequency) {
         if (frequency != null && !collective.getHostedMembers().containsKey(frequency.getMember().getMemberId())) {
             HailingFrequency c = frequencies.remove(frequency.memberId());
-            CompletableFuture.runAsync(() -> collective.getListeners().forEach(listener -> listener.removed(c)));
+            collective.getExecutor().execute(() -> collective.getListeners().forEach(listener -> listener.removed(c)));
         }
     }
 
@@ -106,7 +107,7 @@ public class Beacon {
         for (Member member : list) {
             if (!collective.getHostedMembers().containsKey(member.getMemberId())) {
                 HailingFrequency c = frequencies.remove(member.getMemberId());
-                CompletableFuture.runAsync(() -> collective.getListeners().forEach(listener -> listener.removed(c)));
+                collective.getExecutor().execute(() -> collective.getListeners().forEach(listener -> listener.removed(c)));
             }
         }
     }
@@ -228,11 +229,15 @@ public class Beacon {
 
         // updating frequencies.
         logger.trace("{} onEvent: {}" , collective.getHostAddress(), event);
-        if (Objects.equals(event.getClusterName(), collective.getClusterName()) && event.getCollectiveType() == collective.getType()) {
+        if (Objects.equals(event.getClusterName(), collective.getDomainName()) && event.getCollectiveType() == collective.getType()) {
             if (event.getType() == Event.Type.ANNOUNCE) {
                 updateFrequencies(event.getMembers());
             } else if (event.getType() == Event.Type.REMOVE) {
                 removeFrequencies(event.getMembers());
+            } else if (event.getType() == Event.Type.BROADCAST) {
+                Notice notice = collective.getSubZero().thaw(event.getPayload());
+                if (notice != null)
+                    collective.publishInternal(notice);
             }
         }
 
@@ -262,8 +267,9 @@ public class Beacon {
         collective.getHostedMembers().values().forEach(collective::refresh);
         List<Member> list = new ArrayList<>(collective.getHostedMembers().size());
         list.addAll(collective.getHostedMembers().values());
-        Event event = new Event(collective.getClusterName(), Event.Type.ANNOUNCE, collective.getType(), list, collective.getCycle());
+        Event event = new Event(collective.getDomainName(), Event.Type.ANNOUNCE, collective.getType(), list, collective.getCycle());
         event.getVisited().addAll(collective.getHostedMembers().keySet());
+        events.put(event.getUuid(), event);
         collective.onAnnounced(event);
         gossip(event);
     }
@@ -272,7 +278,20 @@ public class Beacon {
         collective.refresh(member);
         List<Member> list = new ArrayList<>();
         list.add(member);
-        onEvent(new Event(collective.getClusterName(), Event.Type.ANNOUNCE, collective.getType(), list, collective.getCycle()));
+        onEvent(new Event(collective.getDomainName(), Event.Type.ANNOUNCE, collective.getType(), list, collective.getCycle()));
+    }
+
+    void broadcast(Notice notice) {
+        trimFrequencies();
+
+        collective.getHostedMembers().values().forEach(collective::refresh);
+        List<Member> list = new ArrayList<>(collective.getHostedMembers().size());
+        list.addAll(collective.getHostedMembers().values());
+        Event event = new Event(collective.getDomainName(), Event.Type.BROADCAST, collective.getType(), list, collective.getCycle());
+        event.getVisited().addAll(collective.getHostedMembers().keySet());
+        events.put(event.getUuid(), event);
+        event.setPayload(collective.getSubZero().freeze(notice));
+        gossip(event);
     }
 
     private void renewal() {
@@ -361,9 +380,25 @@ public class Beacon {
         // filter out self
         List<HailingFrequency> list = fList.stream().filter(c -> !collective.getHostedMembers().containsKey(c.memberId())).collect(Collectors.toList());
 
+        long interval = collective.getRenewalInterval() + collective.getCycle() * collective.getEventInterval();
+        list = list.stream().filter(c -> {
+            boolean filter = System.currentTimeMillis() - c.getLastConnectionError() > c.getConsecutiveError() * interval;
+            if (System.currentTimeMillis() - c.getLastConnectionError() > collective.getDeadMemberRenewalInterval())
+                return true;
+            return filter;
+        })
+                .collect(Collectors.toList());
+
         if (list.isEmpty())
             return true; // because list contain only self
 
+        URL hostAddress = null;
+        try {
+            hostAddress = new URL(collective.getHostAddress());
+        } catch (MalformedURLException e) {
+            logger.warn("Invalid host address " + collective.getHostAddress());
+            return false;
+        }
         while (true) {
             HailingFrequency frequency = null;
             try {
@@ -371,10 +406,13 @@ public class Beacon {
                     return false;
                 int n = random.nextInt(list.size());
                 frequency = list.remove(n);
-                Collection<Member> list2 = frequency.beacon().members();
-                logger.trace("{} syncMembers: {}", collective.getHostAddress(), list2);
-                updateFrequencies(list2);
-                return true;
+                URL memberURL = new URL(frequency.getMember().getAddress());
+                if (! hostAddress.equals(memberURL)) {
+                    Collection<Member> list2 = frequency.beacon().members();
+                    logger.trace("{} syncMembers: {}", collective.getHostAddress(), list2);
+                    updateFrequencies(list2);
+                    return true;
+                }
             } catch (Exception ex) {
                 removeFrequency(frequency);
             }
@@ -390,11 +428,11 @@ public class Beacon {
         collective.getHostedMembers().values().forEach(m -> m.setExpiration(now));
         List<Member> list = new ArrayList<>(collective.getHostedMembers().size());
         list.addAll(collective.getHostedMembers().values());
-        Event event = new Event(collective.getClusterName(), Event.Type.REMOVE, collective.getType(), list, collective.getCycle());
+        Event event = new Event(collective.getDomainName(), Event.Type.REMOVE, collective.getType(), list, collective.getCycle());
         event.getVisited().addAll(collective.getHostedMembers().keySet());
         for (Member member : list) {
             HailingFrequency c = frequencies.remove(member.getMemberId());
-            CompletableFuture.runAsync(() -> collective.getListeners().forEach(listener -> listener.removed(c)));
+            collective.getExecutor().execute(() -> collective.getListeners().forEach(listener -> listener.removed(c)));
         }
         gossip(event);
 
@@ -412,13 +450,13 @@ public class Beacon {
      * @param event
      * @return
      */
-    private boolean gossip(Event event) {
+    private void gossip(Event event) {
         // filter out already visited
         List<HailingFrequency> list = frequencies.values().stream()
                 .filter(c -> !event.getVisited().contains(c.memberId()))
                 .collect(Collectors.toList());
         if (list.isEmpty()) {
-            return false;
+            return;
         }
 
         List<HailingFrequency> chosen;
@@ -434,17 +472,16 @@ public class Beacon {
             }
         }
 
-        AtomicBoolean atomic = new AtomicBoolean(false);
-        chosen.forEach(frequency -> {
-            logger.trace("{} gossip to {} {}", collective.getHostAddress(), frequency.memberId(), event);
-            try {
-                frequency.beacon().onEvent(event);
-                atomic.set(true);
-            } catch (Exception ex) {
-                // remove connector from members.
-                removeFrequency(frequency);
-            }
+        collective.getExecutor().execute(() -> {
+            chosen.forEach(frequency -> {
+                logger.trace("{} gossip to {} {}", collective.getHostAddress(), frequency.memberId(), event);
+                try {
+                    frequency.beacon().onEvent(event);
+                } catch (Exception ex) {
+                    // remove connector from members.
+                    removeFrequency(frequency);
+                }
+            });
         });
-        return atomic.get();
     }
 }

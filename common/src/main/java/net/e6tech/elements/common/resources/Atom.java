@@ -23,6 +23,7 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.Notification;
 import net.e6tech.elements.common.notification.NotificationListener;
 import net.e6tech.elements.common.reflection.Reflection;
+import net.e6tech.elements.common.reflection.Resolver;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
 
@@ -132,7 +133,7 @@ public class Atom implements Map<String, Object> {
             throw new IllegalArgumentException("Atom named " + prototype.getName() + " is not a prototype.");
         resources = prototype.resources;
         boundInstances = prototype.boundInstances;
-        resources.rebind(Configuration.Resolver.class, resolver);
+        resources.rebind(Resolver.class, resolver);
         // do not copy configuration
     }
 

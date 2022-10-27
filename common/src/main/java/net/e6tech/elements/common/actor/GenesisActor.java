@@ -21,6 +21,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
+import net.e6tech.elements.common.federation.Registry;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.*;
 import net.e6tech.elements.common.util.SystemException;
@@ -28,13 +29,13 @@ import net.e6tech.elements.common.util.SystemException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
 
 /**
  * Created by futeh.
  */
-public class Genesis implements Initializable {
+public class GenesisActor implements Initializable, net.e6tech.elements.common.federation.Genesis {
     private static Logger logger = Logger.getLogger();
     public static final String WORKER_POOL_DISPATCHER = "worker-pool-dispatcher";
     private String name;
@@ -45,7 +46,7 @@ public class Genesis implements Initializable {
     private String profile = "remote";
     private Config config;
 
-    public Genesis() {
+    public GenesisActor() {
     }
 
     public long getTimeout() {
@@ -76,7 +77,7 @@ public class Genesis implements Initializable {
         return config;
     }
 
-    public Genesis(Provision provision, WorkerPoolConfig workerPoolConfig) {
+    public GenesisActor(Provision provision, WorkerPoolConfig workerPoolConfig) {
         if (provision == null || provision.getBean(Guardian.class) == null) {
             WorkerPoolConfig wpc = workerPoolConfig;
             if (workerPoolConfig == null)
@@ -129,8 +130,8 @@ public class Genesis implements Initializable {
         if (profile != null) {
             if (!profile.endsWith(".conf"))
                 profile += ".conf";
-            String path = Genesis.class.getPackage().getName().replace('.', '/');
-            try (InputStream in = Genesis.class.getClassLoader().getResourceAsStream(path + "/" + profile)) {
+            String path = GenesisActor.class.getPackage().getName().replace('.', '/');
+            try (InputStream in = GenesisActor.class.getClassLoader().getResourceAsStream(path + "/" + profile)) {
                 byte[] bytes = ByteStreams.toByteArray(in);
                 String classPathConfig = new String(bytes, StandardCharsets.UTF_8);
                 config = config.withFallback(ConfigFactory.parseString(classPathConfig));
@@ -194,6 +195,10 @@ public class Genesis implements Initializable {
             guardian.getSystem().terminate();
     }
 
+    public Registry getRegistry() {
+        return null;
+    }
+
     public CompletionStage<Void> async(Runnable runnable) {
         return async(runnable, getTimeout());
     }
@@ -202,11 +207,11 @@ public class Genesis implements Initializable {
         return guardian.talk(timeout).async(runnable);
     }
 
-    public <R> CompletionStage<R> async(Callable<R> callable) {
-        return async(callable, getTimeout());
+    public <R> CompletionStage<R> async(Supplier<R> supplier) {
+        return async(supplier, getTimeout());
     }
 
-    public <R> CompletionStage<R> async(Callable<R> callable, long timeout) {
-        return guardian.talk(timeout).async(callable);
+    public <R> CompletionStage<R> async(Supplier<R> supplier, long timeout) {
+        return guardian.talk(timeout).async(() -> supplier.get());
     }
 }

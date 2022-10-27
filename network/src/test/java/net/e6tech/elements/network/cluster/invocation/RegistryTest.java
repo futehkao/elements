@@ -40,7 +40,7 @@ public class RegistryTest {
     @Test
     public void simple1() throws Exception {
         ClusterNode clusterNode = create(2552);
-        RegistryImpl registry = (RegistryImpl) clusterNode.getRegistry();
+        RegistryActor registry = (RegistryActor) clusterNode.getRegistry();
 
         registry.register("blah", (actor, sv) -> {
             return ((String)sv[0]).toUpperCase();

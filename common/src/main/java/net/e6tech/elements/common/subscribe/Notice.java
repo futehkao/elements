@@ -23,14 +23,29 @@ import java.io.Serializable;
  * Created by futeh on 1/19/16.
  */
 public class Notice<T extends Serializable> implements Serializable {
+    private static final long serialVersionUID = 891665426089401287L;
     private String topic;
     private T userObject;
+    private boolean externalOnly = false;
 
     public Notice() {}
 
-    public Notice(String topic, T userObject) {
+    public Notice(String topic, T userObject, boolean externalOnly) {
         this.topic = topic;
         this.userObject = userObject;
+        this.externalOnly = externalOnly;
+    }
+
+    public Notice(String topic, T userObject) {
+        this(topic, userObject, false);
+    }
+
+    public Notice(Class<?> topic, T userObject) {
+        this(topic.getName(), userObject, false);
+    }
+
+    public Notice(Class<?> topic, T userObject, boolean externalOnly) {
+        this(topic.getName(), userObject, externalOnly);
     }
 
     public String getTopic() {
@@ -47,6 +62,14 @@ public class Notice<T extends Serializable> implements Serializable {
 
     public void setUserObject(T content) {
         this.userObject = content;
+    }
+
+    public boolean isExternalOnly() {
+        return externalOnly;
+    }
+
+    public void setExternalOnly(boolean externalOnly) {
+        this.externalOnly = externalOnly;
     }
 
     public String toString() {

@@ -1,25 +1,34 @@
 package net.e6tech.elements.web.federation;
 
-import jnr.a64asm.Mem;
+import net.e6tech.elements.common.federation.*;
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Startable;
+import net.e6tech.elements.common.subscribe.DefaultBroadcast;
+import net.e6tech.elements.common.subscribe.Notice;
+import net.e6tech.elements.common.subscribe.Subscriber;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.web.cxf.JaxRSLauncher;
 
 import javax.annotation.Nonnull;
+import java.lang.reflect.InvocationHandler;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.Executor;
 
-public abstract class Collective implements Startable {
+@SuppressWarnings("unchecked")
+public abstract class CollectiveImpl implements Startable, Collective, Registry {
+    protected static Logger logger = Logger.getLogger();
     public enum Type {
         CLUSTER,
         FEDERATION
     }
 
     protected Provision provision;
-    protected String clusterName;
+    protected String domainName;
     protected String hostAddress;
     protected String apiAddress;
     protected String[] seeds = new String[0];
@@ -35,14 +44,19 @@ public abstract class Collective implements Startable {
     protected long syncInterval = 2 * 60 * 1000L;  // 2 minutes.  This for syncing with one other node's data, anti-entropy.
     protected Long renewalInterval = 10 * 1000L;  // 10 seconds.  Periodically announcing presence, rumor mongering.
     protected Long renewalPadding = 30 * 1000L; // 30 seconds
-    protected int connectionTimeout = 15000; // 15 seconds
-    protected int readTimeout = 10000; // 10 seconds
 
+    protected Long deadMemberRenewalInterval = 15 * 60 * 1000L;  // 15 min.  Periodically announcing presence, rumor mongering.
+    protected int connectionTimeout = 15000; // 15 seconds
+    protected int readTimeout = 15000; // 15 seconds
     protected JaxRSLauncher launcher;
     protected List<MemberListener> listeners = new LinkedList<>();
     protected AuthObserver authObserver;
     protected List<Service> services = new LinkedList<>();
     protected Map<Class, Service> serviceMap = new LinkedHashMap<>();
+    private volatile boolean started = false;
+    private SubZero subZero = new SubZero();
+    private Executor executor = runnable -> new Thread(runnable).start();
+    private DefaultBroadcast broadcast = new DefaultBroadcast(executor);
 
     public Provision getProvision() {
         return provision;
@@ -53,12 +67,13 @@ public abstract class Collective implements Startable {
         this.provision = provision;
     }
 
-    public String getClusterName() {
-        return clusterName;
+    @Override
+    public String getDomainName() {
+        return domainName;
     }
 
-    public void setClusterName(String clusterName) {
-        this.clusterName = clusterName;
+    public void setDomainName(String domainName) {
+        this.domainName = domainName;
     }
 
     public Host[] getHosts() {
@@ -83,24 +98,25 @@ public abstract class Collective implements Startable {
         }
     }
 
+    @Override
     public Map<String, Member> getHostedMembers() {
         return unmodifiableHosted;
     }
 
-    public Collective addHostedMember(String memberId, String name) {
+    public CollectiveImpl addHostedMember(String memberId, String name) {
         Member member = new Member();
         member.setName(name);
         member.setMemberId(memberId);
         return addHostedMember(member);
     }
 
-    public Collective addHostedMember(String memberId) {
+    public CollectiveImpl addHostedMember(String memberId) {
         Member member = new Member();
         member.setMemberId(memberId);
         return addHostedMember(member);
     }
 
-    public Collective addHostedMember(Member member) {
+    public CollectiveImpl addHostedMember(Member member) {
         refresh(member);
         hostedMembers.put(member.getMemberId(), member);
         if (launcher != null && launcher.isStarted())
@@ -116,6 +132,7 @@ public abstract class Collective implements Startable {
         this.seeds = seeds;
     }
 
+    @Override
     public String getHostAddress() {
         return hostAddress;
     }
@@ -126,6 +143,7 @@ public abstract class Collective implements Startable {
             hostAddress = hostAddress.substring(0, hostAddress.length() - 1);
     }
 
+    @Override
     public String getApiAddress() {
         return apiAddress;
     }
@@ -208,6 +226,14 @@ public abstract class Collective implements Startable {
         this.renewalPadding = renewalPadding;
     }
 
+    public Long getDeadMemberRenewalInterval() {
+        return deadMemberRenewalInterval;
+    }
+
+    public void setDeadMemberRenewalInterval(Long deadMemberRenewalInterval) {
+        this.deadMemberRenewalInterval = deadMemberRenewalInterval;
+    }
+
     public int getConnectionTimeout() {
         return connectionTimeout;
     }
@@ -230,8 +256,11 @@ public abstract class Collective implements Startable {
         return beacon.members();
     }
 
-    public Collection<HailingFrequency> frequencies() {
-        return beacon.frequencies().values();
+    @Override
+    public Collection<Frequency> frequencies() {
+        Collection<HailingFrequency> frequencies = beacon.frequencies().values();
+        List<Frequency> list = new ArrayList<>(frequencies);
+        return list;
     }
 
     public abstract void onEvent(@Nonnull Event event);
@@ -247,10 +276,12 @@ public abstract class Collective implements Startable {
         this.listeners = listeners;
     }
 
+    @Override
     public void addListener(MemberListener listener) {
         listeners.add(listener);
     }
 
+    @Override
     public void removeListener(MemberListener listener) {
         listeners.remove(listener);
     }
@@ -262,6 +293,32 @@ public abstract class Collective implements Startable {
     @Inject(optional = true)
     public void setAuthObserver(AuthObserver authObserver) {
         this.authObserver = authObserver;
+    }
+
+    public SubZero getSubZero() {
+        return subZero;
+    }
+
+    public void setSubZero(SubZero subZero) {
+        this.subZero = subZero;
+    }
+
+    public Executor getExecutor() {
+        return executor;
+    }
+
+    @Inject(optional = true)
+    public void setExecutor(Executor executor) {
+        this.executor = executor;
+        broadcast.setExecutor(executor);
+    }
+
+    public DefaultBroadcast getBroadcast() {
+        return broadcast;
+    }
+
+    public void setBroadcast(DefaultBroadcast broadcast) {
+        this.broadcast = broadcast;
     }
 
     protected Member refresh(Member member) {
@@ -280,7 +337,7 @@ public abstract class Collective implements Startable {
         createServices();
         startServer();
         startBeacon();
-
+        started = true;
         provision.getResourceManager().getNotificationCenter().addNotificationListener(ShutdownNotification.class,
                 notification -> shutdown());
     }
@@ -354,10 +411,6 @@ public abstract class Collective implements Startable {
 
         List<String> serviceList = new LinkedList<>();
         services.forEach(rs -> serviceList.add(rs.getServiceClass().getName()));
-        /*for (Seed s : seeds) {
-            if (getHostedMembers().containsKey(s.getMemberId()))
-                s.setServices(serviceList);
-        } */
 
         beacon.seeds(seeds);
 
@@ -412,13 +465,70 @@ public abstract class Collective implements Startable {
     }
 
     public void shutdown() {
-        if (beacon != null) {
-            beacon.shutdown();
+        if (!started)
+            return;
+
+        try {
+            if (beacon != null) {
+                beacon.shutdown();
+            }
+            if (launcher != null) {
+                launcher.stop();
+            }
+            beacon = null;
+            launcher = null;
+        } catch (Exception ex ) {
+            logger.warn("Error shutting down collective with domain name=" + getDomainName(), ex);
+        } finally {
+            started = false;
         }
-        if (launcher != null) {
-            launcher.stop();
-        }
-        beacon = null;
-        launcher = null;
+    }
+
+    @Override
+    public void subscribe(String topic, Subscriber subscriber) {
+        broadcast.subscribe(topic, subscriber);
+    }
+
+    @Override
+    public void unsubscribe(String topic, Subscriber subscriber) {
+        broadcast.unsubscribe(topic, subscriber);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void publish(Notice<?> notice) {
+        if (!notice.isExternalOnly())
+            publishInternal(notice);
+        beacon.broadcast(notice);
+    }
+
+    public Notice publishInternal(Notice<?> notice) {
+        broadcast.publish(notice);
+        return notice;
+    }
+
+    @Override
+    public <T> List<String> register(String qualifier, Class<T> interfaceClass, T implementation) {
+        return getRegistry().register(qualifier, interfaceClass, implementation);
+    }
+
+    @Override
+    public <T> List<String> register(String qualifier, Class<T> interfaceClass, T implementation, InvocationHandler invoker) {
+        return getRegistry().register(qualifier, interfaceClass, implementation, invoker);
+    }
+
+    @Override
+    public Collection routes(String qualifier, Class interfaceClass) {
+        return getRegistry().routes(qualifier, interfaceClass);
+    }
+
+    @Override
+    public <T> Async<T> async(String qualifier, Class<T> interfaceClass) {
+        return getRegistry().async(qualifier, interfaceClass);
+    }
+
+    @Override
+    public <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout, Routing routing) {
+        return getRegistry().async(qualifier, interfaceClass, timeout, routing);
     }
 }

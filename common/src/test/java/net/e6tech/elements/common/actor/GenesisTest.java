@@ -29,7 +29,7 @@ public class GenesisTest {
 
     @Test
     public void runnable() throws Exception {
-        Genesis genesis = new Genesis();
+        GenesisActor genesis = new GenesisActor();
         genesis.setName("Genesis");
         genesis.setProfile("local");
         genesis.initialize((Resources) null);
@@ -53,7 +53,7 @@ public class GenesisTest {
 
     @Test
     public void callable() throws Exception {
-        Genesis genesis = new Genesis();
+        GenesisActor genesis = new GenesisActor();
         genesis.setName("Genesis");
         genesis.initialize((Resources) null);
 

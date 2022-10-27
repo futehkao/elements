@@ -16,13 +16,17 @@
 
 package net.e6tech.elements.common.util.reflection;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.e6tech.elements.common.Tags;
 import net.e6tech.elements.common.reflection.ObjectConverter;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
@@ -33,18 +37,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ObjectConverterTest {
     @Test
     @SuppressWarnings("unchecked")
+    public void basic() throws Exception {
+        ObjectMapper mapper = new ObjectConverter(k -> 1L).createObjectMapper();
+        String str = mapper.writeValueAsString("^abc");
+        Object value = mapper.readValue(str, Long.class);
+        assertEquals(1L, value);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     public void convert() throws Exception {
         ObjectConverter converter = new ObjectConverter();
         List<Long> list = new ArrayList<>();
         list.add(1L);
         list.add(2L);
-        Object value = converter.convert(list, int[].class, null);
+        Object value = converter.convert(list, int[].class);
         int[] array = (int[]) value;
         assertTrue(array[0] ==  1);
         assertTrue(array[1] ==  2);
         List<Long> converted = new ArrayList<>();
 
-        converted = (List) converter.convert(list, converted.getClass(), null);
+        converted = (List) converter.convert(list, converted.getClass());
         // Unfortunately due to type erasure the list won't contain Integers.
         // assertTrue(converted.get(0).getClass().equals(Integer.class));
         assertTrue(converted.get(0)  == 1);

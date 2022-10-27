@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.common.federation;
 
-import net.e6tech.elements.common.util.concurrent.Async;
+import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
 
-import java.util.Collection;
+public interface Genesis {
+    Registry getRegistry();
+    CompletionStage<Void> async(Runnable runnable);
+    <R> CompletionStage<R> async(Supplier<R> callable);
 
-public interface Registry {
-    Collection routes(String qualifier, Class interfaceClass);
-    <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout);
 }

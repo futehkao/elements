@@ -16,11 +16,10 @@
 
 package net.e6tech.elements.web.federation.invocation;
 
-import net.e6tech.elements.common.util.concurrent.Async;
-import net.e6tech.elements.network.cluster.Registry;
+import net.e6tech.elements.common.federation.Registry;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -32,24 +31,12 @@ public interface InvokerRegistry extends Registry {
 
     void shutdown() ;
 
-    long getTimeout();
+    <T> List<String> register(String qualifier, Class<T> interfaceClass, T implementation, InvocationHandler customizedInvoker);
 
-    void setTimeout(long timeout);
-
-    <T> List<String> register(String qualifier, Class<T> interfaceClass, T implementation, Invoker customizedInvoker);
-
-    <R> Function<Object[], CompletableFuture<R>> route(String qualifier, Class interfaceClass, Method method);
-
-    /** returns a collection of frequencies e*/
-    @Override
-    Collection routes(String qualifier, Class interfaceClass);
+    <R> Function<Object[], CompletableFuture<R>> route(String qualifier, Class interfaceClass, Method method, Routing routing);
 
     Set<String> routes();
 
     Object invoke(String path, Object[] arguments);
 
-    <R> Async<R> async(String qualifier, Class<R> interfaceClass);
-
-    @Override
-    public <R> Async<R> async(String qualifier, Class<R> interfaceClass, long timeout);
 }

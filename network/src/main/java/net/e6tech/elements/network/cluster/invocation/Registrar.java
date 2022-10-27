@@ -26,7 +26,7 @@ import akka.actor.typed.javadsl.GroupRouter;
 import akka.actor.typed.javadsl.Routers;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
 import net.e6tech.elements.common.resources.NotAvailableException;
@@ -42,9 +42,9 @@ public class Registrar extends Receptor<InvocationEvents, Registrar> {
     private Map<String, ActorRef<InvocationEvents.Request>> routes = new HashMap<>(); // key is the context@method
     private Map<String, Set<ActorRef<?>>> actors = new ConcurrentHashMap<>();
     private Map<ActorRef<?>, String> actorKeys = new ConcurrentHashMap<>();
-    private RegistryImpl registry;
+    private RegistryActor registry;
 
-    public Registrar(RegistryImpl registry) {
+    public Registrar(RegistryActor registry) {
         this.registry = registry;
     }
 
@@ -55,11 +55,11 @@ public class Registrar extends Receptor<InvocationEvents, Registrar> {
         ExecutionContextExecutor executor = getContext()
                 .getSystem()
                 .dispatchers()
-                .lookup(DispatcherSelector.fromConfig(RegistryImpl.REGISTRY_DISPATCHER));
+                .lookup(DispatcherSelector.fromConfig(RegistryActor.REGISTRY_DISPATCHER));
         if (executor != null) {
-            dispatcher = RegistryImpl.REGISTRY_DISPATCHER;
+            dispatcher = RegistryActor.REGISTRY_DISPATCHER;
         } else {
-            dispatcher = Genesis.WORKER_POOL_DISPATCHER;
+            dispatcher = GenesisActor.WORKER_POOL_DISPATCHER;
         }
 
         // spawn a child to listen for RegistryEntry

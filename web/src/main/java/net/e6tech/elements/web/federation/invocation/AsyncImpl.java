@@ -16,15 +16,17 @@
 
 package net.e6tech.elements.web.federation.invocation;
 
+import net.e6tech.elements.common.federation.Registry;
+import net.e6tech.elements.common.reflection.Primitives;
+import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -37,8 +39,11 @@ public class AsyncImpl<U> implements Async<U> {
     private InvokerRegistry registry;
     private String qualifier;
     private long timeout;
-    private U proxy;
     private final Executor executor;
+    private U proxy;
+    private CompletableFuture future;
+
+    private Registry.Routing routing = Registry.Routing.random;
 
     @SuppressWarnings("unchecked")
     public AsyncImpl(InvokerRegistry registry, String qualifier, Class<U> interfaceClass, long timeout, Executor executor) {
@@ -55,10 +60,6 @@ public class AsyncImpl<U> implements Async<U> {
             this.executor = runnable -> new Thread(runnable).start();
     }
 
-    public U proxy() {
-        return proxy;
-    }
-
     public long getTimeout() {
         return timeout;
     }
@@ -67,14 +68,37 @@ public class AsyncImpl<U> implements Async<U> {
         this.timeout = timeout;
     }
 
-    @SuppressWarnings({"unchecked", "squid:S2259"})
+    public Registry.Routing getRouting() {
+        return routing;
+    }
+
+    public void setRouting(Registry.Routing routing) {
+        this.routing = routing;
+    }
+
     public <R> CompletionStage<R> apply(Function<U, R> function) {
-        return CompletableFuture.supplyAsync(() -> function.apply(proxy), executor);
+        future = null;
+        function.apply(proxy);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return (R) future.get();
+            } catch (Exception ex) {
+                throw new SystemException(ex);
+            }
+        }, executor);
     }
 
     @SuppressWarnings("squid:S2259")
     public CompletionStage<Void> accept(Consumer<U> consumer) {
-        return CompletableFuture.runAsync(() -> consumer.accept(proxy), executor);
+        future = null;
+        consumer.accept(proxy);
+        return CompletableFuture.runAsync(() -> {
+            try {
+                future.join();
+            } catch (Exception ex) {
+                throw new SystemException(ex);
+            }
+        }, executor);
     }
 
     @SuppressWarnings("unchecked")
@@ -90,11 +114,9 @@ public class AsyncImpl<U> implements Async<U> {
                 return AsyncImpl.this.toString();
             }
 
-            Function<Object[], CompletableFuture<Object>> function = registry.route(qualifier, interfaceClass, method);
-            if (timeout > 0) {
-                return function.apply(args).get(timeout, TimeUnit.MILLISECONDS);
-            } else
-                return function.apply(args).get();
+            Function<Object[], CompletableFuture<Object>> function = registry.route(qualifier, interfaceClass, method, routing);
+            future = function.apply(args);
+            return Primitives.defaultValue(method.getReturnType());
         }
     }
 }

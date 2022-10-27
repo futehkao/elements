@@ -18,12 +18,11 @@ package net.e6tech.elements.common.subscribe;
 
 import net.e6tech.elements.common.logging.Logger;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 /**
  * Created by futeh.
@@ -33,15 +32,22 @@ public class DefaultBroadcast implements Broadcast {
     Logger logger = Logger.getLogger();
     Map<String, List<Subscriber>> subscribers = new HashMap<>();
     Map<String, List<Subscriber>> copy = new HashMap<>();
-    ExecutorService threadPool;
+    Executor executor = runnable -> new Thread(runnable).start();
 
-    public void setThreadPool(ExecutorService threadPool) {
-        this.threadPool = threadPool;
+    public DefaultBroadcast() {
+    }
+
+    public DefaultBroadcast(Executor executor) {
+        this.executor = executor;
+    }
+
+    public void setExecutor(Executor ex) {
+        this.executor = ex;
     }
 
     @Override
     public void subscribe(String topic, Subscriber subscriber) {
-        List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new LinkedList<Subscriber>());
+        List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new LinkedList<>());
         synchronized (list) {
             list.add(subscriber);
             List<Subscriber> copyList = new LinkedList<>(list);
@@ -50,13 +56,8 @@ public class DefaultBroadcast implements Broadcast {
     }
 
     @Override
-    public <T extends Serializable> void subscribe(Class<T> topic, Subscriber<T> listener) {
-        subscribe(topic.getName(), listener);
-    }
-
-    @Override
     public void unsubscribe(String topic, Subscriber subscriber) {
-        List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new LinkedList<Subscriber>());
+        List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new LinkedList<>());
         synchronized (list) {
             list.remove(subscriber);
             List<Subscriber> copyList = new LinkedList<>(list);
@@ -64,20 +65,16 @@ public class DefaultBroadcast implements Broadcast {
         }
     }
 
-    @Override
-    public void unsubscribe(Class topic, Subscriber subscriber) {
-        unsubscribe(topic.getName(), subscriber);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
-    public void publish(String topic, Serializable object) {
-        threadPool.execute(()-> {
+    public void publish(Notice<?> notice) {
+        if (notice.isExternalOnly())
+            return;
+        executor.execute(()-> {
             try {
-                Notice notice = new Notice(topic, object);
-                List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new LinkedList<Subscriber>());
+                List<Subscriber> list = subscribers.computeIfAbsent(notice.getTopic(), key -> new LinkedList<>());
                 synchronized (list) {
-                    list = copy.computeIfAbsent(topic, key -> new LinkedList<Subscriber>());
+                    list = copy.computeIfAbsent(notice.getTopic(), key -> new LinkedList<>());
                 }
                 for (Subscriber subscriber : list) {
                     subscriber.receive(notice);
@@ -87,10 +84,4 @@ public class DefaultBroadcast implements Broadcast {
             }
         });
     }
-
-    @Override
-    public <T extends Serializable> void publish(Class<T> cls, T object) {
-        publish(cls.getName(), object);
-    }
-
 }

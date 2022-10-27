@@ -41,9 +41,9 @@ atom("cluster") {
             
            
 """
-    _cluster = Cluster
-    _cluster2 = Cluster
-    List<Cluster> clusters = new ArrayList<>()
+    _cluster = ClusterImpl
+    _cluster2 = ClusterImpl
+    List<ClusterImpl> clusters = new ArrayList<>()
     clusters.add(_cluster)
     clusters.add(_cluster2)
     resourceManager.addBean('clusters', clusters)

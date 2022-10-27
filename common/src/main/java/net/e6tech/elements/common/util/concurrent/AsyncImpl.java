@@ -18,16 +18,17 @@ package net.e6tech.elements.common.util.concurrent;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class AsyncImpl<U> implements Async<U> {
 
-    private ThreadPool threadPool;
+    private Executor executor;
     private U service;
 
-    public AsyncImpl(ThreadPool threadPool, U service) {
-        this.threadPool = threadPool;
+    public AsyncImpl(Executor executor, U service) {
+        this.executor = executor;
         this.service = service;
     }
 
@@ -43,11 +44,11 @@ public class AsyncImpl<U> implements Async<U> {
 
     @Override
     public <R> CompletionStage<R> apply(Function<U, R> function) {
-        return CompletableFuture.supplyAsync(() -> function.apply(service), threadPool);
+        return CompletableFuture.supplyAsync(() -> function.apply(service), executor);
     }
 
     @Override
     public CompletionStage<Void> accept(Consumer<U> consumer) {
-        return CompletableFuture.runAsync(() -> consumer.accept(service));
+        return CompletableFuture.runAsync(() -> consumer.accept(service), executor);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 Futeh Kao
+ * Copyright 2015-2022 Futeh Kao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,7 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.network.cluster;
+package net.e6tech.elements.common.federation;
 
-import net.e6tech.elements.common.util.concurrent.Async;
-import net.e6tech.elements.network.cluster.invocation.InvocationEvents;
-
-import java.util.concurrent.CompletionStage;
-import java.util.function.Consumer;
-
-public interface ClusterAsync<U> extends Async<U> {
-
-    CompletionStage<InvocationEvents.Response> ask(Consumer<U> consumer);
+public interface Federation extends Collective {
 }

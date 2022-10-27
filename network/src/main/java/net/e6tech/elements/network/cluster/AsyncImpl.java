@@ -17,6 +17,7 @@
 package net.e6tech.elements.network.cluster;
 
 import net.e6tech.elements.common.reflection.Primitives;
+import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.invocation.InvocationEvents;
 import net.e6tech.elements.network.cluster.invocation.Registry;
 
@@ -30,7 +31,7 @@ import java.util.function.Function;
 /**
  * Created by futeh.
  */
-public class AsyncImpl<U> implements ClusterAsync<U> {
+public class AsyncImpl<U> implements Async<U> {
 
     private Class<U> interfaceClass;
     private Registry registry;
@@ -40,7 +41,7 @@ public class AsyncImpl<U> implements ClusterAsync<U> {
     private U proxy;
 
     @SuppressWarnings("unchecked")
-    public AsyncImpl(Registry registry, String qualifier, Class<U> interfaceClass, long timeout) {
+    public AsyncImpl(Registry registry, String qualifier, Class<U> interfaceClass, long timeout, net.e6tech.elements.common.federation.Registry.Routing routing) {
         this.registry = registry;
         this.qualifier = qualifier;
         this.timeout = timeout;
@@ -74,12 +75,6 @@ public class AsyncImpl<U> implements ClusterAsync<U> {
         completionStage = null;
         consumer.accept(proxy);
         return completionStage.thenApply(response -> null);
-    }
-
-    public CompletionStage<InvocationEvents.Response> ask(Consumer<U> consumer) {
-        completionStage = null;
-        consumer.accept(proxy);
-        return completionStage;
     }
 
     @SuppressWarnings("unchecked")

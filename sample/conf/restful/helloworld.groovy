@@ -30,18 +30,22 @@ roleMap = [(HelloWorld.getName()): HelloWorldRoles]
 atom("helloWorld") {
     configuration =  """
     _prototype.extraMessage: '...What a sunny day!'
+    _helloWorld:
+        testClass: net.e6tech.elements.web.cxf.JaxRSServer
     _helloWorld.addresses:
         - "http://0.0.0.0:${helloWorldPort}/restful/"
     _helloWorld.resources:
         - class: "net.e6tech.sample.web.cxf.HelloWorld"
           singleton: false
           prototype: ^_prototype
+          classLoader: ^_classLoader
     _helloWorld.responseHeaders:
         'X' : 'X val'
         'Y' : 'Y val'
     # _helloWorld.serverEngineClass: net.e6tech.elements.web.cxf.tomcat.TomcatEngine
     _securityAnnotation.securityProviders: ^roleMap
  """
+    _classLoader = this.getClass().getClassLoader()
     _prototype = HelloWorld
     _securityAnnotation = SecurityAnnotationEngine
     _helloWorld = JaxRSServer

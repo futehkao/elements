@@ -14,22 +14,9 @@
  * limitations under the License.
  */
 
-package net.e6tech.elements.web.federation.invocation;
+package net.e6tech.elements.common.reflection;
 
-import net.e6tech.elements.common.util.SystemException;
-
-import java.io.Serializable;
-import java.lang.reflect.Method;
-
-public class Invoker implements Serializable {
-    private static final long serialVersionUID = -7148919144897051958L;
-
-    @SuppressWarnings("squid:S1172")
-    public Object invoke(Object target, Method method, Object[] arguments) {
-        try {
-            return method.invoke(target, arguments);
-        } catch (Exception e) {
-            throw new SystemException(e);
-        }
-    }
+@FunctionalInterface
+public interface Resolver {
+    Object resolve(String key);
 }

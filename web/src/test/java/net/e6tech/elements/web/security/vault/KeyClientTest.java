@@ -20,7 +20,7 @@ import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.security.SymmetricCipher;
 import net.e6tech.elements.security.vault.*;
-import net.e6tech.elements.web.cxf.JaxRSServer;
+import net.e6tech.elements.web.cxf.*;
 import net.e6tech.elements.web.security.vault.client.KeyClient;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;

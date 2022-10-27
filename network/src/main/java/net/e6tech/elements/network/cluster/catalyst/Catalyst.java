@@ -18,11 +18,8 @@ package net.e6tech.elements.network.cluster.catalyst;
 
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
-import net.e6tech.elements.network.cluster.Registry;
-import net.e6tech.elements.network.cluster.catalyst.dataset.CollectionDataSet;
-import net.e6tech.elements.network.cluster.catalyst.dataset.DataSet;
-import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
-import net.e6tech.elements.network.cluster.catalyst.dataset.Segments;
+import net.e6tech.elements.common.federation.Registry;
+import net.e6tech.elements.network.cluster.catalyst.dataset.*;
 import net.e6tech.elements.network.cluster.catalyst.scalar.Scalar;
 import net.e6tech.elements.network.cluster.catalyst.transform.Series;
 
@@ -73,12 +70,15 @@ public class Catalyst<Re extends Reactor> {
 
     public <T, R, U> U scalar(Scalar<Re, T, R, U> scalar, DataSet<T> dataSet) {
         Collection<U> result = collect(scalar, dataSet);
-        Async<Re> async = registry.async(qualifier, reactorClass, waitTime);
+        Async<Re> async = registry.async(qualifier, reactorClass, waitTime, Registry.Routing.local);
         Series<Re, U, U> emptySeries = new Series<>();
         Scalar<Re, U, U, U> copy;
         try {
+            List<Segment<U>> segList = new ArrayList<>();
+            segList.add(reactor -> result.stream());
+            Segments<U> segments = new Segments<>(this, segList);
             copy = (Scalar) scalar.gatherer();
-            copy.setSeries(emptySeries.allocate(new CollectionDataSet<>(result).segment(this)));
+            copy.setSeries(emptySeries.allocate(segments));
         } catch (Exception e) {
             throw new SystemException(e);
         }

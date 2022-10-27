@@ -16,7 +16,7 @@
 
 package net.e6tech.elements.common.actor.pool;
 
-import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
 import net.e6tech.elements.common.resources.Resources;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ public class WorkerPoolTest {
     public void workers() throws Exception {
 
         // Create an Akka system
-        Genesis genesis = new Genesis();
+        GenesisActor genesis = new GenesisActor();
         genesis.setProfile("local");
         genesis.setName("Genesis");
         genesis.getWorkPoolConfig().setInitialCapacity(2);

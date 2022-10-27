@@ -28,10 +28,13 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class JaxResource {
     private static final ObjectMapper mapper = ObjectMapperFactory.newInstance();
+    private static final String CLASS_LOADER = "classLoader";
+    private static final String PROTOTYPE = "prototype";
 
     private Class resourceClass;
     private String resourceClassName;
@@ -53,8 +56,25 @@ public class JaxResource {
 
     public static JaxResource from(Map<String, Object> map) {
         try {
-            String value = mapper.writeValueAsString(map);
-            return mapper.readValue(value, JaxResource.class);
+            Map<String, Object> copy = new LinkedHashMap<>();
+            copy.putAll(map);
+            copy.remove(CLASS_LOADER);
+            copy.remove(PROTOTYPE);
+            String value = mapper.writeValueAsString(copy);
+            JaxResource resource = mapper.readValue(value, JaxResource.class);
+            if (map.get(CLASS_LOADER) != null) {
+                if (map.get(CLASS_LOADER) instanceof String)
+                    resource.setClassLoaderResolver(map.get(CLASS_LOADER).toString());
+                else
+                    resource.setClassLoaderDelegate((ClassLoader) map.get(CLASS_LOADER));
+            }
+            if (map.get(PROTOTYPE) != null) {
+                if (map.get(PROTOTYPE) instanceof String)
+                    resource.setPrototypeResolver(map.get(PROTOTYPE).toString());
+                else
+                    resource.setPrototypeInstance(map.get(PROTOTYPE));
+            }
+            return resource;
         } catch (JsonProcessingException e) {
             throw new SystemException(e);
         }
@@ -133,20 +153,20 @@ public class JaxResource {
         this.resourceClassName = resourceClassName;
     }
 
-    @JsonProperty("classLoader")
     public String getClassLoaderResolver() {
         return classLoaderResolver;
     }
 
-    @JsonProperty("classLoader")
     public void setClassLoaderResolver(String classLoaderResolver) {
         this.classLoaderResolver = classLoaderResolver;
     }
 
+    @JsonProperty("classLoader")
     public ClassLoader getClassLoaderDelegate() {
         return classLoaderDelegate;
     }
 
+    @JsonProperty("classLoader")
     public void setClassLoaderDelegate(ClassLoader classLoaderDelegate) {
         this.classLoaderDelegate = classLoaderDelegate;
     }
@@ -175,20 +195,20 @@ public class JaxResource {
         this.name = name;
     }
 
-    @JsonProperty("prototype") // for compatibility when creating from a Map as in JaxResource.from
     public String getPrototypeResolver() {
         return prototypeResolver;
     }
 
-    @JsonProperty("prototype")
     public void setPrototypeResolver(String prototypeResolver) {
         this.prototypeResolver = prototypeResolver;
     }
 
+    @JsonProperty("prototype") // for compatibility when creating from a Map as in JaxResource.from
     public Object getPrototypeInstance() {
         return prototypeInstance;
     }
 
+    @JsonProperty("prototype") // for compatibility when creating from a Map as in JaxResource.from
     public void setPrototypeInstance(Object prototypeInstance) {
         this.prototypeInstance = prototypeInstance;
     }

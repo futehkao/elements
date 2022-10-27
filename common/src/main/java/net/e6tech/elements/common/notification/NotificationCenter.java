@@ -17,6 +17,7 @@ limitations under the License.
 package net.e6tech.elements.common.notification;
 
 import net.e6tech.elements.common.subscribe.Broadcast;
+import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 
 import java.io.Serializable;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
 
 /**
  * Created by futeh on 1/21/16.
@@ -37,8 +39,17 @@ public class NotificationCenter implements Broadcast {
     private Map<Class, List<NotificationListener>> notificationListeners = new ConcurrentHashMap<>();
 
     // for broadcasting
-    Map<Object, List<Subscriber>> subscribers = new ConcurrentHashMap<>();
+    Map<String, List<Subscriber>> subscribers = new ConcurrentHashMap<>();
     List<Broadcast> broadcasts = new CopyOnWriteArrayList<>();
+    Executor executor = runnable -> new Thread(runnable).start();
+
+    public Executor getExecutor() {
+        return executor;
+    }
+
+    public void setExecutor(Executor executor) {
+        this.executor = executor;
+    }
 
     public void addSourceNotificationListener(Object src, NotificationListener listener) {
         List<NotificationListener> listeners = srcNotificationListeners.computeIfAbsent(src, n -> new CopyOnWriteArrayList<>());
@@ -108,11 +119,6 @@ public class NotificationCenter implements Broadcast {
     }
 
     @Override
-    public <T extends Serializable> void subscribe(Class<T> topic, Subscriber<T> listener) {
-        subscribe(topic.getName(), listener);
-    }
-
-    @Override
     public void unsubscribe(String topic, Subscriber subscriber) {
         List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new CopyOnWriteArrayList<>());
         synchronized (list) {
@@ -125,46 +131,26 @@ public class NotificationCenter implements Broadcast {
     }
 
     @Override
-    public void unsubscribe(Class topic, Subscriber subscriber) {
-        unsubscribe(topic.getName(), subscriber);
-    }
-
-    @Override
-    public void publish(String topic, Serializable object) {
+    public void publish(Notice<?> notice) {
         for (Broadcast broadcast: broadcasts) {
-            broadcast.publish(topic, object);
-        }
-    }
-
-    @Override
-    public <T extends Serializable> void publish(Class<T> cls, T object) {
-        for (Broadcast broadcast: broadcasts) {
-            broadcast.publish(cls, object);
+            broadcast.publish(notice);
         }
     }
 
     public void addBroadcast(Broadcast broadcast) {
         broadcasts.add(broadcast);
-        for (Map.Entry<Object, List<Subscriber>> entry : subscribers.entrySet()) {
+        for (Map.Entry<String, List<Subscriber>> entry : subscribers.entrySet()) {
             for (Subscriber subscriber : entry.getValue()) {
-                if (entry.getKey() instanceof  String) {
-                    broadcast.subscribe((String) entry.getKey(), subscriber);
-                } else if (entry.getKey() instanceof Class) {
-                    broadcast.subscribe((Class) entry.getKey(), subscriber);
-                }
+                broadcast.subscribe(entry.getKey(), subscriber);
             }
         }
     }
 
     public void removeBroadcast(Broadcast broadcast) {
         broadcasts.remove(broadcast);
-        for (Map.Entry<Object, List<Subscriber>> entry : subscribers.entrySet()) {
+        for (Map.Entry<String, List<Subscriber>> entry : subscribers.entrySet()) {
             for (Subscriber subscriber : entry.getValue()) {
-                if (entry.getKey() instanceof  String) {
-                    broadcast.unsubscribe((String) entry.getKey(), subscriber);
-                } else if (entry.getKey() instanceof Class) {
-                    broadcast.unsubscribe((Class) entry.getKey(), subscriber);
-                }
+                broadcast.unsubscribe(entry.getKey(), subscriber);
             }
         }
     }

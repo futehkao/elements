@@ -16,25 +16,32 @@
 
 package net.e6tech.elements.web.federation;
 
+import net.e6tech.elements.common.federation.Federation;
+
 import javax.annotation.Nonnull;
 
-public class Federation extends Collective {
+public class FederationImpl extends CollectiveImpl implements Federation {
 
-    private Cluster cluster;
+    private ClusterImpl cluster;
 
-    public Federation() {
+    public FederationImpl() {
     }
 
-    public Federation(Cluster cluster) {
+    public FederationImpl(ClusterImpl cluster) {
         this.cluster = cluster;
     }
 
-    public Cluster getCluster() {
+    public ClusterImpl getCluster() {
         return cluster;
     }
 
-    public void setCluster(Cluster cluster) {
+    public void setCluster(ClusterImpl cluster) {
         this.cluster = cluster;
+    }
+
+    @Override
+    public void start() {
+        super.start();
     }
 
     @Override

@@ -19,6 +19,7 @@ package net.e6tech.elements.network.cluster.messaging;
 import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.actor.typed.Guardian;
 import net.e6tech.elements.common.subscribe.Broadcast;
+import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 import net.e6tech.elements.network.cluster.ClusterNode;
 
@@ -66,28 +67,13 @@ public class Messaging implements Broadcast {
     }
 
     @Override
-    public <T extends Serializable> void subscribe(Class<T> topic, Subscriber<T> subscriber) {
-        subscribe(topic.getName(), subscriber);
-    }
-
-    @Override
     public void unsubscribe(String topic, Subscriber subscriber) {
         guardian.talk(messenger).tell(new MessagingEvents.Unsubscribe(topic, subscriber));
     }
 
     @Override
-    public void unsubscribe(Class topic, Subscriber subscriber) {
-        unsubscribe(topic.getName(), subscriber);
-    }
-
-    @Override
-    public void publish(String topic, Serializable object) {
-        guardian.talk(messenger).tell(new MessagingEvents.Publish(topic, object));
-    }
-
-    @Override
-    public <T extends Serializable> void publish(Class<T> cls, T object) {
-        publish(cls.getName(), object);
+    public void publish(Notice<?> notice) {
+        guardian.talk(messenger).tell(new MessagingEvents.Publish(notice.getTopic(), notice.getUserObject()));
     }
 
     public void destination(String destination, Subscriber subscriber) {

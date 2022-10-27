@@ -1,5 +1,7 @@
 package net.e6tech.elements.web.federation;
 
+import net.e6tech.elements.common.federation.Member;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -9,6 +11,7 @@ public class Event {
 
     public enum Type {
         ANNOUNCE,
+        BROADCAST,
         REMOVE
     }
 
@@ -18,13 +21,15 @@ public class Event {
     private Set<String> visited = new HashSet<>();
     private List<Member> members;
     private Type type;
-    private Collective.Type collectiveType;
+    private CollectiveImpl.Type collectiveType;
     private int cycle = 4;
+
+    private byte[] payload;
 
     public Event() {
     }
 
-    public Event(String clusterName, Type type, Collective.Type collectiveType, List<Member> members, int cycle) {
+    public Event(String clusterName, Type type, CollectiveImpl.Type collectiveType, List<Member> members, int cycle) {
         this.clusterName = clusterName;
         this.type = type;
         this.collectiveType = collectiveType;
@@ -78,11 +83,11 @@ public class Event {
         this.type = type;
     }
 
-    public Collective.Type getCollectiveType() {
+    public CollectiveImpl.Type getCollectiveType() {
         return collectiveType;
     }
 
-    public void setCollectiveType(Collective.Type collectiveType) {
+    public void setCollectiveType(CollectiveImpl.Type collectiveType) {
         this.collectiveType = collectiveType;
     }
 
@@ -92,6 +97,14 @@ public class Event {
 
     public void setCycle(int cycle) {
         this.cycle = cycle;
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
+
+    public void setPayload(byte[] payload) {
+        this.payload = payload;
     }
 
     @Override

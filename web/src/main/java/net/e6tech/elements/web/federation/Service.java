@@ -17,8 +17,6 @@
 package net.e6tech.elements.web.federation;
 
 public class Service<P, T>  {
-    private int readTimeout = 10000;
-    private int connectionTimeout = 15000;
     private P provider;
     private T prototype;
     private Class<T> serviceClass;
@@ -30,22 +28,6 @@ public class Service<P, T>  {
         this.provider = provider;
         this.prototype = prototype;
         this.serviceClass = serviceClass;
-    }
-
-    public int getReadTimeout() {
-        return readTimeout;
-    }
-
-    public void setReadTimeout(int readTimeout) {
-        this.readTimeout = readTimeout;
-    }
-
-    public int getConnectionTimeout() {
-        return connectionTimeout;
-    }
-
-    public void setConnectionTimeout(int connectionTimeout) {
-        this.connectionTimeout = connectionTimeout;
     }
 
     public P getProvider() {

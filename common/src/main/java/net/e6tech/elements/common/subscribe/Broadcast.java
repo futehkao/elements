@@ -26,13 +26,12 @@ public interface Broadcast {
 
     void subscribe(String topic, Subscriber subscriber);
 
-    <T extends Serializable> void subscribe(Class<T> topic, Subscriber<T> subscriber);
+    default <T extends Serializable> void subscribe(Class<T> topic, Subscriber<T> subscriber) {
+        subscribe(topic.getName(), subscriber);
+    }
 
     void unsubscribe(String topic, Subscriber subscriber);
 
-    void unsubscribe(Class topic, Subscriber subscriber);
+    void publish(Notice<?> notice);
 
-    void publish(String topic, Serializable object);
-
-    <T extends Serializable> void publish(Class<T> cls, T object);
 }

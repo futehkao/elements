@@ -16,21 +16,23 @@
 
 package net.e6tech.elements.web.federation;
 
+import net.e6tech.elements.common.federation.Cluster;
 import net.e6tech.elements.common.util.SystemException;
 
 import javax.annotation.Nonnull;
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-public class Cluster extends Collective {
+public class ClusterImpl extends CollectiveImpl implements Cluster {
 
-    Federation federation = new Federation(this);
+    FederationImpl federation = new FederationImpl(this);
 
-    public Federation getFederation() {
+    public FederationImpl getFederation() {
         return federation;
     }
 
-    public void setFederation(Federation federation) {
+    public void setFederation(FederationImpl federation) {
         this.federation = federation;
         if (federation != null)
             federation.setCluster(this);
@@ -49,6 +51,7 @@ public class Cluster extends Collective {
 
     @Override
     public void start() {
+        getFederation().setCluster(this);
         if (getHostAddress() != null) {
             if (federation != null)
                 federation.setCluster(this);
@@ -60,6 +63,7 @@ public class Cluster extends Collective {
 
         if (federation != null && federation.getHostAddress() != null) {
             provision.inject(federation);
+            federation.setExecutor(getExecutor());
             federation.start();
         }
     }

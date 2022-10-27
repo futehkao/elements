@@ -56,4 +56,8 @@ public interface ResourceManagerListener {
     default void injected(Object object) {
 
     }
+
+    default void shutdown() {
+
+    }
 }

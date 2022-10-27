@@ -18,17 +18,15 @@ package net.e6tech.elements.common.util.concurrent;
 
 import net.e6tech.elements.common.resources.BindClass;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
 /**
  * Created by futeh.
  */
-@BindClass(ExecutorService.class)
+@SuppressWarnings("unchecked")
+@BindClass({ExecutorService.class, Executor.class, ThreadPool.class})
 public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorService  {
 
     private static Map<String, ThreadPool> cachedThreadPools = new HashMap<>();
@@ -37,9 +35,15 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
 
     private String name;
     private boolean daemon = true;
-    private ExecutorService executorService;
+    protected ExecutorService executorService;
 
-    protected ThreadPool(String name, Function<ThreadFactory, ExecutorService> newPool) {
+    public ThreadPool(String name, ExecutorService executorService) {
+        this.name = name;
+        this.executorService = executorService;
+    }
+
+
+    public ThreadPool(String name, Function<ThreadFactory, ExecutorService> newPool) {
         this.name = name;
         this.executorService = newPool.apply(this);
     }
@@ -87,6 +91,10 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
                         p)));
     }
 
+    protected synchronized ExecutorService executorService() {
+        return executorService;
+    }
+
     public ThreadPool daemon() {
         return daemon(true);
     }
@@ -99,8 +107,8 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
     public ThreadPool rejectedExecutionHandler(RejectedExecutionHandler handler) {
         if (handler == null)
             throw new NullPointerException();
-        if (executorService instanceof ThreadPoolExecutor) {
-            ((ThreadPoolExecutor) executorService).setRejectedExecutionHandler(handler);
+        if (executorService() instanceof ThreadPoolExecutor) {
+            ((ThreadPoolExecutor) executorService()).setRejectedExecutionHandler(handler);
         }
         return this;
     }
@@ -111,7 +119,7 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
 
     @SuppressWarnings("unchecked")
     public <T extends ExecutorService> T unwrap() {
-        return (T) executorService;
+        return (T) executorService();
     }
 
     @Override
@@ -124,66 +132,70 @@ public class ThreadPool implements java.util.concurrent.ThreadFactory, ExecutorS
 
     @Override
     public void shutdown() {
-        executorService.shutdown();
+        if (executorService != null)
+            executorService.shutdown();
     }
 
     @Override
     public List<Runnable> shutdownNow() {
-        return executorService.shutdownNow();
+        if (executorService != null)
+            return executorService.shutdownNow();
+        else
+            return Collections.EMPTY_LIST;
     }
 
     @Override
     public boolean isShutdown() {
-        return executorService.isShutdown();
+        return executorService().isShutdown();
     }
 
     @Override
     public boolean isTerminated() {
-        return executorService.isTerminated();
+        return executorService().isTerminated();
     }
 
     @Override
     public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
-        return executorService.awaitTermination(timeout, unit);
+        return executorService().awaitTermination(timeout, unit);
     }
 
     @Override
     public <T> Future<T> submit(Callable<T> task) {
-        return executorService.submit(task);
+        return executorService().submit(task);
     }
 
     @Override
     public <T> Future<T> submit(Runnable task, T result) {
-        return executorService.submit(task, result);
+        return executorService().submit(task, result);
     }
 
     @Override
     public Future<?> submit(Runnable task) {
-        return executorService.submit(task);
+        return executorService().submit(task);
     }
 
     @Override
     public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
-        return executorService.invokeAll(tasks);
+        return executorService().invokeAll(tasks);
     }
 
     @Override
     public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException {
-        return executorService.invokeAll(tasks, timeout, unit);
+        return executorService().invokeAll(tasks, timeout, unit);
     }
 
     @Override
     public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
-        return executorService.invokeAny(tasks);
+        return executorService().invokeAny(tasks);
     }
 
     @Override
     public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        return executorService.invokeAny(tasks, timeout, unit);
+        return executorService().invokeAny(tasks, timeout, unit);
     }
 
     @Override
     public void execute(Runnable command) {
-        executorService.execute(command);
+        executorService().execute(command);
     }
 }

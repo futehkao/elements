@@ -28,7 +28,7 @@ import akka.cluster.MemberStatus;
 import akka.cluster.typed.Cluster;
 import akka.cluster.typed.Subscribe;
 import akka.cluster.typed.Unsubscribe;
-import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.actor.typed.Ask;
 import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
@@ -38,22 +38,24 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.cluster.invocation.Registry;
-import net.e6tech.elements.network.cluster.invocation.RegistryImpl;
+import net.e6tech.elements.network.cluster.invocation.RegistryActor;
 import net.e6tech.elements.network.cluster.messaging.Messaging;
 
 import java.util.*;
+import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
 
 @SuppressWarnings("unchecked")
-public class ClusterNode implements Initializable {
+public class ClusterNode implements Initializable, net.e6tech.elements.common.federation.Genesis {
 
     public static final long DEFAULT_TIME_OUT = 10000L;
 
     private String name;
-    private Genesis genesis;
+    private GenesisActor genesis;
     private Membership membership;
     private Messaging broadcast;
     private Registry registry;
-    private Class<? extends Registry> registryClass = RegistryImpl.class;
+    private Class<? extends Registry> registryClass = RegistryActor.class;
     private boolean started = false;
     private long timeout = DEFAULT_TIME_OUT;
 
@@ -77,12 +79,12 @@ public class ClusterNode implements Initializable {
         this.name = name;
     }
 
-    public Genesis getGenesis() {
+    public GenesisActor getGenesis() {
         return genesis;
     }
 
     @Inject(optional = true)
-    public void setGenesis(Genesis genesis) {
+    public void setGenesis(GenesisActor genesis) {
         this.genesis = genesis;
     }
 
@@ -128,7 +130,7 @@ public class ClusterNode implements Initializable {
 
     public void initialize(Resources resources) {
         if (genesis == null) {
-            genesis = new Genesis();
+            genesis = new GenesisActor();
             genesis.setName(getName());
             genesis.setTimeout(getTimeout());
             genesis.initialize(resources);
@@ -137,7 +139,7 @@ public class ClusterNode implements Initializable {
         initialize(genesis);
     }
 
-    public void initialize(Genesis genesis) {
+    public void initialize(GenesisActor genesis) {
         this.genesis = genesis;
         setName(genesis.getName());
         setTimeout(genesis.getTimeout());
@@ -176,6 +178,16 @@ public class ClusterNode implements Initializable {
         registry.shutdown();
         genesis.terminate();
         started = false;
+    }
+
+    @Override
+    public CompletionStage<Void> async(Runnable runnable) {
+        return genesis.async(runnable);
+    }
+
+    @Override
+    public <R> CompletionStage<R> async(Supplier<R> callable) {
+        return genesis.async(callable);
     }
 
     // listener to cluster events

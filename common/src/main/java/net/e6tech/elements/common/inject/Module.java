@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by futeh.
  */
-@SuppressWarnings("squid:S1214")
+@SuppressWarnings({"squid:S1214", "unchecked"})
 public interface Module {
 
     LoadingCache<Class<?>, String[]> bindProperties = CacheBuilder.newBuilder()
@@ -64,34 +64,42 @@ public interface Module {
             .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .expireAfterWrite(360 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Class<?>, Type[]>() {
-        public Type[] load(Class<?> cls)  {
-            Objects.requireNonNull(cls);
-            Class<?> c = cls;
-            Class prev = cls;
-            Class bindClass = cls;
-            Set<Type> list = new LinkedHashSet<>();
-            list.add(cls);
-            boolean found = false;
-            // try to find BindClass annotation from class hierarchy
-            while (c != null && !c.equals(Object.class)) {
-                BindClass bind = c.getAnnotation(BindClass.class);
-                if (bind != null) {
-                    if (bind.generics()) {
-                        found = true;
-                        list.add(prev.getGenericSuperclass());
-                    } else {
-                        if (bind.value().equals(void.class))
-                            bindClass = c;
-                        else
-                            bindClass = bind.value();
-                    }
-                    break;
-                }
-                prev = c;
-                c = c.getSuperclass();
-            }
+        public Type[] load(Class<?> cls) { return Module.load(cls);}
+            });
 
-            if (!found) {
+    static Type[] load(Class<?> cls)  {
+        Objects.requireNonNull(cls);
+        Class<?> c = cls;
+        Class prev = cls;
+        List<Class> bindClasses = new LinkedList<>();
+        Set<Type> list = new LinkedHashSet<>();
+        list.add(cls);
+        boolean found = false;
+        // try to find BindClass annotation from class hierarchy
+        while (c != null && !c.equals(Object.class)) {
+            BindClass bind = c.getAnnotation(BindClass.class);
+            if (bind != null) {
+                if (bind.generics()) {
+                    found = true;
+                    list.add(prev.getGenericSuperclass());
+                } else {
+                    if (bind.value().length == 0) {
+                        bindClasses.add(c);
+                    } else {
+                        for (Class bound : bind.value())
+                            bindClasses.add(bound);
+                    }
+                }
+                break;
+            }
+            prev = c;
+            c = c.getSuperclass();
+        }
+        if (bindClasses.isEmpty())
+            bindClasses.add(cls);
+
+        if (!found) {
+            for (Class bindClass : bindClasses) {
                 if (bindClass.getGenericSuperclass() instanceof ParameterizedType
                         && bindClass.getTypeParameters().length == 0) {
                     // this is for anonymous class
@@ -102,22 +110,24 @@ public interface Module {
                         list.add(bindClass);
                 }
             }
+        }
 
-            // try to find using interfaces
-            for (Class i : TypeToken.of(cls).getTypes().interfaces().rawTypes()) {
-                BindClass bind = (BindClass) i.getAnnotation(BindClass.class);
-                if (bind != null) {
-                    if (bind.value().equals(void.class))
-                        list.add(i);
-                    else
-                        list.add(bind.value());
+        // try to find using interfaces
+        for (Class i : TypeToken.of(cls).getTypes().interfaces().rawTypes()) {
+            BindClass bind = (BindClass) i.getAnnotation(BindClass.class);
+            if (bind != null) {
+                if (bind.value().length == 0)
+                    list.add(i);
+                else {
+                    for (Class bound : bind.value())
+                        list.add(bound);
                 }
             }
-
-            list.removeIf(type -> type instanceof Class && ((Class) type).isSynthetic());
-            return list.toArray(new Type[list.size()]);
         }
-    });
+
+        list.removeIf(type -> type instanceof Class && ((Class) type).isSynthetic());
+        return list.toArray(new Type[list.size()]);
+    }
 
     default String[] getBindProperties(Class cls) {
         try {

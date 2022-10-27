@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.network.cluster.catalyst;
 
-import akka.actor.typed.ActorRef;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
@@ -30,12 +29,10 @@ import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
 import net.e6tech.elements.network.cluster.catalyst.scalar.*;
 import net.e6tech.elements.network.cluster.catalyst.transform.*;
-import net.e6tech.elements.network.cluster.invocation.Invoker;
 import net.e6tech.elements.network.cluster.invocation.Registry;
 import org.junit.jupiter.api.Test;
 
 import java.lang.invoke.SerializedLambda;
-import java.lang.reflect.Method;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,15 +49,10 @@ public class CatalystTest {
         registry = clusterNode.getRegistry();
         try {
             List list = registry.register("blah", Reactor.class, new Reactor() {
-                    },
-                    new Invoker() {
-                        public Object invoke(ActorRef actor, Object target, Method method, Object[] arguments) {
-                            System.out.println("Method " + target.getClass().getName() + "::" + method.getName() + " handled by " + actor);
-                            return super.invoke(actor, target, method, arguments);
-                        }
-                    })
-                    .toCompletableFuture()
-                    .get();
+                    }, (target,  method, arguments) -> {
+                System.out.println("Method " + target.getClass().getName() + "::" + method.getName());
+                return method.invoke(target, arguments);
+            });
             assertTrue(!list.isEmpty());
         } catch (Exception e) {
             throw new SystemException(e);

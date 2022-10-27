@@ -15,9 +15,9 @@
  */
 package net.e6tech.elements.common.resources;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.reflection.ObjectConverter;
+import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 import org.yaml.snakeyaml.Yaml;
@@ -34,6 +34,7 @@ import java.beans.PropertyDescriptor;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -272,16 +273,20 @@ public class Configuration extends LinkedHashMap<String, Object> {
         configure(object, null, null, null);
     }
 
+    public void configure(Object object, String prefixArg, Resolver resolver, ObjectConverter.InstanceCreationListener listener) {
+        configure(new ObjectConverter(resolver, listener), object, prefixArg);
+    }
+
     // subOnly is true when running through substitution.
     @SuppressWarnings("squid:S1141")
-    public void configure(Object object, String prefixArg, Resolver resolver, ObjectConverter.InstanceCreationListener listener) {
+    public void configure(ObjectConverter converter, Object object, String prefixArg) {
         if (object == null)
             throw new IllegalArgumentException();
         String prefix = prefixArg;
-        BeanInfo info = null;
+        BeanInfo info;
         try {
             if (get(prefix) instanceof Map && !(object instanceof Map)) {
-                configureWithMap(object, get(prefix), listener);
+                configureWithMap(converter, object, get(prefix));
             }
 
             if (prefix != null)
@@ -300,17 +305,22 @@ public class Configuration extends LinkedHashMap<String, Object> {
                             map.put(subkey, get(key).toString());
                         else
                             map.put(subkey, get(key));
+                    } else if (key.equals(prefixArg) && get(prefixArg) instanceof Map) {
+                        Map val = get(prefixArg);
+                        val.forEach((k, v) -> {
+                            if (converter.getResolver() != null && v instanceof String && v.toString().startsWith("^"))
+                                map.put(k, converter.getResolver().resolve(v.toString()));
+                            else
+                                map.put(k, v);
+                        });
                     }
                 }
 
-                if (resolver != null) {
-                    String substitutionObjectKey = prefix;
-                    while (substitutionObjectKey.endsWith("."))
-                        substitutionObjectKey = substitutionObjectKey.substring(0, substitutionObjectKey.length() - 1);
-                    List<Reference> referenceList = references.get(substitutionObjectKey);
+                if (converter.getResolver() != null) {
+                    List<Reference> referenceList = references.get(prefixArg);
                     if (referenceList != null) {
                         for (Reference reference : referenceList) {
-                            map.put(reference.key, resolver.resolve(reference.lookup));
+                            map.put(reference.key, converter.getResolver().resolve(reference.lookup));
                         }
                     }
                 }
@@ -346,15 +356,22 @@ public class Configuration extends LinkedHashMap<String, Object> {
             }
 
             // Setting object's property
-            ObjectConverter converter = new ObjectConverter();
+            Set<String> configured = new HashSet<>();
             for (Map.Entry<String, PropertyDescriptor> entry : setters.entrySet()) {
                 PropertyDescriptor desc = entry.getValue();
                 Object value = get(entry.getKey());
-                // annotate substitution
-                value = converter.convert(value, desc.getWriteMethod(), listener);
+                if (!Map.class.isAssignableFrom(desc.getPropertyType())
+                        && value instanceof Map && desc.getReadMethod() != null && desc.getReadMethod().invoke(object) != null) { // let the next section configure it.
+                    applicableKeys.remove(entry.getKey());
+                    continue;
+                }
+                value = converter.convert(value, desc.getWriteMethod());
                 Method method = desc.getWriteMethod();
                 method.invoke(object, value);
+                if (converter.getListener() != null && value != null)
+                    converter.getListener().instanceCreated(object, desc.getWriteMethod().getParameterTypes()[0], value);
                 applicableKeys.remove(entry.getKey());
+                configured.add(entry.getKey());
             }
 
             if (!applicableKeys.isEmpty()) {
@@ -363,6 +380,8 @@ public class Configuration extends LinkedHashMap<String, Object> {
 
             // recurse into fields
             for (String key : keySet()) {
+                if (configured.contains(key))
+                    continue;
                 if ("".equals(prefix) || key.startsWith(prefix)) {
                     boolean shouldRecurse = true;
                     String subkey = key.substring(prefix.length());
@@ -382,41 +401,38 @@ public class Configuration extends LinkedHashMap<String, Object> {
                             Class fieldClass = desc.getReadMethod().getReturnType();
                             // trying to create a map or properties instance
                             if (val == null && Map.class.isAssignableFrom(fieldClass) && desc.getWriteMethod() != null) {
-                                if (Map.class.isAssignableFrom(Properties.class)) {
+                                if (Properties.class.isAssignableFrom(fieldClass)) {
                                     val = new Properties();
-                                    desc.getWriteMethod().invoke(object, val);
                                 } else {
                                     try {
-                                        java.lang.reflect.Constructor constructor = fieldClass.getConstructor();
-                                        val = constructor.newInstance();
+                                        val = fieldClass.getConstructor().newInstance();
                                     } catch (Exception th) {
                                         Logger.suppress(th);
                                         val = new LinkedHashMap<>();
                                     }
-                                    if (val != null) {
-                                        try {
-                                            desc.getWriteMethod().invoke(object, val);
-                                        } catch (Exception th) {
-                                            Logger.suppress(th);
-                                            val = null;
-                                        }
-                                    }
+                                }
+                                try {
+                                    desc.getWriteMethod().invoke(object, val);
+                                } catch (Exception th) {
+                                    Logger.suppress(th);
+                                    val = null;
                                 }
                             }
                             if (val != null)
-                                configure(val, prefix + fieldKey, resolver, listener);
+                                configure(converter, val, prefix + fieldKey);
                         }
                     }
                 }
             }
 
             // recurse into substitution
-            resolveReferences(object, prefix, resolver);
+            resolveReferences(object, prefix, (Resolver) converter.getResolver());
 
         } catch (Exception e) {
             throw logger.systemException(e);
         }
     }
+
 
     // subOnly is true when running through substitution.
     private void resolveReferences(Object object, String prefixArg, Resolver resolver) {
@@ -475,33 +491,29 @@ public class Configuration extends LinkedHashMap<String, Object> {
         }
     }
 
+    public void configureWithMap(Object object, Map<String, Object> map, Resolver resolver, ObjectConverter.InstanceCreationListener listener) {
+        configureWithMap(new ObjectConverter(resolver, listener), object, map);
+    }
+
     // object is the owner
     @SuppressWarnings("squid:S1141")
-    public void configureWithMap(Object object, Map<String, Object> map, ObjectConverter.InstanceCreationListener listener) {
-        ObjectMapper mapper = ObjectConverter.mapper;
+    protected void configureWithMap(ObjectConverter converter, Object object, Map<String, Object> map) {
         // getting a list of relevant properties from Configuration
         Set<String> applicableKeys = new HashSet<>();
         applicableKeys.addAll(map.keySet());
 
         try {
+            // going throw simple keys that match the object's property name
             BeanInfo info = Introspector.getBeanInfo(object.getClass());
             for (PropertyDescriptor desc : info.getPropertyDescriptors()) {
                 if (desc.getWriteMethod() != null && map.containsKey(desc.getName())) {
-                    Class type = desc.getPropertyType();
-                    if (desc.getReadMethod() != null) {
-                        Object existing = desc.getReadMethod().invoke(object);
-                        if (existing != null)
-                            type = existing.getClass();
-                    }
-                    String encoding = mapper.writeValueAsString(map.get(desc.getName()));
-                    Object value = mapper.readValue(encoding, type);
-                    if (listener != null)
-                        listener.instanceCreated(value, desc.getPropertyType(), value);
-                    desc.getWriteMethod().invoke(object, value);
+                    Object val = map.get(desc.getName());
+                    setValueForOwner(converter, object, desc, val);
                     applicableKeys.remove(desc.getName());
                 }
             }
 
+            // looking for keys that looks like x.y.z etc.
             Iterator<String> iterator = applicableKeys.iterator();
             while (iterator.hasNext()) {
                 String key = iterator.next();
@@ -526,10 +538,10 @@ public class Configuration extends LinkedHashMap<String, Object> {
                     if (obj != null) {
                         try {
                             PropertyDescriptor desc = new PropertyDescriptor(path[path.length - 1], obj.getClass());
-                            if (desc == null || desc.getWriteMethod() == null)
+                            if (desc.getWriteMethod() == null)
                                 break;
-                            Object value = mapper.readValue(mapper.writeValueAsString(map.get(key)), desc.getPropertyType());
-                            desc.getWriteMethod().invoke(obj, value);
+                            Object val = map.get(key);
+                            setValueForOwner(converter, obj, desc, val);
                             iterator.remove();
                         } catch (IntrospectionException ex) {
                             throw new SystemException(object.getClass().getName() + "." + key + NO_SUCH_PROPERTY + path[path.length - 1], ex);
@@ -547,6 +559,21 @@ public class Configuration extends LinkedHashMap<String, Object> {
         }
     }
 
+    private void setValueForOwner(ObjectConverter converter, Object owner, PropertyDescriptor desc, Object val)
+            throws IOException, InvocationTargetException, IllegalAccessException {
+        Method method = desc.getReadMethod() != null ? desc.getReadMethod() : desc.getWriteMethod();
+        Object value = converter.convert(val, method);
+        if (converter.getListener() != null && val != null)
+            converter.getListener().instanceCreated(value, desc.getPropertyType(), value);
+        try {
+            if (Primitives.isPrimitive(desc.getPropertyType()) && value == null)
+                value = Primitives.defaultValue(desc.getPropertyType());
+            desc.getWriteMethod().invoke(owner, value);
+        } catch (IllegalArgumentException ex)  {
+            throw new SystemException(ex);
+        }
+    }
+
     // This method is called only during load.
     // reformatMap goes through a map and tries to detect if a value is a string and starts with ^.  When it is found,
     // the entry will be removed and added to references
@@ -555,7 +582,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
     // Second, a reference can be embbeded in a map as in
     // a:
     //   b: ^something.
-    // reformatMap would remove references from an nested map and convert it to dot notation because
+    // reformatMap would remove references from a nested map and convert it to dot notation because
     // when de-serializing a map into an object, a reference would cause the serialization to failed since
     // we rely on ObjectMapper to convert a map into an object and it would not know what to do with a reference.
     private void reformatMap(String prefixArg,  Map<String, Object> map, Map<String, List<Reference>> substitutions) {
@@ -569,7 +596,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             if (entry.getValue() instanceof  String) {
                 String entryKey = entry.getKey();
-                String value = (String) entry.getValue();
+                String value = ((String) entry.getValue()).trim();
                 if (value.startsWith("^")) {
                     String lookup = value.substring(1).trim();
                     Reference reference = new Reference(entry.getKey(), lookup);
@@ -637,13 +664,11 @@ public class Configuration extends LinkedHashMap<String, Object> {
             public Object construct(Node node) {
                 String value = constructScalar((ScalarNode) node).replaceAll("_", "");
                 return Long.parseLong(value);
-
             }
         }
     }
 
     @FunctionalInterface
-    public interface Resolver {
-        Object resolve(String key);
+    public interface Resolver extends net.e6tech.elements.common.reflection.Resolver {
     }
 }

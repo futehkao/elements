@@ -20,6 +20,7 @@ import net.e6tech.elements.common.notification.NotificationCenter;
 import net.e6tech.elements.common.resources.PersistenceListener;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.serialization.ObjectReference;
+import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.persist.EvictCollectionRegion;
 import net.e6tech.elements.persist.EvictEntity;
@@ -206,7 +207,7 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             if (cached) {
                 // publisher.publish(EntityManagerProvider.CACHE_EVICT_COLLECTION_REGION, coll.getRole());
                 // center.fireNotification(new EvictCollectionRegion(coll.getRole()));
-                notificationCenter.publish(EvictCollectionRegion.class, new EvictCollectionRegion(coll.getRole()));
+                notificationCenter.publish(new Notice<>(EvictCollectionRegion.class, new EvictCollectionRegion(coll.getRole()), true));
             }
         }
     }
@@ -220,7 +221,7 @@ public class Interceptor extends EmptyInterceptor implements PersistenceIntercep
             }
             if (cached) {
                 // center.fireNotification(new EvictEntity(this, new ObjectReference(entity.getClass(), key)));
-                notificationCenter.publish(EvictEntity.class, new EvictEntity(new ObjectReference(entity.getClass(), key)));
+                notificationCenter.publish(new Notice<>(EvictEntity.class.getName(), new EvictEntity(new ObjectReference(entity.getClass(), key)), true));
             }
         }
     }

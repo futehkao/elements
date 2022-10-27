@@ -21,7 +21,7 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import com.typesafe.config.Config;
-import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.actor.typed.worker.WorkEvents;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPool;
 import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
@@ -55,8 +55,8 @@ public class Guardian extends Receptor<Void, Guardian> {
         if (executor == null) {
             executor = getSystem()
                     .dispatchers()
-                    .lookup(DispatcherSelector.fromConfig(Genesis.WORKER_POOL_DISPATCHER));
-            lookup = Genesis.WORKER_POOL_DISPATCHER;
+                    .lookup(DispatcherSelector.fromConfig(GenesisActor.WORKER_POOL_DISPATCHER));
+            lookup = GenesisActor.WORKER_POOL_DISPATCHER;
         }
 
         Props props = Props.empty();

@@ -27,6 +27,7 @@ import net.e6tech.elements.common.notification.ShutdownNotification;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.script.AbstractScriptShell;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.util.concurrent.ThreadPool;
 import net.e6tech.elements.common.util.monitor.AllocationMonitor;
 import org.apache.logging.log4j.ThreadContext;
 
@@ -39,7 +40,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 /**
@@ -49,6 +50,8 @@ import java.util.function.Consumer;
  */
 @SuppressWarnings("unchecked")
 public class ResourceManager extends AbstractScriptShell implements ResourcePool {
+
+    private static Executor defaultExecutor = runnable -> new Thread(runnable).start();
 
     private static Logger logger = Logger.getLogger();
     static final String LOG_DIR_ABBREV = "logDir";
@@ -60,7 +63,6 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private Module module = ModuleFactory.getInstance().create();
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private AllocationMonitor allocation = new AllocationMonitor();
-
     private Map<String, Atom> atoms = new LinkedHashMap<>();
     private NotificationCenter notificationCenter = new NotificationCenter();
     private BeanLifecycle beanLifecycle = new BeanLifecycle();
@@ -68,6 +70,10 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private List<ResourceManagerListener> listeners = new LinkedList<>();
     private Map<Class, ClassInjectionInfo> injections = new ConcurrentHashMap<>(); // a cache to be used by Resources.
     private boolean silent = false;
+    private Executor executor = defaultExecutor;
+    private int threadCoreSize = 5;
+    private int threadMaxSize = 200;
+    private long threadKeepAlive = 5 * 60 * 1000L; // 5 min
 
     public ResourceManager() {
         this(new Properties());
@@ -102,6 +108,15 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         return resourceManagers.get(name);
     }
 
+    public Executor getExecutor() {
+        return executor;
+    }
+
+    public void setExecutor(Executor executor) {
+        notificationCenter.setExecutor(executor);
+        this.executor = executor;
+    }
+
     public boolean isSilent() {
         return silent;
     }
@@ -109,6 +124,30 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     public void setSilent(boolean silent) {
         this.silent = silent;
         getScripting().setSilent(silent);
+    }
+
+    public int getThreadCoreSize() {
+        return threadCoreSize;
+    }
+
+    public void setThreadCoreSize(int threadCoreSize) {
+        this.threadCoreSize = threadCoreSize;
+    }
+
+    public int getThreadMaxSize() {
+        return threadMaxSize;
+    }
+
+    public void setThreadMaxSize(int threadMaxSize) {
+        this.threadMaxSize = threadMaxSize;
+    }
+
+    public long getThreadKeepAlive() {
+        return threadKeepAlive;
+    }
+
+    public void setThreadKeepAlive(long threadKeepAlive) {
+        this.threadKeepAlive = threadKeepAlive;
     }
 
     public ResourceManager silent(boolean silent) {
@@ -139,6 +178,35 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         setModuleFactory(ModuleFactory.getInstance());
 
         Thread.currentThread().setContextClassLoader(pluginManager.getPluginClassLoader());
+
+        notificationCenter.setExecutor(this.executor);
+    }
+
+    public void setupThreadPool() {
+        setupThreadPool(getName());
+    }
+
+    // convenient method for initBoot
+    public void setupThreadPool(String threadPoolName) {
+        if (executor == null || executor == defaultExecutor) {
+            ThreadPool pool = new ThreadPool(threadPoolName, p -> new ThreadPoolExecutor(getThreadCoreSize(), getThreadMaxSize(),
+                    getThreadKeepAlive(), TimeUnit.MILLISECONDS,
+                    new LinkedBlockingQueue<>(), p));
+
+            addListener(new ResourceManagerListener() {
+                @Override
+                public void shutdown() {
+                    pool.shutdown();
+                }
+            });
+
+            executor = pool;
+            registerBean(threadPoolName, executor);
+            setExecutor(executor);
+            if (!hasInstance(ThreadPool.class)) {
+                bind(ThreadPool.class, getBean(threadPoolName));
+            }
+        }
     }
 
     public void setModuleFactory(ModuleFactory factory) {
@@ -758,6 +826,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
             // don't care at this point.
         }
         getAllocationMonitor().shutdown();
+        listeners.forEach(l -> l.shutdown());
     }
 
     Map<Class, ClassInjectionInfo> getInjections() {

@@ -19,6 +19,7 @@ package net.e6tech.sample.cluster;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.notification.NotificationCenter;
+import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.network.cluster.ClusterNode;
 import net.e6tech.sample.BaseCase;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ public class ClusterTest extends BaseCase {
         });
 
         Thread.sleep(2000L);
-        center.publish("test", "Hello world!");
+        center.publish(new Notice<>("test", "Hello world!"));
         Config config = cluster.getGenesis().getConfig();
         assertEquals(config.getStringList("akka.cluster.seed-nodes").get(0), "akka://h3_cluster@127.0.0.1:2552");
         assertEquals(config.getString("akka.remote.artery.canonical.hostname"), "127.0.0.1");

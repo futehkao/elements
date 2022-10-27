@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import net.e6tech.elements.network.cluster.ClusterNode
-import net.e6tech.elements.common.actor.Genesis
+import net.e6tech.elements.common.actor.GenesisActor
 
 
 atom("cluster") {
@@ -26,7 +26,7 @@ atom("cluster") {
                 initialCapacity: 10
            
 """
-    genesis = Genesis
+    genesis = GenesisActor
     genesis.configuration = """
 akka.cluster.seed-nodes = ${clusterSeeds}
 akka.remote.artery.canonical.port = ${clusterPort}

@@ -18,7 +18,8 @@ package net.e6tech.elements.network.cluster;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import net.e6tech.elements.common.actor.Genesis;
+import net.e6tech.elements.common.actor.GenesisActor;
+import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
 import net.e6tech.elements.network.cluster.invocation.Registry;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ public class ClusterNodeTest {
         );
 
         // Create an Akka system
-        Genesis genesis = new Genesis();
+        GenesisActor genesis = new GenesisActor();
         genesis.setName("ClusterSystem");
         genesis.initialize(config);
         ClusterNode clusterNode = new ClusterNode();
@@ -83,7 +84,7 @@ public class ClusterNodeTest {
         int tries = 0;
         while (!gotIt.get() && tries < 20) {
             Thread.sleep(100);
-            node.getBroadcast().publish("test2", "Hello world 2!");
+            node.getBroadcast().publish(new Notice<>("test2", "Hello world 2!"));
             tries ++;
         }
         thread.interrupt();
@@ -99,7 +100,7 @@ public class ClusterNodeTest {
 
         while (true) {
             Thread.sleep(100L);
-            node.getBroadcast().publish("test", "Hello world!");
+            node.getBroadcast().publish(new Notice<>("test", "Hello world!"));
         }
     }
 
@@ -113,7 +114,7 @@ public class ClusterNodeTest {
         });
 
         Thread.sleep(2000L);
-        node.getBroadcast().publish("test2", "Hello world 2!");
+        node.getBroadcast().publish(new Notice<>("test2", "Hello world 2!"));
         Thread.sleep(2000L);
     }
 }

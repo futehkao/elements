@@ -16,18 +16,25 @@
 
 package net.e6tech.elements.common.reflection;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.cfg.DeserializerFactoryConfig;
+import com.fasterxml.jackson.databind.deser.*;
+import com.fasterxml.jackson.databind.deser.std.*;
+import com.fasterxml.jackson.databind.jsontype.TypeDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.type.ArrayType;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.databind.util.ClassUtil;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.io.IOException;
 import java.lang.reflect.*;
-import java.util.Collection;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * Created by futeh.
@@ -36,6 +43,9 @@ import java.util.Iterator;
 public class ObjectConverter {
 
     public static final  ObjectMapper mapper;
+    private Resolver resolver;
+    private InstanceCreationListener listener;
+    private ObjectMapper objectMapper;
 
     static {
         mapper = new ObjectMapper();
@@ -50,34 +60,112 @@ public class ObjectConverter {
         return loader.loadClass(name);
     }
 
-    public Object convert(Object from, Method getterOrSetter, InstanceCreationListener listener) throws IOException {
+    public static Type conversionType(Method getterOrSetter) throws IOException {
         Type returnType = getterOrSetter.getGenericReturnType();
         if (!returnType.equals(Void.TYPE)) {
             // getter
             if (getterOrSetter.getParameterTypes().length != 0) {
                 throw new IllegalArgumentException("Method " + getterOrSetter.getName() + " must be a getter");
             }
-            return convert(from, returnType, listener);
+            return returnType;
         } else {
             Type[] parameters = getterOrSetter.getGenericParameterTypes();
             if (parameters.length != 1)
                 throw new IllegalArgumentException("Method " + getterOrSetter.getName() + " must be a setter");
-            Type argumentType = parameters[0];
-            return convert(from, argumentType, listener);
+            return parameters[0];
         }
     }
 
+    protected static Object resolve(Resolver resolver, Object value) {
+        if (resolver != null && value instanceof String) {
+            String exp = ((String) value).trim();
+            if (exp.startsWith("^")) {
+                while (exp.startsWith("^"))
+                    exp = exp.substring(1);
+                return resolver.resolve(exp);
+            }
+        }
+        return value;
+    }
+
+    public ObjectConverter() {
+    }
+
+    public ObjectConverter(Resolver resolver) {
+        this.resolver = resolver;
+    }
+
+    public ObjectConverter(Resolver resolver, InstanceCreationListener listener) {
+        this.resolver = resolver;
+        this.listener = listener;
+    }
+
+    public Resolver getResolver() {
+        return resolver;
+    }
+
+    public void setResolver(Resolver resolver) {
+        this.resolver = resolver;
+    }
+
+    public InstanceCreationListener getListener() {
+        return listener;
+    }
+
+    public void setListener(InstanceCreationListener listener) {
+        this.listener = listener;
+    }
+
+    public Object convert(Object from, Method getterOrSetter, InstanceCreationListener listener) throws IOException {
+        this.listener = listener;
+        return convert(from, conversionType(getterOrSetter));
+    }
+
+    public Object convert(Object from, Method getterOrSetter) throws IOException {
+        return convert(from, conversionType(getterOrSetter));
+    }
+
+    public Object convert(Object from, Method getterOrSetter, Resolver resolver, InstanceCreationListener listener) throws IOException {
+        this.resolver = resolver;
+        this.listener = listener;
+        objectMapper = null;
+        return convert(from, conversionType(getterOrSetter));
+    }
+
+    public Object convert(Object from, Field field) throws IOException {
+        return convert(from, field.getGenericType());
+    }
+
     public Object convert(Object from, Field field, InstanceCreationListener listener) throws IOException {
-        return convert(from, field.getGenericType(), listener);
+        this.listener = listener;
+        return convert(from, field.getGenericType());
+    }
+
+    public Object convert(Object from, Field field, Resolver resolver, InstanceCreationListener listener) throws IOException {
+        this.resolver = resolver;
+        this.listener = listener;
+        objectMapper = null;
+        return convert(from, field.getGenericType());
+    }
+
+    public Object convert(Object from, Type toType, InstanceCreationListener listener) throws IOException {
+        this.listener = listener;
+        return convert(from, toType);
     }
 
     @SuppressWarnings({"squid:S134", "squid:S3776"})
-    public Object convert(Object from, Type toType, InstanceCreationListener listener) throws IOException {
+    public Object convert(Object from, Type toType) throws IOException {
+        if (from == null)
+            return null;
         Object converted;
+        ObjectMapper objectMapper = createObjectMapper();
+
         if (toType instanceof Class) {
-            converted = convert(from, (Class) toType, listener);
+            // converted = objectMapper.convertValue(from, (Class) toType);
+            converted = convert(objectMapper, from, (Class) toType);
         } else {
             ParameterizedType parametrized = (ParameterizedType) toType;
+            // converted = objectMapper.convertValue(from, new MyTypeReference(toType));
             Class enclosedType = (Class) parametrized.getRawType();
             Type type = parametrized.getActualTypeArguments()[0];
             if (type instanceof Class) {
@@ -85,31 +173,32 @@ public class ObjectConverter {
                 // List<List<List<X>>> or List<Map<X, Y>>
                 Class elementType = (Class) type;
                 if (Collection.class.isAssignableFrom(enclosedType)) {
-                    converted = convertCollection((Collection) from, enclosedType, elementType, listener);
+                    converted = convertCollection(objectMapper, (Collection) from, enclosedType, elementType);
                 } else {
-                    converted = convert(from, enclosedType, listener);
+                    converted = convert(objectMapper, from, enclosedType);
                 }
             } else if(type instanceof ParameterizedType) {
                 ParameterizedType ptype = (ParameterizedType) type;
                 if (ptype.getRawType() instanceof Class) {
                     Class elementType = (Class) ptype.getRawType();
                     if (Collection.class.isAssignableFrom(enclosedType)) {
-                        converted = convertCollection((Collection) from, enclosedType, elementType, listener);
+                        converted = convertCollection(objectMapper, (Collection) from, enclosedType, elementType);
                     } else {
-                        converted = convert(from, enclosedType, listener);
+                        converted = convert(objectMapper, from, enclosedType);
                     }
                 } else {
-                    converted = convert(from, enclosedType, listener);
+                    converted = convert(objectMapper, from, enclosedType);
                 }
             } else {
-                converted = convert(from, enclosedType, listener);
+                converted = convert(objectMapper, from, enclosedType);
             }
         }
         return converted;
     }
 
+
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S3776"})
-    private Object convert(Object val, Class toType, InstanceCreationListener instanceCreation) throws IOException {
+    private Object convert(ObjectMapper objectMapper, Object val, Class toType) throws IOException {
         Object value = val;
         Class fromType = value.getClass();
 
@@ -125,12 +214,12 @@ public class ObjectConverter {
                 int index = 0;
                 while (iterator.hasNext()) {
                     Object member = iterator.next();
-                    Array.set(array, index, convert(member, toType.getComponentType(), instanceCreation));
+                    Array.set(array, index, convert(member, toType.getComponentType()));
                     index++;
                 }
                 return array;
             } else {
-                throw new IllegalArgumentException("Cannot convert " + fromType + " to " + toType);
+                return objectMapper.convertValue(val, toType);
             }
         } else if (toType.isPrimitive() || fromType.isPrimitive()) {
             // converting primitive type
@@ -143,14 +232,17 @@ public class ObjectConverter {
             if (!needConversion)
                 return value;
         } else if (toType.isAssignableFrom(fromType)) {
-            // no conversion
+            // no conversion, except for reference resolving
             return value;
         } else if (value instanceof String && ! (toType.isAssignableFrom(Class.class))) {
             // converting from String to other types.
             try {
                 // converting from String directly, e.g. mapper can convert from String to BigDecimal
-                String str = mapper.writeValueAsString(value);
-                value = mapper.readValue(str, toType);
+                if (resolver != null && value.toString().trim().startsWith("^")) {
+                    return resolver.resolve(value.toString());
+                }
+                String str = objectMapper.writeValueAsString(value);
+                value = objectMapper.readValue(str, toType);
                 return value;
             } catch (Exception e) {
                 Logger.suppress(e);
@@ -159,8 +251,8 @@ public class ObjectConverter {
                 try {
                     Class cls = getClass().getClassLoader().loadClass((String) value);
                     value = cls.getDeclaredConstructor().newInstance();
-                    if (instanceCreation != null)
-                        instanceCreation.instanceCreated(value, toType, value);
+                    if (listener != null && value != null)
+                        listener.instanceCreated(value, toType, value);
                     return value;
                 } catch (Exception e1) {
                     throw new SystemException(e1);
@@ -169,25 +261,23 @@ public class ObjectConverter {
         }
 
         // we use the mapper to convert
-        String str = mapper.writeValueAsString(value);
-        return mapper.readValue(str, toType);
+        String str = objectMapper.writeValueAsString(value);
+        return objectMapper.readValue(str, toType);
     }
 
-    private Collection convertCollection(Collection value, Class<? extends Collection> collectionType, Class elementType,
-                                    InstanceCreationListener instanceCreation) throws IOException {
+    private Collection convertCollection(ObjectMapper objectMapper, Collection value, Class<? extends Collection> collectionType, Class elementType) throws IOException {
 
         CollectionType ctype = TypeFactory.defaultInstance().constructCollectionType(collectionType, elementType);
-        String str = mapper.writeValueAsString(value);
-        Collection converted = mapper.readValue(str, ctype);
+        String str = objectMapper.writeValueAsString(value);
+        Collection converted = objectMapper.readValue(str, ctype);
 
-        if (instanceCreation != null) {
+        if (listener != null) {
             Iterator iter1 = value.iterator();
             Iterator iter2 = converted.iterator();
             while (iter1.hasNext() && iter2.hasNext()) {
-                instanceCreation.instanceCreated(iter1.hasNext(), elementType, iter2.next());
+                listener.instanceCreated(iter1.hasNext(), elementType, iter2.next());
             }
         }
-
         return converted;
     }
 
@@ -206,5 +296,198 @@ public class ObjectConverter {
     @FunctionalInterface
     public interface InstanceCreationListener {
         void instanceCreated(Object value, Class toType, Object instance);
+    }
+
+    public ObjectMapper createObjectMapper() {
+        if (resolver == null)
+            return mapper;
+        if (objectMapper != null)
+            return objectMapper;
+
+        objectMapper = new ObjectMapper(null, null, new MyDefaultDeserializationContext(resolver, new MyBeanDeserializerFactory(resolver,
+                new DeserializerFactoryConfig())));
+        objectMapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+        objectMapper.addHandler(new MyDeserializationProblemHandler(resolver));
+        return objectMapper;
+    }
+
+    public static class MyBeanDeserializerFactory extends BeanDeserializerFactory {
+        Resolver resolver;
+        public MyBeanDeserializerFactory(Resolver resolver, DeserializerFactoryConfig config) {
+            super(config);
+            this.resolver = resolver;
+        }
+
+        @Override
+        public DeserializerFactory withConfig(DeserializerFactoryConfig config)
+        {
+            if (_factoryConfig == config) {
+                return this;
+            }
+            return new MyBeanDeserializerFactory(resolver, config);
+        }
+
+        public JsonDeserializer<?> findDefaultDeserializer(DeserializationContext ctxt,
+                                                           JavaType type, BeanDescription beanDesc) throws JsonMappingException {
+            JsonDeserializer deserializer = super.findDefaultDeserializer(ctxt, type, beanDesc);
+            if (deserializer instanceof UntypedObjectDeserializer) {
+                DeserializationConfig config = ctxt.getConfig();
+                JavaType lt, mt;
+
+                if (_factoryConfig.hasAbstractTypeResolvers()) {
+                    lt = _findRemappedType(config, List.class);
+                    mt = _findRemappedType(config, Map.class);
+                } else {
+                    lt = mt = null;
+                }
+                return new MyUntypedObjectDeserializer(resolver, lt, mt);
+            }
+            return deserializer;
+        }
+    }
+
+    /** The Object type parameter is just to bypass TypeReference's check. The real type is the type param */
+    public static class MyTypeReference extends TypeReference<Object> {
+        private Type type;
+        public MyTypeReference(Type type) {
+            this.type = type;
+        }
+
+        public Type getType() {
+            return type;
+        }
+    }
+
+    public static class MyUntypedObjectDeserializer extends UntypedObjectDeserializer {
+        Resolver resolver;
+
+        public MyUntypedObjectDeserializer(Resolver resolver, JavaType listType, JavaType mapType) {
+            super(listType, mapType);
+            this.resolver = resolver;
+        }
+
+        protected MyUntypedObjectDeserializer(UntypedObjectDeserializer base,
+                                            boolean nonMerging) {
+            super(base, nonMerging);
+        }
+
+        public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            Object value = super.deserialize(p, ctxt);
+            return ObjectConverter.resolve(resolver, value);
+        }
+    }
+
+    static Object handleMissingInstantiator(Resolver resolver,  Class<?> instClass, JsonParser p) throws IOException {
+        if (resolver != null) {
+            String value = p.getText();
+            Object resolved =  ObjectConverter.resolve(resolver, value);
+            if (resolved == null) {
+                return resolved;
+            } else if (instClass.isAssignableFrom(resolved.getClass())) {
+                return resolved;
+            } else if (ClassLoader.class.isAssignableFrom(instClass)) {
+                return resolved.getClass().getClassLoader();
+            }
+        }
+        return  null;
+    }
+
+    public static class MyDeserializationProblemHandler extends DeserializationProblemHandler {
+
+        Resolver resolver;
+
+        public MyDeserializationProblemHandler(Resolver resolver) {
+            this.resolver = resolver;
+        }
+
+        @Override
+        public Object handleMissingInstantiator(DeserializationContext ctxt,
+                                                Class<?> instClass, ValueInstantiator valueInsta, JsonParser p,
+                                                String msg)
+                throws IOException {
+            if (resolver != null) {
+                return ObjectConverter.handleMissingInstantiator(resolver, instClass, p);
+            }
+            return super.handleMissingInstantiator(ctxt, instClass, valueInsta, p, msg);
+        }
+    }
+
+    public static class MyDefaultDeserializationContext extends DefaultDeserializationContext {
+
+        private static final long serialVersionUID = 1L;
+
+        Resolver resolver;
+
+        /**
+         * Default constructor for a blueprint object, which will use the standard
+         * {@link DeserializerCache}, given factory.
+         */
+        public MyDefaultDeserializationContext(Resolver resolver, DeserializerFactory df) {
+            super(df, null);
+            this.resolver = resolver;
+        }
+
+        private MyDefaultDeserializationContext(MyDefaultDeserializationContext src,
+                     DeserializationConfig config, JsonParser p, InjectableValues values) {
+            super(src, config, p, values);
+            resolver = src.resolver;
+        }
+
+        private MyDefaultDeserializationContext(MyDefaultDeserializationContext src) {
+            super(src);
+            resolver = src.resolver;
+        }
+
+        private MyDefaultDeserializationContext(MyDefaultDeserializationContext src, DeserializerFactory factory) {
+            super(src, factory);
+            resolver = src.resolver;
+        }
+
+        private MyDefaultDeserializationContext(MyDefaultDeserializationContext src, DeserializationConfig config) {
+            super(src, config);
+            resolver = src.resolver;
+        }
+
+        @Override
+        public DefaultDeserializationContext copy() {
+            return new MyDefaultDeserializationContext(this);
+        }
+
+        @Override
+        public DefaultDeserializationContext createInstance(DeserializationConfig config,
+                                                            JsonParser p, InjectableValues values) {
+            return new MyDefaultDeserializationContext(this, config, p, values);
+        }
+
+        @Override
+        public DefaultDeserializationContext createDummyInstance(DeserializationConfig config) {
+            // need to be careful to create "real", not blue-print, instance
+            return new MyDefaultDeserializationContext(this, config);
+        }
+
+        @Override
+        public DefaultDeserializationContext with(DeserializerFactory factory) {
+            return new MyDefaultDeserializationContext(this, factory);
+        }
+
+        public Object readRootValue(JsonParser p, JavaType valueType,
+                                    JsonDeserializer<Object> deser, Object valueToUpdate)
+                throws IOException {
+            if (resolver != null && p.getText().trim().startsWith("^")) {
+                return resolver.resolve(p.getText().trim());
+            }
+            return super.readRootValue(p, valueType, deser, valueToUpdate);
+        }
+
+        public Object handleMissingInstantiator(Class<?> instClass, ValueInstantiator valueInst,
+                                                JsonParser p, String msg, Object... msgArgs)
+                throws IOException {
+            if (resolver != null) {
+                return ObjectConverter.handleMissingInstantiator(resolver, instClass, p);
+            }
+            return super.handleMissingInstantiator(instClass, valueInst, p, msg, msgArgs);
+        }
     }
 }

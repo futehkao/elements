@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.web.federation;
 
+import net.e6tech.elements.common.federation.Member;
 import net.e6tech.elements.common.logging.ConsoleLogger;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
@@ -33,7 +34,7 @@ import java.util.List;
 public class ClusterTest {
 
     private static final int SERVERS = 5;
-    private static final List<Cluster> clusters = Collections.synchronizedList(new ArrayList<>(SERVERS));
+    private static final List<ClusterImpl> clusters = Collections.synchronizedList(new ArrayList<>(SERVERS));
 
     @BeforeAll
     public static void setup() {
@@ -42,7 +43,7 @@ public class ClusterTest {
             for (int i = 0; i < 2 * SERVERS; i += 2) {
                 try {
                     if (i >= 2 * (SERVERS - 2)) {
-                        Cluster c3 = configServer(3909 + i, 3910 + i);
+                        ClusterImpl c3 = configServer(3909 + i, 3910 + i);
                         c3.getFederation().setSeeds(new String[0]);
                         c3.start();
                     } else {
@@ -57,15 +58,15 @@ public class ClusterTest {
     }
 
     private static void setupServer(int port, int port2) throws Exception {
-        Cluster cluster = configServer(port, port2);
+        ClusterImpl cluster = configServer(port, port2);
         cluster.start();
     }
 
-    private static Cluster configServer(int port, int port2) throws Exception {
+    private static ClusterImpl configServer(int port, int port2) throws Exception {
         ResourceManager rm = new ResourceManager();
         rm.loadProvision(Provision.class);
 
-        Cluster cluster = rm.newInstance(Cluster.class);
+        ClusterImpl cluster = rm.newInstance(ClusterImpl.class);
         cluster.setHostAddress("http://127.0.0.1:" + port + "/restful");
         cluster.setSeeds(new String[] { "http://127.0.0.1:3909/restful"});
 
@@ -79,7 +80,7 @@ public class ClusterTest {
     @AfterAll
     public static void tearDown() {
         try {
-            clusters.forEach(Cluster::shutdown);
+            clusters.forEach(ClusterImpl::shutdown);
         } finally {
             clusters.clear();
         }
@@ -124,7 +125,7 @@ public class ClusterTest {
             if (total == SERVERS * SERVERS && ! printed) {
                 System.out.println("Converge in " + (System.currentTimeMillis() - start));
                 printed = true;
-                Collective cluster = clusters.get(SERVERS / 2);
+                CollectiveImpl cluster = clusters.get(SERVERS / 2);
                 Collection<Member> m = cluster.members();
                 System.out.println(m);
             }
