@@ -24,9 +24,9 @@ import net.e6tech.elements.common.util.concurrent.Async;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -105,18 +105,11 @@ public class AsyncImpl<U> implements Async<U> {
     private class MyHandler implements InvocationHandler {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            String methodName = method.getName();
-            if ("hashCode".equals(methodName) && method.getParameterCount() == 0) {
-                return AsyncImpl.this.hashCode();
-            } else if ("equals".equals(methodName) && method.getParameterCount() == 1) {
-                return AsyncImpl.this.equals(args[0]);
-            } else if ("toString".equals(methodName) && method.getParameterCount() == 0) {
-                return AsyncImpl.this.toString();
-            }
-
-            Function<Object[], CompletableFuture<Object>> function = registry.route(qualifier, interfaceClass, method, routing);
-            future = function.apply(args);
-            return Primitives.defaultValue(method.getReturnType());
+            return AsyncImpl.this.invoke(AsyncImpl.this, method, args, () -> {
+                Function<Object[], CompletableFuture<Object>> function = registry.route(qualifier, interfaceClass, method, routing);
+                future = function.apply(args);
+                return Primitives.defaultValue(method.getReturnType());
+            });
         }
     }
 }

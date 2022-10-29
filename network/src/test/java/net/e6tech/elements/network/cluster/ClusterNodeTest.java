@@ -21,7 +21,7 @@ import com.typesafe.config.ConfigFactory;
 import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
-import net.e6tech.elements.network.cluster.invocation.Registry;
+import net.e6tech.elements.network.cluster.invocation.RegistryActor;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -48,14 +48,14 @@ public class ClusterNodeTest {
     }
 
     private void register(ClusterNode clusterNode) {
-        Registry registry = clusterNode.getRegistry();
+        RegistryActor registry = clusterNode.getRegistry();
         registry.register("blah", Reactor.class, new Reactor() {
         });
     }
 
     private ClusterNode start(int port) {
         ClusterNode node = create(port);
-        Registry registry = node.getRegistry();
+        RegistryActor registry = node.getRegistry();
         registry.register("blah", Reactor.class, new Reactor() {
         });
         return node;

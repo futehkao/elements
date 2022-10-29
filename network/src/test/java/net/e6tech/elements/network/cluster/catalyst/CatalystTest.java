@@ -29,7 +29,7 @@ import net.e6tech.elements.network.cluster.catalyst.dataset.RemoteDataSet;
 import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
 import net.e6tech.elements.network.cluster.catalyst.scalar.*;
 import net.e6tech.elements.network.cluster.catalyst.transform.*;
-import net.e6tech.elements.network.cluster.invocation.Registry;
+import net.e6tech.elements.network.cluster.invocation.RegistryActor;
 import org.junit.jupiter.api.Test;
 
 import java.lang.invoke.SerializedLambda;
@@ -40,11 +40,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings("all")
 public class CatalystTest {
-    Registry registry;
+    RegistryActor registry;
     SimpleCatalyst catalyst;
     DataSet<Integer> dataSet;
 
-    public Registry create(int port) {
+    public RegistryActor create(int port) {
         ClusterNode clusterNode = ClusterNodeTest.create(port);
         registry = clusterNode.getRegistry();
         try {
@@ -101,7 +101,7 @@ public class CatalystTest {
     @Test
     public void remoteDataSet() throws Exception {
 
-        Registry registry = create(2552);
+        RegistryActor registry = create(2552);
 
         registry.waitForRoutes("blah", Reactor.class, coll -> coll.size() >= 2, 60000L);
 
@@ -138,7 +138,7 @@ public class CatalystTest {
 
     @Test
     public void map() throws Exception {
-        Registry registry = create(2552);
+        RegistryActor registry = create(2552);
 
         while (registry.routes("blah", Reactor.class).size() < 1)
             Thread.sleep(100);

@@ -89,7 +89,7 @@ public class RegistryTest {
     @Test
     public void async() throws Exception {
         ClusterNode clusterNode = create(2552);
-        Registry registry = clusterNode.getRegistry();
+        RegistryActor registry = clusterNode.getRegistry();
 
         registry.register("blah", X.class, new X() {
             @Override
@@ -124,9 +124,9 @@ public class RegistryTest {
         Thread.sleep(2000L);
     }
 
-    private Registry createX(int port) {
+    private RegistryActor createX(int port) {
         ClusterNode clusterNode = create(port);
-        Registry registry = clusterNode.getRegistry();
+        RegistryActor registry = clusterNode.getRegistry();
         registry.register("blah", X.class, new X() {
             @Override
             public int doSomething(int x) {
@@ -152,7 +152,7 @@ public class RegistryTest {
     // asyncVM2 will then submit jobs to the cluster.
     @Test
     public void asyncVM1() throws Exception {
-        Registry registry = createX(2551);
+        RegistryActor registry = createX(2551);
 
         synchronized (this) {
             wait();
@@ -161,7 +161,7 @@ public class RegistryTest {
 
     @Test
     public void asyncVM1_1() throws Exception {
-        Registry registry = createX(2553);
+        RegistryActor registry = createX(2553);
         synchronized (this) {
             wait();
         }
@@ -171,7 +171,7 @@ public class RegistryTest {
     @Test
     public void asyncVM2() throws Exception {
         ClusterNode clusterNode = create(2552);
-        Registry registry = clusterNode.getRegistry();
+        RegistryActor registry = clusterNode.getRegistry();
         registry.discover("blah", X.class);
 
         registry.waitForRoutes("blah", X.class, coll -> coll.size() >= 1, 60000L);

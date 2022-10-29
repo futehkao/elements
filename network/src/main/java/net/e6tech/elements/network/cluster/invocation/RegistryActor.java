@@ -18,6 +18,7 @@ package net.e6tech.elements.network.cluster.invocation;
 
 import akka.actor.typed.ActorRef;
 import net.e6tech.elements.common.actor.typed.Guardian;
+import net.e6tech.elements.common.federation.Registry;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.AsyncImpl;
@@ -33,12 +34,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class RegistryActor implements Registry {
@@ -153,7 +153,6 @@ public class RegistryActor implements Registry {
         }
     }
 
-    @Override
     public <T> List<String> discover(String qualifier, Class<T> interfaceClass) {
         return register(qualifier, interfaceClass, null, null);
     }
@@ -220,23 +219,65 @@ public class RegistryActor implements Registry {
         return net.e6tech.elements.common.federation.Registry.fullyQualify(qualifier, interfaceClass, method);
     }
 
-    @Override
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String qualifier, Class interfaceClass, Method method, long timeout) {
         return route(fullyQualify(qualifier, interfaceClass, method), timeout);
     }
 
-    @Override
     public Function<Object[], CompletionStage<InvocationEvents.Response>> route(String path, long timeout) {
         return arguments -> registrar.talk(timeout).ask(ref -> new InvocationEvents.Request(ref, path, timeout, arguments));
     }
 
     @Override
     public <T> Async<T> async(String qualifier, Class<T> interfaceClass) {
-        return new AsyncImpl<>(this, qualifier, interfaceClass, timeout, Routing.random);
+        return new AsyncImpl<>(this, qualifier, interfaceClass, timeout);
     }
 
     @Override
     public <T> Async<T> async(String qualifier, Class<T> interfaceClass, long timeout, Routing routing) {
-        return new AsyncImpl<>(this, qualifier, interfaceClass, timeout, routing);
+        return new AsyncImpl<>(this, qualifier, interfaceClass, timeout);
+    }
+
+    public void waitLoop(BooleanSupplier test, long timeout) throws TimeoutException {
+        Object monitor = new Object();
+        RouteListener listener = new RouteListener() {
+            @Override
+            public void onAnnouncement(String path) {
+                synchronized (monitor) {
+                    monitor.notifyAll();
+                }
+            }
+        };
+        try {
+            addRouteListener(listener);
+            long start = System.currentTimeMillis();
+            boolean first = true;
+            synchronized (monitor) {
+                while (!test.getAsBoolean()) {
+                    if (!first && System.currentTimeMillis() - start > timeout) {
+                        throw new TimeoutException();
+                    }
+                    if (first)
+                        first = false;
+                    try {
+                        long wait = timeout - (System.currentTimeMillis() - start);
+                        if (wait > 0)
+                            monitor.wait(timeout);
+
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        } finally {
+            removeRouteListener(listener);
+        }
+    }
+
+    public void waitForRoutes(String qualifier, Predicate<Collection> predicate, long timeout) throws TimeoutException {
+        waitLoop(() -> predicate.test(routes(qualifier)), timeout);
+    }
+
+    public void waitForRoutes(String qualifier, Class interfaceClass, Predicate<Collection> predicate, long timeout) throws TimeoutException {
+        waitLoop(() -> predicate.test(routes(qualifier, interfaceClass)), timeout);
     }
 }

@@ -19,7 +19,7 @@ package net.e6tech.elements.network.cluster;
 import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.invocation.InvocationEvents;
-import net.e6tech.elements.network.cluster.invocation.Registry;
+import net.e6tech.elements.network.cluster.invocation.RegistryActor;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -34,14 +34,14 @@ import java.util.function.Function;
 public class AsyncImpl<U> implements Async<U> {
 
     private Class<U> interfaceClass;
-    private Registry registry;
+    private RegistryActor registry;
     private String qualifier;
     private long timeout;
     private CompletionStage<InvocationEvents.Response> completionStage;
     private U proxy;
 
     @SuppressWarnings("unchecked")
-    public AsyncImpl(Registry registry, String qualifier, Class<U> interfaceClass, long timeout, net.e6tech.elements.common.federation.Registry.Routing routing) {
+    public AsyncImpl(RegistryActor registry, String qualifier, Class<U> interfaceClass, long timeout) {
         this.registry = registry;
         this.qualifier = qualifier;
         this.timeout = timeout;
@@ -81,19 +81,11 @@ public class AsyncImpl<U> implements Async<U> {
     private class MyHandler implements InvocationHandler {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            String methodName = method.getName();
-            if ("hashCode".equals(methodName) && method.getParameterCount() == 0) {
-                return AsyncImpl.this.hashCode();
-            } else if ("equals".equals(methodName) && method.getParameterCount() == 1) {
-                return AsyncImpl.this.equals(args[0]);
-            } else if ("toString".equals(methodName) && method.getParameterCount() == 0) {
-                return AsyncImpl.this.toString();
-            }
-
-            Function<Object[], CompletionStage<InvocationEvents.Response>> function = registry.route(qualifier, interfaceClass, method, timeout);
-            completionStage = function.apply(args);
-            return Primitives.defaultValue(method.getReturnType());
-
+            return AsyncImpl.this.invoke(AsyncImpl.this, method, args, () -> {
+                Function<Object[], CompletionStage<InvocationEvents.Response>> function = registry.route(qualifier, interfaceClass, method, timeout);
+                completionStage = function.apply(args);
+                return Primitives.defaultValue(method.getReturnType());
+            });
         }
     }
 }

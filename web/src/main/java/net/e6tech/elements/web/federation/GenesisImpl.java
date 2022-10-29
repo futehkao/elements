@@ -18,6 +18,7 @@ package net.e6tech.elements.web.federation;
 
 import net.e6tech.elements.common.federation.Genesis;
 import net.e6tech.elements.common.federation.Registration;
+import net.e6tech.elements.common.federation.Registry;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.resources.Configuration;
@@ -26,14 +27,13 @@ import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.StringUtil;
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.common.util.concurrent.AsyncImpl;
-import net.e6tech.elements.common.federation.Registry;
 import net.e6tech.elements.web.federation.invocation.InvokerRegistry;
 import net.e6tech.elements.web.federation.invocation.InvokerRegistryImpl;
 
 import java.lang.reflect.Type;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
@@ -148,11 +148,11 @@ public class GenesisImpl implements Initializable, Genesis {
 
     @Override
     public CompletionStage<Void> async(Runnable runnable) {
-        return new AsyncImpl<>(provision.getExecutor(), runnable).accept(Runnable::run);
+        return CompletableFuture.runAsync(() -> runnable.run(), provision.getExecutor());
     }
 
     @Override
     public <R> CompletionStage<R> async(Supplier<R> supplier) {
-        return new AsyncImpl<>(provision.getExecutor(), supplier).apply(Supplier::get);
+        return CompletableFuture.supplyAsync(() -> supplier.get(), provision.getExecutor());
     }
 }

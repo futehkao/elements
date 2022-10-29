@@ -32,12 +32,12 @@ import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.actor.typed.Ask;
 import net.e6tech.elements.common.actor.typed.Receptor;
 import net.e6tech.elements.common.actor.typed.Typed;
+import net.e6tech.elements.common.federation.Registry;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Initializable;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.subscribe.Broadcast;
 import net.e6tech.elements.common.util.SystemException;
-import net.e6tech.elements.network.cluster.invocation.Registry;
 import net.e6tech.elements.network.cluster.invocation.RegistryActor;
 import net.e6tech.elements.network.cluster.messaging.Messaging;
 
@@ -54,8 +54,8 @@ public class ClusterNode implements Initializable, net.e6tech.elements.common.fe
     private GenesisActor genesis;
     private Membership membership;
     private Messaging broadcast;
-    private Registry registry;
-    private Class<? extends Registry> registryClass = RegistryActor.class;
+    private RegistryActor registry;
+    private Class<? extends RegistryActor> registryClass = RegistryActor.class;
     private boolean started = false;
     private long timeout = DEFAULT_TIME_OUT;
 
@@ -92,7 +92,7 @@ public class ClusterNode implements Initializable, net.e6tech.elements.common.fe
         return broadcast;
     }
 
-    public Registry getRegistry() {
+    public RegistryActor getRegistry() {
         return registry;
     }
 
@@ -120,11 +120,11 @@ public class ClusterNode implements Initializable, net.e6tech.elements.common.fe
         membership.talk(MemberEvents.class).tell(new MemberEvents.RemoveListener(listener));
     }
 
-    public Class<? extends Registry> getRegistryClass() {
+    public Class<? extends RegistryActor> getRegistryClass() {
         return registryClass;
     }
 
-    public void setRegistryClass(Class<? extends Registry> registryClass) {
+    public void setRegistryClass(Class<? extends RegistryActor> registryClass) {
         this.registryClass = registryClass;
     }
 

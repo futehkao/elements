@@ -16,11 +16,24 @@
 
 package net.e6tech.elements.common.util.concurrent;
 
+import java.lang.reflect.Method;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public interface Async<U> {
+    default Object invoke(Object caller, Method method, Object[] args, Supplier<Object> supplier) {
+        String methodName = method.getName();
+        if ("hashCode".equals(methodName) && method.getParameterCount() == 0) {
+            return caller.hashCode();
+        } else if ("equals".equals(methodName) && method.getParameterCount() == 1) {
+            return caller.equals(args[0]);
+        } else if ("toString".equals(methodName) && method.getParameterCount() == 0) {
+            return caller.toString();
+        }
+        return supplier.get();
+    }
 
     long getTimeout();
 
