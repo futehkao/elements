@@ -20,6 +20,7 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Resources;
 
 import javax.persistence.EntityManager;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 public class EntityManagerMonitor {
@@ -30,12 +31,12 @@ public class EntityManagerMonitor {
     private EntityManager entityManager;
     private long expiration;
     private Throwable throwable;
-    private ExecutorService threadPool;
+    private Executor threadPool;
     private Thread originatingThread;
     private volatile boolean interrupted = false;
     private String alias;
 
-    EntityManagerMonitor(String alias, ExecutorService threadPool, EntityManagerProvider provider, Resources resources,
+    EntityManagerMonitor(String alias, Executor threadPool, EntityManagerProvider provider, Resources resources,
                          EntityManager entityManager, long expiration, Throwable throwable) {
         this.alias = alias;
         this.provider = provider;

@@ -24,25 +24,24 @@ import com.lmax.disruptor.dsl.ProducerType;
 import com.lmax.disruptor.util.DaemonThreadFactory;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 @SuppressWarnings("unchecked")
 public class DisruptorPool {
-    private DisruptorConfig config = new DisruptorConfig();
+
+    private Monitor monitor = new Monitor();
     Disruptor<Event> disruptor;
+    private int bufferSize = 1024;
+    private int handlerSize = Runtime.getRuntime().availableProcessors() * 2; // times 2 in case of timeout
 
     public DisruptorPool() {
-        start();
-    }
-
-    public DisruptorConfig getConfig() {
-        return config;
-    }
-
-    public void setConfig(DisruptorConfig config) {
-        this.config = config;
     }
 
     public Disruptor<Event> getDisruptor() {
@@ -53,11 +52,34 @@ public class DisruptorPool {
         this.disruptor = disruptor;
     }
 
-    public void start() {
-        disruptor = new Disruptor<>(Event::new, config.getBufferSize(), DaemonThreadFactory.INSTANCE,
+    public int getBufferSize() {
+        return bufferSize;
+    }
+
+    public void setBufferSize(int bufferSize) {
+        this.bufferSize = bufferSize;
+    }
+
+    public int getHandlerSize() {
+        return handlerSize;
+    }
+
+    public void setHandlerSize(int handlerSize) {
+        this.handlerSize = handlerSize;
+    }
+
+    public synchronized void start() {
+        if (!monitor.isAlive()) {
+            monitor.capacity = handlerSize;
+            monitor.start();
+        }
+        if (disruptor != null)
+            return;
+
+        disruptor = new Disruptor<>(Event::new, getBufferSize(), DaemonThreadFactory.INSTANCE,
                 ProducerType.SINGLE, new YieldingWaitStrategy());
         WorkHandler<Event> handler = Event::handle;
-        WorkHandler<Event>[] workers = new WorkHandler[config.getHandlerSize()];
+        WorkHandler<Event>[] workers = new WorkHandler[getHandlerSize()];
         for (int i = 0; i < workers.length; i++) {
             workers[i] = handler;
         }
@@ -66,48 +88,109 @@ public class DisruptorPool {
         disruptor.start();
     }
 
+    public synchronized void restart() {
+        shutdown();
+        start();
+    }
+
+    public synchronized void shutdown() {
+        if (disruptor != null) {
+            disruptor.shutdown();
+            disruptor = null;
+        }
+        if (monitor.isAlive()) {
+            monitor.shutdown = true;
+            monitor.thread.interrupt();
+        }
+    }
+
     public RunnableWait run(Runnable runnable) {
         return run(runnable, null);
     }
 
+    public RunnableWait run(Runnable runnable, long timeout) {
+        return run(runnable, null, timeout);
+    }
+
     public RunnableWait run(Runnable runnable, Consumer<Exception> exceptionHandler) {
+        return run(runnable, exceptionHandler, 0L);
+    }
+
+    public RunnableWait run(Runnable runnable, Consumer<Exception> exceptionHandler, long timeout) {
         Result<Void> result = new Result<>();
         RingBuffer<Event> ringBuffer = disruptor.getRingBuffer();
-        ringBuffer.publishEvent((event, sequence, buffer) -> {
+        ringBuffer.publishEvent((event, sequence) -> {
             event.runnable = runnable;
-            event.result = result;
-            event.exceptionHandler = exceptionHandler;
+            prepareEvent(event, result, exceptionHandler, timeout);
         });
+
+        monitor(result, timeout);
 
         return new RunnableWait(result);
     }
 
     public void runAsync(Runnable runnable) {
-        runAsync(runnable, null);
+        runAsync(runnable, null, 0L);
     }
 
-    public void runAsync(Runnable runnable, Consumer<Exception> exceptionHandler) {
+    public void runAsync(Runnable runnable, long timeout) {
+        runAsync(runnable, null, timeout);
+    }
+
+    public void runAsync(Runnable runnable, Consumer<Exception> exceptionHandler, long timeout) {
         RingBuffer<Event> ringBuffer = disruptor.getRingBuffer();
-        ringBuffer.publishEvent((event, sequence, buffer) -> {
+        Result result = timeout > 0 ? new Result() : null;
+        ringBuffer.publishEvent((event, sequence) -> {
             event.runnable = runnable;
-            event.exceptionHandler = exceptionHandler;
+            prepareEvent(event, result, exceptionHandler, timeout);
         });
+
+        monitor(result, timeout);
     }
 
     public <V> CallableWait<V> call(Callable<V> callable) {
         return call(callable, null);
     }
 
+    public <V> CallableWait<V> call(Callable<V> callable, long timeout) {
+        return call(callable, null, timeout);
+    }
+
     public <V> CallableWait<V> call(Callable<V> callable, Consumer<Exception> exceptionHandler) {
+        return call(callable, exceptionHandler, 0L);
+    }
+
+    public <V> CallableWait<V> call(Callable<V> callable, Consumer<Exception> exceptionHandler, long timeout) {
         Result result = new Result();
         RingBuffer<Event> ringBuffer = disruptor.getRingBuffer();
         ringBuffer.publishEvent((event, sequence, buffer) -> {
             event.callable = callable;
-            event.result = result;
-            event.exceptionHandler = exceptionHandler;
+            prepareEvent(event, result, exceptionHandler, timeout);
         });
 
+        monitor(result, timeout);
+
         return new CallableWait<>(result);
+    }
+
+    private void prepareEvent(Event event, Result result, Consumer<Exception> exceptionHandler, long timeout ) {
+        event.result = result;
+        event.exceptionHandler = exceptionHandler;
+        event.timeout = timeout;
+        event.monitor = monitor;
+        event.expiration = System.currentTimeMillis() + timeout;
+    }
+
+    protected void monitor(Result result, long timeout) {
+        if (result == null || timeout <= 0)
+            return;
+        if (true)
+            return;
+        RingBuffer<Event> ringBuffer = disruptor.getRingBuffer();
+        ringBuffer.publishEvent((event, sequence) -> {
+            event.result = result;
+            event.timeout = timeout;
+        });
     }
 
     public static class Wait<V> {
@@ -168,6 +251,7 @@ public class DisruptorPool {
         private Exception exception;
         private V returnValue;
         private volatile boolean done = false;
+        private Thread thread;
     }
 
     private static class Event<V> {
@@ -175,15 +259,25 @@ public class DisruptorPool {
         private Runnable runnable;
         private Callable<V> callable;
         private Consumer<Exception> exceptionHandler;
+        private long timeout = 0L;
+        private long expiration;
+        private Monitor monitor;
 
         void clear() {
             result = null;
             runnable = null;
             callable = null;
             exceptionHandler = null;
+            timeout = 0L;
+            expiration = 0L;
         }
 
         void handle() {
+            if (timeout > 0 && result != null) {
+                result.thread = Thread.currentThread();
+                monitor.add(this);
+            }
+
             if (runnable != null) {
                 run();
             } else {
@@ -191,8 +285,9 @@ public class DisruptorPool {
             }
             if (result != null) {
                 synchronized (result) {
-                    result.notifyAll();
                     result.done = true;
+                    result.thread = null;
+                    result.notifyAll();
                 }
             }
         }
@@ -219,6 +314,144 @@ public class DisruptorPool {
                 else if (result != null)
                     result.exception = ex;
             }
+        }
+    }
+
+    static class Monitor implements Runnable {
+        private Thread thread = new Thread(this);
+        private int capacity = Runtime.getRuntime().availableProcessors() * 4;
+        List<Event> list;
+        ReentrantLock lock = new ReentrantLock();
+        private final Condition notEmpty = lock.newCondition();
+        private volatile boolean shutdown = false;
+
+        public boolean isAlive() {
+            return thread.isAlive();
+        }
+
+        public void start() {
+            shutdown = false;
+            list = new ArrayList<>(capacity);
+            thread.start();
+        }
+
+        public void shutdown() {
+            shutdown = true;
+            thread.interrupt();
+            list.clear();
+        }
+
+        public void add(Event event) {
+            add(event, true);
+        }
+
+        int binarySearch(List<Event> list, int l, int r, long exp)
+        {
+            if (r>=l)
+            {
+                int mid = l + (r - l)/2;
+
+                // If the element is present at the
+                // middle itself
+                if (list.get(mid).expiration == exp)
+                    return mid;
+
+                // If element is smaller than mid, then
+                // it can only be present in left subarray
+                if (list.get(mid).expiration > exp)
+                    return binarySearch(list, l, mid-1, exp);
+
+                // Else the element can only be present
+                // in right subarray
+                return binarySearch(list, mid+1, r, exp);
+            }
+
+            // We reach here when element is not present
+            //  in array
+            return r;
+        }
+
+        private void add(Event event, boolean interrupt) {
+            final ReentrantLock lock = this.lock;
+            int index = 0;
+            lock.lock();
+            try {
+                int size = list.size();
+                if (size > 0) {
+                    int start = binarySearch(list, 0, list.size() - 1, event.expiration);
+                    if (start < 0)
+                        start = 0;
+                    else if (start >= size)
+                        start = size - 1;
+                    Event e = list.get(start);
+                    if (e.expiration < event.expiration) {
+                        index = start + 1;
+                    } else {
+                        index = start;
+                    }
+                }
+                list.add(index, event);
+                notEmpty.signal();
+            } finally {
+                lock.unlock();
+            }
+            if (index == 0 && interrupt)
+                thread.interrupt();
+        }
+
+        public void run() {
+            while (!shutdown) {
+                Event event = null;
+                try {
+                    lock.lock();
+                    while (list.size() == 0)
+                        notEmpty.await();
+                    event = list.remove(0);
+                } catch (InterruptedException e) {
+                    // ignore
+                } finally {
+                    lock.unlock();
+                }
+                if (event != null && !monitor(event)) {
+                    add(event, false);
+                }
+            }
+        }
+
+        // returns true if successfully processed, false if interrupted
+        private boolean monitor(Event event) {
+            Result result = event.result;
+            if (result == null)
+                return true;
+
+            synchronized (result) {
+                boolean firstTime = true;
+                while (!result.done) {
+                    try {
+                        long waitTime;
+                        if (firstTime) {
+                            waitTime = event.expiration - System.currentTimeMillis() - 1;
+                            firstTime = false;
+                            if (waitTime == -1)
+                                waitTime = 0;
+                        } else {
+                            waitTime = event.expiration - System.currentTimeMillis();
+                        }
+                        if (waitTime > 0) {
+                            result.wait(waitTime);
+                        } else {
+                            if (result.thread != null) {
+                                result.thread.interrupt();
+                                result.thread = null;
+                            }
+                            break;
+                        }
+                    } catch (InterruptedException e) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
     }
 }
