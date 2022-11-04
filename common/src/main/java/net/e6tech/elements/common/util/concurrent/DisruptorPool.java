@@ -174,7 +174,8 @@ public class DisruptorPool {
 
     private void prepareEvent(Event event, Result result, Handler handler, long timeout ) {
         event.result = result;
-        event.handler = handler;
+        if (handler != null)
+            event.handler = handler;
         event.timeout = timeout;
         event.monitor = monitor;
         event.expiration = System.currentTimeMillis() + timeout;
@@ -278,7 +279,7 @@ public class DisruptorPool {
         private Result result;
         private Runnable runnable;
         private Callable<V> callable;
-        private Handler<V> handler;
+        private Handler<V> handler = defaultHandler;
         private long timeout = 0L;
         private long expiration;
         private Monitor monitor;
@@ -287,7 +288,7 @@ public class DisruptorPool {
             result = null;
             runnable = null;
             callable = null;
-            handler = null;
+            handler = defaultHandler;
             timeout = 0L;
             expiration = 0L;
         }
@@ -315,13 +316,12 @@ public class DisruptorPool {
         void run() {
             try {
                 runnable.run();
-                if (handler != null)
-                    handler.callback(null);
+                handler.callback(null);
             } catch (Exception ex) {
-                if (handler != null)
-                    handler.exception(ex);
-                else if (result != null)
-                    result.exception = ex;
+                if (!handler.exception(ex)) {
+                    if (result != null)
+                        result.exception = ex;
+                }
             }
         }
 
@@ -330,13 +330,12 @@ public class DisruptorPool {
                 Object ret = callable.call();
                 if (result != null)
                     result.returnValue = ret;
-                if (handler != null)
-                    handler.callback((V)ret);
+                handler.callback((V)ret);
             } catch (Exception ex) {
-                if (handler != null)
-                    handler.exception(ex);
-                else if (result != null)
-                    result.exception = ex;
+                if (!handler.exception(ex)) {
+                    if (result != null)
+                        result.exception = ex;
+                }
             }
         }
     }
@@ -473,9 +472,7 @@ public class DisruptorPool {
                             result.wait(waitTime);
                         } else {
                             if (result.thread != null) {
-                                result.thread.interrupt();
-                                if (event.handler != null)
-                                    event.handler.timeout(result.thread);
+                                event.handler.timeout(result.thread);
                                 result.thread = null;
                             }
                             break;
@@ -489,15 +486,22 @@ public class DisruptorPool {
         }
     }
 
+    static Handler defaultHandler = (TimeoutHandler) (thread) -> thread.interrupt();
+
     public interface Handler<V>  {
-        default void exception(Exception exception){}
+        default boolean exception(Exception exception){ return false; }
         default void callback(V retVal) {}
-        default void timeout(Thread thread) {}
+
+        // this method is called when timeout happens.  The implementation need to stop the blocking operation
+        // For example, if it were a socket connection, the socket needs to be close.  The default
+        default void timeout(Thread thread) {
+            thread.interrupt();
+        }
     }
 
     @FunctionalInterface
     public interface ExceptionHandler<V> extends Handler<V> {
-        void exception(Exception exception);
+        boolean exception(Exception exception);
     }
 
     @FunctionalInterface

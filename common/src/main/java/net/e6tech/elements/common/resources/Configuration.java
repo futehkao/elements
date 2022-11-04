@@ -365,11 +365,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
                     applicableKeys.remove(entry.getKey());
                     continue;
                 }
-                value = converter.convert(value, desc.getWriteMethod());
-                Method method = desc.getWriteMethod();
-                method.invoke(object, value);
-                if (converter.getListener() != null && value != null)
-                    converter.getListener().instanceCreated(object, desc.getWriteMethod().getParameterTypes()[0], value);
+                setValueForOwner(converter, object, desc, value);
                 applicableKeys.remove(entry.getKey());
                 configured.add(entry.getKey());
             }
@@ -562,7 +558,22 @@ public class Configuration extends LinkedHashMap<String, Object> {
     private void setValueForOwner(ObjectConverter converter, Object owner, PropertyDescriptor desc, Object val)
             throws IOException, InvocationTargetException, IllegalAccessException {
         Method method = desc.getReadMethod() != null ? desc.getReadMethod() : desc.getWriteMethod();
-        Object value = converter.convert(val, method);
+
+        Object value = null;
+        if (desc.getReadMethod() != null) {
+            Object curr = desc.getReadMethod().invoke(owner);
+            if (curr != null) {
+                if (val instanceof Map && !(curr instanceof Map)) {
+                    configureWithMap(converter, curr, (Map) val);
+                    return;
+                } else {
+                    value = converter.convert(val, curr.getClass());
+                }
+            }
+        }
+
+        if (value == null)
+            value = converter.convert(val, method);
         if (converter.getListener() != null && val != null)
             converter.getListener().instanceCreated(value, desc.getPropertyType(), value);
         try {

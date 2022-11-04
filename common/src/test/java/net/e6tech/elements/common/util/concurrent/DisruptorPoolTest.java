@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -144,16 +146,14 @@ public class DisruptorPoolTest {
             int index = i;
             long start = System.currentTimeMillis();
             pool.async(() -> {
-                boolean interrupted = false;
                 try {
                     Thread.sleep(1000L);
                 } catch (Exception e) {
                     System.out.println(index + " interrupted after " + (System.currentTimeMillis() - start) + "ms");
-                    interrupted = true;
                 }
-                System.out.println("run " + index + "done " + " interrupted=" + interrupted);
             },
-                    (DisruptorPool.TimeoutHandler) thread -> System.out.println("Thread " + thread.getName() + " callback " + index + " done " ),
+                    (DisruptorPool.TimeoutHandler) thread -> {
+                        thread.interrupt();},
                     900 - i * 50
             );
         }
