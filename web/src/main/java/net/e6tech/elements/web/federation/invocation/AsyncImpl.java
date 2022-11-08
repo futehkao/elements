@@ -18,15 +18,14 @@ package net.e6tech.elements.web.federation.invocation;
 
 import net.e6tech.elements.common.federation.Registry;
 import net.e6tech.elements.common.reflection.Primitives;
+import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Executor;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -82,8 +81,10 @@ public class AsyncImpl<U> implements Async<U> {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return (R) future.get();
+            } catch (ExecutionException ex) {
+                throw new CompletionException(ExceptionMapper.unwrap(ex.getCause()));
             } catch (Exception ex) {
-                throw new SystemException(ex);
+                throw new CompletionException(ExceptionMapper.unwrap(ex));
             }
         }, executor);
     }
@@ -95,8 +96,10 @@ public class AsyncImpl<U> implements Async<U> {
         return CompletableFuture.runAsync(() -> {
             try {
                 future.join();
+            } catch (CancellationException ex) {
+                throw ex;
             } catch (Exception ex) {
-                throw new SystemException(ex);
+                throw new CompletionException(ExceptionMapper.unwrap(ex));
             }
         }, executor);
     }
