@@ -32,11 +32,13 @@ import org.apache.cxf.message.Message;
 import org.apache.cxf.transport.Destination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngine;
+import org.eclipse.jetty.util.thread.ExecutorThreadPool;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * This class is design to start CXFServer using Jetty.
@@ -50,10 +52,9 @@ public class JettyEngine implements ServerEngine {
     private static Logger logger = Logger.getLogger();
 
     private QueuedThreadPool queuedThreadPool;
-    private boolean useActorThreadPool = false;
+    private boolean useThreadPool = false;
     private Provision provision;
     private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
-    private JettyActorExecutor executor;
     private JettySSL jettySSL = new JettySSL();
 
     public QueuedThreadPool getQueuedThreadPool() {
@@ -74,12 +75,12 @@ public class JettyEngine implements ServerEngine {
         this.provision = provision;
     }
 
-    public boolean isUseActorThreadPool() {
-        return useActorThreadPool;
+    public boolean isUseThreadPool() {
+        return useThreadPool;
     }
 
-    public void setUseActorThreadPool(boolean useActorThreadPool) {
-        this.useActorThreadPool = useActorThreadPool;
+    public void setUseThreadPool(boolean useThreadPool) {
+        this.useThreadPool = useThreadPool;
     }
 
     public WorkerPoolConfig getWorkerPoolConfig() {
@@ -153,12 +154,9 @@ public class JettyEngine implements ServerEngine {
     private void startThreadPool(JettyHTTPServerEngine engine) {
         if (queuedThreadPool != null) {
             engine.setThreadPool(queuedThreadPool);
-        } else if (useActorThreadPool && provision != null) {
+        } else if (useThreadPool && provision != null && provision.getExecutor() instanceof ThreadPoolExecutor) {
             try {
-                executor = provision.newInstance(JettyActorExecutor.class);
-                executor.setWorkerPoolConfig(getWorkerPoolConfig());
-                executor.start();
-                engine.setThreadPool(executor);
+                engine.setThreadPool(new ExecutorThreadPool((ThreadPoolExecutor)provision.getExecutor()));
             } catch (Exception ex) {
                 logger.warn("Cannot start ActorThreadPool", ex);
             }
@@ -184,14 +182,5 @@ public class JettyEngine implements ServerEngine {
                 logger.warn("Cannot stop Jetty {}", server.getDestination().getAddress().getAddress().getValue());
             }
         }
-        if (executor != null) {
-            try {
-                executor.stop();
-            } catch (Exception e) {
-                //
-            }
-        }
     }
-
-
 }

@@ -54,7 +54,7 @@ public class TomcatEngine implements ServerEngine {
     private int maxConnections = 10000;
     private String baseDir;
     private Provision provision;
-    private boolean useActorThreadPool = false;
+    private boolean useThreadPool = false;
     private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
     private TomcatSSL tomcatSSL = new TomcatSSL();
 
@@ -108,12 +108,12 @@ public class TomcatEngine implements ServerEngine {
         this.workerPoolConfig = workerPoolConfig;
     }
 
-    public boolean isUseActorThreadPool() {
-        return useActorThreadPool;
+    public boolean isUseThreadPool() {
+        return useThreadPool;
     }
 
-    public void setUseActorThreadPool(boolean useActorThreadPool) {
-        this.useActorThreadPool = useActorThreadPool;
+    public void setUseThreadPool(boolean useThreadPool) {
+        this.useThreadPool = useThreadPool;
     }
 
     public TomcatSSL getTomcatSSL() {
@@ -149,10 +149,8 @@ public class TomcatEngine implements ServerEngine {
 
         try {
             Connector connector = createConnector(cxfServer, controller.getURL());
-            if (provision != null && useActorThreadPool) {
-                TomcatActorExecutor executor = provision.newInstance(TomcatActorExecutor.class);
-                executor.setWorkerPoolConfig(getWorkerPoolConfig());
-                executor.start();
+            if (provision != null && useThreadPool) {
+                Executor executor = provision.getExecutor();
                 connector.getProtocolHandler().setExecutor(executor);
             }
             connector.setPort(controller.getURL().getPort());
@@ -168,9 +166,7 @@ public class TomcatEngine implements ServerEngine {
         Iterator<Tomcat> iterator = tomcats.iterator();
         while (iterator.hasNext()) {
             Tomcat tomcat = iterator.next();
-            Executor executor = null;
             try {
-                executor = tomcat.getConnector().getProtocolHandler().getExecutor();
                 tomcat.stop();
                 tomcat.destroy();
             } catch (Exception ex) {
@@ -181,10 +177,6 @@ public class TomcatEngine implements ServerEngine {
                     }
                 }
                 logger.warn("Cannot stop Tomcat for path{} - {}: {}", builder, ex.getMessage(), ex.getCause().getMessage());
-            } finally {
-                if (executor instanceof TomcatActorExecutor) {
-                    ((TomcatActorExecutor) executor).stop();
-                }
             }
             iterator.remove();
         }

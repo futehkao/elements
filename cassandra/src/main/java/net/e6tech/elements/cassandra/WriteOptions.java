@@ -38,15 +38,16 @@ public class WriteOptions implements Cloneable {
     public WriteOptions merge(WriteOptions options) {
         if (options == null)
             return this;
+        WriteOptions clone = clone();
         if (options.ttl != null)
-            ttl = options.ttl;
+            clone.ttl = options.ttl;
         if (options.consistency != null)
-            consistency = options.consistency;
+            clone.consistency = options.consistency;
         if (options.saveNullFields != null)
-            saveNullFields = options.saveNullFields;
+            clone.saveNullFields = options.saveNullFields;
         if (options.ifNotExists != null)
-            ifNotExists = options.ifNotExists;
-        return this;
+            clone.ifNotExists = options.ifNotExists;
+        return clone;
     }
 
     public WriteOptions clone() {

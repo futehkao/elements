@@ -44,15 +44,6 @@ public class DisruptorPoolTest {
             System.out.println("run asynchronously done");
         });
 
-        pool.async(() -> {
-            try {
-                Thread.sleep(1000L);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            System.out.println("run asynchronously 2 done");
-        });
-
         pool.run(() -> {
             System.out.println("run done");
         }).complete(1000L);
@@ -79,7 +70,6 @@ public class DisruptorPoolTest {
     @Test
     void runTimeout() {
         DisruptorPool pool = new DisruptorPool();
-        pool.setHandlerSize(200);
         pool.start();
 
         long begin = System.currentTimeMillis();
@@ -100,63 +90,31 @@ public class DisruptorPoolTest {
         pool.shutdown();
     }
 
-    @Test
-    void asyncTimeout() throws InterruptedException {
-        DisruptorPool pool = new DisruptorPool();
-        pool.setHandlerSize(200);
-        pool.start();
-
-        for (int i = 0; i < 100; i++) {
-            int index = i;
-            long start = System.currentTimeMillis();
-            pool.async(() -> {
-                boolean interrupted = false;
-                try {
-                    Thread.sleep(1000L);
-                } catch (InterruptedException e) {
-                    System.out.println("Interrupted after " + (System.currentTimeMillis() - start) + "ms");
-                    interrupted = true;
-                }
-                System.out.println("run1 " + index + "done " + " interrupted=" + interrupted);
-            }, 500L);
-
-            pool.async(() -> {
-                boolean interrupted = false;
-                try {
-                    Thread.sleep(1000L);
-                } catch (InterruptedException e) {
-                    System.out.println("Interrupted after " + (System.currentTimeMillis() - start) + "ms");
-                    interrupted = true;
-                }
-                System.out.println("run2 " + index + "done " + " interrupted=" + interrupted);
-            }, 1100L);
-            Thread.sleep(10L);
-        }
-
-        pool.shutdown();
-    }
 
     @Test
     void outOfOrder() {
         DisruptorPool pool = new DisruptorPool();
-        pool.setHandlerSize(200);
         pool.start();
-
+        List<DisruptorPool.RunnableWait> list = new ArrayList<>(10);
         for (int i = 0; i < 10; i++) {
             int index = i;
             long start = System.currentTimeMillis();
-            pool.async(() -> {
+            DisruptorPool.RunnableWait wait = pool.run(() -> {
                 try {
                     Thread.sleep(1000L);
+                    System.out.println(Thread.currentThread().getName());
                 } catch (Exception e) {
                     System.out.println(index + " interrupted after " + (System.currentTimeMillis() - start) + "ms");
                 }
             },
                     (DisruptorPool.TimeoutHandler) thread -> {
+                        System.out.println("Interrupting " + thread.getName());
                         thread.interrupt();},
                     900 - i * 50
             );
+            list.add(wait);
         }
+        list.forEach( e -> e.complete());
         pool.shutdown();
     }
 }

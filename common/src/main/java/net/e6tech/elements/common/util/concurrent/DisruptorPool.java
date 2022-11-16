@@ -26,18 +26,21 @@ import net.e6tech.elements.common.util.SystemException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 @SuppressWarnings("unchecked")
 public class DisruptorPool {
 
+    static Handler defaultHandler = (TimeoutHandler) (thread) -> thread.interrupt();
+
     private Monitor monitor = new Monitor();
     Disruptor<Event> disruptor;
     private int bufferSize = 1024;
-    private int handlerSize = Runtime.getRuntime().availableProcessors() * 2; // times 2 in case of timeout
+    private int handlerSize = Runtime.getRuntime().availableProcessors() * 2;
+    private int initialMonitorCapacity = 16;
+    private ExecutorService executorService;
 
     public DisruptorPool() {
     }
@@ -66,16 +69,25 @@ public class DisruptorPool {
         this.handlerSize = handlerSize;
     }
 
+    public int getInitialMonitorCapacity() {
+        return initialMonitorCapacity;
+    }
+
+    public void setInitialMonitorCapacity(int initialMonitorCapacity) {
+        this.initialMonitorCapacity = initialMonitorCapacity;
+    }
+
     public synchronized void start() {
         if (!monitor.isAlive()) {
-            monitor.capacity = handlerSize;
+            monitor.capacity = initialMonitorCapacity;
             monitor.start();
         }
         if (disruptor != null)
             return;
 
         disruptor = new Disruptor<>(Event::new, getBufferSize(), DaemonThreadFactory.INSTANCE,
-                ProducerType.SINGLE, new YieldingWaitStrategy());
+                ProducerType.MULTI, new YieldingWaitStrategy());
+
         WorkHandler<Event> handler = Event::handle;
         WorkHandler<Event>[] workers = new WorkHandler[getHandlerSize()];
         for (int i = 0; i < workers.length; i++) {
@@ -83,6 +95,7 @@ public class DisruptorPool {
         }
         disruptor.handleEventsWithWorkerPool(workers)
                 .then((event, sequence, endOfBatch) -> event.clear());
+
         disruptor.start();
     }
 
@@ -115,36 +128,13 @@ public class DisruptorPool {
     }
 
     public RunnableWait run(Runnable runnable, Handler handler, long timeout) {
-        Result<Void> result = new Result<>();
         RingBuffer<Event> ringBuffer = disruptor.getRingBuffer();
-        ringBuffer.publishEvent((event, sequence) -> {
-            event.runnable = runnable;
-            event.handler = handler;
-            prepareEvent(event, result, handler, timeout);
-        });
-
-        monitor(result, timeout);
-
-        return new RunnableWait(result);
-    }
-
-    public void async(Runnable runnable) {
-        async(runnable, null, 0L);
-    }
-
-    public void async(Runnable runnable, long timeout) {
-        async(runnable, null, timeout);
-    }
-
-    public void async(Runnable runnable, Handler handler, long timeout) {
-        RingBuffer<Event> ringBuffer = disruptor.getRingBuffer();
-        Result result = timeout > 0 ? new Result() : null;
-        ringBuffer.publishEvent((event, sequence) -> {
-            event.runnable = runnable;
-            prepareEvent(event, result, handler, timeout);
-        });
-
-        monitor(result, timeout);
+        long sequence = ringBuffer.next();
+        Event event = ringBuffer.get(sequence);
+        event.runnable = runnable;
+        prepareEvent(event, handler, timeout);
+        ringBuffer.publish(sequence);
+        return new RunnableWait(event);
     }
 
     public <V> CallableWait<V> call(Callable<V> callable) {
@@ -160,54 +150,41 @@ public class DisruptorPool {
     }
 
     public <V> CallableWait<V> call(Callable<V> callable, Handler<V> handler, long timeout) {
-        Result result = new Result();
         RingBuffer<Event> ringBuffer = disruptor.getRingBuffer();
-        ringBuffer.publishEvent((event, sequence, buffer) -> {
-            event.callable = callable;
-            prepareEvent(event, result, handler, timeout);
-        });
-
-        monitor(result, timeout);
-
-        return new CallableWait<>(result);
+        long sequence = ringBuffer.next();
+        Event event = ringBuffer.get(sequence);
+        event.callable = callable;
+        prepareEvent(event, handler, timeout);
+        ringBuffer.publish(sequence);
+        return new CallableWait<>(event);
     }
 
-    private void prepareEvent(Event event, Result result, Handler handler, long timeout ) {
-        event.result = result;
+    private void prepareEvent(Event event, Handler handler, long timeout ) {
         if (handler != null)
             event.handler = handler;
-        event.timeout = timeout;
         event.monitor = monitor;
-        event.expiration = System.currentTimeMillis() + timeout;
-    }
+        if (timeout < 0)
+            timeout = 0;
 
-    protected void monitor(Result result, long timeout) {
-        if (result == null || timeout <= 0)
-            return;
-        if (true)
-            return;
-        RingBuffer<Event> ringBuffer = disruptor.getRingBuffer();
-        ringBuffer.publishEvent((event, sequence) -> {
-            event.result = result;
-            event.timeout = timeout;
-        });
+        if (timeout > 0)
+            event.expiration = System.currentTimeMillis() + timeout;
     }
 
     public static class Wait<V> {
-        Result<V> result;
+        Event event;
 
-        Wait(Result<V> result) {
-            this.result = result;
+        Wait(Event event) {
+            this.event = event;
         }
 
         protected void await(long timeout)  throws TimeoutException {
             long start = System.currentTimeMillis();
             boolean first = true;
-            synchronized (result) {
-                while (!result.done) {
+            synchronized (event) {
+                while (!event.done) {
                     try {
                         if (timeout <= 0) {
-                            result.wait();
+                            event.wait();
                         } else {
                             if (!first && System.currentTimeMillis() - start > timeout) {
                                 throw new TimeoutException();
@@ -216,10 +193,10 @@ public class DisruptorPool {
                                 first = false;
                             long wait = timeout - (System.currentTimeMillis() - start);
                             if (wait > 0)
-                                result.wait(wait);
+                                event.wait(wait);
                         }
-                        if (result.exception != null)
-                            throw new SystemException(result.exception);
+                        if (event.exception != null)
+                            throw new SystemException(event.exception);
 
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
@@ -231,8 +208,8 @@ public class DisruptorPool {
     }
 
     public static class RunnableWait extends Wait<Void> {
-        RunnableWait(Result<Void> result) {
-            super(result);
+        RunnableWait(Event event) {
+            super(event);
         }
 
         public void complete() {
@@ -249,8 +226,8 @@ public class DisruptorPool {
     }
 
     public static class CallableWait<V> extends Wait<V> {
-        CallableWait(Result<V> result) {
-            super(result);
+        CallableWait(Event event) {
+            super(event);
         }
 
         public V complete()  {
@@ -264,38 +241,37 @@ public class DisruptorPool {
 
         public V complete(long timeout)  throws TimeoutException {
             await(timeout);
-            return result.returnValue;
+            return (V) event.returnValue;
         }
     }
 
-    private static class Result<V> {
+
+    private static class Event<V> {
+        private Runnable runnable;
+        private Callable<V> callable;
+        private Handler<V> handler = defaultHandler;
         private Exception exception;
         private V returnValue;
         private volatile boolean done = false;
         private Thread thread;
-    }
-
-    private static class Event<V> {
-        private Result result;
-        private Runnable runnable;
-        private Callable<V> callable;
-        private Handler<V> handler = defaultHandler;
-        private long timeout = 0L;
         private long expiration;
+
         private Monitor monitor;
 
         void clear() {
-            result = null;
+            thread = null;
+            done = false;
+            returnValue = null;
+            exception = null;
             runnable = null;
             callable = null;
             handler = defaultHandler;
-            timeout = 0L;
             expiration = 0L;
         }
 
         void handle() {
-            if (timeout > 0 && result != null) {
-                result.thread = Thread.currentThread();
+            if (expiration > 0) {
+                thread = Thread.currentThread();
                 monitor.add(this);
             }
 
@@ -304,12 +280,11 @@ public class DisruptorPool {
             } else {
                 call();
             }
-            if (result != null) {
-                synchronized (result) {
-                    result.done = true;
-                    result.thread = null;
-                    result.notifyAll();
-                }
+
+            synchronized (this) {
+                done = true;
+                this.thread = null;
+                this.notifyAll();
             }
         }
 
@@ -319,8 +294,7 @@ public class DisruptorPool {
                 handler.callback(null);
             } catch (Exception ex) {
                 if (!handler.exception(ex)) {
-                    if (result != null)
-                        result.exception = ex;
+                    exception = ex;
                 }
             }
         }
@@ -328,13 +302,11 @@ public class DisruptorPool {
         void call() {
             try {
                 Object ret = callable.call();
-                if (result != null)
-                    result.returnValue = ret;
+                returnValue = (V) ret;
                 handler.callback((V)ret);
             } catch (Exception ex) {
                 if (!handler.exception(ex)) {
-                    if (result != null)
-                        result.exception = ex;
+                    exception = ex;
                 }
             }
         }
@@ -342,7 +314,7 @@ public class DisruptorPool {
 
     static class Monitor implements Runnable {
         private Thread thread;
-        private int capacity = Runtime.getRuntime().availableProcessors() * 4;
+        private int capacity = 16;
         List<Event> list;
         ReentrantLock lock = new ReentrantLock();
         private final Condition notEmpty = lock.newCondition();
@@ -450,13 +422,9 @@ public class DisruptorPool {
 
         // returns true if successfully processed, false if interrupted
         private boolean monitor(Event event) {
-            Result result = event.result;
-            if (result == null)
-                return true;
-
-            synchronized (result) {
+            synchronized (event) {
                 boolean firstTime = true;
-                while (!result.done) {
+                while (!event.done) {
                     try {
                         long waitTime;
                         if (firstTime) {
@@ -469,11 +437,12 @@ public class DisruptorPool {
                         }
 
                         if (waitTime > 0) {
-                            result.wait(waitTime);
+                            event.wait(waitTime);
                         } else {
-                            if (result.thread != null) {
-                                event.handler.timeout(result.thread);
-                                result.thread = null;
+                            Thread th = event.thread;
+                            if (th != null) {
+                                event.handler.timeout(th);
+                                event.thread = null;
                             }
                             break;
                         }
@@ -485,8 +454,6 @@ public class DisruptorPool {
             return true;
         }
     }
-
-    static Handler defaultHandler = (TimeoutHandler) (thread) -> thread.interrupt();
 
     public interface Handler<V>  {
         default boolean exception(Exception exception){ return false; }
