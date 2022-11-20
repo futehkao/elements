@@ -24,7 +24,7 @@ import net.e6tech.sample.Tags;
 import org.hibernate.internal.SessionImpl;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.mariadb.jdbc.MariaDbConnection;
+// import org.mariadb.jdbc.MariaDbConnection;
 
 import javax.persistence.EntityManager;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,7 +38,7 @@ public class EntityManagerMonitorTest extends BaseCase {
     @Test
     @Disabled
     void entityManagerMonitor() throws Exception {
-        AtomicInteger count = new AtomicInteger();
+        /*AtomicInteger count = new AtomicInteger();
         while (true) {
             Thread th = new Thread(() -> {
                 try {
@@ -66,7 +66,7 @@ public class EntityManagerMonitorTest extends BaseCase {
             EntityManagerProvider provider = provision.getBean("entityManagerProvider");
             System.out.println("EntityManagerMonitor count=" + provider.getEntityManagerMonitors().size());
             Thread.sleep(200L);
-        }
+        }*/
     }
 
     @Test
