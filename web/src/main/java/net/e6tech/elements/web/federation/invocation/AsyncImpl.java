@@ -17,12 +17,16 @@
 package net.e6tech.elements.web.federation.invocation;
 
 import net.e6tech.elements.common.federation.Registry;
+import net.e6tech.elements.common.interceptor.CallFrame;
+import net.e6tech.elements.common.interceptor.Interceptor;
+import net.e6tech.elements.common.interceptor.InterceptorHandler;
 import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
 
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.*;
@@ -78,30 +82,20 @@ public class AsyncImpl<U> implements Async<U> {
     public <R> CompletionStage<R> apply(Function<U, R> function) {
         future = null;
         function.apply(proxy);
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return (R) future.get();
-            } catch (ExecutionException ex) {
-                throw new CompletionException(ExceptionMapper.unwrap(ex.getCause()));
-            } catch (Exception ex) {
-                throw new CompletionException(ExceptionMapper.unwrap(ex));
-            }
-        }, executor);
+        if (timeout > 0) {
+            return Interceptor.getInstance().newInterceptor(future, new FutureHandler(timeout));
+        }
+        return future;
     }
 
     @SuppressWarnings("squid:S2259")
     public CompletionStage<Void> accept(Consumer<U> consumer) {
         future = null;
         consumer.accept(proxy);
-        return CompletableFuture.runAsync(() -> {
-            try {
-                future.join();
-            } catch (CancellationException ex) {
-                throw ex;
-            } catch (Exception ex) {
-                throw new CompletionException(ExceptionMapper.unwrap(ex));
-            }
-        }, executor);
+        if (timeout > 0) {
+            return Interceptor.getInstance().newInterceptor(future, new FutureHandler(timeout));
+        }
+        return future;
     }
 
     @SuppressWarnings("unchecked")
@@ -113,6 +107,37 @@ public class AsyncImpl<U> implements Async<U> {
                 future = function.apply(args);
                 return Primitives.defaultValue(method.getReturnType());
             });
+        }
+    }
+
+    private class FutureHandler implements InterceptorHandler {
+        private long timeout;
+
+        FutureHandler(long timeout) {
+            this.timeout = timeout;
+        }
+
+        @Override
+        public Object invoke(CallFrame ctx) throws Throwable {
+            Method method = ctx.getMethod();
+            if ((method.getName().equals("get") || method.getName().equals("join")) && method.getParameterCount() == 0) {
+                try {
+                    future.get(timeout, TimeUnit.MILLISECONDS);
+                } catch (ExecutionException ex) {
+                    throw new CompletionException(ExceptionMapper.unwrap(ex.getCause()));
+                } catch (CancellationException ex) {
+                    throw ex;
+                } catch (Exception ex) {
+                    throw new CompletionException(ExceptionMapper.unwrap(ex));
+                }
+            } else if (method.getName().equals("toCompletableFuture") && method.getParameterCount() == 0) {
+                return ctx.getProxyObject();
+            }
+
+            Object result = method.invoke(ctx.getTarget(), ctx.getArguments());
+            if (result instanceof CompletableFuture)
+                return Interceptor.getInstance().newInterceptor(result, this);
+            return result;
         }
     }
 }

@@ -36,7 +36,7 @@ public class InstanceBuilder<T> extends AbstractBuilder<T, InstanceBuilder<T>> {
             Object target = null;
             if (!cls.isInterface())
                 target = newObject.newObject(cls);
-            wrapper = new Interceptor.InterceptorHandlerWrapper(interceptor, proxyClass, target, handler, listener, newObject);
+            wrapper = new Interceptor.InterceptorHandlerWrapper(interceptor, proxyClass, proxyObject, target, handler, listener, newObject);
         } catch (Exception e) {
             throw new SystemException(e);
         }

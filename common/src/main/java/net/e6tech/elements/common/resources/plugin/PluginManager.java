@@ -32,6 +32,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by futeh.
@@ -53,7 +54,7 @@ public class PluginManager {
         classLoader = new PluginClassLoader(resourceManager.getClass().getClassLoader());
     }
 
-    public PluginManager from(Resources resources) {
+    public synchronized PluginManager from(Resources resources) {
         PluginManager plugin = new PluginManager(resourceManager);
         plugin.resources = resources;
         plugin.defaultPlugins = defaultPlugins;
@@ -70,7 +71,7 @@ public class PluginManager {
         this.resources = resources;
     }
 
-    public void loadPlugins(String[] directories) {
+    public synchronized void loadPlugins(String[] directories) {
         for (String dir : directories) {
             String[] paths;
             try {
@@ -100,7 +101,7 @@ public class PluginManager {
     }
 
     @SuppressWarnings({"squid:S3824", "squid:S3776"})
-    protected Optional getDefaultPlugin(Class<?> type) {
+    protected synchronized Optional getDefaultPlugin(Class<?> type) {
         Object lookup = defaultPlugins.get(type);
         if (lookup == NULL_OBJECT)
             return Optional.empty();
@@ -144,7 +145,7 @@ public class PluginManager {
         return startsWith(PluginPaths.of(path));
     }
 
-    public Map<PluginPath, PluginEntry> startsWith(PluginPaths<?> paths) {
+    public synchronized Map<PluginPath, PluginEntry> startsWith(PluginPaths<?> paths) {
         Map<PluginPath, PluginEntry> map = new LinkedHashMap<>();
 
         for (PluginPath<?> path : paths.getPaths()) {
@@ -156,11 +157,11 @@ public class PluginManager {
         return map;
     }
 
-    public <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPath<T> path) {
+    public synchronized <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPath<T> path) {
         return Optional.ofNullable(plugins.get(path));
     }
 
-    public <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPaths<T> paths) {
+    public synchronized <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPaths<T> paths) {
         PluginEntry<T> lookup = null;
         // look up from paths
         for (PluginPath path : paths.getPaths()) {

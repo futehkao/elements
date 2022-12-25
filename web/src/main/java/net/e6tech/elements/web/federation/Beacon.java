@@ -229,7 +229,7 @@ public class Beacon {
 
         // updating frequencies.
         logger.trace("{} onEvent: {}" , collective.getHostAddress(), event);
-        if (Objects.equals(event.getClusterName(), collective.getDomainName()) && event.getCollectiveType() == collective.getType()) {
+        if (Objects.equals(event.getDomainName(), collective.getDomainName()) && event.getCollectiveType() == collective.getType()) {
             if (event.getType() == Event.Type.ANNOUNCE) {
                 updateFrequencies(event.getMembers());
             } else if (event.getType() == Event.Type.REMOVE) {

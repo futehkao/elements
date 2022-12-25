@@ -30,7 +30,7 @@ public class InterceptorBuilder<T> extends AbstractBuilder<T, InterceptorBuilder
         Class<T> proxyClass = interceptor.createInstanceClass(instance.getClass(), classLoader);
         T proxyObject = newObject.newObject(proxyClass);
         Interceptor.InterceptorHandlerWrapper wrapper =
-                new Interceptor.InterceptorHandlerWrapper(interceptor, proxyClass, instance, handler, listener, newObject);
+                new Interceptor.InterceptorHandlerWrapper(interceptor, proxyClass, proxyObject, instance, handler, listener, newObject);
         ((Interceptor.HandlerAccessor) proxyObject).setHandler(wrapper);
         return proxyObject;
     }

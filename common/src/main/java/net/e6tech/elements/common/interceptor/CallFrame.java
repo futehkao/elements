@@ -28,6 +28,7 @@ public class CallFrame {
 
     private static final Object[] EMPTY_ARGS = new Object[0];
 
+    private Object proxyObject;
     private Object target;
     private MethodHandle handle;
     private Object[] arguments;
@@ -37,7 +38,8 @@ public class CallFrame {
     CallFrame() {
     }
 
-    CallFrame initialize(Object target, MethodHandle handle, Method method, Object[] arguments) {
+    CallFrame initialize(Object proxyObject, Object target, MethodHandle handle, Method method, Object[] arguments) {
+        this.proxyObject = proxyObject;
         this.target = target;
         this.handle = handle;
         this.method = method;
@@ -52,6 +54,7 @@ public class CallFrame {
     }
 
     void clear() {
+        this.proxyObject = null;
         this.target = null;
         this.handle = null;
         this.method = null;
@@ -61,6 +64,10 @@ public class CallFrame {
 
     public Object[] getArguments() {
         return arguments;
+    }
+
+    public Object getProxyObject() {
+        return proxyObject;
     }
 
     public Object getTarget() {

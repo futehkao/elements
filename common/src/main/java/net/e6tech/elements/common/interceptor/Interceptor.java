@@ -260,6 +260,7 @@ public class Interceptor {
                 InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
                         p,
                         null,
+                        null,
                         ctx -> { // the use of anonymousThreadLocal is necessary because the wrapper is only created once and cached.
                             Throwable th = new Throwable();
                             StackTraceElement[] elements = th.getStackTrace();
@@ -432,6 +433,7 @@ public class Interceptor {
         private static ObjectPool<CallFrame> objectPool = new ObjectPool<CallFrame>().factory(CallFrame::new).build();
         InterceptorHandler handler;
         InterceptorListener listener;
+        Object proxyObject;
         Object target;
         Class targetClass;
         Class proxyClass;
@@ -440,6 +442,7 @@ public class Interceptor {
 
         InterceptorHandlerWrapper(Interceptor interceptor,
                                          Class proxyClass,
+                                         Object proxyObject,
                                          Object target,
                                          InterceptorHandler handler,
                                          InterceptorListener listener,
@@ -448,6 +451,7 @@ public class Interceptor {
             this.proxyClass = proxyClass;
             this.handler = handler;
             this.listener = listener;
+            this.proxyObject = proxyObject;
             this.target = target;
             if (target != null)
                 targetClass = target.getClass();
@@ -461,6 +465,7 @@ public class Interceptor {
             this.proxyClass = copy.proxyClass;
             this.handler = copy.handler;
             this.listener = copy.listener;
+            this.proxyObject = copy.proxyObject;
             this.target = copy.target;
             this.targetClass = copy.targetClass;
             this.newObject = copy.newObject;
@@ -470,7 +475,7 @@ public class Interceptor {
             CallFrame frame = null;
             try {
                 frame = objectPool.checkOut();
-                frame.initialize(target, methodHandle, method, arguments);
+                frame.initialize(proxyObject, target, methodHandle, method, arguments);
                 if (listener != null)
                     listener.preInvocation(frame);
                 Object ret;

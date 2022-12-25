@@ -44,6 +44,7 @@ public class SingletonClassBuilder<T> extends AbstractBuilder<Class<T>, Singleto
             field.setAccessible(true);
             Interceptor.InterceptorHandlerWrapper wrapper = new Interceptor.InterceptorHandlerWrapper(interceptor,
                     proxyClass,
+                    null,
                     singleton,
                     handler,
                     listener,

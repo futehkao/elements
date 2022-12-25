@@ -15,8 +15,7 @@ public class Event {
         REMOVE
     }
 
-    private String clusterName;
-
+    private String domainName;
     private UUID uuid = UUID.randomUUID();
     private Set<String> visited = new HashSet<>();
     private List<Member> members;
@@ -29,8 +28,8 @@ public class Event {
     public Event() {
     }
 
-    public Event(String clusterName, Type type, CollectiveImpl.Type collectiveType, List<Member> members, int cycle) {
-        this.clusterName = clusterName;
+    public Event(String domainName, Type type, CollectiveImpl.Type collectiveType, List<Member> members, int cycle) {
+        this.domainName = domainName;
         this.type = type;
         this.collectiveType = collectiveType;
         this.members = members;
@@ -38,12 +37,12 @@ public class Event {
         this.cycle = cycle;
     }
 
-    public String getClusterName() {
-        return clusterName;
+    public String getDomainName() {
+        return domainName;
     }
 
-    public void setClusterName(String clusterName) {
-        this.clusterName = clusterName;
+    public void setDomainName(String domainName) {
+        this.domainName = domainName;
     }
 
     public UUID getUuid() {

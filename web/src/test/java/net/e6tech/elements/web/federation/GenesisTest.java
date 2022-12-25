@@ -168,10 +168,13 @@ public class GenesisTest {
 
         long start = System.currentTimeMillis();
 
+        String str = catalyst.getQualifier();
+        Provision provision = new Provision();
         Double max = catalyst.builder(dataSet)
                 .add(new MapTransform<Reactor, Integer, Double>((operator, number) -> {
                     double sine = Math.sin(number * Math.PI / 360);
-                    //System.out.println(sine);
+                    System.out.println(str);
+                    provision.toString();
                     return sine;
                 }))
                 .scalar(new Max<>());
