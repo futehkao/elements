@@ -25,8 +25,10 @@ import net.e6tech.elements.cassandra.driver.cql.Row;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.TextBuilder;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 
 @SuppressWarnings("unchecked")
 public class PartitionStrategy<S extends Partition, C extends PartitionContext> implements BatchStrategy<S, C> {
@@ -45,36 +47,103 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
      * @return map of partition anc count
      */
     public Map<Comparable, Long> queryPartitions(C context) {
-        LastUpdate lastUpdate = context.getLastUpdate();
-        Comparable end = context.getCutoff();
-        String partitionKey = context.getInspector().getPartitionKeyColumn(0);
         String table = context.tableName();
+        String partitionKey = context.getInspector().getPartitionKeyColumn(0);
+        Map<Comparable, Long> map = Collections.synchronizedMap(new TreeMap<>());
+        List<Comparable> partitions = Collections.synchronizedList(new LinkedList<>());
+        incrementalQuery(context, partitions, (start, end) -> {
+            String query = TextBuilder.using(
+                            "select ${pk}, count(*) from ${table} " +
+                                    "where ${pk} > ${start} and ${pk} < ${end} group by ${pk} allow filtering")
+                    .build("pk", partitionKey, "table", table,
+                            "start", start, "end", end);
 
-        AtomicReference<Map<Comparable, Long>> ref = new AtomicReference<>(new HashMap<>());
-        List<Comparable> partitions = new ArrayList<>();
-        String query = TextBuilder.using(
-                "select ${pk}, count(*) from ${table} " +
-                        "where ${pk} > ${start} and ${pk} < ${end} group by ${pk} allow filtering")
-                .build("pk", partitionKey, "table", table,
-                        "start", lastUpdate.getLastUpdate(), "end", end);
-        context.open().accept(Resources.class, res -> {
-            ResultSet rs = res.getInstance(Session.class).execute(query);
-            List<Row> rows = rs.all();
-            ref.set(new HashMap<>((int)(rows.size() * 1.4 + 16)));
-            Map<Comparable, Long> map = ref.get();
-            for (Row row : rows) {
-                Comparable pk = (Comparable) row.get(0, context.getPartitionKeyType());
-                map.put(pk, row.get(1, Long.class));
-                partitions.add(pk);
-            }
+            context.open().accept(Resources.class, res -> {
+                ResultSet rs = res.getInstance(Session.class).execute(query);
+                List<Row> rows = rs.all();
+                for (Row row : rows) {
+                    Comparable pk = (Comparable) row.get(0, context.getPartitionKeyType());
+                    map.put(pk, row.get(1, Long.class));
+                    partitions.add(pk);
+                }
+            });
         });
-        Map<Comparable, Long> map = ref.get();
+
         Collections.sort(partitions);
         Map<Comparable, Long> result = new LinkedHashMap<>(partitions.size() + 1, 1.0f);
         for (Comparable partition : partitions) {
             result.put(partition, map.get(partition));
         }
         return result;
+    }
+
+    protected List<Comparable> incrementalQuery(C context, List<Comparable> partitions, BiConsumer<String, String> biConsumer) {
+        LastUpdate lastUpdate = context.getLastUpdate();
+        String start = lastUpdate.getLastUpdate();
+        String end = context.getCutoff().toString();
+
+        BigDecimal steps = context.getMaxTimeUnitSteps() == null ? null : new BigDecimal(context.getMaxTimeUnitSteps().toString());
+        if (steps.compareTo(BigDecimal.ZERO) <= 0)
+            steps = null;
+        BigDecimal from = null;
+        BigDecimal to = null;
+        final BigDecimal stop = new BigDecimal(context.getCutoff().toString());
+        if (context.getTimeUnit() != null && steps != null) {
+            from = new BigDecimal(lastUpdate.getLastUpdate());
+            if (from.compareTo(BigDecimal.ZERO) <= 0) {
+                from = new BigDecimal(context.getCutoff(System.currentTimeMillis(), context.getMaxPast()).toString());
+            }
+            to = from.add(steps);
+
+            if (to.compareTo(stop) > 0) {
+                to = stop;
+            }
+            start = from.toPlainString();
+            end = to.toPlainString();
+        }
+
+        while (true) {
+            int tries = context.getRetries();
+            while (tries > 0) {
+                try {
+                    biConsumer.accept(start, end);
+                    break;
+                } catch (Exception ex) {
+                    tries--;
+                    String info = "extractor=" + context.extractor() +
+                                " sourceClass=" + context.getSourceClass() +
+                                " tableName=" + context.tableName();
+
+                    if (tries <= 0) {
+                        throw ex;
+                    }
+                    logger.warn("Will retry. PartitionStrategy caught exception while transmutating " + info, ex);
+                    try {
+                        Thread.sleep(context.getRetrySleep());
+                    } catch (InterruptedException e) {
+                        // ignored
+                    }
+                }
+            }
+
+            if (context.getTimeUnit() != null && steps != null) {
+                if (to.compareTo(stop) >= 0)
+                    break;
+
+                from = to.subtract(BigDecimal.ONE); // because ${pk} > ${start} and ${pk} < ${end}, > and <
+                to = from.add(steps);
+
+                if (to.compareTo(stop) > 0) {
+                    to = stop;
+                }
+                start = from.toPlainString();
+                end = to.toPlainString();
+            } else {
+                break;
+            }
+        }
+
+        return partitions;
     }
 
     @Override
@@ -145,25 +214,25 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         return processedCount;
     }
 
-    public List<Comparable> queryRange(C context) {
-        LastUpdate lastUpdate = context.getLastUpdate();
-        Comparable end = context.getCutoff();
+    public List<Comparable> incrementalQuery(C context) {
         String partitionKey = context.getInspector().getPartitionKeyColumn(0);
         String table = context.tableName();
 
-        List<Comparable> list = new LinkedList<>();
-        // select distinct only works when selecting partition keys
-        String query = TextBuilder.using(
-                "select distinct ${pk} from ${table} " +
-                        "where ${pk} > ${start} and ${pk} < ${end} allow filtering")
-                .build("pk", partitionKey, "table", table,
-                        "start", lastUpdate.getLastUpdate(), "end", end);
-        context.open().accept(Resources.class, res -> {
+        List<Comparable> list = Collections.synchronizedList(new LinkedList<>());
 
-            ResultSet rs = res.getInstance(Session.class).execute(query);
-            for (Row row : rs.all()) {
-                list.add((Comparable) row.get(0, context.getPartitionKeyType()));
-            }
+        incrementalQuery(context, list, (start, end) -> {
+            // select distinct only works when selecting partition keys
+            String query = TextBuilder.using(
+                            "select distinct ${pk} from ${table} " +
+                                    "where ${pk} > ${start} and ${pk} < ${end} allow filtering")
+                    .build("pk", partitionKey, "table", table,
+                            "start", start, "end", end);
+            context.open().accept(Resources.class, res -> {
+                ResultSet rs = res.getInstance(Session.class).execute(query);
+                for (Row row : rs.all()) {
+                    list.add((Comparable) row.get(0, context.getPartitionKeyType()));
+                }
+            });
         });
 
         list.sort(null);
@@ -172,7 +241,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
 
     public int runPartitions(C context) {
         context.initialize();
-        List<Comparable> list = queryRange(context);
+        List<Comparable> list = incrementalQuery(context);
 
         List<Comparable> batch = new ArrayList<>(context.getBatchSize());
         for (Comparable c : list) {

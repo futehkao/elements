@@ -22,9 +22,13 @@ public class ETLSettings implements Serializable {
 
     private static final long serialVersionUID = 2451748267020918041L;
     private Integer batchSize;
+    private Integer maxTimeUnitSteps = 5000;  // used by PartitionStrategy to incrementally extract and transmutate date
     private Long timeLag;
+    private Long maxPast = 2 * ETLContext.YEAR;  // in case of no last update, this sets how far in the past to extract data.
     private Boolean extractAll;
     private Long startTime;
+    private Integer retries = 5;
+    private Long retrySleep = 100L;
 
     public Integer getBatchSize() {
         return batchSize;
@@ -36,6 +40,19 @@ public class ETLSettings implements Serializable {
 
     public ETLSettings batchSize(Integer batchSize) {
         setBatchSize(batchSize);
+        return this;
+    }
+
+    public Integer getMaxTimeUnitSteps() {
+        return maxTimeUnitSteps;
+    }
+
+    public void setMaxTimeUnitSteps(Integer maxTimeUnitSteps) {
+        this.maxTimeUnitSteps = maxTimeUnitSteps;
+    }
+
+    public ETLSettings maxTimeUnitSteps(Integer maxTimeUnitSteps) {
+        setMaxTimeUnitSteps(maxTimeUnitSteps);
         return this;
     }
 
@@ -75,6 +92,45 @@ public class ETLSettings implements Serializable {
 
     public ETLSettings startTime(Long startTime) {
         setStartTime(startTime);
+        return this;
+    }
+
+    public Long getMaxPast() {
+        return maxPast;
+    }
+
+    public void setMaxPast(Long maxPast) {
+        this.maxPast = maxPast;
+    }
+
+    public ETLSettings maxPast(Long maxPast) {
+        setMaxPast(maxPast);
+        return this;
+    }
+
+    public Integer getRetries() {
+        return retries;
+    }
+
+    public void setRetries(Integer retries) {
+        this.retries = retries;
+    }
+
+    public ETLSettings retries(Integer retries) {
+        setRetries(retries);
+        return this;
+    }
+
+    public Long getRetrySleep() {
+        return retrySleep;
+    }
+
+    public void setRetrySleep(Long retrySleep) {
+        this.retrySleep = retrySleep;
+    }
+
+    public ETLSettings retrySleep(Long sleep) {
+        setRetrySleep(sleep);
         return this;
     }
 }

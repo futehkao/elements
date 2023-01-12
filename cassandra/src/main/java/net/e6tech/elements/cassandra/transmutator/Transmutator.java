@@ -79,7 +79,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
     }
 
     @SuppressWarnings("squid:S3776")
-    protected void analyze() {
+    public void analyze() {
         descriptors.clear();
         Class cls = getClass();
         while (cls != null && cls != Object.class) {
@@ -184,6 +184,10 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             entry.context.setBatchSize(context.getBatchSize());
             entry.context.setExtractAll(context.isExtractAll());
             entry.context.setTimeLag(context.getTimeLag());
+            entry.context.setMaxPast(context.getTimeLag());
+            entry.context.setMaxTimeUnitSteps(context.getMaxTimeUnitSteps());
+            entry.context.setRetries(context.getRetries());
+            entry.context.setRetrySleep(context.getRetrySleep());
             if (entry.settings != null) {
                 ETLSettings s = entry.settings;
                 if (s.getStartTime() != null)
@@ -194,6 +198,14 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
                     entry.context.setExtractAll(s.getExtractAll());
                 if (s.getTimeLag() != null)
                     entry.context.setTimeLag(s.getTimeLag());
+                if (s.getMaxPast() != null)
+                    entry.context.setMaxPast(s.getMaxPast());
+                if (s.getMaxTimeUnitSteps() != null)
+                    entry.context.setMaxTimeUnitSteps(s.getMaxTimeUnitSteps());
+                if (s.getRetries() != null)
+                    entry.context.setRetries(s.getRetries());
+                if (s.getRetrySleep() != null)
+                    entry.context.setRetrySleep(s.getRetrySleep());
             }
         }
 
@@ -227,11 +239,11 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
     }
 
     public static class Descriptor {
-        int order;
-        PartitionContext context;
-        PartitionStrategy strategy;
-        RunType runType;
-        ETLSettings settings;
+        public int order;
+        public PartitionContext context;
+        public PartitionStrategy strategy;
+        public RunType runType;
+        public ETLSettings settings;
 
 
         Descriptor(int order, PartitionContext context, PartitionStrategy strategy, RunType runType, ETLSettings settings) {

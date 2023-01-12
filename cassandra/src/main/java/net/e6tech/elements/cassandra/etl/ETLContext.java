@@ -36,6 +36,7 @@ public class ETLContext {
     public static final long MONTH = DAY * 30;  // not to be used for deriving a partition key
     public static final long YEAR = DAY * 365;  // not to be used for deriving a partition key
     public static final long TIME_LAG = 5 * 60 * 1000L; // 5 minutes
+    public static final int MAX_TIME_UNIT_STEPS = 5000; //
     public static final int BATCH_SIZE = 2000;
 
     private Provision provision;
@@ -52,6 +53,10 @@ public class ETLContext {
     public ETLContext() {
         settings.batchSize(BATCH_SIZE)
                 .timeLag(TIME_LAG)
+                .maxPast(2 * YEAR)
+                .maxTimeUnitSteps(MAX_TIME_UNIT_STEPS)
+                .retries(5)
+                .retrySleep(100L)
                 .extractAll(true)
                 .startTime(System.currentTimeMillis());
     }
@@ -81,6 +86,14 @@ public class ETLContext {
         settings.setBatchSize(batchSize);
     }
 
+    public Integer getMaxTimeUnitSteps() {
+        return settings.getMaxTimeUnitSteps();
+    }
+
+    public void setMaxTimeUnitSteps(Integer maxTimeUnitSteps) {
+        settings.setMaxTimeUnitSteps(maxTimeUnitSteps);
+    }
+
     public long getTimeLag() {
         return settings.getTimeLag();
     }
@@ -88,6 +101,31 @@ public class ETLContext {
     public void setTimeLag(long timeLag) {
         settings.setTimeLag(timeLag);
     }
+
+    public long getMaxPast() {
+        return settings.getMaxPast();
+    }
+
+    public void setMaxPast(long maxPast) {
+        settings.setMaxPast(maxPast);
+    }
+
+    public int getRetries() {
+        return settings.getRetries();
+    }
+
+    public void setRetries(int retries) {
+        settings.setRetries(retries);
+    }
+
+    public long getRetrySleep() {
+        return settings.getRetrySleep();
+    }
+
+    public void setRetrySleep(long sleep) {
+        settings.setRetrySleep(sleep);
+    }
+
 
     public int getImportedCount() {
         return importedCount;
@@ -241,7 +279,7 @@ public class ETLContext {
                         lastUpdate.setLastUpdate("0");
                     }
                 } else {
-                    lastUpdate.setLastUpdate("" + cutoffOrUpdate(false));
+                    lastUpdate.setLastUpdate("" + cutoffOrUpdate(false, settings.getStartTime(), 0));
                 }
             }
             lastUpdate.setDataType(getGenerator().getDataType(getPartitionKeyType()));
@@ -259,13 +297,16 @@ public class ETLContext {
     }
 
     public Comparable getCutoff() {
-        return cutoffOrUpdate(true);
+        return cutoffOrUpdate(true, settings.getStartTime(), 0);
+    }
+
+    public Comparable getCutoff(long startTime, long additionalLag) {
+        return cutoffOrUpdate(true, startTime, additionalLag);
     }
 
     @SuppressWarnings("squid:S3776")
-    private Comparable cutoffOrUpdate(boolean cutoff) {
-        long startTime = settings.getStartTime();
-        long timeLag = settings.getTimeLag();
+    private Comparable cutoffOrUpdate(boolean cutoff, long startTime, long additionalLag) {
+        long timeLag = settings.getTimeLag() + additionalLag;
         if (TimeUnit.DAYS.equals(getTimeUnit()))
             return (startTime - timeLag)/ DAY;
         else if (TimeUnit.HOURS.equals(getTimeUnit()))
