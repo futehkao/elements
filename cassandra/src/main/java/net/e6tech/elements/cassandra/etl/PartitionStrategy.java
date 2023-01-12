@@ -46,7 +46,49 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
      * @param context PartitionContext
      * @return map of partition anc count
      */
+    /**
+     * Return a map of partitions and count.  The partitions are sorted from small to large.
+     * @param context PartitionContext
+     * @return map of partition anc count
+     */
     public Map<Comparable, Long> queryPartitions(C context) {
+        LastUpdate lastUpdate = context.getLastUpdate();
+        Comparable end = context.getCutoff();
+        String partitionKey = context.getInspector().getPartitionKeyColumn(0);
+        String table = context.tableName();
+
+        Map<Comparable, Long> map = Collections.synchronizedMap(new TreeMap<>());
+        List<Comparable> partitions = Collections.synchronizedList(new LinkedList<>());
+        String query = TextBuilder.using(
+                        "select ${pk}, count(*) from ${table} " +
+                                "where ${pk} > ${start} and ${pk} < ${end} group by ${pk} allow filtering")
+                .build("pk", partitionKey, "table", table,
+                        "start", lastUpdate.getLastUpdate(), "end", end);
+        context.open().accept(Resources.class, res -> {
+            try {
+                ResultSet rs = res.getInstance(Session.class).execute(query);
+                List<Row> rows = rs.all();
+                for (Row row : rows) {
+                    Comparable pk = (Comparable) row.get(0, context.getPartitionKeyType());
+                    map.put(pk, row.get(1, Long.class));
+                    partitions.add(pk);
+                }
+            } catch (Exception ex) {
+                logger.warn("queryPartitions failed: " + query, ex);
+                throw ex;
+
+            }
+        });
+
+        Collections.sort(partitions);
+        Map<Comparable, Long> result = new LinkedHashMap<>(partitions.size() + 1, 1.0f);
+        for (Comparable partition : partitions) {
+            result.put(partition, map.get(partition));
+        }
+        return result;
+    }
+
+    public Map<Comparable, Long> queryPartitions2(C context) {
         String table = context.tableName();
         String partitionKey = context.getInspector().getPartitionKeyColumn(0);
         Map<Comparable, Long> map = Collections.synchronizedMap(new TreeMap<>());
@@ -214,7 +256,36 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         return processedCount;
     }
 
-    public List<Comparable> incrementalQuery(C context) {
+    public List<Comparable> queryRange(C context) {
+        LastUpdate lastUpdate = context.getLastUpdate();
+        Comparable end = context.getCutoff();
+        String partitionKey = context.getInspector().getPartitionKeyColumn(0);
+        String table = context.tableName();
+
+        List<Comparable> list = Collections.synchronizedList(new LinkedList<>());
+        // select distinct only works when selecting partition keys
+        String query = TextBuilder.using(
+                        "select distinct ${pk} from ${table} " +
+                                "where ${pk} > ${start} and ${pk} < ${end} allow filtering")
+                .build("pk", partitionKey, "table", table,
+                        "start", lastUpdate.getLastUpdate(), "end", end);
+        context.open().accept(Resources.class, res -> {
+            try {
+                ResultSet rs = res.getInstance(Session.class).execute(query);
+                for (Row row : rs.all()) {
+                    list.add((Comparable) row.get(0, context.getPartitionKeyType()));
+                }
+            } catch (Exception ex) {
+                logger.warn("queryRange failed: " + query, ex);
+                throw ex;
+            }
+        });
+
+        list.sort(null);
+        return list;
+    }
+
+    public List<Comparable> queryRange2(C context) {
         String partitionKey = context.getInspector().getPartitionKeyColumn(0);
         String table = context.tableName();
 
@@ -241,7 +312,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
 
     public int runPartitions(C context) {
         context.initialize();
-        List<Comparable> list = incrementalQuery(context);
+        List<Comparable> list = queryRange(context);
 
         List<Comparable> batch = new ArrayList<>(context.getBatchSize());
         for (Comparable c : list) {

@@ -55,10 +55,11 @@ public class ETLContext {
                 .timeLag(TIME_LAG)
                 .maxPast(2 * YEAR)
                 .maxTimeUnitSteps(MAX_TIME_UNIT_STEPS)
-                .retries(5)
+                .retries(0)
                 .retrySleep(100L)
                 .extractAll(true)
                 .startTime(System.currentTimeMillis());
+
     }
 
     public Provision getProvision() {
