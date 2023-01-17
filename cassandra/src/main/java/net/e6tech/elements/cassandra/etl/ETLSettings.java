@@ -22,7 +22,8 @@ public class ETLSettings implements Serializable {
 
     private static final long serialVersionUID = 2451748267020918041L;
     private Integer batchSize;
-    private Integer maxTimeUnitSteps = 5000;  // used by PartitionStrategy to incrementally extract and transmutate date
+    private Integer maxTimeUnitStepSize = 5000;  // used by PartitionStrategy to incrementally extract and transmutate date
+    private Integer asyncTimeUnitStepSize = 100;  // breaks maxTimeUnitStepSize into smaller chunks and send asynchronously
     private Long timeLag;
     private Long maxPast = 2 * ETLContext.YEAR;  // in case of no last update, this sets how far in the past to extract data.
     private Boolean extractAll;
@@ -43,16 +44,29 @@ public class ETLSettings implements Serializable {
         return this;
     }
 
-    public Integer getMaxTimeUnitSteps() {
-        return maxTimeUnitSteps;
+    public Integer getMaxTimeUnitStepSize() {
+        return maxTimeUnitStepSize;
     }
 
-    public void setMaxTimeUnitSteps(Integer maxTimeUnitSteps) {
-        this.maxTimeUnitSteps = maxTimeUnitSteps;
+    public void setMaxTimeUnitStepSize(Integer maxTimeUnitStepSize) {
+        this.maxTimeUnitStepSize = maxTimeUnitStepSize;
     }
 
-    public ETLSettings maxTimeUnitSteps(Integer maxTimeUnitSteps) {
-        setMaxTimeUnitSteps(maxTimeUnitSteps);
+    public ETLSettings maxTimeUnitStepSize(Integer maxTimeUnitSteps) {
+        setMaxTimeUnitStepSize(maxTimeUnitSteps);
+        return this;
+    }
+
+    public Integer getAsyncTimeUnitStepSize() {
+        return asyncTimeUnitStepSize;
+    }
+
+    public void setAsyncTimeUnitStepSize(Integer asyncTimeUnitStepSize) {
+        this.asyncTimeUnitStepSize = asyncTimeUnitStepSize;
+    }
+
+    public ETLSettings asyncTimeUnitStepSize(Integer asyncTimeUnitStepSize) {
+        setAsyncTimeUnitStepSize(asyncTimeUnitStepSize);
         return this;
     }
 

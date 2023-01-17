@@ -101,8 +101,9 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
             entry.context.setBatchSize(context.getBatchSize());
             entry.context.setExtractAll(context.isExtractAll());
             entry.context.setTimeLag(context.getTimeLag());
-            entry.context.setMaxPast(context.getTimeLag());
-            entry.context.setMaxTimeUnitSteps(context.getMaxTimeUnitSteps());
+            entry.context.setMaxPast(context.getMaxPast());
+            entry.context.setMaxTimeUnitStepSize(context.getMaxTimeUnitStepSize());
+            entry.context.setAsyncTimeUnitStepSize(context.getAsyncTimeUnitStepSize());
             entry.context.setRetries(context.getRetries());
             entry.context.setRetrySleep(context.getRetrySleep());
             if (entry.settings != null) {
@@ -117,8 +118,10 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
                     entry.context.setTimeLag(s.getTimeLag());
                 if (s.getMaxPast() != null)
                     entry.context.setMaxPast(s.getMaxPast());
-                if (s.getMaxTimeUnitSteps() != null)
-                    entry.context.setMaxTimeUnitSteps(s.getMaxTimeUnitSteps());
+                if (s.getMaxTimeUnitStepSize() != null)
+                    entry.context.setMaxTimeUnitStepSize(s.getMaxTimeUnitStepSize());
+                if (s.getAsyncTimeUnitStepSize() != null)
+                    entry.context.setAsyncTimeUnitStepSize(s.getAsyncTimeUnitStepSize());
                 if (s.getRetries() != null)
                     entry.context.setRetries(s.getRetries());
                 if (s.getRetrySleep() != null)

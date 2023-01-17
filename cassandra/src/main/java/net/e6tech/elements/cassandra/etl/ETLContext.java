@@ -36,7 +36,8 @@ public class ETLContext {
     public static final long MONTH = DAY * 30;  // not to be used for deriving a partition key
     public static final long YEAR = DAY * 365;  // not to be used for deriving a partition key
     public static final long TIME_LAG = 5 * 60 * 1000L; // 5 minutes
-    public static final int MAX_TIME_UNIT_STEPS = 5000; //
+    public static final int MAX_TIME_UNIT_STEP_SIZE = 5000; //
+    public static final int ASYNC_TIME_UNIT_STEP_SIZE = 100;
     public static final int BATCH_SIZE = 2000;
 
     private Provision provision;
@@ -54,7 +55,8 @@ public class ETLContext {
         settings.batchSize(BATCH_SIZE)
                 .timeLag(TIME_LAG)
                 .maxPast(2 * YEAR)
-                .maxTimeUnitSteps(MAX_TIME_UNIT_STEPS)
+                .maxTimeUnitStepSize(MAX_TIME_UNIT_STEP_SIZE)
+                .asyncTimeUnitStepSize(ASYNC_TIME_UNIT_STEP_SIZE)
                 .retries(0)
                 .retrySleep(100L)
                 .extractAll(true)
@@ -87,12 +89,20 @@ public class ETLContext {
         settings.setBatchSize(batchSize);
     }
 
-    public Integer getMaxTimeUnitSteps() {
-        return settings.getMaxTimeUnitSteps();
+    public Integer getMaxTimeUnitStepSize() {
+        return settings.getMaxTimeUnitStepSize();
     }
 
-    public void setMaxTimeUnitSteps(Integer maxTimeUnitSteps) {
-        settings.setMaxTimeUnitSteps(maxTimeUnitSteps);
+    public void setMaxTimeUnitStepSize(Integer maxTimeUnitStepSize) {
+        settings.setMaxTimeUnitStepSize(maxTimeUnitStepSize);
+    }
+
+    public Integer getAsyncTimeUnitStepSize() {
+        return settings.getAsyncTimeUnitStepSize();
+    }
+
+    public void setAsyncTimeUnitStepSize(Integer asyncTimeUnitStepSize) {
+        settings.setAsyncTimeUnitStepSize(asyncTimeUnitStepSize);
     }
 
     public long getTimeLag() {
