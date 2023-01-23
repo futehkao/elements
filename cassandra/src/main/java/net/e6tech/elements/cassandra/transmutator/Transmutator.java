@@ -96,39 +96,9 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         Collections.sort(descriptors, Comparator.comparingInt(p -> p.order));
 
         for (Descriptor entry : descriptors) {
-            entry.context.setStartTime(context.getStartTime());
-            entry.context.setProvision(context.getProvision());
-            entry.context.setBatchSize(context.getBatchSize());
-            entry.context.setExtractAll(context.isExtractAll());
-            entry.context.setTimeLag(context.getTimeLag());
-            entry.context.setMaxPast(context.getMaxPast());
-            entry.context.setMaxTimeUnitStepSize(context.getMaxTimeUnitStepSize());
-            entry.context.setAsyncTimeUnitStepSize(context.getAsyncTimeUnitStepSize());
-            entry.context.setRetries(context.getRetries());
-            entry.context.setRetrySleep(context.getRetrySleep());
-            if (entry.settings != null) {
-                ETLSettings s = entry.settings;
-                if (s.getStartTime() != null)
-                    entry.context.setStartTime(s.getStartTime());
-                if (s.getBatchSize() != null)
-                    entry.context.setBatchSize(s.getBatchSize());
-                if (s.getExtractAll() != null)
-                    entry.context.setExtractAll(s.getExtractAll());
-                if (s.getTimeLag() != null)
-                    entry.context.setTimeLag(s.getTimeLag());
-                if (s.getMaxPast() != null)
-                    entry.context.setMaxPast(s.getMaxPast());
-                if (s.getMaxTimeUnitStepSize() != null)
-                    entry.context.setMaxTimeUnitStepSize(s.getMaxTimeUnitStepSize());
-                if (s.getAsyncTimeUnitStepSize() != null)
-                    entry.context.setAsyncTimeUnitStepSize(s.getAsyncTimeUnitStepSize());
-                if (s.getRetries() != null)
-                    entry.context.setRetries(s.getRetries());
-                if (s.getRetrySleep() != null)
-                    entry.context.setRetrySleep(s.getRetrySleep());
-            }
+            entry.context.copy(context);
+            entry.context.copy(entry.settings);
         }
-
     }
 
     private void setupLoader(Method method) {

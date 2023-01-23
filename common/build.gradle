@@ -24,7 +24,7 @@ dependencies {
     compile "org.slf4j:slf4j-api:${slf4jVersion}"
     compile ("org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}")
     compile "org.apache.logging.log4j:log4j-jul:${log4jVersion}"
-    compile "com.lmax:disruptor:${lmaxDisruptorVerions}"
+    compile "com.lmax:disruptor:${lmaxDisruptorVerion}"
     compile ("org.codehaus.groovy:groovy:${groovyVersion}:indy")
     compile ("org.codehaus.groovy:groovy-json:${groovyVersion}:indy") {
         exclude group: 'org.codehaus.groovy', module: 'groovy'
@@ -43,6 +43,7 @@ dependencies {
 
     compile ("org.ehcache:ehcache:${ehcacheVersion}")
     compile "javax.cache:cache-api:${javaCacheApiVerison}"
+    compile ("org.scala-lang:scala-library:${scalaVersion}")
     compile ("com.typesafe.akka:akka-actor-typed_${akkaScalaVersion}:${akkaVersion}")
     compile group: 'com.typesafe.akka', name: "akka-actor_${akkaScalaVersion}", version: "${akkaVersion}"
 

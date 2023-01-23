@@ -22,8 +22,9 @@ public class ETLSettings implements Serializable {
 
     private static final long serialVersionUID = 2451748267020918041L;
     private Integer batchSize;
-    private Integer maxTimeUnitStepSize = 5000;  // used by PartitionStrategy to incrementally extract and transmutate date
-    private Integer asyncTimeUnitStepSize = 100;  // breaks maxTimeUnitStepSize into smaller chunks and send asynchronously
+    private Integer asyncTimeUnitStepSize;  // breaks start and end into smaller chunks and send asynchronously one chunk at a time
+                                            // recommended value is 100
+    private Integer asyncMaxNumOfChunks = 100;  // limits how the max number of asynchronous queries in one call.
     private Long timeLag;
     private Long maxPast = 2 * ETLContext.YEAR;  // in case of no last update, this sets how far in the past to extract data.
     private Boolean extractAll;
@@ -44,19 +45,6 @@ public class ETLSettings implements Serializable {
         return this;
     }
 
-    public Integer getMaxTimeUnitStepSize() {
-        return maxTimeUnitStepSize;
-    }
-
-    public void setMaxTimeUnitStepSize(Integer maxTimeUnitStepSize) {
-        this.maxTimeUnitStepSize = maxTimeUnitStepSize;
-    }
-
-    public ETLSettings maxTimeUnitStepSize(Integer maxTimeUnitSteps) {
-        setMaxTimeUnitStepSize(maxTimeUnitSteps);
-        return this;
-    }
-
     public Integer getAsyncTimeUnitStepSize() {
         return asyncTimeUnitStepSize;
     }
@@ -67,6 +55,19 @@ public class ETLSettings implements Serializable {
 
     public ETLSettings asyncTimeUnitStepSize(Integer asyncTimeUnitStepSize) {
         setAsyncTimeUnitStepSize(asyncTimeUnitStepSize);
+        return this;
+    }
+
+    public Integer getAsyncMaxNumOfChunks() {
+        return asyncMaxNumOfChunks;
+    }
+
+    public void setAsyncMaxNumOfChunks(Integer asyncMaxNumOfChunks) {
+        this.asyncMaxNumOfChunks = asyncMaxNumOfChunks;
+    }
+
+    public ETLSettings asyncMaxNumOfChunks(Integer asyncMaxNumOfChunks) {
+        setAsyncMaxNumOfChunks(asyncMaxNumOfChunks);
         return this;
     }
 

@@ -36,8 +36,7 @@ public class ETLContext {
     public static final long MONTH = DAY * 30;  // not to be used for deriving a partition key
     public static final long YEAR = DAY * 365;  // not to be used for deriving a partition key
     public static final long TIME_LAG = 5 * 60 * 1000L; // 5 minutes
-    public static final int MAX_TIME_UNIT_STEP_SIZE = 5000; //
-    public static final int ASYNC_TIME_UNIT_STEP_SIZE = 100;
+    public static final int ASYNC_MAX_NUM_OF_CHUNKS = 100;
     public static final int BATCH_SIZE = 2000;
 
     private Provision provision;
@@ -55,8 +54,8 @@ public class ETLContext {
         settings.batchSize(BATCH_SIZE)
                 .timeLag(TIME_LAG)
                 .maxPast(2 * YEAR)
-                .maxTimeUnitStepSize(MAX_TIME_UNIT_STEP_SIZE)
-                .asyncTimeUnitStepSize(ASYNC_TIME_UNIT_STEP_SIZE)
+                .asyncTimeUnitStepSize(null) // disable by default
+                .asyncMaxNumOfChunks(ASYNC_MAX_NUM_OF_CHUNKS)
                 .retries(0)
                 .retrySleep(100L)
                 .extractAll(true)
@@ -89,20 +88,20 @@ public class ETLContext {
         settings.setBatchSize(batchSize);
     }
 
-    public Integer getMaxTimeUnitStepSize() {
-        return settings.getMaxTimeUnitStepSize();
-    }
-
-    public void setMaxTimeUnitStepSize(Integer maxTimeUnitStepSize) {
-        settings.setMaxTimeUnitStepSize(maxTimeUnitStepSize);
-    }
-
     public Integer getAsyncTimeUnitStepSize() {
         return settings.getAsyncTimeUnitStepSize();
     }
 
     public void setAsyncTimeUnitStepSize(Integer asyncTimeUnitStepSize) {
         settings.setAsyncTimeUnitStepSize(asyncTimeUnitStepSize);
+    }
+
+    public Integer getAsyncMaxNumOfChunks() {
+        return settings.getAsyncMaxNumOfChunks();
+    }
+
+    public void setAsyncMaxNumOfChunks(Integer asyncMaxNumOfChunks) {
+        settings.setAsyncMaxNumOfChunks(asyncMaxNumOfChunks);
     }
 
     public long getTimeLag() {
@@ -361,5 +360,43 @@ public class ETLContext {
 
         if (timeUnit == null)
             timeUnit = inspector.getTimeUnit();
+    }
+
+    public void copy(ETLContext context) {
+        setStartTime(context.getStartTime());
+        setProvision(context.getProvision());
+        setBatchSize(context.getBatchSize());
+        setExtractAll(context.isExtractAll());
+        setTimeLag(context.getTimeLag());
+        setMaxPast(context.getMaxPast());
+        setAsyncTimeUnitStepSize(context.getAsyncTimeUnitStepSize());
+        setAsyncMaxNumOfChunks(context.getAsyncMaxNumOfChunks());
+        setRetries(context.getRetries());
+        setRetrySleep(context.getRetrySleep());
+    }
+
+    public void copy(ETLSettings s) {
+        if (s == null)
+            return;
+
+        if (s.getStartTime() != null)
+            setStartTime(s.getStartTime());
+        if (s.getBatchSize() != null)
+            setBatchSize(s.getBatchSize());
+        if (s.getExtractAll() != null)
+            setExtractAll(s.getExtractAll());
+        if (s.getTimeLag() != null)
+            setTimeLag(s.getTimeLag());
+        if (s.getMaxPast() != null)
+            setMaxPast(s.getMaxPast());
+        if (s.getAsyncTimeUnitStepSize() != null)
+            setAsyncTimeUnitStepSize(s.getAsyncTimeUnitStepSize());
+        if (s.getAsyncMaxNumOfChunks() != null)
+            setAsyncMaxNumOfChunks(s.getAsyncMaxNumOfChunks());
+        if (s.getRetries() != null)
+            setRetries(s.getRetries());
+        if (s.getRetrySleep() != null)
+            setRetrySleep(s.getRetrySleep());
+
     }
 }
