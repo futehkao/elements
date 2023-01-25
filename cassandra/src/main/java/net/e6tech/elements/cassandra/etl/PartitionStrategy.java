@@ -36,6 +36,8 @@ import java.util.function.Consumer;
 @SuppressWarnings("unchecked")
 public class PartitionStrategy<S extends Partition, C extends PartitionContext> implements BatchStrategy<S, C> {
 
+    private ObjectConverter converter = new ObjectConverter();
+
     @Override
     public int load(C context, List<S> source) {
         if (context.getLoadDelegate() != null) {
@@ -112,62 +114,29 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         return result;
     }
 
-    private Pair<BigDecimal, BigDecimal> getFromAndTo(PartitionQuery<C> p) {
+    private Pair<BigDecimal, BigDecimal> fromAndTo(PartitionQuery<C> p) {
         BigDecimal from = new BigDecimal(p.lastUpdate.getLastUpdate());
         BigDecimal to = new BigDecimal(p.context.getCutoff().toString());
         if (from.compareTo(BigDecimal.ZERO) <= 0) {
-            BigDecimal min = p.context.open().apply(Resources.class, res -> {
-                String query = TextBuilder.using("select min(${pk}) from ${table}")
-                        .build("pk", p.partitionKey, "table", p.table);
-                try {
-                    ResultSet rs = res.getInstance(Session.class).execute(query);
-                    Comparable comparable = (Comparable) rs.one().get(0, p.context.getPartitionKeyType());
-                    if (comparable != null)
-                        return new BigDecimal(comparable.toString());
-                    else
-                        return null;
-                } catch (Exception ex) {
-                    return null;
-                }
-            });
-            if (min != null)
-                from = min;
-            else
-                from = new BigDecimal(p.context.getCutoff(System.currentTimeMillis(), p.context.getMaxPast()).toString());
+            from = new BigDecimal(p.context.getCutoff(System.currentTimeMillis(), p.context.getMaxPast()).toString());
         }
+
         return new Pair<>(from, to);
     }
 
-    private void asyncQuery(PartitionQuery<C> p, String query, Consumer<Row> rowConsumer) {
-        Pair<BigDecimal, BigDecimal> fromTo = getFromAndTo(p);
+    protected void asyncQuery(PartitionQuery<C> p, String query, Consumer<Row> rowConsumer) {
+        C context = p.context;
+        Pair<BigDecimal, BigDecimal> fromTo = fromAndTo(p);
         BigDecimal from = fromTo.key();
         BigDecimal to = fromTo.value();
-        List<Range> ranges = getAsyncRanges(query, from, to, p.asyncStep);
-        int maxStep = p.asyncMaxChunkSize;
-        int fromIndex = 0;
-        int toIndex = fromIndex + maxStep;
-        if (toIndex > ranges.size())
-            toIndex = ranges.size();
-
-        C context = p.context;
-        ObjectConverter converter = new ObjectConverter();
-        while (fromIndex < ranges.size()) {
-            List<Range> working = ranges.subList(fromIndex, toIndex);
+        BigDecimal start = from;
+        List<Range> ranges = getAsyncRanges(query, start, to, p.asyncStep,  p.asyncMaxChunkSize);
+        while (!ranges.isEmpty()) {
+            List<Range> working = ranges;
             int retries = p.retries;
             while (retries >= 0) {
                 try {
-                    context.open().accept(Sibyl.class, sibyl -> {
-                        sibyl.<Range>createAsync(query)
-                                .execute(working, (range, bound) -> {
-                                    try {
-                                        bound.set("start", converter.convert(range.start, context.getPartitionKeyType(), null), context.getPartitionKeyType());
-                                        bound.set("end", converter.convert(range.end, context.getPartitionKeyType(), null), context.getPartitionKeyType());
-                                    } catch (IOException ex) {
-                                        throw new SystemException(ex);
-                                    }
-                                })
-                                .inExecutionOrderRows(rowConsumer);
-                    });
+                    execAsyncQuery(p.context, query, working, rowConsumer);
                     break;
                 } catch (Exception ex) {
                     String info = "extractor=" + context.extractor() +
@@ -188,23 +157,43 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                     retries --;
                 }
             }
-            fromIndex = toIndex;
-            toIndex = fromIndex + maxStep;
-            if (toIndex > ranges.size())
-                toIndex = ranges.size();
+            Range lastRange = ranges.get(ranges.size() - 1);
+            start = lastRange.end.subtract(BigDecimal.ONE);
+            ranges = getAsyncRanges(query, start, to, p.asyncStep,  p.asyncMaxChunkSize);
         }
     }
 
-    private List<Range> getAsyncRanges(String query, BigDecimal from, BigDecimal to, Integer asyncStepSize) {
+    protected void execAsyncQuery(C context, String query, List<Range> working, Consumer<Row> rowConsumer) {
+        context.open().accept(Sibyl.class, sibyl -> {
+            sibyl.<Range>createAsync(query)
+                    .execute(working, (range, bound) -> {
+                        try {
+                            bound.set("start", converter.convert(range.start.toString(), context.getPartitionKeyType(), null), context.getPartitionKeyType());
+                            bound.set("end", converter.convert(range.end.toPlainString(), context.getPartitionKeyType(), null), context.getPartitionKeyType());
+                        } catch (IOException ex) {
+                            throw new SystemException(ex);
+                        }
+                    })
+                    .inExecutionOrderRows(rowConsumer);
+        });
+    }
+
+    protected List<Range> getAsyncRanges(String query, BigDecimal from, BigDecimal to, int asyncStepSize, int asyncMaxChunkSize) {
         BigDecimal start = from;
         BigDecimal end = from.add(new BigDecimal(asyncStepSize));
         if (end.compareTo(to) > 0)
             end = to;
+        if (end.subtract(start).compareTo(BigDecimal.ONE) <= 0)
+            return new ArrayList<>();
+
         List<Range> ranges = new LinkedList<>();
+        boolean loopEntered = false;
         while (true) {
-            ranges.add(new Range(start.toPlainString(), end.toPlainString()));
-            if (end.compareTo(to) >= 0)
+            if (!loopEntered) {
+                loopEntered = true;
+            } else if (end.compareTo(to) >= 0 || ranges.size() >= asyncMaxChunkSize)
                 break;
+            ranges.add(new Range(start, end));
 
             start = end.subtract(BigDecimal.ONE); // because ${pk} > ${start} and ${pk} < ${end}, > and <
             end = start.add(new BigDecimal(asyncStepSize));
@@ -214,9 +203,8 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         }
 
         Range first = ranges.get(0);
-        Range last = ranges.get(ranges.size() - 1);
-        if (from.compareTo(new BigDecimal(first.start)) != 0 || to.compareTo(new BigDecimal(last.end)) != 0)
-            logger.warn("async range error for " + query + ", first " + first + " last " + last );
+        if (from.compareTo(first.start) != 0)
+            logger.warn("async range error for " + query + ", first " + first);
 
         return new ArrayList<>(ranges);
     }
@@ -243,12 +231,14 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         int importedCount = 0;
         context.initialize();
         Map<Comparable, Long> partitions;  // partition key vs count
-        partitions = queryPartitions2(new PartitionQuery<>(context));
+        PartitionQuery<C> p = new PartitionQuery<>(context);
+        partitions = queryPartitions2(p);
 
         logger.info("Extracting Class {} to {}", context.getSourceClass(), getClass());
         context.reset();
 
         List<Comparable> concurrent = new LinkedList<>();
+        boolean empty = partitions.isEmpty();
         while (partitions.size() > 0) {
             LastUpdate lastUpdate = context.getLastUpdate();
             concurrent.clear();
@@ -275,6 +265,16 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
             context.saveLastUpdate(lastUpdate);
         }
 
+        if (context.getTimeUnit() != null && empty) {
+            LastUpdate lastUpdate = context.getLastUpdate();
+            BigDecimal from = new BigDecimal(lastUpdate.getLastUpdate());
+            BigDecimal to = new BigDecimal(p.context.getCutoff().toString());
+            if (to.compareTo(from) > 0) {
+                lastUpdate.update(to.subtract(BigDecimal.ONE));
+                context.saveLastUpdate(lastUpdate);
+            }
+        }
+
         logger.info("Done loading {} instances of {}", importedCount, context.getSourceClass());
         context.reset();
         return importedCount;
@@ -289,7 +289,8 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         return processedCount;
     }
 
-    public List<Comparable> queryRange(C context) {
+    public List<Comparable> queryRange(PartitionQuery<C> p) {
+        C context = p.context;
         LastUpdate lastUpdate = context.getLastUpdate();
         Comparable end = context.getCutoff();
         String partitionKey = context.getInspector().getPartitionKeyColumn(0);
@@ -318,28 +319,32 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         return list;
     }
 
-    public List<Comparable> queryRange2(C context) {
-        PartitionQuery<C> p = new PartitionQuery<>(context);
-        if (context.getTimeUnit() != null && p.asyncStep != null) {
-            String partitionKey = context.getInspector().getPartitionKeyColumn(0);
-            String table = context.tableName();
+    public List<Comparable> queryRange2(PartitionQuery<C> p) {
+        try {
+            new BigDecimal(p.lastUpdate.getLastUpdate());
+        } catch (Exception ex) {
+            logger.warn("Cannot parse latUpdate " + p.lastUpdate.getLastUpdate() + " for " + p.lastUpdate.getExtractor());
+            return queryRange(p);
+        }
 
+        if (p.context.getTimeUnit() != null && p.asyncStep != null && p.asyncStep > 0) {
             List<Comparable> list = Collections.synchronizedList(new LinkedList<>());
             String query2 = TextBuilder.using(
                             "select distinct ${pk} from ${table} " +
                                     "where ${pk} > :start and ${pk} < :end allow filtering")
-                    .build("pk", partitionKey, "table", table);
-            asyncQuery(p, query2, row -> list.add((Comparable) row.get(0, context.getPartitionKeyType())));
+                    .build("pk", p.partitionKey, "table", p.table);
+            asyncQuery(p, query2, row -> list.add((Comparable) row.get(0, p.context.getPartitionKeyType())));
             list.sort(null);
             return list;
         } else {
-            return queryRange(context);
+            return queryRange(p);
         }
     }
 
     public int runPartitions(C context) {
         context.initialize();
-        List<Comparable> list = queryRange(context);
+        PartitionQuery<C> p = new PartitionQuery<>(context);
+        List<Comparable> list = queryRange2(p);
 
         List<Comparable> batch = new ArrayList<>(context.getBatchSize());
         for (Comparable c : list) {
@@ -371,10 +376,10 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
     }
 
     public static class Range {
-        public String start;
-        public String end;
+        public BigDecimal start;
+        public BigDecimal end;
 
-        public Range(String start, String end) {
+        public Range(BigDecimal start, BigDecimal end) {
             this.start = start;
             this.end = end;
         }

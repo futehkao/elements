@@ -254,16 +254,13 @@ public class ETLContext {
 
     @SuppressWarnings("unchecked")
     public LastUpdate lookupLastUpdate() {
-        return open().apply(Sibyl.class, sibyl -> {
-            if (lastUpdate != null)
-                return lastUpdate;
-            if (lastUpdateClass == null)
-                lastUpdateClass = (Class) getProvision().getInstance(SessionProvider.class).getLastUpdateClass();
-            lastUpdate = open().apply(Sibyl.class, s ->
-                    s.get(lastUpdateClass, new PrimaryKey(extractor()))
-            );
+        if (lastUpdate != null)
             return lastUpdate;
-        });
+        if (lastUpdateClass == null)
+            lastUpdateClass = (Class) getProvision().getInstance(SessionProvider.class).getLastUpdateClass();
+
+        lastUpdate = open().apply(Sibyl.class, sibyl -> sibyl.get(lastUpdateClass, new PrimaryKey(extractor())));
+        return lastUpdate;
     }
 
     @SuppressWarnings("squid:S3776")
@@ -299,6 +296,11 @@ public class ETLContext {
                 lastUpdate.setUnit("1");
         }
         return lastUpdate;
+    }
+
+    protected ETLContext lastUpdate(LastUpdate lastUpdate) {
+        this.lastUpdate = lastUpdate;
+        return this;
     }
 
     public Object getLastUpdateValue() {
