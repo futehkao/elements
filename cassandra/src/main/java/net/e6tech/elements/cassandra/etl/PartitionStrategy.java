@@ -36,6 +36,11 @@ import java.util.function.Consumer;
 @SuppressWarnings("unchecked")
 public class PartitionStrategy<S extends Partition, C extends PartitionContext> implements BatchStrategy<S, C> {
 
+    public static String queryPartition = "select ${pk}, count(*) from ${table} " +
+            "where ${pk} > ${start} and ${pk} < ${end} group by ${pk} allow filtering";
+    public static String queryRange = "select distinct ${pk} from ${table} " +
+            "where ${pk} > ${start} and ${pk} < ${end} allow filtering";
+
     private ObjectConverter converter = new ObjectConverter();
 
     @Override
@@ -53,11 +58,8 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
      */
     public Map<Comparable, Long> queryPartitions(PartitionQuery<C> p) {
 
-        String query = TextBuilder.using(
-                        "select ${pk}, count(*) from ${table} " +
-                                "where ${pk} > ${start} and ${pk} < ${end} group by ${pk} allow filtering")
-                .build("pk", p.partitionKey, "table", p.table,
-                        "start", p.lastUpdate.getLastUpdate(), "end", p.end);
+        String query = TextBuilder.using(queryPartition)
+                .build("pk", p.partitionKey, "table", p.table, "start", p.lastUpdate.getLastUpdate(), "end", p.end);
         Map<Comparable, Long> map = Collections.synchronizedMap(new TreeMap<>());
         List<Comparable> partitions = Collections.synchronizedList(new LinkedList<>());
         p.context.open().accept(Resources.class, res -> {
@@ -87,10 +89,8 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         }
 
         if (p.context.getTimeUnit() != null && p.asyncStep != null && p.asyncStep > 0) {
-            String query2 = TextBuilder.using(
-                            "select ${pk}, count(*) from ${table} " +
-                                    "where ${pk} > :start and ${pk} < :end group by ${pk} allow filtering")
-                    .build("pk", p.partitionKey, "table", p.table);
+            String query2 = TextBuilder.using(queryPartition)
+                    .build("pk", p.partitionKey, "table", p.table, "start", ":start", "end", ":end");
 
             Map<Comparable, Long> map = Collections.synchronizedMap(new TreeMap<>());
             List<Comparable> partitions = Collections.synchronizedList(new LinkedList<>());
@@ -105,7 +105,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         }
     }
 
-    private Map<Comparable, Long> sortPartitions( Map<Comparable, Long> map, List<Comparable> partitions) {
+    private Map<Comparable, Long> sortPartitions(Map<Comparable, Long> map, List<Comparable> partitions) {
         Collections.sort(partitions);
         Map<Comparable, Long> result = new LinkedHashMap<>(partitions.size() + 1, 1.0f);
         for (Comparable partition : partitions) {
@@ -298,9 +298,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
 
         List<Comparable> list = Collections.synchronizedList(new LinkedList<>());
         // select distinct only works when selecting partition keys
-        String query = TextBuilder.using(
-                        "select distinct ${pk} from ${table} " +
-                                "where ${pk} > ${start} and ${pk} < ${end} allow filtering")
+        String query = TextBuilder.using(queryRange)
                 .build("pk", partitionKey, "table", table,
                         "start", lastUpdate.getLastUpdate(), "end", end);
         context.open().accept(Resources.class, res -> {
@@ -329,10 +327,8 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
 
         if (p.context.getTimeUnit() != null && p.asyncStep != null && p.asyncStep > 0) {
             List<Comparable> list = Collections.synchronizedList(new LinkedList<>());
-            String query2 = TextBuilder.using(
-                            "select distinct ${pk} from ${table} " +
-                                    "where ${pk} > :start and ${pk} < :end allow filtering")
-                    .build("pk", p.partitionKey, "table", p.table);
+            String query2 = TextBuilder.using(queryRange)
+                    .build("pk", p.partitionKey, "table", p.table, "start", ":start", "end", ":end");
             asyncQuery(p, query2, row -> list.add((Comparable) row.get(0, p.context.getPartitionKeyType())));
             list.sort(null);
             return list;
