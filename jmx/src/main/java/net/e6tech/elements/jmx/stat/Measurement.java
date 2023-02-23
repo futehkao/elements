@@ -96,6 +96,22 @@ public class Measurement implements Serializable, MeasurementMXBean {
         return median;
     }
 
+    public double getMin() {
+        recalculate();
+        if (sortedByValue.size() == 0)
+            return Double.NaN;
+        DataPoint dp = sortedByValue.get(0);
+        return dp.getValue();
+    }
+
+    public double getMax() {
+        recalculate();
+        if (sortedByValue.size() == 0)
+            return Double.NaN;
+        DataPoint dp = sortedByValue.get(sortedByValue.size() - 1);
+        return dp.getValue();
+    }
+
     public double getSum() {
         recalculate();
         return sum;
@@ -269,6 +285,8 @@ public class Measurement implements Serializable, MeasurementMXBean {
         builder.append("count=" + count + ", ");
         builder.append("average=" + average + ", ");
         builder.append("median=" + median + ", ");
+        builder.append("min=" + getMin() + ", ");
+        builder.append("max=" + getMax() + ", ");
         builder.append("stddev=" + stdDev + ", ");
         builder.append("failureCount=" + failures.size() + ", ");
         DataPoint first = null;

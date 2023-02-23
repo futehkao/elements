@@ -538,7 +538,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         return this;
     }
 
-    protected <T extends Resources, R, E extends Exception> R replay(Exception th, Replay<T, R, E> replay) {
+    protected <T extends Resources, R, E extends Exception> R replay(Throwable th, Replay<T, R, E> replay) {
         if (isAborted() || retry == null) {
             log(LogLevel.WARN, ABORT_DUE_TO_EXCEPTION, th);
             if (!isAborted())
@@ -616,6 +616,11 @@ public class Resources implements AutoCloseable, ResourcePool {
             } catch (Exception th) {
                 lastException = th;
                 ret = replay(th, replay);
+            } catch (Throwable th) {
+                lastException = th;
+                log(LogLevel.WARN, ABORT_DUE_TO_EXCEPTION, th);
+                abort();
+                throw new SystemException(th);
             }
             lastResult = ret;
         } finally {

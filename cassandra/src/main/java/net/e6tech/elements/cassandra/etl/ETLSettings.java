@@ -25,6 +25,7 @@ public class ETLSettings implements Serializable {
     private Integer asyncTimeUnitStepSize;  // breaks start and end into smaller chunks and send asynchronously one chunk at a time
                                             // recommended value is 100
     private Integer asyncMaxNumOfChunks = 100;  // limits how the max number of asynchronous queries in one call.
+    private Boolean asyncUseFutures = false;
     private Long timeLag;
     private Long maxPast = 2 * ETLContext.YEAR;  // in case of no last update, this sets how far in the past to extract data.
     private Boolean extractAll;
@@ -70,6 +71,20 @@ public class ETLSettings implements Serializable {
         setAsyncMaxNumOfChunks(asyncMaxNumOfChunks);
         return this;
     }
+
+    public Boolean isAsyncUseFutures() {
+        return asyncUseFutures;
+    }
+
+    public void setAsyncUseFutures(Boolean asyncUseFutures) {
+        this.asyncUseFutures = asyncUseFutures;
+    }
+
+    public ETLSettings asyncUseFutures(boolean asyncUseFutures) {
+        setAsyncUseFutures(asyncUseFutures);
+        return this;
+    }
+
 
     public Long getTimeLag() {
         return timeLag;

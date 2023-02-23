@@ -49,6 +49,7 @@ public class ETLContext {
     private boolean initialized = false;
     private Class<LastUpdate> lastUpdateClass;
     private LastUpdate lastUpdate;
+    private String useLastUpdate;
 
     public ETLContext() {
         settings.batchSize(BATCH_SIZE)
@@ -56,6 +57,7 @@ public class ETLContext {
                 .maxPast(2 * YEAR)
                 .asyncTimeUnitStepSize(null) // disable by default
                 .asyncMaxNumOfChunks(ASYNC_MAX_NUM_OF_CHUNKS)
+                .asyncUseFutures(false)
                 .retries(0)
                 .retrySleep(100L)
                 .extractAll(true)
@@ -102,6 +104,14 @@ public class ETLContext {
 
     public void setAsyncMaxNumOfChunks(Integer asyncMaxNumOfChunks) {
         settings.setAsyncMaxNumOfChunks(asyncMaxNumOfChunks);
+    }
+
+    public boolean isAsyncUseFutures() {
+        return settings.isAsyncUseFutures();
+    }
+
+    public void setAsyncUseFutures(boolean asyncUseFutures) {
+        settings.setAsyncUseFutures(asyncUseFutures);
     }
 
     public long getTimeLag() {
@@ -243,6 +253,8 @@ public class ETLContext {
 
     @SuppressWarnings("unchecked")
     public void saveLastUpdate(LastUpdate lastUpdate) {
+        if (useLastUpdate != null)
+            return;  // lastUpdate value was set manually so do not update the database.
         open().accept(Sibyl.class, sibyl -> {
             if (lastUpdateClass == null)
                 lastUpdateClass = getProvision().open().apply(Resources.class,
@@ -294,6 +306,8 @@ public class ETLContext {
                 lastUpdate.setUnit(getTimeUnit().toString());
             else
                 lastUpdate.setUnit("1");
+            if (useLastUpdate != null)
+                lastUpdate.setLastUpdate(useLastUpdate);
         }
         return lastUpdate;
     }
@@ -373,6 +387,7 @@ public class ETLContext {
         setMaxPast(context.getMaxPast());
         setAsyncTimeUnitStepSize(context.getAsyncTimeUnitStepSize());
         setAsyncMaxNumOfChunks(context.getAsyncMaxNumOfChunks());
+        setAsyncUseFutures(context.isAsyncUseFutures());
         setRetries(context.getRetries());
         setRetrySleep(context.getRetrySleep());
     }
@@ -395,6 +410,8 @@ public class ETLContext {
             setAsyncTimeUnitStepSize(s.getAsyncTimeUnitStepSize());
         if (s.getAsyncMaxNumOfChunks() != null)
             setAsyncMaxNumOfChunks(s.getAsyncMaxNumOfChunks());
+        if (s.isAsyncUseFutures() != null)
+            setAsyncUseFutures(s.isAsyncUseFutures());
         if (s.getRetries() != null)
             setRetries(s.getRetries());
         if (s.getRetrySleep() != null)
