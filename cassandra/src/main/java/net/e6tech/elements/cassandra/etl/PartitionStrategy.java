@@ -51,7 +51,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
     public static final String ASYNC_QUERY_PARTITION = "select ${pk}, count(*) from ${table} where ${pk} = :pk";
     public static final String QUERY_RANGE = "select distinct ${pk} from ${table} " +
             "where ${pk} > ${start} and ${pk} < ${end} allow filtering";
-    public static final String ASYNC_QUERY_RANGE = "select ${pk} from ${table} where where ${pk} = :pk";
+    public static final String ASYNC_QUERY_RANGE = "select ${pk} from ${table} where ${pk} = :pk";
 
     private ObjectConverter converter = new ObjectConverter();
     private String partitionTiming;

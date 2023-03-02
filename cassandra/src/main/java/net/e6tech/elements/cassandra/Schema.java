@@ -69,7 +69,7 @@ public class Schema {
     private boolean dropColumn = false;
     private int threadSize = 1;
     private long validationWait = 1000L;
-    private int tableCreationAsyncSize = 10;
+    private int tableCreationAsyncSize = 0;
 
     public int getThreadSize() {
         return threadSize;
@@ -149,64 +149,6 @@ public class Schema {
     }
 
     public void createTables(String keyspace, Class ... classes) {
-        class AsyncTableGenerator {
-            SessionProvider provider;
-            Session session;
-            TableGenerator tableGenerator;
-            TableMetadata metadata;
-            Class tableClass;
-            Future<AsyncResultSet> future;
-
-            AsyncTableGenerator(Resources resources, Class cls) {
-                session = resources.getInstance(Session.class);
-                provider = getProvider(resources);
-                tableGenerator = provider.getGenerator().getTable(keyspace, cls);
-                tableClass = cls;
-                generate();
-            }
-
-            TableGenerator generator() {
-                return tableGenerator;
-            }
-
-            void generate() {
-                metadata = provider.getTableMetadata(keyspace, tableGenerator.getTableName());
-                if (metadata == null) {
-                    String cql = tableGenerator.generate();
-                    try {
-                        if (logger.isInfoEnabled())
-                            logger.info("Creating table asynchronously, {}", tableGenerator.fullyQualifiedTableName());
-                        future = session.executeAsync(keyspace, cql);
-                    } catch (Exception ex) {
-                        logger.info("Syntax error in creating table for {}", tableClass);
-                        logger.info(cql);
-                        throw ex;
-                    }
-                }
-            }
-
-            void complete() throws ExecutionException, InterruptedException {
-                try {
-                    tryComplete();
-                    future = null;
-                } catch (Exception ex) {
-                    tryComplete();
-                }
-            }
-
-            void tryComplete() throws ExecutionException, InterruptedException {
-                if (future == null) {
-                    generate();
-                }
-
-                if (metadata == null && future == null)
-                    throw new ExecutionException("Cannot generate table " + tableClass.getName(), new SystemException("Cannot generate table " + tableClass.getName()));
-
-                if (future != null) {
-                    future.get();
-                }
-            }
-        }
 
         if (classes == null)
             return;
@@ -216,38 +158,19 @@ public class Schema {
             Session session = resources.getInstance(Session.class);
             SessionProvider provider = getProvider(resources);
 
-            int index = 0;
-            List<Class> chunk = new ArrayList<>();
-            for (int i = index; i < classes.length && chunk.size() < tableCreationAsyncSize; i++) {
-                chunk.add(classes[i]);
-                index = i + 1;
+            // create tables
+            if (tableCreationAsyncSize <= 1) {
+                for (Class cls : classes) {
+                    TableGenerator tableGenerator = provider.getGenerator().getTable(keyspace, cls);
+                    String cql = tableGenerator.generate();
+                    if (logger.isInfoEnabled())
+                        logger.info("Creating table synchronously, {}", tableGenerator.fullyQualifiedTableName());
+                    session.execute(keyspace, cql);
+                    tableGenerators.add(tableGenerator);
+                }
+            } else {
+                tableGenerators = asyncTableGen(resources, keyspace, classes);
             }
-
-            List<AsyncTableGenerator> tableCreation = new ArrayList<>();
-            while (! chunk.isEmpty()) {
-                for (Class cls : chunk) {
-                    if (getTableName(cls) == null)
-                        continue;
-                    AsyncTableGenerator asyncTableGenerator = new AsyncTableGenerator(resources, cls);
-                    tableCreation.add(asyncTableGenerator);
-                    tableGenerators.add(asyncTableGenerator.generator());
-                }
-
-                for (AsyncTableGenerator asyncTableGenerator : tableCreation) {
-                    try {
-                        asyncTableGenerator.complete();
-                    } catch (Exception ex) {
-                        throw new SystemException("Cannot create table for " + asyncTableGenerator.tableClass.getName(), ex);
-                    }
-                }
-                tableCreation.clear();
-                chunk = new ArrayList<>();
-                for (int i = index; i < classes.length && chunk.size() < tableCreationAsyncSize; i++) {
-                    chunk.add(classes[i]);
-                    index = i + 1;
-                }
-            }
-
 
             // diff tables
             for (TableGenerator gen : tableGenerators) {
@@ -278,6 +201,42 @@ public class Schema {
         });
 
         validateTables(keyspace, classes);
+    }
+
+    protected List<TableGenerator> asyncTableGen(Resources resources, String keyspace, Class ... classes) {
+        List<TableGenerator> tableGenerators = new LinkedList<>();
+        int index = 0;
+        List<Class> chunk = new ArrayList<>();
+        for (int i = index; i < classes.length && chunk.size() < tableCreationAsyncSize; i++) {
+            chunk.add(classes[i]);
+            index = i + 1;
+        }
+
+        List<AsyncTableGenerator> tableCreation = new ArrayList<>();
+        while (! chunk.isEmpty()) {
+            for (Class cls : chunk) {
+                if (getTableName(cls) == null)
+                    continue;
+                AsyncTableGenerator asyncTableGenerator = new AsyncTableGenerator(resources, keyspace, cls);
+                tableCreation.add(asyncTableGenerator);
+                tableGenerators.add(asyncTableGenerator.generator());
+            }
+
+            for (AsyncTableGenerator asyncTableGenerator : tableCreation) {
+                try {
+                    asyncTableGenerator.complete();
+                } catch (Exception ex) {
+                    throw new SystemException("Cannot create table for " + asyncTableGenerator.tableClass.getName(), ex);
+                }
+            }
+            tableCreation.clear();
+            chunk = new ArrayList<>();
+            for (int i = index; i < classes.length && chunk.size() < tableCreationAsyncSize; i++) {
+                chunk.add(classes[i]);
+                index = i + 1;
+            }
+        }
+        return tableGenerators;
     }
 
     protected String getTableName(Class entityClass) {
@@ -514,5 +473,66 @@ public class Schema {
     @Inject
     public void setProvision(Provision provision) {
         this.provision = provision;
+    }
+
+    class AsyncTableGenerator {
+        String keyspace;
+        SessionProvider provider;
+        Session session;
+        TableGenerator tableGenerator;
+        TableMetadata metadata;
+        Class tableClass;
+        Future<AsyncResultSet> future;
+
+        AsyncTableGenerator(Resources resources, String keyspace, Class cls) {
+            this.keyspace = keyspace;
+            session = resources.getInstance(Session.class);
+            provider = getProvider(resources);
+            tableGenerator = provider.getGenerator().getTable(keyspace, cls);
+            tableClass = cls;
+            generate();
+        }
+
+        TableGenerator generator() {
+            return tableGenerator;
+        }
+
+        void generate() {
+            metadata = provider.getTableMetadata(keyspace, tableGenerator.getTableName());
+            if (metadata == null) {
+                String cql = tableGenerator.generate();
+                try {
+                    if (logger.isInfoEnabled())
+                        logger.info("Creating table asynchronously, {}", tableGenerator.fullyQualifiedTableName());
+                    future = session.executeAsync(keyspace, cql);
+                } catch (Exception ex) {
+                    logger.info("Syntax error in creating table for {}", tableClass);
+                    logger.info(cql);
+                    throw ex;
+                }
+            }
+        }
+
+        void complete() throws ExecutionException, InterruptedException {
+            try {
+                tryComplete();
+                future = null;
+            } catch (Exception ex) {
+                tryComplete();
+            }
+        }
+
+        void tryComplete() throws ExecutionException, InterruptedException {
+            if (future == null) {
+                generate();
+            }
+
+            if (metadata == null && future == null)
+                throw new ExecutionException("Cannot generate table " + tableClass.getName(), new SystemException("Cannot generate table " + tableClass.getName()));
+
+            if (future != null) {
+                future.get();
+            }
+        }
     }
 }
