@@ -30,7 +30,9 @@ import net.e6tech.elements.common.util.datastructure.Pair;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 @SuppressWarnings({"unchecked", "java:S1192"})
@@ -331,7 +333,11 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
             BigDecimal from = new BigDecimal(lastUpdate.getLastUpdate());
             BigDecimal to = new BigDecimal(p.context.getCutoff().toString());
             if (to.compareTo(from) > 0) {
-                lastUpdate.update(to.subtract(BigDecimal.ONE));
+                BigDecimal currentTimeInTimeUnit = timeExpressedInCorrectTimeUnit(context.getTimeUnit(),System.currentTimeMillis());
+                if (to.compareTo(currentTimeInTimeUnit) > 0)
+                    lastUpdate.update(currentTimeInTimeUnit.subtract(BigDecimal.ONE));
+                else
+                    lastUpdate.update(to.subtract(BigDecimal.ONE));
                 context.saveLastUpdate(lastUpdate);
             }
         }
@@ -345,6 +351,19 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         }
         context.reset();
         return importedCount;
+    }
+
+    public BigDecimal timeExpressedInCorrectTimeUnit(TimeUnit timeUnit,long time) {
+        BigDecimal timeToConvert = new BigDecimal(time);
+        if (timeUnit == TimeUnit.DAYS)
+            return timeToConvert.divide(new BigDecimal(ETLContext.DAY),0, RoundingMode.DOWN);
+        else if (timeUnit == TimeUnit.HOURS)
+            return timeToConvert.divide(new BigDecimal(ETLContext.HOUR),0, RoundingMode.DOWN);
+        else if (timeUnit == TimeUnit.MINUTES)
+            return timeToConvert.divide(new BigDecimal(ETLContext.MINUTE),0, RoundingMode.DOWN);
+        else if (timeUnit == TimeUnit.SECONDS)
+            return timeToConvert.divide(new BigDecimal(ETLContext.SECOND),0, RoundingMode.DOWN);
+        return timeToConvert;
     }
 
     public int run(C context, List<Comparable<?>> partitions) {
