@@ -328,7 +328,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
             context.saveLastUpdate(lastUpdate);
         }
 
-        if (context.getTimeUnit() != null && empty) {
+        if (context.getTimeUnit() != null && empty && context.isAsyncUseFutures()) {
             LastUpdate lastUpdate = context.getLastUpdate();
             BigDecimal from = new BigDecimal(lastUpdate.getLastUpdate());
             BigDecimal to = new BigDecimal(p.context.getCutoff().toString());
