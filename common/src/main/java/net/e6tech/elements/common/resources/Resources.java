@@ -16,6 +16,7 @@ limitations under the License.
 package net.e6tech.elements.common.resources;
 
 import net.e6tech.elements.common.inject.Inject;
+import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.logging.LogLevel;
 import net.e6tech.elements.common.logging.Logger;
@@ -67,6 +68,7 @@ public class Resources implements AutoCloseable, ResourcePool {
     private Object lastResult;
     private Throwable lastException;
     private boolean submitting = false;
+    private Boolean replayable;
 
     public static Resources parent(Resources current) {
         Deque<Resources> deque = activeResources.get();
@@ -160,6 +162,15 @@ public class Resources implements AutoCloseable, ResourcePool {
         return resourceManager == null;
     }
 
+
+    public Injector getParentInjector() {
+        return state.getParentInjector();
+    }
+
+    public void setParentInjector(Injector injector) {
+        state.setParentInjector(injector);
+    }
+
     List<ResourceProvider> getExternalResourceProviders() {
         return state.getExternalResourceProviders();
     }
@@ -191,6 +202,14 @@ public class Resources implements AutoCloseable, ResourcePool {
         }
 
         return this;
+    }
+
+    public Boolean getReplayable() {
+        return replayable;
+    }
+
+    public void setReplayable(Boolean replayable) {
+        this.replayable = replayable;
     }
 
     public synchronized Resources onCommit(OnCommit onCommit) {
@@ -557,10 +576,16 @@ public class Resources implements AutoCloseable, ResourcePool {
                 Reflection.printStackTrace(builder, "    ", 2, 8);
                 log(LogLevel.WARN, builder.toString(), null);
 
+                List<Replay<T, R, E>> savedReplays = (List) replays;
+                replays = Collections.emptyList();
+                // abort will clear replays so we save it to savedReplays
                 try { abort(); } catch (Exception th2) { Logger.suppress(th2); }
+                replays = (List) savedReplays;
 
                 T retryResources = (T) resourceManager.open(initialConfigurator, preOpen);
                 // copy retryResources to this.  retryResources is not used.  We only need to create a new ResourcesState.
+                retryResources.state.parentInjector = state.parentInjector != null ? state.parentInjector : state.injector;
+
                 state = retryResources.state;
                 Iterator<Replay<? extends Resources, ?, ? extends Exception>> iterator = replays.iterator();
                 while (iterator.hasNext()) {
@@ -613,14 +638,17 @@ public class Resources implements AutoCloseable, ResourcePool {
 
             try {
                 ret = replay.replay((T) this);
-            } catch (Exception th) {
-                lastException = th;
-                ret = replay(th, replay);
             } catch (Throwable th) {
                 lastException = th;
-                log(LogLevel.WARN, ABORT_DUE_TO_EXCEPTION, th);
-                abort();
-                throw new SystemException(th);
+                if ((replayable != null && replayable) || (replayable == null && resourceManager.isReplayable())) {
+                    ret = replay(th, replay);
+                } else {
+                    log(LogLevel.WARN, ABORT_DUE_TO_EXCEPTION, th);
+                    abort();
+                    if (th instanceof RuntimeException)
+                        throw (RuntimeException) th;
+                    throw new SystemException(th);
+                }
             }
             lastResult = ret;
         } finally {
@@ -648,7 +676,13 @@ public class Resources implements AutoCloseable, ResourcePool {
         try {
             ret = _commit();
         } catch (Exception th) {
-            ret = replay(th, new Replay<Resources, R, Exception>(res -> {return _commit();}));
+            if ((replayable != null && replayable) || (replayable == null && resourceManager.isReplayable())) {
+                ret = replay(th, new Replay<>(res -> {return _commit();}));
+            } else {
+                if (th instanceof RuntimeException)
+                    throw (RuntimeException) th;
+                throw new SystemException(th);
+            }
         } finally {
             if (isCommitted()) {
                 // commit successful
@@ -663,7 +697,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         R ret = null;
         if (resourceManager == null)
             return null;
-        if (isAborted())
+        if (isAborted() || isCommitted())
             return (R) lastResult;
         if (!isOpen())
             throw new IllegalStateException("Already closed");
@@ -731,7 +765,7 @@ public class Resources implements AutoCloseable, ResourcePool {
                 }
             }
         } finally {
-            // set set state to abort so that the state is aborted during onClose
+            // set state to abort so that the state is aborted during onClose
             state.setState(ResourcesState.State.ABORTED);
             cleanup();  // this will reset state to Initial
             // and we have to set it to ABORTED again.
@@ -774,7 +808,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         return (T) getInstance(Provision.class);
     }
 
-    private static class Replay<T, R, E extends Exception> {
+    private static class Replay<T extends Resources, R, E extends Exception> {
 
         ConsumerWithException<T, E> consumer;
         FunctionWithException<T, R, E> function;

@@ -43,7 +43,8 @@ class ResourcesState {
     private static final String BOUND_TO_MSG = " is already bound to ";
     private ModuleFactory factory;
     private Module module;
-    private Injector injector;
+    protected Injector injector;
+    protected Injector parentInjector;
     private State state = State.INITIAL;
     private List<ResourceProvider> resourceProviders = new LinkedList<>();
     private LinkedList<Object> injectionList = new LinkedList<>();
@@ -131,7 +132,7 @@ class ResourcesState {
             return object;
 
         if (state == State.INITIAL) {
-            // to be inject when resources is opened.
+            // to be injected when resources is opened.
             injectionList.add(object);
         } else {
             createInjector(resources, strict);
@@ -144,7 +145,17 @@ class ResourcesState {
         if (object instanceof InjectionListener) {
             ((InjectionListener) object).preInject(resources);
         }
-        boolean completed = injector.inject(object, strict);
+
+        boolean completed;
+        try {
+            completed = injector.inject(object, strict);
+        } catch (Exception ex) {
+            if (parentInjector != null) {
+                completed = parentInjector.inject(object, strict);
+            } else {
+                throw ex;
+            }
+        }
         if (object instanceof InjectionListener) {
             if (strict || completed)
                 ((InjectionListener) object).injected(resources);
@@ -278,5 +289,13 @@ class ResourcesState {
         if (variables == null)
             variables = new HashMap<>();
         return (Map<String, T>) variables.computeIfAbsent(key.toString(), k -> new LinkedHashMap<>());
+    }
+
+    public Injector getParentInjector() {
+        return parentInjector;
+    }
+
+    public void setParentInjector(Injector parentInjector) {
+        this.parentInjector = parentInjector;
     }
 }

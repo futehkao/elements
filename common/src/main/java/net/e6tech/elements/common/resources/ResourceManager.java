@@ -68,6 +68,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private List<ResourceManagerListener> listeners = new LinkedList<>();
     private Map<Class, ClassInjectionInfo> injections = new ConcurrentHashMap<>(); // a cache to be used by Resources.
     private boolean silent = false;
+    private boolean replayable = false;
 
     public ResourceManager() {
         this(new Properties());
@@ -109,6 +110,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     public void setSilent(boolean silent) {
         this.silent = silent;
         getScripting().setSilent(silent);
+    }
+
+    public boolean isReplayable() {
+        return replayable;
+    }
+
+    public void setReplayable(boolean replayable) {
+        this.replayable = replayable;
     }
 
     public ResourceManager silent(boolean silent) {

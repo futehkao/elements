@@ -68,6 +68,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
 
     /**
      * Return a map of partitions and count.  The partitions are sorted from small to large.
+     *
      * @param p PartitionQuery
      * @return map of partition anc count
      */
@@ -155,7 +156,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
         BigDecimal from = fromTo.key();
         BigDecimal to = fromTo.value();
         BigDecimal start = from;
-        List<Range> ranges = getAsyncRanges(query, start, to, p.asyncStep,  p.asyncMaxChunkSize);
+        List<Range> ranges = getAsyncRanges(query, start, to, p.asyncStep, p.asyncMaxChunkSize);
         while (!ranges.isEmpty()) {
             List<Range> working = ranges;
             int retries = p.retries;
@@ -179,12 +180,12 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                         Thread.currentThread().interrupt();
                     }
                 } finally {
-                    retries --;
+                    retries--;
                 }
             }
             Range lastRange = ranges.get(ranges.size() - 1);
             start = lastRange.end.subtract(BigDecimal.ONE);
-            ranges = getAsyncRanges(query, start, to, p.asyncStep,  p.asyncMaxChunkSize);
+            ranges = getAsyncRanges(query, start, to, p.asyncStep, p.asyncMaxChunkSize);
         }
     }
 
@@ -195,16 +196,16 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
             return;
         }
         context.open().accept(Sibyl.class, sibyl ->
-            sibyl.<Range>createAsync(query)
-                    .execute(working, (range, bound) -> {
-                        try {
-                            bound.set("start", converter.convert(range.start.toString(), context.getPartitionKeyType(), null), context.getPartitionKeyType());
-                            bound.set("end", converter.convert(range.end.toPlainString(), context.getPartitionKeyType(), null), context.getPartitionKeyType());
-                        } catch (IOException ex) {
-                            throw new SystemException(ex);
-                        }
-                    })
-                    .inExecutionOrderRows(rowConsumer)
+                sibyl.<Range>createAsync(query)
+                        .execute(working, (range, bound) -> {
+                            try {
+                                bound.set("start", converter.convert(range.start.toString(), context.getPartitionKeyType(), null), context.getPartitionKeyType());
+                                bound.set("end", converter.convert(range.end.toPlainString(), context.getPartitionKeyType(), null), context.getPartitionKeyType());
+                            } catch (IOException ex) {
+                                throw new SystemException(ex);
+                            }
+                        })
+                        .inExecutionOrderRows(rowConsumer)
         );
     }
 
@@ -219,18 +220,18 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                 list.add(i);
 
             context.open().accept(Sibyl.class, sibyl ->
-                sibyl.<BigDecimal>createAsync(query)
-                        .execute(list, (pk, bound) -> {
-                            try {
-                                bound.set("pk", converter.convert(pk.toPlainString(), context.getPartitionKeyType(), null), context.getPartitionKeyType());
-                            } catch (IOException ex) {
-                                throw new SystemException(ex);
-                            }
-                        })
-                        .inExecutionOrderRows(row -> {
-                            if (!row.isNull(0))
-                                rowConsumer.accept(row);
-                        })
+                    sibyl.<BigDecimal>createAsync(query)
+                            .execute(list, (pk, bound) -> {
+                                try {
+                                    bound.set("pk", converter.convert(pk.toPlainString(), context.getPartitionKeyType(), null), context.getPartitionKeyType());
+                                } catch (IOException ex) {
+                                    throw new SystemException(ex);
+                                }
+                            })
+                            .inExecutionOrderRows(row -> {
+                                if (!row.isNull(0))
+                                    rowConsumer.accept(row);
+                            })
             );
         }
     }
@@ -333,7 +334,7 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
             BigDecimal from = new BigDecimal(lastUpdate.getLastUpdate());
             BigDecimal to = new BigDecimal(p.context.getCutoff().toString());
             if (to.compareTo(from) > 0) {
-                BigDecimal currentTimeInTimeUnit = timeExpressedInCorrectTimeUnit(context.getTimeUnit(),System.currentTimeMillis());
+                BigDecimal currentTimeInTimeUnit = timeExpressedInCorrectTimeUnit(context.getTimeUnit(), System.currentTimeMillis());
                 if (to.compareTo(currentTimeInTimeUnit) > 0)
                     lastUpdate.update(currentTimeInTimeUnit.subtract(BigDecimal.ONE));
                 else
@@ -347,22 +348,22 @@ public class PartitionStrategy<S extends Partition, C extends PartitionContext> 
                     getClass().getSimpleName(), context.extractor(),
                     importedCount, context.getSourceClass().getSimpleName(),
                     System.currentTimeMillis() - start, partitionTiming
-                   );
+            );
         }
         context.reset();
         return importedCount;
     }
 
-    public BigDecimal timeExpressedInCorrectTimeUnit(TimeUnit timeUnit,long time) {
+    public BigDecimal timeExpressedInCorrectTimeUnit(TimeUnit timeUnit, long time) {
         BigDecimal timeToConvert = new BigDecimal(time);
         if (timeUnit == TimeUnit.DAYS)
-            return timeToConvert.divide(new BigDecimal(ETLContext.DAY),0, RoundingMode.DOWN);
+            return timeToConvert.divide(new BigDecimal(ETLContext.DAY), 0, RoundingMode.DOWN);
         else if (timeUnit == TimeUnit.HOURS)
-            return timeToConvert.divide(new BigDecimal(ETLContext.HOUR),0, RoundingMode.DOWN);
+            return timeToConvert.divide(new BigDecimal(ETLContext.HOUR), 0, RoundingMode.DOWN);
         else if (timeUnit == TimeUnit.MINUTES)
-            return timeToConvert.divide(new BigDecimal(ETLContext.MINUTE),0, RoundingMode.DOWN);
+            return timeToConvert.divide(new BigDecimal(ETLContext.MINUTE), 0, RoundingMode.DOWN);
         else if (timeUnit == TimeUnit.SECONDS)
-            return timeToConvert.divide(new BigDecimal(ETLContext.SECOND),0, RoundingMode.DOWN);
+            return timeToConvert.divide(new BigDecimal(ETLContext.SECOND), 0, RoundingMode.DOWN);
         return timeToConvert;
     }
 

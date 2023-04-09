@@ -158,11 +158,17 @@ public class ElementsHikariDataSource extends HikariDataSource {
             return super.getConnection();
         } catch (Exception e) {
             try {
-                if (e instanceof SQLTransientConnectionException && resetPool())
-                   return super.getConnection();
-                else
+                if (e instanceof SQLTransientConnectionException && resetPool()) {
+                    try {
+                        return super.getConnection();
+                    } catch (Exception e2) {
+                        logger.error("HikariPool: failed obtaining connection after reset: {}", e2.getMessage(), e2);
+                        throw e2;
+                    }
+                } else
                     throw e;
             } catch (Exception ex) {
+                logger.error("HikariPool: failed obtaining connection: {}", ex.getMessage(), ex);
                 throw e;
             }
         }
