@@ -79,7 +79,7 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
     }
 
     @SuppressWarnings("squid:S3776")
-    protected void analyze() {
+    public void analyze(PartitionContext context) {
         descriptors.clear();
         Class cls = getClass();
         while (cls != null && cls != Object.class) {
@@ -94,6 +94,11 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         }
 
         Collections.sort(descriptors, Comparator.comparingInt(p -> p.order));
+
+        for (Descriptor entry : descriptors) {
+            entry.context.copy(context);
+            entry.context.copy(entry.settings);
+        }
     }
 
     private void setupLoader(Method method) {
@@ -175,27 +180,8 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
     @Override
     public int run(PartitionContext context) {
         context.setSourceClass(getClass());
-        analyze();
+        analyze(context);
         int count = 0;
-
-        for (Descriptor entry : descriptors) {
-            entry.context.setStartTime(context.getStartTime());
-            entry.context.setProvision(context.getProvision());
-            entry.context.setBatchSize(context.getBatchSize());
-            entry.context.setExtractAll(context.isExtractAll());
-            entry.context.setTimeLag(context.getTimeLag());
-            if (entry.settings != null) {
-                ETLSettings s = entry.settings;
-                if (s.getStartTime() != null)
-                    entry.context.setStartTime(s.getStartTime());
-                if (s.getBatchSize() != null)
-                    entry.context.setBatchSize(s.getBatchSize());
-                if (s.getExtractAll() != null)
-                    entry.context.setExtractAll(s.getExtractAll());
-                if (s.getTimeLag() != null)
-                    entry.context.setTimeLag(s.getTimeLag());
-            }
-        }
 
         if (customizer != null) {
             for (Descriptor entry : descriptors) {
@@ -204,34 +190,50 @@ public abstract class Transmutator implements Strategy<PartitionContext> {
         }
 
         for (Descriptor entry : descriptors) {
-            try {
-                switch (entry.runType) {
-                    case EACH_ENTRY:
-                        count += entry.strategy.run(entry.context);
-                        break;
-                    case PARTITION:
-                        count += entry.strategy.runPartitions(entry.context);
-                        break;
+            int retries = context.getRetries();
+            while (true) {
+                try {
+                    switch (entry.runType) {
+                        case EACH_ENTRY:
+                            count += entry.strategy.run(entry.context);
+                            break;
+                        case PARTITION:
+                            count += entry.strategy.runPartitions(entry.context);
+                            break;
+                    }
+                    break;
+                } catch (Exception ex) {
+                    String info = "";
+                    if (entry.context != null) {
+                        info = "extractor=" + entry.context.extractor() +
+                                " sourceClass=" + entry.context.getSourceClass() +
+                                " tableName=" + entry.context.tableName();
+                    }
+
+                    if (retries <= 0) {
+                        logger.warn("Cannot transmutate " + info, ex);
+                        throw ex;
+                    } else {
+                        logger.warn("Cannot transmutate, " + retries + " retry attempts left, " + info, ex);
+                    }
+                    try {
+                        Thread.sleep(context.getRetrySleep());
+                    } catch (InterruptedException e) {
+                        // ignore
+                    }
+                    retries --;
                 }
-            } catch (Exception ex) {
-                String info = "";
-                if (entry.context != null) {
-                    info = "extractor=" + entry.context.extractor() +
-                            " sourceClass=" + entry.context.getSourceClass() +
-                            " tableName=" + entry.context.tableName();
-                }
-                logger.warn("Cannot transmutate " + info, ex);
             }
         }
         return count;
     }
 
     public static class Descriptor {
-        int order;
-        PartitionContext context;
-        PartitionStrategy strategy;
-        RunType runType;
-        ETLSettings settings;
+        public int order;
+        public PartitionContext context;
+        public PartitionStrategy strategy;
+        public RunType runType;
+        public ETLSettings settings;
 
 
         Descriptor(int order, PartitionContext context, PartitionStrategy strategy, RunType runType, ETLSettings settings) {

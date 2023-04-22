@@ -22,9 +22,16 @@ public class ETLSettings implements Serializable {
 
     private static final long serialVersionUID = 2451748267020918041L;
     private Integer batchSize;
+    private Integer asyncTimeUnitStepSize;  // breaks start and end into smaller chunks and send asynchronously one chunk at a time
+                                            // recommended value is 100
+    private Integer asyncMaxNumOfChunks = 100;  // limits how the max number of asynchronous queries in one call.
+    private Boolean asyncUseFutures = false;
     private Long timeLag;
+    private Long maxPast = 2 * ETLContext.YEAR;  // in case of no last update, this sets how far in the past to extract data.
     private Boolean extractAll;
     private Long startTime;
+    private Integer retries = 5;
+    private Long retrySleep = 100L;
 
     public Integer getBatchSize() {
         return batchSize;
@@ -38,6 +45,46 @@ public class ETLSettings implements Serializable {
         setBatchSize(batchSize);
         return this;
     }
+
+    public Integer getAsyncTimeUnitStepSize() {
+        return asyncTimeUnitStepSize;
+    }
+
+    public void setAsyncTimeUnitStepSize(Integer asyncTimeUnitStepSize) {
+        this.asyncTimeUnitStepSize = asyncTimeUnitStepSize;
+    }
+
+    public ETLSettings asyncTimeUnitStepSize(Integer asyncTimeUnitStepSize) {
+        setAsyncTimeUnitStepSize(asyncTimeUnitStepSize);
+        return this;
+    }
+
+    public Integer getAsyncMaxNumOfChunks() {
+        return asyncMaxNumOfChunks;
+    }
+
+    public void setAsyncMaxNumOfChunks(Integer asyncMaxNumOfChunks) {
+        this.asyncMaxNumOfChunks = asyncMaxNumOfChunks;
+    }
+
+    public ETLSettings asyncMaxNumOfChunks(Integer asyncMaxNumOfChunks) {
+        setAsyncMaxNumOfChunks(asyncMaxNumOfChunks);
+        return this;
+    }
+
+    public Boolean isAsyncUseFutures() {
+        return asyncUseFutures;
+    }
+
+    public void setAsyncUseFutures(Boolean asyncUseFutures) {
+        this.asyncUseFutures = asyncUseFutures;
+    }
+
+    public ETLSettings asyncUseFutures(boolean asyncUseFutures) {
+        setAsyncUseFutures(asyncUseFutures);
+        return this;
+    }
+
 
     public Long getTimeLag() {
         return timeLag;
@@ -75,6 +122,45 @@ public class ETLSettings implements Serializable {
 
     public ETLSettings startTime(Long startTime) {
         setStartTime(startTime);
+        return this;
+    }
+
+    public Long getMaxPast() {
+        return maxPast;
+    }
+
+    public void setMaxPast(Long maxPast) {
+        this.maxPast = maxPast;
+    }
+
+    public ETLSettings maxPast(Long maxPast) {
+        setMaxPast(maxPast);
+        return this;
+    }
+
+    public Integer getRetries() {
+        return retries;
+    }
+
+    public void setRetries(Integer retries) {
+        this.retries = retries;
+    }
+
+    public ETLSettings retries(Integer retries) {
+        setRetries(retries);
+        return this;
+    }
+
+    public Long getRetrySleep() {
+        return retrySleep;
+    }
+
+    public void setRetrySleep(Long retrySleep) {
+        this.retrySleep = retrySleep;
+    }
+
+    public ETLSettings retrySleep(Long sleep) {
+        setRetrySleep(sleep);
         return this;
     }
 }

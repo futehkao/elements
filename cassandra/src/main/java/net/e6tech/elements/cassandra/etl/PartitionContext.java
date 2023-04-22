@@ -27,10 +27,10 @@ import java.util.Map;
 import java.util.function.ToIntFunction;
 
 public class PartitionContext extends ETLContext {
-    private List<Comparable> partitions = new ArrayList<>();
+    private List<Comparable<?>> partitions = new ArrayList<>();
     private Map<String, Prepared> preparedStatements = new HashMap<>();
 
-    private ToIntFunction<List> loadDelegate;
+    private ToIntFunction<List<?>> loadDelegate;
 
     public static PartitionContext createContext(Provision provision, Class<? extends Partition> cls) {
         Partition partition;
@@ -52,11 +52,11 @@ public class PartitionContext extends ETLContext {
         return createContext(getProvision(), cls);
     }
 
-    public List<Comparable> getPartitions() {
+    public List<Comparable<?>> getPartitions() {
         return partitions;
     }
 
-    public void setPartitions(List<Comparable> partitions) {
+    public void setPartitions(List<Comparable<?>> partitions) {
         this.partitions = partitions;
     }
 
@@ -64,11 +64,11 @@ public class PartitionContext extends ETLContext {
         return new PartitionStrategy();
     }
 
-    public ToIntFunction<List> getLoadDelegate() {
+    public ToIntFunction<List<?>> getLoadDelegate() {
         return loadDelegate;
     }
 
-    public void setLoadDelegate(ToIntFunction<List> loadDelegate) {
+    public void setLoadDelegate(ToIntFunction<List<?>> loadDelegate) {
         this.loadDelegate = loadDelegate;
     }
 

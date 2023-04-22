@@ -96,7 +96,7 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
     }
 
     @Override
-    public int run(PartitionOrderByContext context, List<Comparable> partitions) {
+    public int run(PartitionOrderByContext context, List<Comparable<?>> partitions) {
         List<S> batchResults = null;
         int processedCount = 0;
         context.setPartitions(partitions);
@@ -105,8 +105,6 @@ public class PartitionOrderByStrategy<S extends PartitionOrderBy> extends Partit
 
         while (!batchResults.isEmpty()) {
             processedCount += load(context, batchResults);
-            if (logger.isInfoEnabled())
-                logger.info("Processed {} instance of {}", processedCount, context.extractor());
             batchResults = extract(context);
         }
 

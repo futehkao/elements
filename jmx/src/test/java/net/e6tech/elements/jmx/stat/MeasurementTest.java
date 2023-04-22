@@ -45,6 +45,19 @@ public class MeasurementTest {
     }
 
     @Test
+    public void minMax() {
+        Measurement m = new Measurement("A", "ms", true);
+        m.setWindowMaxCount(10);
+        System.out.println(m.dump());
+        for (int i = 0; i < 70; i++) {
+            m.append(i);
+        }
+
+        System.out.println(m.dump());
+        System.out.println(m);
+    }
+
+    @Test
     public void basic() {
         Measurement m = new Measurement();
         m.append(3.0).append(3.0).append(4.0).append(4.0).append(5.0).append(5.5).append(6.0);

@@ -36,6 +36,7 @@ public class ETLContext {
     public static final long MONTH = DAY * 30;  // not to be used for deriving a partition key
     public static final long YEAR = DAY * 365;  // not to be used for deriving a partition key
     public static final long TIME_LAG = 5 * 60 * 1000L; // 5 minutes
+    public static final int ASYNC_MAX_NUM_OF_CHUNKS = 100;
     public static final int BATCH_SIZE = 2000;
 
     private Provision provision;
@@ -48,12 +49,20 @@ public class ETLContext {
     private boolean initialized = false;
     private Class<LastUpdate> lastUpdateClass;
     private LastUpdate lastUpdate;
+    private String useLastUpdate;
 
     public ETLContext() {
         settings.batchSize(BATCH_SIZE)
                 .timeLag(TIME_LAG)
+                .maxPast(2 * YEAR)
+                .asyncTimeUnitStepSize(null) // disable by default
+                .asyncMaxNumOfChunks(ASYNC_MAX_NUM_OF_CHUNKS)
+                .asyncUseFutures(false)
+                .retries(0)
+                .retrySleep(100L)
                 .extractAll(true)
                 .startTime(System.currentTimeMillis());
+
     }
 
     public Provision getProvision() {
@@ -81,6 +90,30 @@ public class ETLContext {
         settings.setBatchSize(batchSize);
     }
 
+    public Integer getAsyncTimeUnitStepSize() {
+        return settings.getAsyncTimeUnitStepSize();
+    }
+
+    public void setAsyncTimeUnitStepSize(Integer asyncTimeUnitStepSize) {
+        settings.setAsyncTimeUnitStepSize(asyncTimeUnitStepSize);
+    }
+
+    public Integer getAsyncMaxNumOfChunks() {
+        return settings.getAsyncMaxNumOfChunks();
+    }
+
+    public void setAsyncMaxNumOfChunks(Integer asyncMaxNumOfChunks) {
+        settings.setAsyncMaxNumOfChunks(asyncMaxNumOfChunks);
+    }
+
+    public boolean isAsyncUseFutures() {
+        return settings.isAsyncUseFutures();
+    }
+
+    public void setAsyncUseFutures(boolean asyncUseFutures) {
+        settings.setAsyncUseFutures(asyncUseFutures);
+    }
+
     public long getTimeLag() {
         return settings.getTimeLag();
     }
@@ -88,6 +121,31 @@ public class ETLContext {
     public void setTimeLag(long timeLag) {
         settings.setTimeLag(timeLag);
     }
+
+    public long getMaxPast() {
+        return settings.getMaxPast();
+    }
+
+    public void setMaxPast(long maxPast) {
+        settings.setMaxPast(maxPast);
+    }
+
+    public int getRetries() {
+        return settings.getRetries();
+    }
+
+    public void setRetries(int retries) {
+        settings.setRetries(retries);
+    }
+
+    public long getRetrySleep() {
+        return settings.getRetrySleep();
+    }
+
+    public void setRetrySleep(long sleep) {
+        settings.setRetrySleep(sleep);
+    }
+
 
     public int getImportedCount() {
         return importedCount;
@@ -195,6 +253,8 @@ public class ETLContext {
 
     @SuppressWarnings("unchecked")
     public void saveLastUpdate(LastUpdate lastUpdate) {
+        if (useLastUpdate != null)
+            return;  // lastUpdate value was set manually so do not update the database.
         open().accept(Sibyl.class, sibyl -> {
             if (lastUpdateClass == null)
                 lastUpdateClass = getProvision().open().apply(Resources.class,
@@ -206,16 +266,13 @@ public class ETLContext {
 
     @SuppressWarnings("unchecked")
     public LastUpdate lookupLastUpdate() {
-        return open().apply(Sibyl.class, sibyl -> {
-            if (lastUpdate != null)
-                return lastUpdate;
-            if (lastUpdateClass == null)
-                lastUpdateClass = (Class) getProvision().getInstance(SessionProvider.class).getLastUpdateClass();
-            lastUpdate = open().apply(Sibyl.class, s ->
-                    s.get(lastUpdateClass, new PrimaryKey(extractor()))
-            );
+        if (lastUpdate != null)
             return lastUpdate;
-        });
+        if (lastUpdateClass == null)
+            lastUpdateClass = (Class) getProvision().getInstance(SessionProvider.class).getLastUpdateClass();
+
+        lastUpdate = open().apply(Sibyl.class, sibyl -> sibyl.get(lastUpdateClass, new PrimaryKey(extractor())));
+        return lastUpdate;
     }
 
     @SuppressWarnings("squid:S3776")
@@ -241,7 +298,7 @@ public class ETLContext {
                         lastUpdate.setLastUpdate("0");
                     }
                 } else {
-                    lastUpdate.setLastUpdate("" + cutoffOrUpdate(false));
+                    lastUpdate.setLastUpdate("" + cutoffOrUpdate(false, settings.getStartTime(), 0));
                 }
             }
             lastUpdate.setDataType(getGenerator().getDataType(getPartitionKeyType()));
@@ -249,8 +306,15 @@ public class ETLContext {
                 lastUpdate.setUnit(getTimeUnit().toString());
             else
                 lastUpdate.setUnit("1");
+            if (useLastUpdate != null)
+                lastUpdate.setLastUpdate(useLastUpdate);
         }
         return lastUpdate;
+    }
+
+    protected ETLContext lastUpdate(LastUpdate lastUpdate) {
+        this.lastUpdate = lastUpdate;
+        return this;
     }
 
     public Object getLastUpdateValue() {
@@ -259,13 +323,16 @@ public class ETLContext {
     }
 
     public Comparable getCutoff() {
-        return cutoffOrUpdate(true);
+        return cutoffOrUpdate(true, settings.getStartTime(), 0);
+    }
+
+    public Comparable getCutoff(long startTime, long additionalLag) {
+        return cutoffOrUpdate(true, startTime, additionalLag);
     }
 
     @SuppressWarnings("squid:S3776")
-    private Comparable cutoffOrUpdate(boolean cutoff) {
-        long startTime = settings.getStartTime();
-        long timeLag = settings.getTimeLag();
+    private Comparable cutoffOrUpdate(boolean cutoff, long startTime, long additionalLag) {
+        long timeLag = settings.getTimeLag() + additionalLag;
         if (TimeUnit.DAYS.equals(getTimeUnit()))
             return (startTime - timeLag)/ DAY;
         else if (TimeUnit.HOURS.equals(getTimeUnit()))
@@ -309,5 +376,46 @@ public class ETLContext {
 
         if (timeUnit == null)
             timeUnit = inspector.getTimeUnit();
+    }
+
+    public void copy(ETLContext context) {
+        setStartTime(context.getStartTime());
+        setProvision(context.getProvision());
+        setBatchSize(context.getBatchSize());
+        setExtractAll(context.isExtractAll());
+        setTimeLag(context.getTimeLag());
+        setMaxPast(context.getMaxPast());
+        setAsyncTimeUnitStepSize(context.getAsyncTimeUnitStepSize());
+        setAsyncMaxNumOfChunks(context.getAsyncMaxNumOfChunks());
+        setAsyncUseFutures(context.isAsyncUseFutures());
+        setRetries(context.getRetries());
+        setRetrySleep(context.getRetrySleep());
+    }
+
+    public void copy(ETLSettings s) {
+        if (s == null)
+            return;
+
+        if (s.getStartTime() != null)
+            setStartTime(s.getStartTime());
+        if (s.getBatchSize() != null)
+            setBatchSize(s.getBatchSize());
+        if (s.getExtractAll() != null)
+            setExtractAll(s.getExtractAll());
+        if (s.getTimeLag() != null)
+            setTimeLag(s.getTimeLag());
+        if (s.getMaxPast() != null)
+            setMaxPast(s.getMaxPast());
+        if (s.getAsyncTimeUnitStepSize() != null)
+            setAsyncTimeUnitStepSize(s.getAsyncTimeUnitStepSize());
+        if (s.getAsyncMaxNumOfChunks() != null)
+            setAsyncMaxNumOfChunks(s.getAsyncMaxNumOfChunks());
+        if (s.isAsyncUseFutures() != null)
+            setAsyncUseFutures(s.isAsyncUseFutures());
+        if (s.getRetries() != null)
+            setRetries(s.getRetries());
+        if (s.getRetrySleep() != null)
+            setRetrySleep(s.getRetrySleep());
+
     }
 }

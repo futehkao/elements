@@ -20,6 +20,7 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.ThreadLocalMap;
 import net.e6tech.elements.common.util.file.FileUtil;
+import org.codehaus.groovy.ast.ClassNode;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.runtime.InvokerHelper;
 
@@ -363,6 +364,37 @@ public class Scripting {
                 }
             }
         }
+    }
+
+    public Scripting addClasspath(String path) {
+        ((GroovyClassLoader) getScriptLoader()).addClasspath(path);
+        return this;
+    }
+
+    public Scripting parseClass(String path) throws ScriptException {
+        return parseClass(path, false);
+    }
+
+    public Scripting parseClass(String path, boolean cache) throws ScriptException {
+        String[] paths;
+        try {
+            String normalized = normalizePath(path);
+            paths = FileUtil.listFiles(engine.shell.getClassLoader(), normalized, getExtension());
+            if ((paths == null || paths.length == 0) && !(path.endsWith("**") || path.endsWith("*")))
+                throw new IOException("Script not found " + path);
+        } catch (IOException e) {
+            throw new ScriptException(e);
+        }
+
+        for (String p : paths) {
+            try {
+                GroovyCodeSource codeSource = new GroovyCodeSource(new File(p), engine.compilerConfig.getSourceEncoding());
+                engine.shell.getClassLoader().parseClass(codeSource, cache);
+            } catch (IOException ex) {
+                throw new ScriptException(ex);
+            }
+        }
+        return this;
     }
 
     public Object exec(String path) throws ScriptException {

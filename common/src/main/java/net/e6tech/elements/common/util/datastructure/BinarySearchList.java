@@ -69,7 +69,7 @@ public class BinarySearchList<T extends Comparable> implements Iterable<T> {
             int order = candidate.compareTo(cmp);
             if (order == 0 || order > 0) {
                 sortedList.add(min, cmp);
-            } else if (candidate.compareTo(cmp) < 0) { // next candiate needs to be of higher index
+            } else if (candidate.compareTo(cmp) < 0) { // next candidate needs to be of higher index
                 sortedList.add(min + 1, cmp);
             }
             return;

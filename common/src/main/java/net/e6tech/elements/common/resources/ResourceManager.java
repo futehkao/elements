@@ -74,6 +74,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private int threadCoreSize = 5;
     private int threadMaxSize = 200;
     private long threadKeepAlive = 5 * 60 * 1000L; // 5 min
+    private boolean replayable = false;
 
     public ResourceManager() {
         this(new Properties());
@@ -148,6 +149,14 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     public void setThreadKeepAlive(long threadKeepAlive) {
         this.threadKeepAlive = threadKeepAlive;
+    }
+
+    public boolean isReplayable() {
+        return replayable;
+    }
+
+    public void setReplayable(boolean replayable) {
+        this.replayable = replayable;
     }
 
     public ResourceManager silent(boolean silent) {

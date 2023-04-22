@@ -122,7 +122,7 @@ public class PluginPath<T> {
         return (PluginPath<T>) node;
     }
 
-    public List<PluginPath> list() {
+    public synchronized List<PluginPath> list() {
         if (path != null)
             return path;
         path = new LinkedList<>();
