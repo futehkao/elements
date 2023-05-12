@@ -420,7 +420,15 @@ public class JaxRSServer extends CXFServer {
         }
 
         private Response.Status toStatus(Exception exception) {
-            Response.Status status;
+            Response.Status status = null;
+            if (exception instanceof ClientErrorException) {
+                ClientErrorException cee = (ClientErrorException) exception;
+                if (cee.getResponse() != null)
+                    status = Response.Status.fromStatusCode(cee.getResponse().getStatus());
+            }
+            if (status != null)
+                return status;
+
             if (exception instanceof BadRequestException) {
                 status = Response.Status.BAD_REQUEST;
             } else if (exception instanceof NotAuthorizedException) {
