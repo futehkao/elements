@@ -51,8 +51,10 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
 
     Map<K, V> merged(Object dirt) {
         Map<K, V> local = threadLocal.get();
-        if (local == map)
+        if (local == map) {
+            lastUpdate.set(dirt);
             return map;
+        }
 
         if (dirt == lastUpdate.get() && local != null ) {
             return local;
@@ -71,6 +73,10 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
         if (threadLocal.get() == null)
             threadLocal.set(new LinkedHashMap<>());
         return threadLocal.get();
+    }
+
+    public boolean isDirty() {
+        return dirty != lastUpdate.get();
     }
 
     @Override
@@ -168,12 +174,12 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
 
         Map<K, V> local = threadLocal.get();
         synchronized (this) {
-        if (local != null) {
-            map.remove(key);
-            return local.remove(key);
-        } else {
-            return map.remove(key);
-        }
+            if (local != null) {
+                map.remove(key);
+                return local.remove(key);
+            } else {
+                return map.remove(key);
+            }
         }
     }
 

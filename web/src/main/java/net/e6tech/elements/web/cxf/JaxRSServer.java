@@ -460,6 +460,8 @@ public class JaxRSServer extends CXFServer {
             Object response;
             if (exception instanceof InvocationException) {
                 response = ((InvocationException) exception).getResponse();
+            } else if (exception instanceof ClientErrorException) {
+                response = exception.getMessage();
             } else if (exception instanceof StatusException) {
                 StatusException statusException = (StatusException) exception;
                 status = statusException.getStatus();
