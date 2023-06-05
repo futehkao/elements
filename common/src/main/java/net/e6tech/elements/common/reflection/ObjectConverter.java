@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.lang.reflect.*;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.function.Function;
 
 /**
  * Created by futeh.
@@ -35,7 +36,7 @@ import java.util.Iterator;
 @SuppressWarnings("unchecked")
 public class ObjectConverter {
 
-    public static final  ObjectMapper mapper;
+    public static final ObjectMapper mapper;
 
     static {
         mapper = new ObjectMapper();
@@ -74,6 +75,7 @@ public class ObjectConverter {
     @SuppressWarnings({"squid:S134", "squid:S3776"})
     public Object convert(Object from, Type toType, InstanceCreationListener listener) throws IOException {
         Object converted;
+
         if (toType instanceof Class) {
             converted = convert(from, (Class) toType, listener);
         } else {
@@ -132,6 +134,9 @@ public class ObjectConverter {
             } else {
                 throw new IllegalArgumentException("Cannot convert " + fromType + " to " + toType);
             }
+        } else if (toType.isAssignableFrom(fromType)) {
+            // no conversion
+            return value;
         } else if (toType.isPrimitive() || fromType.isPrimitive()) {
             // converting primitive type
             boolean needConversion;
@@ -142,10 +147,9 @@ public class ObjectConverter {
             else needConversion = shouldConvertPrimitive(fromType, toType);
             if (!needConversion)
                 return value;
-        } else if (toType.isAssignableFrom(fromType)) {
-            // no conversion
-            return value;
-        } else if (value instanceof String && ! (toType.isAssignableFrom(Class.class))) {
+        } else if (toType.equals(String.class)) {
+            return value.toString();
+        } else if (value instanceof String && !(toType.isAssignableFrom(Class.class))) {
             // converting from String to other types.
             try {
                 // converting from String directly, e.g. mapper can convert from String to BigDecimal

@@ -512,7 +512,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     protected <T> T addBean(String name, Object instance, boolean overwrite) {
-        if (!overwrite &&  getScripting().getVariables().get(name) != null) {
+        if (!overwrite &&  getScripting().get(name) != null) {
             throw logger.systemException("bean with name=" + name + " already registered");
         }
 
@@ -574,7 +574,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         Map<String, T> map = new HashMap<>();
         getScripting().getVariables().forEach((key, value)-> {
             if (cls == null || (value != null && cls.isAssignableFrom(value.getClass())))
-                map.put(key, (T) value);
+                map.put((String) key, (T) value);
         });
         return Collections.unmodifiableMap(map);
     }

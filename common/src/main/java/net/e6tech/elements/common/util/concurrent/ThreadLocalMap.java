@@ -19,7 +19,7 @@ package net.e6tech.elements.common.util.concurrent;
 import java.util.*;
 
 public class ThreadLocalMap<K, V> implements Map<K, V> {
-    private final ThreadLocal<Map> threadLocal = new ThreadLocal<>();
+    private final ThreadLocal<Map<K, V>> threadLocal = new ThreadLocal<>();
 
     private final ThreadLocal<Object> lastUpdate = new ThreadLocal<>();
 
@@ -49,7 +49,11 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
         return lastUpdate.get();
     }
 
-    Map<K, V> merged(Object dirt) {
+    public Map<K, V> merge() {
+        return merge(dirty);
+    }
+
+    Map<K, V> merge(Object dirt) {
         Map<K, V> local = threadLocal.get();
         if (local == map) {
             lastUpdate.set(dirt);
@@ -60,7 +64,8 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
             return local;
         }
 
-        Map<K, V> combined = new LinkedHashMap<>(2 * map.size() + 1);
+        int localSize = local != null ? local.size() : 0;
+        Map<K, V> combined = new LinkedHashMap<>(localSize + map.size() + 1);
         combined.putAll(map);
         if (local != null)
             combined.putAll(local);
@@ -81,12 +86,19 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
 
     @Override
     public synchronized int size() {
-        return merged(dirty).size();
+        return merge().size();
     }
 
     @Override
     public synchronized boolean isEmpty() {
-        return merged(dirty).isEmpty();
+        Map<K, V> m = threadLocal.get();
+        if (m != null && !m.isEmpty()) {
+            return false;
+        } else {
+            synchronized (this) {
+                return map.isEmpty();
+            }
+        }
     }
 
     @Override
@@ -103,7 +115,14 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
 
     @Override
     public synchronized boolean containsValue(Object value) {
-        return merged(dirty).containsValue(value);
+        Map<K, V> m = threadLocal.get();
+        if (m != null && m.containsValue(value)) {
+            return true;
+        } else {
+            synchronized (this) {
+                return map.containsValue(value);
+            }
+        }
     }
 
     @Override
@@ -172,14 +191,11 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
         if (m == map)
             return m.remove(key);
 
-        Map<K, V> local = threadLocal.get();
-        synchronized (this) {
-            if (local != null) {
-                map.remove(key);
-                return local.remove(key);
-            } else {
-                return map.remove(key);
-            }
+        if (m != null) {
+            map.remove(key);
+            return m.remove(key);
+        } else {
+            return map.remove(key);
         }
     }
 
@@ -219,12 +235,12 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
 
     @Override
     public synchronized Set<K> keySet() {
-        return merged(dirty).keySet();
+        return merge().keySet();
     }
 
     @Override
     public synchronized Collection<V> values() {
-        return merged(dirty).values();
+        return merge().values();
     }
 
     @Override
