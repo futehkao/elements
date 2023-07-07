@@ -20,12 +20,13 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.ThreadLocalMap;
 import net.e6tech.elements.common.util.file.FileUtil;
-import org.codehaus.groovy.ast.ClassNode;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.runtime.InvokerHelper;
 
 import javax.script.ScriptException;
 import java.io.*;
+import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -463,10 +464,20 @@ public class Scripting {
         return engine.getClassLoader();
     }
 
+    private static class SoftVariables extends SoftReference<Map<String, Object>> {
+        Object lastUpdate;
+
+        public SoftVariables(Map<String, Object> referent, Object lastUpdate) {
+            super(referent);
+            this.lastUpdate = lastUpdate;
+        }
+    }
+
     // This class encapsulates the differences between GroovyShell and GroovyScriptEngineImpl.
     private static class GroovyEngine {
         GroovyShell shell;
         CompilerConfiguration compilerConfig;
+        private final ThreadLocal<SoftVariables> localVars = new ThreadLocal<>();
 
         public GroovyEngine(ClassLoader classLoader, Properties properties) {
             ClassLoader ctxLoader = classLoader;
@@ -535,10 +546,29 @@ public class Scripting {
             }
         }
 
+        // getVariables is different from a direct get in that GString values, not keys, are
+        // converted to String values.
         public Map<String, Object> getVariables() {
             Map<String, Object> binding = shell.getContext().getVariables();
+            if (binding instanceof ThreadLocalMap) {
+                ThreadLocalMap<String, Object> map = (ThreadLocalMap<String, Object>) binding;
+                SoftVariables ref = localVars.get();
+                Map<String, Object> variables = ref != null ? ref.get() : null;
+                if (variables == null || ref.lastUpdate != map.lastUpdate() || map.isDirty()) {
+                    map.size(); // force a merge.
+                    ref = new SoftVariables(normalizeLocalVars(), map.lastUpdate());
+                    variables = ref.get();
+                    localVars.set(ref);
+                }
+                return variables;
+            }
 
+            return normalizeLocalVars();
+        }
+
+        private Map<String, Object> normalizeLocalVars() {
             Map<String, Object> variables = new LinkedHashMap<>();
+            Map<String, Object> binding = shell.getContext().getVariables();
             for (Map.Entry<String, Object> entry : binding.entrySet()) {
                 if (entry.getValue() instanceof GString) {
                     variables.put(entry.getKey(), entry.getValue().toString());

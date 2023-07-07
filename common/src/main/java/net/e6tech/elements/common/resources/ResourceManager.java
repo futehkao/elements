@@ -614,7 +614,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     @Override
     public <T> T getBean(String name) {
-        return (T) getScripting().getVariables().get(name);
+        return (T) getScripting().get(name);
     }
 
     @Override
