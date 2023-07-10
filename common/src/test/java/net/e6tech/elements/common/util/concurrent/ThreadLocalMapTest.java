@@ -53,6 +53,7 @@ public class ThreadLocalMapTest {
                 if (e.getKey().equals("C"))
                     e.setValue("c1");
             }
+            map.put("D", "d1");
         });
         thread.start();
         thread.join();
@@ -60,7 +61,7 @@ public class ThreadLocalMapTest {
         assertEquals("a1", map.get("A"));
         assertEquals("b", map.get("B"));
         assertEquals("c1", map.get("C"));
-
+        assertEquals(map.size(), size + 1);
     }
 
     @Test

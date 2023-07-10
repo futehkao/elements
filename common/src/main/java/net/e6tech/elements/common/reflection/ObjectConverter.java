@@ -221,6 +221,9 @@ public class ObjectConverter {
             } else {
                 return objectMapper.convertValue(val, toType);
             }
+        } else if (toType.isAssignableFrom(fromType)) {
+            // no conversion
+            return value;
         } else if (toType.isPrimitive() || fromType.isPrimitive()) {
             // converting primitive type
             boolean needConversion;
@@ -231,10 +234,9 @@ public class ObjectConverter {
             else needConversion = shouldConvertPrimitive(fromType, toType);
             if (!needConversion)
                 return value;
-        } else if (toType.isAssignableFrom(fromType)) {
-            // no conversion, except for reference resolving
-            return value;
-        } else if (value instanceof String && ! (toType.isAssignableFrom(Class.class))) {
+        } else if (toType.equals(String.class)) {
+            return value.toString();
+        } else if (value instanceof String && !(toType.isAssignableFrom(Class.class))) {
             // converting from String to other types.
             try {
                 // converting from String directly, e.g. mapper can convert from String to BigDecimal

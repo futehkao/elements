@@ -20,6 +20,7 @@ import net.e6tech.elements.common.reflection.ObjectConverter;
 import net.e6tech.elements.common.reflection.Primitives;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.AbstractConstruct;
 import org.yaml.snakeyaml.constructor.Constructor;
@@ -648,6 +649,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
     public static class YamlConstructor extends Constructor {
 
         public YamlConstructor() {
+            super(new LoaderOptions());
             this.yamlConstructors.put(Tag.FLOAT, new BigDecimalConstructor());
             this.yamlConstructors.put(Tag.INT, new LongConstructor());
         }

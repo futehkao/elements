@@ -108,7 +108,16 @@ public class Scripting {
     }
 
     public Map<String, Object> getVariables() {
-        return engine.getVariables();
+        return engine.getBinding().getVariables();
+    }
+
+    // return binding variables but convert GString to String.
+    public Map<String, Object> normalizeVariables() {
+        return engine.normalizeVariables();
+    }
+
+    public Binding getBinding() {
+        return engine.getBinding();
     }
 
     public Object remove(String key) {
@@ -506,7 +515,7 @@ public class Scripting {
             for (Map.Entry entry : properties.entrySet()) {
                 binding.setVariable(entry.getKey().toString(), entry.getValue());
             }
-            binding = new Binding(new ThreadLocalMap(binding.getVariables()));
+            binding = new MyBinding(new ThreadLocalMap(binding.getVariables()));
             shell = new GroovyShell(loader, binding, compilerConfig);
         }
 
@@ -548,22 +557,24 @@ public class Scripting {
 
         // getVariables is different from a direct get in that GString values, not keys, are
         // converted to String values.
-        public Map<String, Object> getVariables() {
-            Map<String, Object> binding = shell.getContext().getVariables();
-            if (binding instanceof ThreadLocalMap) {
-                ThreadLocalMap<String, Object> map = (ThreadLocalMap<String, Object>) binding;
-                SoftVariables ref = localVars.get();
-                Map<String, Object> variables = ref != null ? ref.get() : null;
+        public Map<String, Object> normalizeVariables() {
+            MyBinding binding = (MyBinding) shell.getContext();
+            SoftVariables ref = localVars.get();
+            Map<String, Object> variables = ref != null ? ref.get() : null;
+            if (binding.getVariables() instanceof ThreadLocalMap) {
+                ThreadLocalMap<String, Object> map = (ThreadLocalMap<String, Object>) binding.getVariables();
                 if (variables == null || ref.lastUpdate != map.lastUpdate() || map.isDirty()) {
-                    map.size(); // force a merge.
-                    ref = new SoftVariables(normalizeLocalVars(), map.lastUpdate());
-                    variables = ref.get();
-                    localVars.set(ref);
+                    map.merge();
+                    variables = normalizeLocalVars();
+                    localVars.set(new SoftVariables(variables, map.lastUpdate()));
                 }
-                return variables;
+            } else {
+                if (variables == null || ref.lastUpdate != binding.lastModified) {
+                    variables = normalizeLocalVars();
+                    localVars.set(new SoftVariables(variables, binding.lastModified));
+                }
             }
-
-            return normalizeLocalVars();
+            return variables;
         }
 
         private Map<String, Object> normalizeLocalVars() {
@@ -706,6 +717,30 @@ public class Scripting {
             Path parent = path.getParent();
             path = Paths.get(parent.toString(), file.toString());
             return path.toString();
+        }
+    }
+
+    private static class MyBinding extends Binding {
+        private Object lastModified = new Object();
+        public MyBinding() {
+        }
+
+        public MyBinding(Map variables) {
+            super(variables);
+        }
+
+        /**
+         * A helper constructor used in main(String[]) method calls
+         *
+         * @param args are the command line arguments from a main()
+         */
+        public MyBinding(String[] args) {
+            super(args);
+        }
+        @Override
+        public void setVariable(String name, Object value) {
+            lastModified = new Object();
+            super.setVariable(name, value);
         }
     }
 }
