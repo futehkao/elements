@@ -15,10 +15,10 @@ limitations under the License.
 */
 dependencies {
     compile project(':common')
-    compile "org.bouncycastle:bcprov-jdk15on:${bouncycastleVersion}"
-    compile "org.bouncycastle:bcpg-jdk15on:${bouncycastleVersion}"
-    compile "org.bouncycastle:bcpkix-jdk15on:${bouncycastleVersion}"
-    compile "org.bouncycastle:bcmail-jdk15on:${bouncycastleVersion}"
+    compile "org.bouncycastle:bcprov-jdk18on:${bouncycastleVersion}"
+    compile "org.bouncycastle:bcpg-jdk18on:${bouncycastleVersion}"
+    compile "org.bouncycastle:bcpkix-jdk18on:${bouncycastleVersion}"
+    compile "org.bouncycastle:bcmail-jdk18on:${bouncycastleVersion}"
     // compile ("javax.xml.bind:jaxb-api:${jaxbVersion}")
 
     // Below as put in because java 11 and above don't come with jaxb.  But, glassfish's jaxb provides the implementation
