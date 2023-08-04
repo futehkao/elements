@@ -36,15 +36,6 @@ public class CryptoUtil {
     private CryptoUtil() {
     }
 
-    public static byte[] padDatablock(byte[] data, byte firstPadByte, byte endPadByte) {
-        int paddedEndCharCount = (8 - (data.length + 1) % 8);
-        byte[] result = new byte[data.length + 1 + paddedEndCharCount];
-        System.arraycopy(data, 0, result, 0, data.length);
-        result[data.length] = firstPadByte;
-        Arrays.fill(result, data.length + 1, result.length, endPadByte);
-        return result;
-    }
-
     public static byte[] encrypt(byte[] keyBytes, byte[] clearText) throws GeneralSecurityException {
         return encrypt(createSecretKey(keyBytes), clearText);
     }
@@ -55,27 +46,35 @@ public class CryptoUtil {
         return cipher.doFinal(clearText);
     }
 
-    public static String mac(byte[] macKeyBytes, byte[] text, int resultLength) throws GeneralSecurityException {
-        SecretKey macKey = new SecretKeySpec(macKeyBytes, ALGORITHM_DES_EDE);
-        return mac(macKey, text, resultLength);
-    }
-
-    public static String mac(SecretKey macKey, byte[] text, int resultLength) throws GeneralSecurityException {
-        Cipher cipher = Cipher.getInstance(DES_EDE_CBC_NO_PADDING);
-
+    public static String iso9797Alg3Mac(byte[] macKeyBytes, byte[] text, int resultLength) throws GeneralSecurityException {
         if (text.length % 8 != 0)
             throw new GeneralSecurityException("data block size must be multiple of 8");
 
-        int blocks = text.length / 8;
+        byte[] leftMacKeyBytes = new byte[8];
+        byte[] rightMacKeyBytes = new byte[8];
+        System.arraycopy(macKeyBytes, 0, leftMacKeyBytes, 0, leftMacKeyBytes.length);
+        System.arraycopy(macKeyBytes, leftMacKeyBytes.length, rightMacKeyBytes, 0, rightMacKeyBytes.length);
+        SecretKey macKeyLeft = new SecretKeySpec(leftMacKeyBytes, "DES");
+        SecretKey macKeyRight = new SecretKeySpec(rightMacKeyBytes, "DES");
+        Cipher cipherDesCbs = Cipher.getInstance("DES/CBC/NoPadding");
+        Cipher cipherDesEcb = Cipher.getInstance("DES/ECB/NoPadding");
 
+        int blocks = text.length / 8;
         byte[] output = null;
         byte[] icv = new byte[8];
+        // encrypt with left key in cbc mode
         IvParameterSpec ivSpec = new IvParameterSpec(icv);
         for (int i = 0; i < blocks; i++) {
-            cipher.init(Cipher.ENCRYPT_MODE, macKey, ivSpec);
-            output = cipher.doFinal(text, i * 8, 8);
+            cipherDesCbs.init(Cipher.ENCRYPT_MODE, macKeyLeft, ivSpec);
+            output = cipherDesCbs.doFinal(text, i * 8, 8);
             ivSpec = new IvParameterSpec(output);
         }
+        // decrypt with right key in ecb mode
+        cipherDesEcb.init(Cipher.DECRYPT_MODE, macKeyRight);
+        output = cipherDesEcb.doFinal(output);
+        // encrypt with left key in ecb mode
+        cipherDesEcb.init(Cipher.ENCRYPT_MODE, macKeyLeft);
+        output = cipherDesEcb.doFinal(output);
 
         return Hex.toString(output).substring(0, resultLength);
     }

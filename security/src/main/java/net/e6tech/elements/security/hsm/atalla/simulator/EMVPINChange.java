@@ -213,7 +213,7 @@ public class EMVPINChange extends Command {
 
     protected void addMac(Request request, Response response, byte[] encipheredPaddedPINBytes) throws CommandException {
         byte[] dataToCalculateMac = Hex.toBytes(request.getApplicationData() + Hex.toString(encipheredPaddedPINBytes));
-        byte[] paddedDataToCalculateMac = CryptoUtil.padDatablock(dataToCalculateMac, (byte) 0x80, (byte) 0x00);
+        byte[] paddedDataToCalculateMac = padDatablock(dataToCalculateMac);
         byte[] iccMasterSmMacBytes;
         byte[] sessionSmMacBytes;
         try {
@@ -228,11 +228,20 @@ public class EMVPINChange extends Command {
             SecretKey sessionSmMac = CryptoUtil.createSecretKey(sessionSmMacBytes);
             String sessionSmMacCheckDigits = CryptoUtil.calculateCheckDigits(sessionSmMac, 6);
             response.setSessionSmMacCheckDigits(sessionSmMacCheckDigits);
-            String mac = CryptoUtil.mac(sessionSmMac, paddedDataToCalculateMac, 16);
+            String mac = CryptoUtil.iso9797Alg3Mac(sessionSmMacBytes, paddedDataToCalculateMac, 16);
             response.setMac(mac);
         } catch (GeneralSecurityException e) {
             throw new CommandException(12, e);
         }
+    }
+
+    public static byte[] padDatablock(byte[] data) {
+        int paddedEndCharCountExcept80 = (8 - (data.length + 1) % 8) % 8;
+        byte[] result = new byte[data.length + 1 + paddedEndCharCountExcept80];
+        System.arraycopy(data, 0, result, 0, data.length);
+        result[data.length] = (byte)0x80;
+        Arrays.fill(result, data.length + 1, result.length, (byte)0x00);
+        return result;
     }
 
     protected void calculateImkACCheckDigits(Request request, Response response) throws CommandException {

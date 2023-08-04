@@ -45,7 +45,7 @@ public class EMVGenerateMAC extends Command {
                 sessionSmMacBytes = CryptoUtil.deriveSessionKeyBytes(iccMasterSmMacBytes, request.getDiversificationData());
                 String sessionSmMacCheckDigits = CryptoUtil.calculateKeyBytesCheckDigits(sessionSmMacBytes, 6);
                 response.setSessionSmMacCheckDigits(sessionSmMacCheckDigits);
-                String mac = CryptoUtil.mac(sessionSmMacBytes, Hex.toBytes(request.getPaddedData()), request.getMacLength());
+                String mac = CryptoUtil.iso9797Alg3Mac(sessionSmMacBytes, Hex.toBytes(request.getPaddedData()), request.getMacLength());
                 response.setMac(mac);
             } catch (GeneralSecurityException e) {
                 throw new CommandException(8, e);
