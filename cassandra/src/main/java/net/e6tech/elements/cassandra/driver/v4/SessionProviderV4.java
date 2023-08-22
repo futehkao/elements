@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.cassandra.driver.v4;
 
+import com.datastax.oss.driver.api.core.AllNodesFailedException;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.InvalidKeyspaceException;
@@ -30,6 +31,7 @@ import net.e6tech.elements.cassandra.Sibyl;
 import net.e6tech.elements.cassandra.driver.Wrapper;
 import net.e6tech.elements.cassandra.driver.metadata.TableMetadata;
 import net.e6tech.elements.cassandra.generator.Generator;
+import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.util.TextBuilder;
 
@@ -39,6 +41,8 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class SessionProviderV4 extends SessionProvider {
+
+    private static Logger logger = Logger.getLogger();
 
     private Generator generator = new GeneratorV4();
     private CqlSession session;
@@ -127,8 +131,10 @@ public class SessionProviderV4 extends SessionProvider {
             session.close();
 
             session = getSession(builder, getKeyspace());
+        } catch (AllNodesFailedException ex) {
+            logger.error("No Cassandra server found at address {}:{}", getHost(), getPort());
+            throw ex;
         }
-
         mappingManager = new MappingManager(this, session, getKeyspace());
     }
 

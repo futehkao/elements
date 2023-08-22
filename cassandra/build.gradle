@@ -34,6 +34,7 @@ dependencies {
         exclude group: 'com.github.jnr'
         exclude group: 'org.apache.tinkerpop', module: 'gremlin-core'
         exclude group: 'org.apache.tinkerpop', module: 'tinkergraph-gremlin'
+        exclude group: 'com.esri.geometry', module: 'esri-geometry-api' // this is optional, also it's an CVE issue
     }
 
     // annotationProcessor group: 'com.datastax.oss', name: 'java-driver-mapper-processor', version: "$cassandraDriver4Version"
