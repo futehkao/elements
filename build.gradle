@@ -1,4 +1,4 @@
-ext.elementsVersion = '2.7.0'
+ext.elementsVersion = '2.7.1'
 ext.junitPlatformLauncherVersion = '1.6.2'
 ext.junitJupiterVersion = '5.6.2'
 ext.snakeyamlVersion = '2.0'
