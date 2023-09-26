@@ -558,7 +558,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
 
     private void setValueForOwner(ObjectConverter converter, Object owner, PropertyDescriptor desc, Object val)
             throws IOException, InvocationTargetException, IllegalAccessException {
-        Method method = desc.getReadMethod() != null ? desc.getReadMethod() : desc.getWriteMethod();
+        Method method = desc.getWriteMethod() != null ? desc.getWriteMethod() : desc.getReadMethod();
 
         Object value = null;
         if (desc.getReadMethod() != null) {
