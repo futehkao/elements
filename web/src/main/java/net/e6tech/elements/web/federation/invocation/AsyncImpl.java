@@ -125,12 +125,10 @@ public class AsyncImpl<U> implements Async<U> {
                     future.get(timeout, TimeUnit.MILLISECONDS);
                 } catch (ExecutionException ex) {
                     throw ExceptionMapper.unwrap(ex.getCause());
-                    // throw new CompletionException(ExceptionMapper.unwrap(ex.getCause()));
                 } catch (CancellationException ex) {
                     throw ex;
                 } catch (Exception ex) {
                     throw ExceptionMapper.unwrap(ex);
-                    // throw new CompletionException(ExceptionMapper.unwrap(ex));
                 }
             } else if (method.getName().equals("toCompletableFuture") && method.getParameterCount() == 0) {
                 return ctx.getProxyObject();
