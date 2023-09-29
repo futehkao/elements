@@ -20,7 +20,7 @@ ext.javamailVersion = '1.6.2'
 ext.javaxWsRsApiVersion = '2.1.6'
 ext.javaeeApiVersion = '8.0.1'
 ext.jacksonVersion = '2.15.2'
-ext.jettyVersion =  '9.4.51.v20230217'
+ext.jettyVersion =  '9.4.52.v20230823'
 ext.tomcatVersion = '9.0.79'
 ext.tomcatLog4jVersion = '9.0.0.M6'
 ext.log4jVersion = '2.20.0'
@@ -40,7 +40,7 @@ ext.jaxbVersion = '2.3.1'      // security
 ext.jaxbRuntimeVersion = '2.3.3'
 ext.jaxbOldVersion = '2.3.0'
 ext.jnrffiVersion = '2.1.16'  // cassandra and akka cluster typed
-ext.nettyVersion = '4.1.94.Final'
+ext.nettyVersion = '4.1.99.Final'
 
 buildscript {
     repositories {
