@@ -296,9 +296,11 @@ public class ETLContext {
                         lastUpdate.setLastUpdate(new UUID(Long.MIN_VALUE, Long.MIN_VALUE).toString());
                     } else {
                         lastUpdate.setLastUpdate("0");
+                        if (settings.getStartTime() != null)
+                            lastUpdate.setLastUpdate("" + cutoffOrUpdate(false, settings.getStartTime(), 1));
                     }
                 } else {
-                    lastUpdate.setLastUpdate("" + cutoffOrUpdate(false, settings.getStartTime(), 0));
+                    lastUpdate.setLastUpdate("" + cutoffOrUpdate(false, settings.getStartTime(), 1));
                 }
             }
             lastUpdate.setDataType(getGenerator().getDataType(getPartitionKeyType()));
