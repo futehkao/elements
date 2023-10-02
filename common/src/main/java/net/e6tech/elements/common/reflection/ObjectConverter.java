@@ -161,37 +161,42 @@ public class ObjectConverter {
         ObjectMapper objectMapper = createObjectMapper();
 
         if (toType instanceof Class) {
-            // converted = objectMapper.convertValue(from, (Class) toType);
             converted = convert(objectMapper, from, (Class) toType);
         } else {
+            JavaType ctype = TypeFactory.defaultInstance().constructType(toType);
+            String str = objectMapper.writeValueAsString(from);
+            converted = objectMapper.readValue(str, ctype);
             ParameterizedType parametrized = (ParameterizedType) toType;
-            // converted = objectMapper.convertValue(from, new MyTypeReference(toType));
             Class enclosedType = (Class) parametrized.getRawType();
-            Type type = parametrized.getActualTypeArguments()[0];
-            if (type instanceof Class) {
-                // for now, we limit ourselves to detecting one level.  A counter example would be
-                // List<List<List<X>>> or List<Map<X, Y>>
-                Class elementType = (Class) type;
-                if (Collection.class.isAssignableFrom(enclosedType)) {
-                    converted = convertCollection(objectMapper, (Collection) from, enclosedType, elementType);
-                } else {
-                    converted = convert(objectMapper, from, enclosedType);
-                }
-            } else if(type instanceof ParameterizedType) {
-                ParameterizedType ptype = (ParameterizedType) type;
-                if (ptype.getRawType() instanceof Class) {
-                    Class elementType = (Class) ptype.getRawType();
-                    if (Collection.class.isAssignableFrom(enclosedType)) {
-                        converted = convertCollection(objectMapper, (Collection) from, enclosedType, elementType);
-                    } else {
-                        converted = convert(objectMapper, from, enclosedType);
+            if (listener != null) {
+                Type type = parametrized.getActualTypeArguments()[0];
+                Class elementType = null;
+                if (type instanceof Class)
+                    elementType = (Class) type;
+                else {
+                    ParameterizedType ptype = (ParameterizedType) type;
+                    if (ptype.getRawType() instanceof Class) {
+                        elementType = (Class) ptype.getRawType();
                     }
-                } else {
-                    converted = convert(objectMapper, from, enclosedType);
                 }
-            } else {
-                converted = convert(objectMapper, from, enclosedType);
+
+                if (Collection.class.isAssignableFrom(enclosedType)) {
+                    Iterator iter1 = ((Collection) from).iterator();
+                    Iterator iter2 = ((Collection) converted).iterator();
+                    while (iter1.hasNext() && iter2.hasNext()) {
+                        listener.instanceCreated(iter1.hasNext(), elementType, iter2.next());
+                    }
+                } else if (Map.class.isAssignableFrom(enclosedType)) {
+                    Map<?,?> fromMap = (Map) from;
+                    Map<?,?> convertedMap = (Map) converted;
+                    for (Map.Entry entry : convertedMap.entrySet()) {
+                        Object old = fromMap.get(entry.getKey());
+                        listener.instanceCreated(old, elementType, entry.getValue());
+                    }
+                }
             }
+
+
         }
         return converted;
     }
@@ -280,6 +285,22 @@ public class ObjectConverter {
                 listener.instanceCreated(iter1.hasNext(), elementType, iter2.next());
             }
         }
+        return converted;
+    }
+
+    private Map convertMap(ObjectMapper objectMapper, Map value, Type type) throws IOException {
+
+        JavaType ctype = TypeFactory.defaultInstance().constructType(type);
+        String str = objectMapper.writeValueAsString(value);
+        Map converted = objectMapper.readValue(str, ctype);
+
+        /*if (listener != null) {
+            Iterator iter1 = value.iterator();
+            Iterator iter2 = converted.iterator();
+            while (iter1.hasNext() && iter2.hasNext()) {
+                listener.instanceCreated(iter1.hasNext(), elementType, iter2.next());
+            }
+        }*/
         return converted;
     }
 

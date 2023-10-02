@@ -568,7 +568,7 @@ public class Configuration extends LinkedHashMap<String, Object> {
                     configureWithMap(converter, curr, (Map) val);
                     return;
                 } else {
-                    value = converter.convert(val, curr.getClass());
+                    value = converter.convert(val, desc.getReadMethod());
                 }
             }
         }
