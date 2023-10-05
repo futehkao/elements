@@ -157,17 +157,29 @@ public class ObjectConverter {
     public Object convert(Object from, Type toType) throws IOException {
         if (from == null)
             return null;
-        Object converted;
+        Object converted = null;
         ObjectMapper objectMapper = createObjectMapper();
 
         if (toType instanceof Class) {
             converted = convert(objectMapper, from, (Class) toType);
         } else {
-            JavaType ctype = TypeFactory.defaultInstance().constructType(toType);
-            String str = objectMapper.writeValueAsString(from);
-            converted = objectMapper.readValue(str, ctype);
             ParameterizedType parametrized = (ParameterizedType) toType;
             Class enclosedType = (Class) parametrized.getRawType();
+            /*
+            if (parametrized.getRawType() instanceof Class
+                    && !Collection.class.isAssignableFrom(enclosedType)  // need to skep collections and maps
+                    && !Map.class.isAssignableFrom(enclosedType)
+                    && enclosedType.isAssignableFrom(from.getClass())) {
+                converted = convert(objectMapper, from, enclosedType);
+            }*/
+            if (from.getClass().getName().contains("$$Lambda$")) {
+                converted = convert(objectMapper, from, enclosedType);
+            } else {
+                JavaType ctype = TypeFactory.defaultInstance().constructType(toType);
+                String str = objectMapper.writeValueAsString(from);
+                converted = objectMapper.readValue(str, ctype);
+            }
+
             if (listener != null) {
                 Type type = parametrized.getActualTypeArguments()[0];
                 Class elementType = null;
@@ -195,8 +207,6 @@ public class ObjectConverter {
                     }
                 }
             }
-
-
         }
         return converted;
     }
