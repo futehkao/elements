@@ -17,24 +17,22 @@
 package net.e6tech.elements.common.reflection;
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.cfg.DeserializerFactoryConfig;
 import com.fasterxml.jackson.databind.deser.*;
-import com.fasterxml.jackson.databind.deser.std.*;
-import com.fasterxml.jackson.databind.jsontype.TypeDeserializer;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.type.ArrayType;
+import com.fasterxml.jackson.databind.deser.std.UntypedObjectDeserializer;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.fasterxml.jackson.databind.util.ClassUtil;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.io.IOException;
 import java.lang.reflect.*;
-import java.util.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by futeh.
@@ -165,6 +163,15 @@ public class ObjectConverter {
         } else {
             ParameterizedType parametrized = (ParameterizedType) toType;
             Class enclosedType = (Class) parametrized.getRawType();
+            boolean lambda = from.getClass().isSynthetic() && enclosedType.isInterface() && enclosedType.getMethods().length == 1;
+            if (from.getClass().isSynthetic() && enclosedType.isInterface()) {
+                int count = 0;
+                for (Method m : enclosedType.getMethods()) {
+                    if (Modifier.isAbstract(m.getModifiers()) && !Modifier.isStatic(m.getModifiers()))
+                        count ++;
+                }
+                lambda = count == 1;
+            }
             /*
             if (parametrized.getRawType() instanceof Class
                     && !Collection.class.isAssignableFrom(enclosedType)  // need to skep collections and maps
@@ -172,7 +179,7 @@ public class ObjectConverter {
                     && enclosedType.isAssignableFrom(from.getClass())) {
                 converted = convert(objectMapper, from, enclosedType);
             }*/
-            if (from.getClass().getName().contains("$$Lambda$")) {
+            if (lambda) {
                 converted = convert(objectMapper, from, enclosedType);
             } else {
                 JavaType ctype = TypeFactory.defaultInstance().constructType(toType);
