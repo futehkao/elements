@@ -25,6 +25,7 @@ import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -50,6 +51,7 @@ public class ETLContext {
     private Class<LastUpdate> lastUpdateClass;
     private LastUpdate lastUpdate;
     private String useLastUpdate;
+    private long timeOffset =  2 * YEAR;
 
     public ETLContext() {
         settings.batchSize(BATCH_SIZE)
@@ -207,6 +209,14 @@ public class ETLContext {
         this.lastUpdateClass = lastUpdateClass;
     }
 
+    public long getTimeOffset() {
+        return timeOffset;
+    }
+
+    public void setTimeOffset(long timeOffset) {
+        this.timeOffset = timeOffset;
+    }
+
     public Class getPartitionKeyType() {
         initialize();
         return getInspector(getSourceClass()).getPartitionKeyClass(0);
@@ -295,9 +305,7 @@ public class ETLContext {
                     if (UUID.class.isAssignableFrom(getPartitionKeyType())) {
                         lastUpdate.setLastUpdate(new UUID(Long.MIN_VALUE, Long.MIN_VALUE).toString());
                     } else {
-                        lastUpdate.setLastUpdate("0");
-                        if (settings.getStartTime() != null)
-                            lastUpdate.setLastUpdate("" + cutoffOrUpdate(false, settings.getStartTime(), 1));
+                        lastUpdate.setLastUpdate("" + cutoffOrUpdate(false, Instant.now().toEpochMilli() - timeOffset, 0));
                     }
                 } else {
                     lastUpdate.setLastUpdate("" + cutoffOrUpdate(false, settings.getStartTime(), 1));
