@@ -163,28 +163,13 @@ public class ObjectConverter {
         } else {
             ParameterizedType parametrized = (ParameterizedType) toType;
             Class enclosedType = (Class) parametrized.getRawType();
-            boolean lambda = from.getClass().isSynthetic() && enclosedType.isInterface() && enclosedType.getMethods().length == 1;
-            if (from.getClass().isSynthetic() && enclosedType.isInterface()) {
-                int count = 0;
-                for (Method m : enclosedType.getMethods()) {
-                    if (Modifier.isAbstract(m.getModifiers()) && !Modifier.isStatic(m.getModifiers()))
-                        count ++;
-                }
-                lambda = count == 1;
-            }
-            /*
-            if (parametrized.getRawType() instanceof Class
-                    && !Collection.class.isAssignableFrom(enclosedType)  // need to skep collections and maps
-                    && !Map.class.isAssignableFrom(enclosedType)
-                    && enclosedType.isAssignableFrom(from.getClass())) {
-                converted = convert(objectMapper, from, enclosedType);
-            }*/
-            if (lambda) {
-                converted = convert(objectMapper, from, enclosedType);
-            } else {
+            if (Collection.class.isAssignableFrom(enclosedType)
+               || Map.class.isAssignableFrom(enclosedType)) {
                 JavaType ctype = TypeFactory.defaultInstance().constructType(toType);
                 String str = objectMapper.writeValueAsString(from);
                 converted = objectMapper.readValue(str, ctype);
+            } else {
+                converted = convert(objectMapper, from, enclosedType);
             }
 
             if (listener != null) {
