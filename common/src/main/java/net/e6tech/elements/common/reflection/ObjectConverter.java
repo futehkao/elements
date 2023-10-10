@@ -163,8 +163,7 @@ public class ObjectConverter {
         } else {
             ParameterizedType parametrized = (ParameterizedType) toType;
             Class enclosedType = (Class) parametrized.getRawType();
-            if (Collection.class.isAssignableFrom(enclosedType)
-               || Map.class.isAssignableFrom(enclosedType)) {
+            if (isMapOrCollection(enclosedType)) {
                 JavaType ctype = TypeFactory.defaultInstance().constructType(toType);
                 String str = objectMapper.writeValueAsString(from);
                 converted = objectMapper.readValue(str, ctype);
@@ -172,7 +171,7 @@ public class ObjectConverter {
                 converted = convert(objectMapper, from, enclosedType);
             }
 
-            if (listener != null) {
+            if (listener != null && isMapOrCollection(enclosedType)) {
                 Type type = parametrized.getActualTypeArguments()[0];
                 Class elementType = null;
                 if (type instanceof Class)
@@ -202,6 +201,11 @@ public class ObjectConverter {
         }
         return converted;
     }
+    private static boolean isMapOrCollection(Class clazz) {
+        return Collection.class.isAssignableFrom(clazz)
+                || Map.class.isAssignableFrom(clazz);
+    }
+
 
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:S3776"})
