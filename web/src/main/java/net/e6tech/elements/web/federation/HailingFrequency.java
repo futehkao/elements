@@ -81,8 +81,9 @@ public class HailingFrequency implements Frequency {
     public <T> T getService(Class<T> cls) {
         if (cls.equals(BeaconAPI.class) && !services.containsKey(cls))
             return (T) createRemoteService(BeaconAPI.class.getName());
-
-        return (T) services.get(cls);
+        return services.containsKey(cls) ?
+                (T) services.get(cls) :
+                (T) createRemoteService(cls.getName());
     }
 
     @SuppressWarnings("unchecked")
