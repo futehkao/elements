@@ -28,7 +28,7 @@ dependencies {
         exclude group: 'org.ow2.asm'
     }
 
-    compile group: 'io.aeron', name: "aeron-driver", version: "${aeronVersion}"
+    /* compile group: 'io.aeron', name: "aeron-driver", version: "${aeronVersion}"
     compile group: 'io.aeron', name: "aeron-client", version: "${aeronVersion}"
     compile (group: 'com.typesafe.akka', name: "akka-cluster-typed_${akkaScalaVersion}", version: "${akkaVersion}") {
         exclude group: 'com.github.jnr'
@@ -38,10 +38,10 @@ dependencies {
     compile("com.typesafe.akka:akka-cluster-sharding_${akkaScalaVersion}:${akkaVersion}") {
         exclude group: 'com.typesafe.akka', module: "akka-distributed-data_${akkaScalaVersion}"
         exclude group: 'com.hierynomus', module: 'asn-one'
-    }
+    } */
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
     testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
-    testCompile group: 'com.typesafe.akka', name: "akka-testkit_${akkaScalaVersion}", version: "${akkaVersion}"
+    // testCompile group: 'com.typesafe.akka', name: "akka-testkit_${akkaScalaVersion}", version: "${akkaVersion}"
 }

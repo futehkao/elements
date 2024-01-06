@@ -43,9 +43,11 @@ dependencies {
 
     compile ("org.ehcache:ehcache:${ehcacheVersion}")
     compile "javax.cache:cache-api:${javaCacheApiVerison}"
-    compile ("org.scala-lang:scala-library:${scalaVersion}")
+
+    /* compile ("org.scala-lang:scala-library:${scalaVersion}")
     compile ("com.typesafe.akka:akka-actor-typed_${akkaScalaVersion}:${akkaVersion}")
     compile group: 'com.typesafe.akka', name: "akka-actor_${akkaScalaVersion}", version: "${akkaVersion}"
+     */
 
     testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testCompile "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"

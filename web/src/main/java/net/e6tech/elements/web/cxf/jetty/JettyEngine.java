@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.web.cxf.jetty;
 
-import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.logging.Logger;
@@ -54,7 +53,6 @@ public class JettyEngine implements ServerEngine {
     private QueuedThreadPool queuedThreadPool;
     private boolean useThreadPool = false;
     private Provision provision;
-    private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
     private JettySSL jettySSL = new JettySSL();
 
     public QueuedThreadPool getQueuedThreadPool() {
@@ -81,15 +79,6 @@ public class JettyEngine implements ServerEngine {
 
     public void setUseThreadPool(boolean useThreadPool) {
         this.useThreadPool = useThreadPool;
-    }
-
-    public WorkerPoolConfig getWorkerPoolConfig() {
-        return workerPoolConfig;
-    }
-
-    @Inject(optional = true)
-    public void setWorkerPoolConfig(WorkerPoolConfig workerPoolConfig) {
-        this.workerPoolConfig = workerPoolConfig;
     }
 
     public JettySSL getJettySSL() {

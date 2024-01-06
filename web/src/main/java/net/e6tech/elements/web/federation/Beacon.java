@@ -7,8 +7,7 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.subscribe.Notice;
 
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -196,6 +195,21 @@ public class Beacon {
                     logger.trace("{} {} seeds announce ", collective.getHostAddress(), from);
                     announce();
                     break;
+                } else if (syncMembers(frequencies().values())) {
+                    logger.trace("{} {} frequencies announce ", collective.getHostAddress(), from);
+                    announce();
+                    break;
+                } else if (seedFrequencies.size() == 1) {
+                    try {
+                        URI hostAddress = new URI(collective.getHostAddress());
+                        URI seedAddress = new URI(seedFrequencies.get(0).getMember().getAddress());
+                        if (hostAddress.equals(seedAddress)) {
+                            announce();
+                            break;
+                        }
+                    } catch (Exception e) {
+                        logger.warn("Invalid host address", e);
+                    }
                 }
 
                 try {
@@ -392,11 +406,11 @@ public class Beacon {
         if (list.isEmpty())
             return true; // because list contain only self
 
-        URL hostAddress = null;
+        URI hostAddress = null;
         try {
-            hostAddress = new URL(collective.getHostAddress());
-        } catch (MalformedURLException e) {
-            logger.warn("Invalid host address " + collective.getHostAddress());
+            hostAddress = new URI(collective.getHostAddress());
+        } catch (Exception e) {
+            logger.warn("Invalid host address " + collective.getHostAddress(), e);
             return false;
         }
         while (true) {
@@ -406,7 +420,7 @@ public class Beacon {
                     return false;
                 int n = random.nextInt(list.size());
                 frequency = list.remove(n);
-                URL memberURL = new URL(frequency.getMember().getAddress());
+                URI memberURL = new URI(frequency.getMember().getAddress());
                 if (! hostAddress.equals(memberURL)) {
                     Collection<Member> list2 = frequency.beacon().members();
                     logger.trace("{} syncMembers: {}", collective.getHostAddress(), list2);
