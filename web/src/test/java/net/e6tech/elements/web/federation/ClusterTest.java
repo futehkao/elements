@@ -38,7 +38,7 @@ public class ClusterTest {
 
     @BeforeAll
     public static void setup() {
-        Beacon.logger = Logger.from(new ConsoleLogger().traceEnabled().debugEnabled());
+        Beacon.setLogger(Logger.from(new ConsoleLogger().traceEnabled().debugEnabled()));
         new Thread(()->{
             for (int i = 0; i < 2 * SERVERS; i += 2) {
                 try {

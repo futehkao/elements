@@ -20,6 +20,8 @@ public class HailingFrequency implements Frequency {
     private long lastConnectionError = 0L;
     private int consecutiveError = 0;
 
+    private BeaconAPI beaconAPI;
+
     public HailingFrequency(Member member, CollectiveImpl federation) {
         this.collective = federation;
         setMember(member);
@@ -79,8 +81,11 @@ public class HailingFrequency implements Frequency {
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getService(Class<T> cls) {
-        if (cls.equals(BeaconAPI.class) && !services.containsKey(cls))
-            return (T) createRemoteService(BeaconAPI.class.getName());
+        if (cls.equals(BeaconAPI.class) && !services.containsKey(cls)) {
+            if (beaconAPI == null)
+                beaconAPI = (BeaconAPI) createRemoteService(BeaconAPI.class.getName());
+            return (T) beaconAPI;
+        }
         return services.containsKey(cls) ?
                 (T) services.get(cls) :
                 (T) createRemoteService(cls.getName());

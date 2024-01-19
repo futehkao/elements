@@ -35,12 +35,12 @@ import java.util.concurrent.ExecutionException;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class RegistryTest {
-    private static final int SERVERS = 3;
+    private static final int SERVERS = 40;
     private static final List<FederationImpl> federations = Collections.synchronizedList(new ArrayList<>(SERVERS));
 
     @BeforeAll
     public static void setup() {
-        Beacon.logger = Logger.from(new ConsoleLogger().traceEnabled().debugEnabled());
+        // Beacon.setLogger(Logger.from(new ConsoleLogger().traceEnabled().debugEnabled()));
         new Thread(()->{
             for (int i = 0; i < SERVERS; i++) {
                 try {
@@ -99,10 +99,11 @@ public class RegistryTest {
                 total += members.size();
             }
 
-
+            System.out.println("total " + total);
             if (total == SERVERS * SERVERS) {
                 break;
             }
+
             Thread.sleep(50L);
         }
 
@@ -111,7 +112,7 @@ public class RegistryTest {
             RestfulProxy proxy = new RestfulProxy("http://localhost:" + port + "/restful");
             InvokerRegistryAPI api = proxy.newProxy(InvokerRegistryAPI.class);
             Set<String> routes = api.routes();
-            routes.forEach(r -> {});
+            routes.forEach(System.out::println);
         }
 
         for (CollectiveImpl fed : federations) {

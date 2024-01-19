@@ -15,7 +15,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class Beacon {
-    public static Logger logger = Logger.getLogger();
+    private static Logger logger = Logger.getLogger();
     private CollectiveImpl collective;
 
     private Cache<UUID, Event> events;
@@ -25,6 +25,14 @@ public class Beacon {
     private List<HailingFrequency> seedFrequencies = Collections.emptyList();
     private Thread eventThread;
     private Map<String, HailingFrequency> frequencies = new ConcurrentHashMap<>(128); // memberId to frequency
+
+    public static Logger getLogger() {
+        return logger;
+    }
+
+    public static void setLogger(Logger logger) {
+        Beacon.logger = logger;
+    }
 
     public CollectiveImpl getCollective() {
         return collective;
@@ -182,35 +190,23 @@ public class Beacon {
         renewal.start();
     }
 
-    private void seeds(String from) {
+    private void seeds(String purpose) {
         if (!seeding.tryLock())
             return;
 
         try {
             while (true) {
-                if (seedFrequencies.isEmpty()) {
+                boolean done = syncSeeds(purpose);
+                logger.trace("{} {} frequencies announce ", collective.getHostAddress(), purpose);
+
+                if (syncMembers(frequencies().values())) {
                     announce();
-                    break;
-                } else if (syncMembers(seedFrequencies)) { // may the seeds are dead? If not, announce.
-                    logger.trace("{} {} seeds announce ", collective.getHostAddress(), from);
-                    announce();
-                    break;
-                } else if (syncMembers(frequencies().values())) {
-                    logger.trace("{} {} frequencies announce ", collective.getHostAddress(), from);
-                    announce();
-                    break;
-                } else if (seedFrequencies.size() == 1) {
-                    try {
-                        URI hostAddress = new URI(collective.getHostAddress());
-                        URI seedAddress = new URI(seedFrequencies.get(0).getMember().getAddress());
-                        if (hostAddress.equals(seedAddress)) {
-                            announce();
-                            break;
-                        }
-                    } catch (Exception e) {
-                        logger.warn("Invalid host address", e);
-                    }
+                    done = true;
                 }
+                done = syncMembers(frequencies().values()) || done;
+
+                if (done)
+                    break;
 
                 try {
                     Thread.sleep(collective.getSeedRefreshInterval());
@@ -223,6 +219,36 @@ public class Beacon {
         }
     }
 
+    private boolean syncSeeds(String purpose) {
+
+        // detected special situation for seeds.  If there is only one seed, and it happens to be this host then
+        // we would have to announce and return.
+        if (seedFrequencies.size() == 1) {
+            try {
+                URI hostAddress = new URI(collective.getHostAddress());
+                URI seedAddress = new URI(seedFrequencies.get(0).getMember().getAddress());
+                if (hostAddress.equals(seedAddress)) {
+                    announce();
+                    return true;
+                }
+            } catch (Exception e) {
+                logger.warn("Invalid seed or host address", e);
+            }
+        }
+
+        boolean completed = true;
+        if (seedFrequencies.isEmpty()) {
+            announce();
+        } else if (syncMembers(seedFrequencies)) { // may the seeds are dead? If not, announce.
+            logger.trace("{} {} seeds announce ", collective.getHostAddress(), purpose);
+            announce();
+        } else {
+            completed = false;
+        }
+
+        return completed;
+    }
+
     public void onEvent(Event event) {
         if (shutdown)
             return;
@@ -230,30 +256,17 @@ public class Beacon {
         // seen it before?
         synchronized (events) {
             Event existing = events.getIfPresent(event.getUuid());
-            if (existing != null) {
-                if (existing != null && existing.getUuid().equals(event.getUuid())) {
-                    event.addVisited(existing.getVisited());
-                    if (event.getCycle() > existing.getCycle())
-                        event.setCycle(existing.getCycle());
-                    events.put(event.getUuid(), event);
-                    return;
-                }
+            if (existing != null && existing.getUuid().equals(event.getUuid())) {
+                event.addVisited(existing.getVisited());
+                if (event.getCycle() > existing.getCycle())
+                    event.setCycle(existing.getCycle());
+                events.put(event.getUuid(), event);
+                return;
             }
         }
 
         // updating frequencies.
-        logger.trace("{} onEvent: {}" , collective.getHostAddress(), event);
-        if (Objects.equals(event.getDomainName(), collective.getDomainName()) && event.getCollectiveType() == collective.getType()) {
-            if (event.getType() == Event.Type.ANNOUNCE) {
-                updateFrequencies(event.getMembers());
-            } else if (event.getType() == Event.Type.REMOVE) {
-                removeFrequencies(event.getMembers());
-            } else if (event.getType() == Event.Type.BROADCAST) {
-                Notice notice = collective.getSubZero().thaw(event.getPayload());
-                if (notice != null)
-                    collective.publishInternal(notice);
-            }
-        }
+        handleEvent(event);
 
         // add to events so that it can be propagated.
         if (event.getCycle() > 0) {
@@ -265,6 +278,21 @@ public class Beacon {
                 event.addVisited(hostedMemberIds);
                 event.getVisited().addAll(collective.getHostedMembers().keySet());
                 events.notifyAll();
+            }
+        }
+    }
+
+    private void handleEvent(Event event) {
+        logger.trace("{} onEvent: {}" , collective.getHostAddress(), event);
+        if (Objects.equals(event.getDomainName(), collective.getDomainName()) && event.getCollectiveType() == collective.getType()) {
+            if (event.getType() == Event.Type.ANNOUNCE) {
+                updateFrequencies(event.getMembers());
+            } else if (event.getType() == Event.Type.REMOVE) {
+                removeFrequencies(event.getMembers());
+            } else if (event.getType() == Event.Type.BROADCAST) {
+                Notice<?> notice = collective.getSubZero().thaw(event.getPayload());
+                if (notice != null)
+                    collective.publishInternal(notice);
             }
         }
     }
@@ -285,7 +313,7 @@ public class Beacon {
         event.getVisited().addAll(collective.getHostedMembers().keySet());
         events.put(event.getUuid(), event);
         collective.onAnnounced(event);
-        gossip(event);
+        gossip(event, "announce");
     }
 
     void announce(Member member) {
@@ -295,7 +323,7 @@ public class Beacon {
         onEvent(new Event(collective.getDomainName(), Event.Type.ANNOUNCE, collective.getType(), list, collective.getCycle()));
     }
 
-    void broadcast(Notice notice) {
+    void broadcast(Notice<?> notice) {
         trimFrequencies();
 
         collective.getHostedMembers().values().forEach(collective::refresh);
@@ -305,7 +333,7 @@ public class Beacon {
         event.getVisited().addAll(collective.getHostedMembers().keySet());
         events.put(event.getUuid(), event);
         event.setPayload(collective.getSubZero().freeze(notice));
-        gossip(event);
+        gossip(event, "broadcast");
     }
 
     private void renewal() {
@@ -348,9 +376,7 @@ public class Beacon {
     }
 
     private void processEvents() {
-        List<Event> copy = new LinkedList<>();
-        int before;
-        int after;
+        List<Event> copy;
         synchronized (events) {
             while (events.size() == 0 || knownFrequencies() <= collective.getHostedMembers().size()) {
                 try {
@@ -360,15 +386,30 @@ public class Beacon {
                     return;
                 }
             }
-            Map<UUID, Event> map = events.asMap();
-            copy.addAll(map.values());
+            copy = new LinkedList<>(events.asMap().values());
             copy.forEach(this::decrementCycle);
-            before = copy.size();
-            map.entrySet().removeIf(e -> e.getValue().getCycle() <= 0);
-            after = copy.size();
+            copy.removeIf(e -> e.getCycle() <= 0);
+            events.invalidateAll();
         }
-        logger.trace("{} event size {}, {}", collective.getHostAddress(), before, after);
-        copy.forEach(this::gossip);
+        Set<String> seen = new HashSet<>();
+        StringBuilder builder = new StringBuilder();
+        copy.forEach( evt -> {
+            builder.setLength(0);
+            builder.append("[").append(evt.getType().name()).append("]");
+            boolean first = true;
+            for (Member m : evt.getMembers()) {
+                if (first) {
+                    first = false;
+                } else {
+                    builder.append(",");
+                }
+                builder.append(m.getAddress()).append(".").append(m.getMemberId());
+            }
+            String str = builder.toString();
+            if (!seen.contains(str))
+                gossip(evt, "events");
+            seen.add(str);
+        });
     }
 
     private void sync() {
@@ -404,7 +445,7 @@ public class Beacon {
                 .collect(Collectors.toList());
 
         if (list.isEmpty())
-            return true; // because list contain only self
+            return false; // because list contain only self
 
         URI hostAddress = null;
         try {
@@ -448,7 +489,7 @@ public class Beacon {
             HailingFrequency c = frequencies.remove(member.getMemberId());
             collective.getExecutor().execute(() -> collective.getListeners().forEach(listener -> listener.removed(c)));
         }
-        gossip(event);
+        gossip(event, "shutdown");
 
         if (eventThread != null) {
             eventThread.interrupt();
@@ -464,7 +505,8 @@ public class Beacon {
      * @param event
      * @return
      */
-    private void gossip(Event event) {
+
+    private void gossip(Event event, String reason) {
         // filter out already visited
         List<HailingFrequency> list = frequencies.values().stream()
                 .filter(c -> !event.getVisited().contains(c.memberId()))
@@ -479,23 +521,24 @@ public class Beacon {
             chosen = list;
         } else {
             chosen = new ArrayList<>(fanout);
-            for (int i = 0; i < fanout; i++) {
+            while (fanout > 0) {
+                fanout --;
                 int n = random.nextInt(list.size());
                 chosen.add(list.get(n));
                 list.remove(n);
             }
         }
 
-        collective.getExecutor().execute(() -> {
+        collective.getExecutor().execute(() ->
             chosen.forEach(frequency -> {
-                logger.trace("{} gossip to {} {}", collective.getHostAddress(), frequency.memberId(), event);
+                logger.trace("{}.{} gossip to {} an event {} ", collective.getHostAddress(), reason, frequency.memberId(), event);
                 try {
                     frequency.beacon().onEvent(event);
                 } catch (Exception ex) {
                     // remove connector from members.
                     removeFrequency(frequency);
                 }
-            });
-        });
+            })
+        );
     }
 }
