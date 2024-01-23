@@ -282,13 +282,13 @@ public class Measurement implements Serializable, MeasurementMXBean {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd kk:mm:ss.SSS");
 
         StringBuilder builder = new StringBuilder();
-        builder.append("count=" + count + ", ");
-        builder.append("average=" + average + ", ");
-        builder.append("median=" + median + ", ");
-        builder.append("min=" + getMin() + ", ");
-        builder.append("max=" + getMax() + ", ");
-        builder.append("stddev=" + stdDev + ", ");
-        builder.append("failureCount=" + failures.size() + ", ");
+        builder.append("count: " + count + " ");
+        builder.append("average: " + average + " ");
+        builder.append("median: " + median + " ");
+        builder.append("min: " + getMin() + " ");
+        builder.append("max: " + getMax() + " ");
+        builder.append("stddev: " + stdDev + " ");
+        builder.append("failureCount: " + failures.size() + " ");
         DataPoint first = null;
         DataPoint last = null;
         synchronized (this) {
@@ -298,11 +298,11 @@ public class Measurement implements Serializable, MeasurementMXBean {
             }
         }
         if (first != null) {
-            builder.append("windowWidth=" + windowWidth + ", ");
-            builder.append("first=" + dateFormat.format(new Date(first.getTimestamp())) + ", ");
-            builder.append("last=" + dateFormat.format(new Date(last.getTimestamp())) + " ");
+            builder.append("windowWidth: " + windowWidth + " ");
+            builder.append("first: " + dateFormat.format(new Date(first.getTimestamp())) + " ");
+            builder.append("last: " + dateFormat.format(new Date(last.getTimestamp())) + " ");
         } else {
-            builder.append("windowWidth=" + windowWidth + " ");
+            builder.append("windowWidth: " + windowWidth + " ");
         }
         return builder.toString();
     }
