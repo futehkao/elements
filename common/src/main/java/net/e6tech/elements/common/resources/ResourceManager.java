@@ -28,6 +28,7 @@ import net.e6tech.elements.common.resources.plugin.PluginManager;
 import net.e6tech.elements.common.script.AbstractScriptShell;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.ThreadPool;
+import net.e6tech.elements.common.util.concurrent.ThreadPoolConfig;
 import net.e6tech.elements.common.util.monitor.AllocationMonitor;
 import org.apache.logging.log4j.ThreadContext;
 
@@ -70,10 +71,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     private List<ResourceManagerListener> listeners = new LinkedList<>();
     private Map<Class, ClassInjectionInfo> injections = new ConcurrentHashMap<>(); // a cache to be used by Resources.
     private boolean silent = false;
-    private Executor executor = defaultExecutor;
-    private int threadCoreSize = 5;
-    private int threadMaxSize = 200;
-    private long threadKeepAlive = 5 * 60 * 1000L; // 5 min
+    private ThreadPoolConfig threadConfig = new ThreadPoolConfig(5, 200, 5 * 60 * 1000L);
     private boolean replayable = false;
 
     public ResourceManager() {
@@ -110,12 +108,16 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public Executor getExecutor() {
-        return executor;
+        return threadConfig.getExecutor();
     }
 
     public void setExecutor(Executor executor) {
         notificationCenter.setExecutor(executor);
-        this.executor = executor;
+        threadConfig.setExecutor(executor);
+        if (executor != null)
+            rebind(Executor.class, executor);
+        else
+            unbind(Executor.class);
     }
 
     public boolean isSilent() {
@@ -128,27 +130,27 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     public int getThreadCoreSize() {
-        return threadCoreSize;
+        return threadConfig.getCoreSize();
     }
 
     public void setThreadCoreSize(int threadCoreSize) {
-        this.threadCoreSize = threadCoreSize;
+        threadConfig.setCoreSize(threadCoreSize);
     }
 
     public int getThreadMaxSize() {
-        return threadMaxSize;
+        return threadConfig.getMaxSize();
     }
 
     public void setThreadMaxSize(int threadMaxSize) {
-        this.threadMaxSize = threadMaxSize;
+        threadConfig.setMaxSize(threadMaxSize);
     }
 
     public long getThreadKeepAlive() {
-        return threadKeepAlive;
+        return threadConfig.getKeepAlive();
     }
 
     public void setThreadKeepAlive(long threadKeepAlive) {
-        this.threadKeepAlive = threadKeepAlive;
+        threadConfig.setKeepAlive(threadKeepAlive);
     }
 
     public boolean isReplayable() {
@@ -173,6 +175,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
     }
 
     private void selfInit(Properties properties) {
+        threadConfig.setSimpleMode(true);
         String logDir = properties.getProperty(LOG_DIR_ABBREV);
         if (logDir != null)
             ThreadContext.put(LOG_DIR_ABBREV, logDir);
@@ -188,7 +191,7 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
         Thread.currentThread().setContextClassLoader(pluginManager.getPluginClassLoader());
 
-        notificationCenter.setExecutor(this.executor);
+        notificationCenter.setExecutor(threadConfig.getExecutor());
     }
 
     public void setupThreadPool() {
@@ -197,21 +200,19 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
 
     // convenient method for initBoot
     public void setupThreadPool(String threadPoolName) {
-        if (executor == null || executor == defaultExecutor) {
-            ThreadPool pool = new ThreadPool(threadPoolName, p -> new ThreadPoolExecutor(getThreadCoreSize(), getThreadMaxSize(),
-                    getThreadKeepAlive(), TimeUnit.MILLISECONDS,
-                    new LinkedBlockingQueue<>(), p));
-
+        if (threadConfig.isSimpleMode()) {
+            threadConfig.setSimpleMode(false);
+            threadConfig.setName(threadPoolName);
             addListener(new ResourceManagerListener() {
                 @Override
                 public void shutdown() {
-                    pool.shutdown();
+                    threadConfig.shutdown();
                 }
             });
 
-            executor = pool;
-            registerBean(threadPoolName, executor);
-            setExecutor(executor);
+            registerBean(threadPoolName, threadConfig.getExecutor());
+            setExecutor(threadConfig.getExecutor());
+
             if (!hasInstance(ThreadPool.class)) {
                 bind(ThreadPool.class, getBean(threadPoolName));
             }

@@ -361,6 +361,10 @@ public class Beacon {
         }
     }
 
+    /*
+    We don't process each event as they come in.  Instead, we have a separate event thread
+    to process events.
+    */
     private void events() {
         while (!shutdown) {
             try {
@@ -375,6 +379,11 @@ public class Beacon {
         }
     }
 
+    /*
+    First we wait until there is an event in the event queue.
+    Then we check for duplicate events in the queue so that we don't process more than once.  This can happen if more than
+    on server forward the same event.
+     */
     private void processEvents() {
         List<Event> copy;
         synchronized (events) {
@@ -386,11 +395,17 @@ public class Beacon {
                     return;
                 }
             }
+            // make a copy of event and decrement each event's cycle.
+            // when an event's cycle reaches 0, it won't be forwarded
+            // last clear out events; don't need to send out each event more than once.
             copy = new LinkedList<>(events.asMap().values());
             copy.forEach(this::decrementCycle);
             copy.removeIf(e -> e.getCycle() <= 0);
             events.invalidateAll();
         }
+
+        // process each event but check for duplicate.
+        // we check for duplicate by comparing event's name and members.
         Set<String> seen = new HashSet<>();
         StringBuilder builder = new StringBuilder();
         copy.forEach( evt -> {

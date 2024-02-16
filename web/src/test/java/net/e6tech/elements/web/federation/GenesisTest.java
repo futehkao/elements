@@ -47,6 +47,7 @@ public class GenesisTest {
             seedPort = port;
         ResourceManager rm = new ResourceManager();
         rm.loadProvision(Provision.class);
+        rm.setupThreadPool();
 
         GenesisImpl genesis = rm.newInstance(GenesisImpl.class);
         genesis.getCluster().setHostAddress("http://127.0.0.1:" + port + "/restful");

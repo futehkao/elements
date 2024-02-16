@@ -33,7 +33,7 @@ import java.util.List;
 
 public class ClusterTest {
 
-    private static final int SERVERS = 5;
+    private static final int SERVERS = 100;
     private static final List<ClusterImpl> clusters = Collections.synchronizedList(new ArrayList<>(SERVERS));
 
     @BeforeAll

@@ -108,7 +108,7 @@ public class NotificationCenter implements Broadcast {
     // Broadcast
     // ***************************************************************************************
     @Override
-    public void subscribe(String topic, Subscriber subscriber) {
+    public <T extends Serializable> void subscribe(String topic, Subscriber<T> subscriber) {
         List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new CopyOnWriteArrayList<>());
         synchronized (list) {
             list.add(subscriber);
@@ -119,7 +119,7 @@ public class NotificationCenter implements Broadcast {
     }
 
     @Override
-    public void unsubscribe(String topic, Subscriber subscriber) {
+    public <T extends Serializable> void unsubscribe(String topic, Subscriber<T> subscriber) {
         List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new CopyOnWriteArrayList<>());
         synchronized (list) {
             list.remove(subscriber);
@@ -131,7 +131,7 @@ public class NotificationCenter implements Broadcast {
     }
 
     @Override
-    public void publish(Notice<?> notice) {
+    public <T extends Serializable> void publish(Notice<T> notice) {
         for (Broadcast broadcast: broadcasts) {
             broadcast.publish(notice);
         }

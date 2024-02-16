@@ -18,11 +18,13 @@ package net.e6tech.elements.common.subscribe;
 
 import net.e6tech.elements.common.logging.Logger;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 
 /**
  * Created by futeh.
@@ -32,7 +34,8 @@ public class DefaultBroadcast implements Broadcast {
     Logger logger = Logger.getLogger();
     Map<String, List<Subscriber>> subscribers = new HashMap<>();
     Map<String, List<Subscriber>> copy = new HashMap<>();
-    Executor executor = runnable -> new Thread(runnable).start();
+    Executor executor;
+    Supplier<Executor> executorSupplier = () -> runnable -> new Thread(runnable).start();
 
     public DefaultBroadcast() {
     }
@@ -41,12 +44,17 @@ public class DefaultBroadcast implements Broadcast {
         this.executor = executor;
     }
 
+    public DefaultBroadcast(Supplier<Executor> executorSupplier) {
+        this.executorSupplier = executorSupplier;
+    }
+
+
     public void setExecutor(Executor ex) {
         this.executor = ex;
     }
 
     @Override
-    public void subscribe(String topic, Subscriber subscriber) {
+    public <T extends Serializable> void subscribe(String topic, Subscriber<T> subscriber) {
         List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new LinkedList<>());
         synchronized (list) {
             list.add(subscriber);
@@ -56,7 +64,7 @@ public class DefaultBroadcast implements Broadcast {
     }
 
     @Override
-    public void unsubscribe(String topic, Subscriber subscriber) {
+    public <T extends Serializable> void unsubscribe(String topic, Subscriber<T> subscriber) {
         List<Subscriber> list = subscribers.computeIfAbsent(topic, key -> new LinkedList<>());
         synchronized (list) {
             list.remove(subscriber);
@@ -67,10 +75,14 @@ public class DefaultBroadcast implements Broadcast {
 
     @SuppressWarnings("unchecked")
     @Override
-    public void publish(Notice<?> notice) {
+    public <T extends Serializable> void publish(Notice<T> notice) {
         if (notice.isExternalOnly())
             return;
-        executor.execute(()-> {
+        Executor exec = executor;
+
+        if (exec == null)
+            exec = executorSupplier.get();
+        exec.execute(()-> {
             try {
                 List<Subscriber> list = subscribers.computeIfAbsent(notice.getTopic(), key -> new LinkedList<>());
                 synchronized (list) {

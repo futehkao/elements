@@ -11,15 +11,18 @@ import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.common.subscribe.Subscriber;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.concurrent.Async;
+import net.e6tech.elements.common.util.concurrent.ThreadPoolConfig;
 import net.e6tech.elements.web.cxf.JaxRSLauncher;
 
 import javax.annotation.Nonnull;
+import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.Executor;
 
-@SuppressWarnings("unchecked")
+
+@SuppressWarnings({"unchecked", "java:S3740"})
 public abstract class CollectiveImpl implements Startable, Collective, Registry {
     protected static Logger logger = Logger.getLogger();
     public enum Type {
@@ -51,12 +54,12 @@ public abstract class CollectiveImpl implements Startable, Collective, Registry 
     protected JaxRSLauncher launcher;
     protected List<MemberListener> listeners = new LinkedList<>();
     protected AuthObserver authObserver;
-    protected List<Service> services = new LinkedList<>();
-    protected Map<Class, Service> serviceMap = new LinkedHashMap<>();
+    protected List<Service<?,?>> services = new LinkedList<>();
+    protected Map<Class, Service<?,?>> serviceMap = new LinkedHashMap<>();
     private volatile boolean started = false;
     private SubZero subZero = new SubZero();
-    private Executor executor = runnable -> new Thread(runnable).start();
-    private DefaultBroadcast broadcast = new DefaultBroadcast(executor);
+    private DefaultBroadcast broadcast = new DefaultBroadcast(()->getExecutor());
+    private ThreadPoolConfig threadConfig = new ThreadPoolConfig();
 
     public Provision getProvision() {
         return provision;
@@ -259,8 +262,7 @@ public abstract class CollectiveImpl implements Startable, Collective, Registry 
     @Override
     public Collection<Frequency> frequencies() {
         Collection<HailingFrequency> frequencies = beacon.frequencies().values();
-        List<Frequency> list = new ArrayList<>(frequencies);
-        return list;
+        return new ArrayList<>(frequencies);
     }
 
     public abstract void onEvent(@Nonnull Event event);
@@ -304,12 +306,12 @@ public abstract class CollectiveImpl implements Startable, Collective, Registry 
     }
 
     public Executor getExecutor() {
-        return executor;
+        return threadConfig.getExecutor();
     }
 
     @Inject(optional = true)
     public void setExecutor(Executor executor) {
-        this.executor = executor;
+        threadConfig.setExecutor(executor);
         broadcast.setExecutor(executor);
     }
 
@@ -358,15 +360,15 @@ public abstract class CollectiveImpl implements Startable, Collective, Registry 
         }
     }
 
-    public void addService(Service service) {
+    public void addService(Service<?,?> service) {
         services.add(service);
     }
 
-    public Service removeService(Class cls) {
-        Iterator<Service> iterator = services.iterator();
-        Service s = null;
+    public Service removeService(Class<?> cls) {
+        Iterator<Service<?,?>> iterator = services.iterator();
+        Service<?,?> s = null;
         while (iterator.hasNext()) {
-            Service service = iterator.next();
+            Service<?,?> service = iterator.next();
             if (service.getServiceClass().equals(cls)) {
                 iterator.remove();
                 s = service;
@@ -376,10 +378,10 @@ public abstract class CollectiveImpl implements Startable, Collective, Registry 
     }
 
     public <T> T getServiceProvider(Class<T> cls) {
-        Iterator<Service> iterator = services.iterator();
-        Service s = null;
+        Iterator<Service<?,?>> iterator = services.iterator();
+        Service<?,?> s = null;
         while (iterator.hasNext()) {
-            Service service = iterator.next();
+            Service<?,?> service = iterator.next();
             if (cls.isAssignableFrom(service.getProvider().getClass())) {
                 s = service;
                 break;
@@ -414,9 +416,7 @@ public abstract class CollectiveImpl implements Startable, Collective, Registry 
 
         beacon.seeds(seeds);
 
-        hostedMembers.forEach((id, m) -> {
-            refresh(m);
-        });
+        hostedMembers.forEach((id, m) -> refresh(m));
     }
 
     protected void setupBeacon() {
@@ -477,6 +477,7 @@ public abstract class CollectiveImpl implements Startable, Collective, Registry 
             }
             beacon = null;
             launcher = null;
+            threadConfig.shutdown();
         } catch (Exception ex ) {
             logger.warn("Error shutting down collective with domain name=" + getDomainName(), ex);
         } finally {
@@ -485,24 +486,24 @@ public abstract class CollectiveImpl implements Startable, Collective, Registry 
     }
 
     @Override
-    public void subscribe(String topic, Subscriber subscriber) {
+    public <T extends Serializable> void subscribe(String topic, Subscriber<T> subscriber) {
         broadcast.subscribe(topic, subscriber);
     }
 
     @Override
-    public void unsubscribe(String topic, Subscriber subscriber) {
+    public <T extends Serializable> void unsubscribe(String topic, Subscriber<T> subscriber) {
         broadcast.unsubscribe(topic, subscriber);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public void publish(Notice<?> notice) {
+    public <T extends Serializable> void publish(Notice<T> notice) {
         if (!notice.isExternalOnly())
             publishInternal(notice);
         beacon.broadcast(notice);
     }
 
-    public Notice publishInternal(Notice<?> notice) {
+    public <T extends Serializable> Notice<T> publishInternal(Notice<T> notice) {
         broadcast.publish(notice);
         return notice;
     }

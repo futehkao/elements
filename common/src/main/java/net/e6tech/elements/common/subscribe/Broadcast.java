@@ -24,14 +24,14 @@ import java.io.Serializable;
  */
 public interface Broadcast {
 
-    void subscribe(String topic, Subscriber subscriber);
+    <T extends Serializable> void subscribe(String topic, Subscriber<T> subscriber);
 
     default <T extends Serializable> void subscribe(Class<T> topic, Subscriber<T> subscriber) {
         subscribe(topic.getName(), subscriber);
     }
 
-    void unsubscribe(String topic, Subscriber subscriber);
+    <T extends Serializable> void unsubscribe(String topic, Subscriber<T> subscriber);
 
-    void publish(Notice<?> notice);
+    <T extends Serializable> void publish(Notice<T> notice);
 
 }

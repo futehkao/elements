@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutionException;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class RegistryTest {
-    private static final int SERVERS = 40;
+    private static final int SERVERS = 100;
     private static final List<FederationImpl> federations = Collections.synchronizedList(new ArrayList<>(SERVERS));
 
     @BeforeAll
@@ -55,6 +55,7 @@ public class RegistryTest {
     private static void setupServer(int port) {
         ResourceManager rm = new ResourceManager();
         rm.loadProvision(Provision.class);
+        rm.setupThreadPool();
 
         FederationImpl federation = rm.newInstance(FederationImpl.class);
         federation.setHostAddress("http://127.0.0.1:" + port + "/restful");
@@ -77,6 +78,7 @@ public class RegistryTest {
         }
     }
 
+    @SuppressWarnings("java:S2925")  // this warning is absolute BS.
     @Test
     void basic() throws ExecutionException, InterruptedException {
         BeaconAPI[] apis = new BeaconAPI[SERVERS];
