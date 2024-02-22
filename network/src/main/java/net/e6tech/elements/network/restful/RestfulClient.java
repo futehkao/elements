@@ -473,7 +473,9 @@ public class RestfulClient {
             conn = open(dest, context, params);
             if (postData.isSpecified()) {
                 conn.setDoOutput(true);
-                conn.setRequestProperty("Content-Type", marshaller.getContentType());
+                if (postData.getEncoder() != null)
+                    conn.setRequestProperty("Content-Type", postData.getEncoder().getContentType());
+                else conn.setRequestProperty("Content-Type", marshaller.getContentType());
             }
 
             try {
@@ -497,7 +499,7 @@ public class RestfulClient {
                 OutputStream out = conn.getOutputStream();
                 if (postData.getData() != null) {
                     try (Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), StandardCharsets.UTF_8)) {
-                        String posted = marshaller.encodeRequest(postData.getData());
+                        String posted = postData.encode(marshaller);
                         writer.write(posted);
                         logger.debug(posted);
                         writer.flush();

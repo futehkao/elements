@@ -110,6 +110,15 @@ class HelloWorldTest extends BaseCase {
     }
 
     @Test
+    void formParam() {
+        String header = "header value";
+        String query = "query value";
+        String form = "form value";
+        String response = helloWorld.formParam(header, query, form);
+        assertEquals(response, header + ":" + query + ":" + form);
+    }
+
+    @Test
     void withSecurity() throws Exception {
         Atom atom = provision.getResourceManager().getAtom("helloWorld");
         SecurityAnnotationEngine engine = (SecurityAnnotationEngine) atom.get("_securityAnnotation");
