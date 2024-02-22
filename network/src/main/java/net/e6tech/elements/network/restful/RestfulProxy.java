@@ -30,6 +30,7 @@ import net.e6tech.elements.jmx.stat.Gauge;
 import org.ehcache.impl.internal.concurrent.ConcurrentHashMap;
 
 import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
 import java.io.PrintWriter;
 import java.lang.reflect.*;
 import java.net.URLEncoder;
@@ -338,6 +339,8 @@ public class RestfulProxy {
         QueryParam[] queryParams;
         PathParam[] pathParams;
         BeanParam[] beanParams;
+        FormParam[] formParams;
+        HeaderParam[] headerParams;
 
         MethodForwarder(InvocationHandler handler, Method method) {
             initContext(handler, method);
@@ -350,6 +353,8 @@ public class RestfulProxy {
             queryParams = new QueryParam[paramTypes.length];
             pathParams = new PathParam[paramTypes.length];
             beanParams = new BeanParam[paramTypes.length];
+            formParams = new FormParam[paramTypes.length];
+            headerParams = new HeaderParam[paramTypes.length];
 
             int idx = 0;
             params = method.getParameters();
@@ -357,6 +362,9 @@ public class RestfulProxy {
                 QueryParam queryParam = param.getAnnotation(QueryParam.class);
                 PathParam pathParam = param.getAnnotation(PathParam.class);
                 BeanParam beanParam = param.getAnnotation(BeanParam.class);
+                FormParam formParam = param.getAnnotation(FormParam.class);
+                HeaderParam headerParam = param.getAnnotation(HeaderParam.class);
+
                 if (queryParam != null) {
                     queryParams[idx] = queryParam;
                 }
@@ -368,6 +376,15 @@ public class RestfulProxy {
                 if(beanParam != null) {
                     beanParams[idx] = beanParam;
                 }
+
+                if(formParam != null) {
+                    formParams[idx] = formParam;
+                }
+
+                if(headerParams != null) {
+                    headerParams[idx] = headerParam;
+                }
+
                 idx++;
             }
 
@@ -428,6 +445,7 @@ public class RestfulProxy {
             PostData postData = new PostData();
 
             String fullContext = context;
+            StringBuilder formBody = new StringBuilder();
             for (int i = 0; i < paramTypes.length; i++) {
                 if (queryParams[i] != null && args[i] != null) {
                     Param p = new Param(queryParams[i].value(), args[i].toString());
@@ -470,24 +488,57 @@ public class RestfulProxy {
                     }
                 }
 
-                if (pathParams[i] == null && queryParams[i] == null && beanParams[i] == null) {
+                if (formParams[i] != null && args[i] != null) {
+                    Param p = new Param(formParams[i].value(), args[i].toString());
+                    if (formBody.length() != 0)
+                        formBody.append("&");
+                    formBody.append(p.encode());
+                }
+
+                if (headerParams[i] != null && args[i] != null) {
+                    request.setRequestProperty(headerParams[i].value(), args[i].toString());
+                }
+
+                if (pathParams[i] == null
+                        && queryParams[i] == null
+                        && beanParams[i] == null
+                        && formParams[i] == null
+                        && headerParams[i] == null
+                ) {
                     postData.setData(args[i]);
                     postData.setSpecified(true);
                 }
             }
 
+            if (formBody.length() > 0 && !postData.isSpecified()) {
+                RequestEncoder encoder = new RequestEncoder() {
+                    @Override
+                    public String getContentType() {
+                        return MediaType.APPLICATION_FORM_URLENCODED;
+                    }
+
+                    @Override
+                    public String encodeRequest(Object data) throws Exception {
+                        return data.toString();
+                    }
+                };
+                postData.setData(formBody.toString());
+                postData.setSpecified(true);
+                postData.setEncoder(encoder);
+            }
+
             Response response;
             if (post) {
-                response = request.post(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
+                response = request.post(fullContext, postData, paramList.toArray(new Param[paramList.size()]));
             } else if (put) {
-                response = request.put(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
+                response = request.put(fullContext, postData, paramList.toArray(new Param[paramList.size()]));
             } else if (patch) {
-                response = request.patch(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
+                response = request.patch(fullContext, postData, paramList.toArray(new Param[paramList.size()]));
             } else if (get) {
                 response = request.get(fullContext, paramList.toArray(new Param[paramList.size()]));
             } else if (delete) {
                 if (postData.isSpecified())
-                    response = request.delete(fullContext, postData.getData(), paramList.toArray(new Param[paramList.size()]));
+                    response = request.delete(fullContext, postData, paramList.toArray(new Param[paramList.size()]));
                 else
                     response = request.delete(fullContext, paramList.toArray(new Param[paramList.size()]));
             } else {

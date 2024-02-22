@@ -19,6 +19,7 @@ package net.e6tech.elements.network.restful;
 class PostData {
     private Object data;
     private boolean specified;
+    private RequestEncoder encoder;
 
     public PostData() {
     }
@@ -43,5 +44,26 @@ class PostData {
 
     public void setSpecified(boolean specified) {
         this.specified = specified;
+    }
+
+    public RequestEncoder getEncoder() {
+        return encoder;
+    }
+
+    public void setEncoder(RequestEncoder encoder) {
+        this.encoder = encoder;
+    }
+
+    /**
+     *
+     * @param encoder external encoder.  If PostData's encoder is null, the external encoder will be used.
+     * @return
+     * @throws Exception general exception if there is encoding issue.  The exact exception depends oon the actual implementation
+     * of the encoding.
+     */
+    public String encode(RequestEncoder encoder) throws Exception {
+        if (this.encoder != null)
+            return this.encoder.encodeRequest(getData());
+        return encoder.encodeRequest(getData());
     }
 }
