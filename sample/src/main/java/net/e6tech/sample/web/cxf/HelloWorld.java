@@ -135,6 +135,15 @@ public class HelloWorld {
         return str;
     }
 
+    @POST
+    @Produces({MediaType.APPLICATION_JSON})
+    @Consumes({MediaType.APPLICATION_FORM_URLENCODED})
+    @Path("hello/formParam")
+    @EntityManagerConfig(disable = true)
+    public String formParam(@HeaderParam("HEADER-PARAM") String header, @QueryParam("param") String query, @FormParam("form_param") String form) {
+        return header + ":" + query + ":" + form;
+    }
+
     @PermitAll
     @GET
     @Produces({MediaType.APPLICATION_JSON})

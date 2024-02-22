@@ -52,7 +52,7 @@ public class Request {
     }
 
     public Response delete(String context, Object data, Param ... params) throws Exception {
-        return request(context, DELETE, new PostData(data), params);
+        return request(context, DELETE, toPostData(data), params);
     }
 
     public Response delete(String context, Param ... params) throws Exception {
@@ -60,15 +60,21 @@ public class Request {
     }
 
     public Response put(String context, Object data,  Param ... params) throws Exception {
-        return request(context, PUT, new PostData(data), params);
+        return request(context, PUT, toPostData(data), params);
     }
 
     public Response patch(String context, Object data,  Param ... params) throws Exception {
-        return request(context, PATCH, new PostData(data), params);
+        return request(context, PATCH, toPostData(data), params);
     }
 
     public Response post(String context, Object data,  Param ... params) throws Exception {
-        return request(context, POST, new PostData(data), params);
+        return request(context, POST, toPostData(data), params);
+    }
+
+    private PostData toPostData(Object data) {
+        if (data instanceof PostData)
+            return (PostData) data;
+        return new PostData(data);
     }
 
     public Presentation getPresentation() {
