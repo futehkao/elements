@@ -22,7 +22,7 @@ public class PasswordValidator {
     private int maxPasswordLength;
     private int minNumberOfGroups;
 
-    private static final PasswordValidator DEFAULT_VALIDATOR = new PasswordValidator(8,32,3);
+    private static PasswordValidator defaultValidator = new PasswordValidator(12,32,3);
 
     public PasswordValidator() {
     }
@@ -31,6 +31,14 @@ public class PasswordValidator {
         this.minPasswordLength = minPasswordLength;
         this.maxPasswordLength = maxPasswordLength;
         this.minNumberOfGroups = minNumberOfGroups;
+    }
+
+    public static PasswordValidator getDefaultValidator() {
+        return defaultValidator;
+    }
+
+    public static void setDefaultValidator(PasswordValidator validator) {
+        defaultValidator = validator;
     }
 
     public int getMinPasswordLength() {
@@ -112,6 +120,6 @@ public class PasswordValidator {
     }
 
     public static boolean validate(String password) {
-        return DEFAULT_VALIDATOR.check(password);
+        return defaultValidator.check(password);
     }
 }

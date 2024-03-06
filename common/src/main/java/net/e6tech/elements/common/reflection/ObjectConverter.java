@@ -19,6 +19,7 @@ package net.e6tech.elements.common.reflection;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.cfg.CacheProvider;
 import com.fasterxml.jackson.databind.cfg.DeserializerFactoryConfig;
 import com.fasterxml.jackson.databind.deser.*;
 import com.fasterxml.jackson.databind.deser.std.UntypedObjectDeserializer;
@@ -37,7 +38,7 @@ import java.util.Map;
 /**
  * Created by futeh.
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "java:S3740"})
 public class ObjectConverter {
 
     public static final  ObjectMapper mapper;
@@ -343,7 +344,7 @@ public class ObjectConverter {
     }
 
     public static class MyBeanDeserializerFactory extends BeanDeserializerFactory {
-        Resolver resolver;
+        transient Resolver resolver;
         public MyBeanDeserializerFactory(Resolver resolver, DeserializerFactoryConfig config) {
             super(config);
             this.resolver = resolver;
@@ -358,6 +359,7 @@ public class ObjectConverter {
             return new MyBeanDeserializerFactory(resolver, config);
         }
 
+        @Override
         public JsonDeserializer<?> findDefaultDeserializer(DeserializationContext ctxt,
                                                            JavaType type, BeanDescription beanDesc) throws JsonMappingException {
             JsonDeserializer deserializer = super.findDefaultDeserializer(ctxt, type, beanDesc);
@@ -384,6 +386,7 @@ public class ObjectConverter {
             this.type = type;
         }
 
+        @Override
         public Type getType() {
             return type;
         }
@@ -402,6 +405,7 @@ public class ObjectConverter {
             super(base, nonMerging);
         }
 
+        @Override
         public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
             Object value = super.deserialize(p, ctxt);
             return ObjectConverter.resolve(resolver, value);
@@ -447,7 +451,7 @@ public class ObjectConverter {
 
         private static final long serialVersionUID = 1L;
 
-        Resolver resolver;
+        transient Resolver resolver;
 
         /**
          * Default constructor for a blueprint object, which will use the standard
@@ -479,6 +483,11 @@ public class ObjectConverter {
             resolver = src.resolver;
         }
 
+        private MyDefaultDeserializationContext(MyDefaultDeserializationContext src, CacheProvider cp) {
+            super(src, cp);
+            resolver = src.resolver;
+        }
+
         @Override
         public DefaultDeserializationContext copy() {
             return new MyDefaultDeserializationContext(this);
@@ -501,6 +510,12 @@ public class ObjectConverter {
             return new MyDefaultDeserializationContext(this, factory);
         }
 
+        @Override
+        public DefaultDeserializationContext withCaches(CacheProvider cacheProvider) {
+            return new MyDefaultDeserializationContext(this, cacheProvider);
+        }
+
+        @Override
         public Object readRootValue(JsonParser p, JavaType valueType,
                                     JsonDeserializer<Object> deser, Object valueToUpdate)
                 throws IOException {
@@ -510,6 +525,7 @@ public class ObjectConverter {
             return super.readRootValue(p, valueType, deser, valueToUpdate);
         }
 
+        @Override
         public Object handleMissingInstantiator(Class<?> instClass, ValueInstantiator valueInst,
                                                 JsonParser p, String msg, Object... msgArgs)
                 throws IOException {
