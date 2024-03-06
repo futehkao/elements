@@ -31,7 +31,8 @@ dependencies {
     compile "org.eclipse.jetty:jetty-io:${jettyVersion}"
 
     // compile 'javax.ws.rs:jsr311-api:1.1.1'
-    compile "org.apache.httpcomponents:httpclient:${httpclientVersion}"
+    compile ("commons-codec:commons-codec:${commonsCodec}")
+    compile ("org.codehaus.woodstox:stax2-api:${stax2ApiVersion}")
     compile ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}")
     compile group: 'org.slf4j', name: 'jcl-over-slf4j', version: "${slf4jVersion}"
     compile ("org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}")
