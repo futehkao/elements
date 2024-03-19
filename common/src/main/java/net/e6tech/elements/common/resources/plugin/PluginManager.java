@@ -54,12 +54,17 @@ public class PluginManager {
         classLoader = new PluginClassLoader(resourceManager.getClass().getClassLoader());
     }
 
-    public synchronized PluginManager from(Resources resources) {
-        PluginManager plugin = new PluginManager(resourceManager);
+    protected PluginManager(PluginManager manager) {
+        resourceManager = manager.resourceManager;
+        resources = manager.resources;
+        defaultPlugins = manager.defaultPlugins;
+        classLoader = manager.classLoader;
+        plugins = manager.plugins;
+    }
+
+    public PluginManager from(Resources resources) {
+        PluginManager plugin = new PluginManager(this);
         plugin.resources = resources;
-        plugin.defaultPlugins = defaultPlugins;
-        plugin.classLoader = classLoader;
-        plugin.plugins = plugins;
         return plugin;
     }
 
