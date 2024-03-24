@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
@@ -46,12 +48,19 @@ public class PluginManager {
     private PluginClassLoader classLoader;
     private final ResourceManager resourceManager;
     private Resources resources;
-    private Map<PluginPath<?>, PluginEntry> plugins = new HashMap<>();
-    private Map<Class<?>, Object> defaultPlugins = new HashMap<>();
+    private Map<PluginPath<?>, PluginEntry> plugins;
+    private Map<Class<?>, Object> defaultPlugins;
+    private Cache<PluginPath, Map<PluginPath<?>, PluginEntry>> startWithCache = CacheBuilder.newBuilder()
+            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+            .initialCapacity(200)
+            .maximumSize(500)
+            .build();
 
     public PluginManager(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
         classLoader = new PluginClassLoader(resourceManager.getClass().getClassLoader());
+        plugins = new ConcurrentHashMap<>(1024);
+        defaultPlugins = new ConcurrentHashMap<>(1024);
     }
 
     protected PluginManager(PluginManager manager) {
@@ -106,7 +115,7 @@ public class PluginManager {
     }
 
     @SuppressWarnings({"squid:S3824", "squid:S3776"})
-    protected synchronized Optional getDefaultPlugin(Class<?> type) {
+    protected Optional getDefaultPlugin(Class<?> type) {
         Object lookup = defaultPlugins.get(type);
         if (lookup == NULL_OBJECT)
             return Optional.empty();
@@ -150,23 +159,46 @@ public class PluginManager {
         return startsWith(PluginPaths.of(path));
     }
 
-    public synchronized Map<PluginPath, PluginEntry> startsWith(PluginPaths<?> paths) {
+    public Map<PluginPath, PluginEntry> startsWith(PluginPaths<?> paths) {
         Map<PluginPath, PluginEntry> map = new LinkedHashMap<>();
 
+        boolean first = true;
         for (PluginPath<?> path : paths.getPaths()) {
-            for (Map.Entry<PluginPath<?>, PluginEntry> entry : plugins.entrySet()) {
-                if (entry.getKey().startsWith(path) && !map.containsKey(entry.getKey()))
-                    map.put(entry.getKey(), entry.getValue());
+            Map<PluginPath<?>, PluginEntry> found = startWithCache.getIfPresent(path);
+            if (found != null) {
+                if (first) {
+                    map.putAll(found);  // skip duplicate check
+                    first = false;
+                } else {
+                    for (Map.Entry<PluginPath<?>, PluginEntry> e : found.entrySet()) {
+                        if (!map.containsKey(e.getKey()))
+                            map.put(e.getKey(), e.getValue());
+                    }
+                }
+                continue;
             }
+
+            found = null;
+            for (Map.Entry<PluginPath<?>, PluginEntry> entry : plugins.entrySet()) {
+                if (entry.getKey().startsWith(path)) {
+                    if (!map.containsKey(entry.getKey()))
+                        map.put(entry.getKey(), entry.getValue());
+                    if (found == null)
+                        found = new LinkedHashMap<>();
+                    found.put(entry.getKey(), entry.getValue());
+                }
+            }
+            if (found != null)
+                startWithCache.put(path, found);
         }
         return map;
     }
 
-    public synchronized <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPath<T> path) {
+    public <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPath<T> path) {
         return Optional.ofNullable(plugins.get(path));
     }
 
-    public synchronized <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPaths<T> paths) {
+    public <T extends Plugin> Optional<PluginEntry<T>> getEntry(PluginPaths<T> paths) {
         PluginEntry<T> lookup = null;
         // look up from paths
         for (PluginPath path : paths.getPaths()) {
@@ -316,32 +348,49 @@ public class PluginManager {
         return lookup(PluginPaths.of(path));
     }
 
-    public synchronized <T extends Plugin> PluginEntry<T> add(PluginPath<T> path, Class<T> cls) {
+    private <T extends Plugin> void invalidateCache(PluginPath<T> path) {
+        startWithCache.invalidate(path);
+        PluginPath parent = path.parent();
+        while (parent != null) {
+            startWithCache.invalidate(parent);
+            PluginPath copy = parent.copy();
+            copy.setName(null);
+            copy.setType(parent.getType());
+            startWithCache.invalidate(copy);
+            copy.setName(parent.getName());
+            copy.setType(null);
+            startWithCache.invalidate(copy);
+            parent = parent.parent();
+        }
+    }
+    public <T extends Plugin> PluginEntry<T> add(PluginPath<T> path, Class<T> cls) {
         PluginEntry<T> entry = new PluginEntry(path, cls);
         plugins.put(path, entry);
         return entry;
     }
 
-    public synchronized <T extends Plugin> PluginEntry<T> add(PluginPath<T> path, T singleton) {
+    public <T extends Plugin> PluginEntry<T> add(PluginPath<T> path, T singleton) {
         PluginEntry<T> entry = new PluginEntry(path, singleton);
-        plugins.put(path, entry);
         resourceManager.inject(singleton, !singleton.isPrototype());
         singleton.initialize(path);
+        plugins.put(path, entry);
+        invalidateCache(path);
         return entry;
     }
 
-    public synchronized <T extends Plugin> Object remove(PluginPath<T> path) {
+    public <T extends Plugin> Object remove(PluginPath<T> path) {
         PluginEntry entry = plugins.remove(path);
+        invalidateCache(path);
         return entry == null ? null : entry.getPlugin();
     }
 
-    public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, U singleton) {
-        defaultPlugins.put(cls, singleton);
+    public <T extends Plugin, U extends T> void addDefault(Class<T> cls, U singleton) {
         resourceManager.inject(singleton, !singleton.isPrototype());
         singleton.initialize(PluginPath.of(cls, DEFAULT_PLUGIN));
+        defaultPlugins.put(cls, singleton);
     }
 
-    public synchronized <T extends Plugin, U extends T> void addDefault(Class<T> cls, Class<U> implClass) {
+    public <T extends Plugin, U extends T> void addDefault(Class<T> cls, Class<U> implClass) {
         defaultPlugins.put(cls, implClass);
     }
 
