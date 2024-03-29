@@ -25,13 +25,13 @@ dependencies {
     compile "org.reactivestreams:reactive-streams:${reactiveStreamsVersion}"
     compile "io.netty:netty-handler:${nettyVersion}"
 
-    compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
+    /* compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
         exclude group: 'org.ow2.asm'
-    }
+    } */
 
     compile("com.datastax.oss:java-driver-mapper-processor:${cassandraDriver4Version}") {
         exclude group: 'org.slf4j'
-        exclude group: 'com.github.jnr'
+        // exclude group: 'com.github.jnr'
         exclude group: 'org.apache.tinkerpop', module: 'gremlin-core'
         exclude group: 'org.apache.tinkerpop', module: 'tinkergraph-gremlin'
         exclude group: 'com.esri.geometry', module: 'esri-geometry-api' // this is optional, also it's an CVE issue

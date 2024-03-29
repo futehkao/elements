@@ -24,11 +24,11 @@ dependencies {
     compile "org.ow2.asm:asm-commons:${asmVersion}"
     compile "org.ow2.asm:asm-util:${asmVersion}"
 
-    compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
+    /* compile ("com.github.jnr:jnr-ffi:${jnrffiVersion}") {
         exclude group: 'org.ow2.asm'
     }
 
-    /* compile group: 'io.aeron', name: "aeron-driver", version: "${aeronVersion}"
+    compile group: 'io.aeron', name: "aeron-driver", version: "${aeronVersion}"
     compile group: 'io.aeron', name: "aeron-client", version: "${aeronVersion}"
     compile (group: 'com.typesafe.akka', name: "akka-cluster-typed_${akkaScalaVersion}", version: "${akkaVersion}") {
         exclude group: 'com.github.jnr'
