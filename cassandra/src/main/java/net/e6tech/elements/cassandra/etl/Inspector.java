@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@SuppressWarnings({"java:S2445", "java:S3740"})
 public class Inspector {
     private Generator generator;
     private Class sourceClass;
@@ -59,55 +60,86 @@ public class Inspector {
         return timeUnit;
     }
 
-    public synchronized void addPartitionKey(ColumnAccessor descriptor) {
-        Iterator<ColumnAccessor> iterator = partitionKeys.iterator();
+    private List<ColumnAccessor> addKey(List<ColumnAccessor> keys, ColumnAccessor descriptor) {
+        List<ColumnAccessor> copy = new LinkedList<>(keys);
+        Iterator<ColumnAccessor> iterator = copy.iterator();
         while (iterator.hasNext()) {
             if (iterator.next().position == descriptor.position)
                 iterator.remove();
         }
-        partitionKeys.add(descriptor);
-        Collections.sort(partitionKeys, Comparator.comparingInt(p -> p.position));
+        copy.add(descriptor);
+        Collections.sort(copy, Comparator.comparingInt(p -> p.position));
+        return copy;
     }
 
+    /*
+        This code makes a copy because in the method getPrimaryKey, it needs to iterate
+        both the partitionKeys and clusterKeys.  Instead of synchronize getPrimaryKey for
+        the entire duration of the method, that method only synchronizes for a shorter duration
+        just to copy partitionKeys and clusterKeys to local variables and then iterate using
+        the local variable.  If addKey and getPrimaryKey are called concurrently, it won't cause
+        concurrent modification exception.  However, getPrimaryKey may be using an older image.
+        This is true for other get methods related to partitionKeys.
+     */
+    public synchronized void addPartitionKey(ColumnAccessor descriptor) {
+        partitionKeys = addKey(partitionKeys, descriptor);
+    }
+
+    /*
+        See comments above.
+     */
     public synchronized void addClusteringKey(ColumnAccessor descriptor) {
-        Iterator<ColumnAccessor> iterator = clusteringKeys.iterator();
-        while (iterator.hasNext()) {
-            if (iterator.next().position == descriptor.position)
-                iterator.remove();
-        }
-        clusteringKeys.add(descriptor);
-        Collections.sort(clusteringKeys, Comparator.comparingInt(p -> p.position));
+        clusteringKeys = addKey(clusteringKeys, descriptor);
     }
 
     public int getPartitionKeySize() {
         return partitionKeys.size();
     }
 
-    public String getPartitionKeyColumn(int n) {
-        if (partitionKeys.size() <= n)
+    public int getClusteringKeySize() {
+        return clusteringKeys.size();
+    }
+
+    public String getKeyColumn(List<ColumnAccessor> keys, int n) {
+        if (keys.size() <= n)
             return null;
-        return partitionKeys.get(n).columnName;
+        return keys.get(n).columnName;
+    }
+
+    public String getPartitionKeyColumn(int n) {
+        return getKeyColumn(partitionKeys, n);
+    }
+
+    public String getClusteringKeyColumn(int n) {
+        return getKeyColumn(clusteringKeys, n);
+    }
+
+    private Class getKeyClass(List<ColumnAccessor> keys, int n) {
+        if (keys.size() <= n)
+            return null;
+        return keys.get(n).getType();
     }
 
     public Class getPartitionKeyClass(int n) {
         return getKeyClass(partitionKeys, n);
     }
 
-    private Class getKeyClass(List<ColumnAccessor> keys, int n) {
-        if (keys.size() <= n)
-            return null;
-        ColumnAccessor descriptor =  keys.get(n);
-        return descriptor.getType();
-    }
-
-    public Object getPartitionKey(Object object, int n) {
-        return getKey(partitionKeys, object, n);
+    public Class getClusteringKeyClass(int n) {
+        return getKeyClass(clusteringKeys, n);
     }
 
     private Object getKey(List<ColumnAccessor> keys, Object object, int n) {
         if (keys.size() <= n)
             return null;
         return keys.get(n).get(object);
+    }
+
+    public Object getPartitionKey(Object object, int n) {
+        return getKey(partitionKeys, object, n);
+    }
+
+    public Object getClusteringKey(Object object, int n) {
+        return getKey(clusteringKeys, object, n);
     }
 
     public String getCheckpointColumn(int n) {
@@ -122,7 +154,7 @@ public class Inspector {
         return (Comparable) checkpoints.get(n).get(object);
     }
 
-    public synchronized void setCheckpoint(Object object, int n, Comparable value) {
+    public void setCheckpoint(Object object, int n, Comparable value) {
         if (checkpoints.size() <= n)
             return;
         checkpoints.get(n).set(object, value);
@@ -130,24 +162,6 @@ public class Inspector {
 
     public int getCheckpointSize() {
         return checkpoints.size();
-    }
-
-    public String getClusteringKeyColumn(int n) {
-        if (clusteringKeys.size() <= n)
-            return null;
-        return clusteringKeys.get(n).columnName;
-    }
-
-    public Class getClusteringKeyClass(int n) {
-        return getKeyClass(clusteringKeys, n);
-    }
-
-    public Object getClusteringKey(Object object, int n) {
-        return getKey(clusteringKeys, object, n);
-    }
-
-    public int getClusteringKeySize() {
-        return clusteringKeys.size();
     }
 
     public String tableName() {
@@ -160,8 +174,15 @@ public class Inspector {
 
     public void setPrimaryKey(PrimaryKey key, Object object) {
         try {
+            List<ColumnAccessor> pkeys;
+            List<ColumnAccessor> ckeys;
+            synchronized (this) {
+                pkeys = partitionKeys;
+                ckeys = clusteringKeys;
+            }
+
             int idx = 0;
-            for (ColumnAccessor descriptor : partitionKeys) {
+            for (ColumnAccessor descriptor : pkeys) {
                 if (key.length() > idx) {
                     descriptor.set(object, key.get(idx));
                     idx++;
@@ -169,7 +190,8 @@ public class Inspector {
                     break;
                 }
             }
-            for (ColumnAccessor descriptor : clusteringKeys) {
+
+            for (ColumnAccessor descriptor : ckeys) {
                 if (key.length() > idx) {
                     descriptor.set(object, key.get(idx));
                     idx++;
@@ -177,6 +199,7 @@ public class Inspector {
                     break;
                 }
             }
+
         } catch (Exception e) {
             throw new SystemException(e);
         }
@@ -186,10 +209,17 @@ public class Inspector {
     public PrimaryKey getPrimaryKey(Object object) {
         try {
             List list = new ArrayList();
-            for (ColumnAccessor descriptor : partitionKeys) {
+            List<ColumnAccessor> pkeys;
+            List<ColumnAccessor> ckeys;
+            synchronized (this) {
+                pkeys = partitionKeys;
+                ckeys = clusteringKeys;
+            }
+
+            for (ColumnAccessor descriptor : pkeys) {
                 list.add(descriptor.get(object));
             }
-            for (ColumnAccessor descriptor : clusteringKeys) {
+            for (ColumnAccessor descriptor : ckeys) {
                 list.add(descriptor.get(object));
             }
             return new PrimaryKey(list.toArray(new Object[0]));
@@ -251,7 +281,8 @@ public class Inspector {
                 columns.add(alloc(position.getAndIncrement(), column.getPropertyDescriptor(), column.getField()));
                 Checkpoint checkpoint = Accessor.getAnnotation(column.getPropertyDescriptor(), column.getField(), Checkpoint.class);
                 if (checkpoint != null) {
-                    chkMap.computeIfAbsent(columnName, key -> alloc(checkpoint.value(), column.getPropertyDescriptor(), column.getField(), checkpoints));
+                    chkMap.computeIfAbsent(columnName, key -> alloc(checkpoint.value(), column.getPropertyDescriptor(), column.getField(),
+                            checkpoints));
                 }
             });
         } catch (IntrospectionException e) {

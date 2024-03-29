@@ -31,15 +31,26 @@ class PluginManagerTest {
     void basic() {
         PluginPath<PluginX> path = PluginPath.of(String.class, "A").and(Long.class, "1").and(PluginX.class);
         ResourceManager rm = new ResourceManager();
-        rm.getPluginManager().add(path,  new PluginX());
+        PluginManager manager = rm.getPluginManager();
+        manager.add(path,  new PluginX());
         path = PluginPath.of(String.class, "A").and(Long.class, "2").and(PluginX.class);
-        rm.getPluginManager().add(path,  PluginX.class);
-        assertEquals(1, rm.getPluginManager().startsWith(PluginPath.of(String.class, "A").and(Long.class, "1")).size());
-        assertEquals(2, rm.getPluginManager().startsWith(PluginPath.of(String.class, "A")).size());
-        assertEquals(2, rm.getPluginManager().startsWith(PluginPath.of(String.class)).size());
+        manager.add(path,  PluginX.class);
+
+        assertEquals(1, manager.startsWith(PluginPath.of(String.class, "A").and(Long.class, "1")).size());
+        assertEquals(2, manager.startsWith(PluginPath.of(String.class, "A")).size());
+        assertEquals(2, manager.startsWith(PluginPath.of(String.class)).size());
 
         Map<PluginPath, PluginEntry> map = rm.getPluginManager().startsWith(PluginPath.of(String.class));
         assertNotNull(map.get(path));
+
+        manager.add(path,  PluginX.class);
+
+        Map<PluginPath, PluginEntry> m = manager.startsWith(PluginPath.of(String.class, "A").and(Long.class, "2"));
+        assertEquals(1, m.size());
+
+        Map<PluginPath, PluginEntry> map2 = rm.getPluginManager().startsWith(PluginPath.of(String.class));
+        assertEquals(map.size(), map2.size());
+
     }
 
     @Test
