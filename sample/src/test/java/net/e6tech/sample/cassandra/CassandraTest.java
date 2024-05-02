@@ -55,6 +55,7 @@ public class CassandraTest {
         schema.createTables("elements", TimeTable.class);
         schema.createTables("elements", DerivedTable.class);
         schema.createTables("elements", ReduceTable.class);
+        schema.createTables("elements", Subclass.class);
         List<Long> ids = Arrays.asList(1L, 2L, 3L);
 
         ThreadPool pool = ThreadPool.fixedThreadPool("test", 50);

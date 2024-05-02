@@ -170,7 +170,8 @@ public class PluginPath<T> {
             } else {
                 builder.append("/");
             }
-            builder.append(p.getType().getName());
+            if (p.getType() != null)
+                builder.append(p.getType().getName());
             if (p.getName() != null) {
                 builder.append("/").append(p.getName());
             }

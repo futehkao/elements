@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.cassandra.generator;
 
+import net.e6tech.elements.common.logging.Logger;
+
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
@@ -26,6 +28,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 public class TableAnalyzer {
+    private static Logger logger = Logger.getLogger();
 
     private Map<String, ColumnInfo> columns = new LinkedHashMap<>();
     private List<KeyColumn> clusteringKeys = new ArrayList<>();
@@ -52,6 +55,58 @@ public class TableAnalyzer {
         clusteringKeys.removeIf(keyColumn -> keyColumn.getPosition() < 0);
         Collections.sort(partitionKeys, Comparator.comparingInt(KeyColumn::getPosition));
         Collections.sort(clusteringKeys, Comparator.comparingInt(KeyColumn::getPosition));
+    }
+
+    private LinkedList<Class> validate(Generator generator, Class entityClass) throws IntrospectionException {
+        LinkedList<Class> classHierarchy = analyze(generator, entityClass);
+        Map<String, Class> keys = new HashMap<>(64);
+        Map<String, Class> current = new HashMap<>(64);
+        Set<String> notKeys = new HashSet<>(64);
+        Set<Method> seenProps = new HashSet<>(64);
+        for (Class cls : classHierarchy) {
+            for (PropertyDescriptor desc : Introspector.getBeanInfo(cls).getPropertyDescriptors()) {
+                Method method = desc.getReadMethod();
+                if (method == null && desc.getWriteMethod() != null) {
+                    method = desc.getWriteMethod();
+                }
+
+                if (seenProps.contains(method))
+                    continue;
+
+                boolean isKey;
+                isKey = generator.partitionKeyIndex(desc, idx -> current.put(generator.getColumnName(desc), cls));
+                isKey = isKey || generator.clusteringColumnIndex(desc, idx -> current.put(generator.getColumnName(desc), cls));
+                if (!isKey)
+                    notKeys.add(generator.getColumnName(desc));
+                else
+                    notKeys.remove(generator.getColumnName(desc));
+
+                seenProps.add(method);
+            }
+            Field[] fields = cls.getDeclaredFields();
+            for (Field field : fields) {
+                boolean isKey;
+                isKey = generator.partitionKeyIndex(field, idx -> current.put(generator.getColumnName(field), cls));
+                isKey = isKey || generator.clusteringColumnIndex(field, idx -> current.put(generator.getColumnName(field), cls));
+                if (!isKey)
+                    notKeys.add(generator.getColumnName(field));
+                else
+                    notKeys.remove(generator.getColumnName(field));
+            }
+
+            for (String notKeyColumn : notKeys) {
+                if (keys.keySet().contains(notKeyColumn)) {
+                    Class superClass = keys.get(notKeyColumn);
+                    logger.warn("{} '{}' column attempts to override and nullify superclass {} PartitionKey or ClusteringKey declaration.",
+                            entityClass.getName(), notKeyColumn, superClass);
+                }
+            }
+
+            keys.putAll(current);
+            current.clear();
+            notKeys.clear();
+        }
+        return classHierarchy;
     }
 
     private Set<String> collectionTransient(Generator generator, Class entityClass, List<Class> classHierarchy) throws IntrospectionException {

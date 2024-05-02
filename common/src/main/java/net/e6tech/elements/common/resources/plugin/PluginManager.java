@@ -50,17 +50,18 @@ public class PluginManager {
     private Resources resources;
     private Map<PluginPath<?>, PluginEntry> plugins;
     private Map<Class<?>, Object> defaultPlugins;
-    private Cache<PluginPath, Map<PluginPath<?>, PluginEntry>> startWithCache = CacheBuilder.newBuilder()
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .initialCapacity(200)
-            .maximumSize(500)
-            .build();
+    private Cache<PluginPath, Map<PluginPath<?>, PluginEntry>> startWithCache;
 
     public PluginManager(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
         classLoader = new PluginClassLoader(resourceManager.getClass().getClassLoader());
         plugins = new ConcurrentHashMap<>(1024);
         defaultPlugins = new ConcurrentHashMap<>(1024);
+        startWithCache = CacheBuilder.newBuilder()
+                .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+                .initialCapacity(200)
+                .maximumSize(500)
+                .build();
     }
 
     protected PluginManager(PluginManager manager) {
@@ -69,6 +70,7 @@ public class PluginManager {
         defaultPlugins = manager.defaultPlugins;
         classLoader = manager.classLoader;
         plugins = manager.plugins;
+        startWithCache = manager.startWithCache;
     }
 
     public PluginManager from(Resources resources) {
@@ -157,6 +159,18 @@ public class PluginManager {
 
     public Map<PluginPath, PluginEntry> startsWith(PluginPath<?> path) {
         return startsWith(PluginPaths.of(path));
+    }
+
+    public Map<PluginPath, PluginEntry> startsWith2(PluginPaths<?> paths) {
+        Map<PluginPath, PluginEntry> map = new LinkedHashMap<>();
+
+        for (PluginPath<?> path : paths.getPaths()) {
+            for (Map.Entry<PluginPath<?>, PluginEntry> entry : plugins.entrySet()) {
+                if (entry.getKey().startsWith(path) && !map.containsKey(entry.getKey()))
+                    map.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return map;
     }
 
     public Map<PluginPath, PluginEntry> startsWith(PluginPaths<?> paths) {
@@ -366,6 +380,7 @@ public class PluginManager {
     public <T extends Plugin> PluginEntry<T> add(PluginPath<T> path, Class<T> cls) {
         PluginEntry<T> entry = new PluginEntry(path, cls);
         plugins.put(path, entry);
+        invalidateCache(path);
         return entry;
     }
 
