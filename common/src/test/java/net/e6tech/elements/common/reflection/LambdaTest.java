@@ -27,9 +27,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 @Tags.Common
-public class LambdaTest {
+class LambdaTest {
     @SuppressWarnings("unchecked")
     @Test
     void methodHandle() throws Throwable {
@@ -40,11 +41,12 @@ public class LambdaTest {
         Field field = BindPropX.class.getDeclaredField("a");
         field.setAccessible(true);
 
-        MethodHandle mh = lookup.unreflect(method);
         BiConsumer methodLambda = Lambda.reflectSetter(lookup, method);
 
         BindPropX x = new BindPropX();
         BindPropA a = new BindPropA();
+
+        System.out.println("Method handle:");
 
         long start = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
@@ -58,7 +60,7 @@ public class LambdaTest {
         }
         System.out.println("Reflection method invoke " + (System.currentTimeMillis() - start) + "ms");
 
-        mh = lookup.unreflectSetter(field);
+        MethodHandle mh = lookup.unreflectSetter(field);
         mh.invoke(x, a);
         start = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
@@ -79,6 +81,67 @@ public class LambdaTest {
             methodLambda.accept(x, a);
         }
         System.out.println("LambdaMetaFactory " + (System.currentTimeMillis() - start)+ "ms");
+        System.out.println();
+    }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    void methodLambda_unboxedTypes() throws Throwable {
+        Constructor constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, Integer.TYPE);
+        constructor.setAccessible(true);
+        MethodHandles.Lookup lookup = (MethodHandles.Lookup) constructor.newInstance(BindPropX.class, -1);
+        Method methodSet = BindPropX.class.getDeclaredMethod("setPrimitive", int.class);
+        Method methodGet = BindPropX.class.getDeclaredMethod("getPrimitive");
+        Field field = BindPropX.class.getDeclaredField("primitive");
+        field.setAccessible(true);
+
+        BiConsumer methodLambdaSet = Lambda.reflectSetter(lookup, methodSet);
+        Function methodLambdaGet = Lambda.reflectGetter(lookup, methodGet);
+
+        BindPropX x = new BindPropX();
+
+        System.out.println("Method handle for unboxed:");
+
+        long start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            x.setPrimitive(1);
+        }
+        System.out.println("Direct invocation " + (System.currentTimeMillis() - start) + "ms");
+
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            methodSet.invoke(x, 1);
+        }
+        System.out.println("Reflection method invoke " + (System.currentTimeMillis() - start) + "ms");
+
+        MethodHandle mh = lookup.unreflectSetter(field);
+        mh.invoke(x, 1);
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            mh.invoke(x, 1);
+        }
+        System.out.println("MethodHandle invoke " + (System.currentTimeMillis() - start)+ "ms");
+
+        field.set(x, 1);
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            field.set(x, 1);
+        }
+        System.out.println("Reflection field access " + (System.currentTimeMillis() - start)+ "ms");
+
+        methodLambdaSet.accept(x, 1);
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            methodLambdaSet.accept(x, 1);
+        }
+        System.out.println("LambdaMetaFactory " + (System.currentTimeMillis() - start)+ "ms");
+
+        methodLambdaGet.apply(x);
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+            methodLambdaGet.apply(x);
+        }
+        System.out.println("LambdaMetaFactory Get method " + (System.currentTimeMillis() - start)+ "ms");
+        System.out.println();
     }
 }

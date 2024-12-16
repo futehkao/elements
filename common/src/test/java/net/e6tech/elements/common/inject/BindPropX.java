@@ -21,7 +21,7 @@ public class BindPropX {
     private BindPropA a;
     private BindPropB b;
     private String description;
-
+    private int primitive;
     public BindPropA getA() {
         return a;
     }
@@ -47,5 +47,14 @@ public class BindPropX {
     @Inject(optional = true)
     public void setB(BindPropB b) {
         this.b = b;
+    }
+
+    public int getPrimitive() {
+        return primitive;
+    }
+
+    @Inject(optional = true)
+    public void setPrimitive(int primitive) {
+        this.primitive = primitive;
     }
 }
