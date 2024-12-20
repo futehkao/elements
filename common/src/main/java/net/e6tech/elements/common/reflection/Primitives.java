@@ -42,7 +42,7 @@ public class Primitives {
     private Primitives() {
     }
 
-    public static Class getPrimitiveType(Class cls) {
+    public static Class<?> getPrimitiveType(Class<?> cls) {
         if (cls == Boolean.class) return Boolean.TYPE;
         else if (cls == Byte.class) return Byte.TYPE;
         else if (cls == Character.class) return Character.TYPE;
@@ -52,6 +52,18 @@ public class Primitives {
         else if (cls == Long.class) return Long.TYPE;
         else if (cls == Short.class) return Short.TYPE;
         return primitives.get(cls.getName());
+    }
+
+    public static Class<?> getReferenceType(Class<?> cls) {
+        if (cls == boolean.class) return Boolean.class;
+        else if (cls == byte.class) return Byte.class;
+        else if (cls == char.class) return Character.class;
+        else if (cls == double.class) return Double.class;
+        else if (cls == float.class) return Float.class;
+        else if (cls == int.class) return Integer.class;
+        else if (cls == long.class) return Long.class;
+        else if (cls == short.class) return Short.class;
+        return cls;
     }
 
     public static boolean isPrimitive(String name) {

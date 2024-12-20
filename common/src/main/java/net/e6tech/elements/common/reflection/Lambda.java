@@ -21,9 +21,13 @@ import com.google.common.cache.CacheBuilder;
 
 import java.lang.invoke.*;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("squid:S00112")
 public class Lambda {
@@ -36,7 +40,7 @@ public class Lambda {
                 MethodType.methodType(Function.class),
                 MethodType.methodType(Object.class, Object.class), //signature of method Function.apply after type erasure
                 getter,
-                getter.type()); //actual signature of getter
+                wrapUnboxed(getter.type())); //actual signature of getter
         try {
             return (Function) site.getTarget().invokeExact();
         } catch (final Exception e) {
@@ -45,6 +49,7 @@ public class Lambda {
             throw new Error(e);
         }
     }
+
     private static BiConsumer createSetter(final MethodHandles.Lookup lookup,
                                            final MethodHandle setter) throws Exception {
         final CallSite site = LambdaMetafactory.metafactory(lookup,
@@ -52,7 +57,7 @@ public class Lambda {
                 MethodType.methodType(BiConsumer.class),
                 MethodType.methodType(void.class, Object.class, Object.class), //signature of method BiConsumer.accept after type erasure
                 setter,
-                setter.type()); //actual signature of setter
+                wrapUnboxed(setter.type())); //actual signature of setter
         try {
             return (BiConsumer) site.getTarget().invokeExact();
         } catch (final Exception e) {
@@ -60,6 +65,14 @@ public class Lambda {
         } catch (final Throwable e) {
             throw new Error(e);
         }
+    }
+
+    private static MethodType wrapUnboxed(MethodType methodType) {
+        List<Class<?>> actualParamsBoxed = methodType.parameterList().stream()
+                .map(Primitives::getReferenceType)
+                .collect(Collectors.toList());
+
+        return MethodType.methodType(Primitives.getReferenceType(methodType.returnType()), actualParamsBoxed);
     }
 
     public static Function reflectGetter(final MethodHandles.Lookup lookup, final Method getter) throws ReflectiveOperationException {

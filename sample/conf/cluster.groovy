@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import net.e6tech.elements.network.cluster.ClusterNode
+/* import net.e6tech.elements.network.cluster.ClusterNode
 import net.e6tech.elements.common.actor.GenesisActor
 
 
@@ -35,5 +35,27 @@ akka.remote.artery.canonical.hostname = ${clusterHost}
     myCluster = ClusterNode
     postInit {
         notificationCenter.addBroadcast(myCluster.broadcast)
+    }
+} */
+
+
+import net.e6tech.elements.web.federation.*
+
+atom("cluster") {
+    configuration = """
+        _cluster:
+            hostAddress: "http://127.0.0.1:3909/restful"
+            seeds: 
+                - "http://127.0.0.1:3909/restful"
+            federation:
+                hostAddress: "http://127.0.0.1:3910/restful"
+                hosts:
+                    - memberId: "3910"
+                seeds:
+                    - "http://127.0.0.1:3910/restful"    
+"""
+    _cluster = ClusterImpl
+    postInit {
+        notificationCenter.addBroadcast(_cluster.cluster.broadcast)
     }
 }
