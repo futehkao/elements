@@ -56,6 +56,6 @@ atom("cluster") {
 """
     _cluster = ClusterImpl
     postInit {
-        notificationCenter.addBroadcast(_cluster.cluster.broadcast)
+        notificationCenter.addBroadcast(_cluster.broadcast)
     }
 }

@@ -21,6 +21,7 @@ import net.e6tech.elements.common.util.SystemException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,13 +29,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tags.Common
 class BalancerTest {
 
-    volatile int success = 0;
-
     @Test
     void basic() throws Exception {
         MyBalancer balancer = new MyBalancer();
         balancer.setThreadSafe(true);
-        balancer.setTimeout(100L);
+        balancer.setTimeout(1000L);
         balancer.setRecoveryPeriod(50L);
         balancer.addService(new ServiceImpl());
         balancer.addService(new ServiceImpl());
@@ -48,21 +47,58 @@ class BalancerTest {
         balancer.start();
         int available = balancer.getAvailable();
 
+        AtomicInteger success = new AtomicInteger(0);
+        Runnable runnable = () -> {
+            try {
+                balancer.execute(service -> service.run());
+                success.incrementAndGet();
+            } catch (Throwable th) {
+                th.printStackTrace();
+            }
+        };
+
         int count = 100;
+        Thread[] threads = createThreads(count, runnable, 10);
+
+        long start = System.currentTimeMillis();
+        runThreads(threads);
+
+        long duration = System.currentTimeMillis() - start;
+        Thread.sleep(2000L);
+        System.out.println("threadSafe=true elapsed: " + duration + " success: " + success.get());
+        assertTrue(balancer.getAvailable() == available);
+        assertTrue(balancer.getProcessingCount() == 0);
+
+        // run it with threadSafe set to false
+        balancer.setThreadSafe(false);
+        balancer.setTimeout(5000L);  // timeout needs to be longer for non-threadSafe services because we cannot reuse
+                                     // a service that is in the middle of processing.
+        success.set(0);
+        threads = createThreads(count, runnable, 10);
+        start = System.currentTimeMillis();
+        runThreads(threads);
+
+        duration = System.currentTimeMillis() - start;
+        Thread.sleep(2000L);
+        System.out.println("threadSafe=false elapsed: " + duration + " success: " + success.get());
+        assertTrue(balancer.getAvailable() == available);
+        assertTrue(balancer.getProcessingCount() == 0);
+    }
+
+    private Thread[] createThreads(int count, Runnable runnable, int iteration) {
         Thread[] threads = new Thread[count];
         for (int i = 0; i < count; i++) {
             threads[i] = new Thread(() -> {
-                for (int j = 0; j < 10; j++) {
-                    try {
-                        balancer.execute(service -> service.run());
-                        success ++;
-                    } catch (Throwable th) {
-                    }
+                for (int j = 0; j < iteration; j++) {
+                    runnable.run();
                 }
             });
         }
+        return threads;
+    }
 
-        long start = System.currentTimeMillis();
+    private void runThreads(Thread[] threads) throws InterruptedException {
+        int count = threads.length;
         for (int i = 0; i < count; i++) {
             threads[i].start();
         }
@@ -70,11 +106,6 @@ class BalancerTest {
         for (int i = 0; i < count; i++) {
             threads[i].join();
         }
-
-        System.out.println("elapsed: " + (System.currentTimeMillis() - start) + " success: " + success);
-
-        Thread.sleep(1000L);
-        assertTrue(balancer.getAvailable() == available);
     }
 
     @Test
@@ -112,15 +143,11 @@ class BalancerTest {
                 }
             });
         }
-        for (int i = 0; i < count; i++) {
-            threads[i].start();
-        }
-        for (int i = 0; i < count; i++) {
-            threads[i].join();
-        }
+        runThreads(threads);
 
         Thread.sleep(1000L);
         assertEquals(available, balancer.getAvailable());
+        assertTrue(balancer.getProcessingCount() == 0);
     }
 
     public static class MyBalancer extends Balancer<Service> {

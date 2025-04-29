@@ -25,11 +25,8 @@ import net.e6tech.elements.common.util.function.FunctionWithException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -41,7 +38,8 @@ public class Balancer<T> {
     private static Logger logger= Logger.getLogger();
     private List<T> services = new ArrayList<>();
     private BlockingQueue<T> liveList = new LinkedBlockingQueue<>();
-    private ConcurrentLinkedQueue<T> processingList = new ConcurrentLinkedQueue<>();
+    private final Set<T> processingSet = Collections.synchronizedSet(new HashSet<>());
+
     private BlockingQueue<T>  deadList = new LinkedBlockingQueue<>();
     private long timeout = 3000L;
     private long recoveryPeriod = 60000L;
@@ -113,6 +111,10 @@ public class Balancer<T> {
 
     public int getAvailable() {
         return liveList.size();
+    }
+
+    public int getProcessingCount() {
+        return processingSet.size();
     }
 
     public ServiceHandler<T> getStarter() {
@@ -236,41 +238,31 @@ public class Balancer<T> {
             try {
                 service = liveList.poll(timeout, TimeUnit.MILLISECONDS);
                 if (service != null) {
-                    processingList.offer(service);
+                    processingSet.add(service);
                     owner = true;
                 }
             } catch (InterruptedException e) {
-                if (owner) {
-                    processingList.poll();
-                }
                 Thread.currentThread().interrupt();
                 throw new IOException();
             }
 
             if (service == null && threadSafe) {
-                service = processingList.peek();
+                synchronized (processingSet) {
+                    service = processingSet.iterator().hasNext() ? processingSet.iterator().next() : null;
+                }
             }
 
             if (service == null)
                 throw new IOException("No service available");
 
             SystemException error = null;
+            boolean recovery = false;
             try {
-                R ret = submit.apply(service);
-                if (owner) {
-                    liveList.offer(service);
-                }
-                return ret;
+                return submit.apply(service);
             } catch (Exception ex) {
                 if (shouldRecover(ex)) {
-                    if (owner) {
-                        processingList.poll();
-                        recover(service);
-                    }
+                    recovery = true;
                 } else {
-                    if (owner) {
-                        liveList.offer(service);
-                    }
                     if (ex instanceof SystemException) {
                         error = (SystemException) ex;
                     } else if (ex instanceof InvocationTargetException) {
@@ -279,6 +271,18 @@ public class Balancer<T> {
                         error = new SystemException(ex.getCause());
                     } else {
                         error = new SystemException(ex);
+                    }
+                }
+            } finally {
+                if (owner) {
+                    processingSet.remove(service);  // this needs to happened before adding it back to liveList so that
+                                                    // other threads can't pick up from liveList and attempt to add it
+                                                    // to processingSet.
+                    // we only add back to liveList if it's an error that we don't want to recover.
+                    if (recovery) {
+                        recover(service);
+                    } else {
+                        liveList.offer(service);
                     }
                 }
             }
