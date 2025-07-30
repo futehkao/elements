@@ -60,8 +60,7 @@ public class KeyClient implements Startable {
     private SymmetricCipher sym = SymmetricCipher.getInstance("AES");
     private String clientKey;
     private SecretKey secretKey;
-    private RestfulClient client;
-    private String address = "http://localhost:10000/restful/keyserver/v1";
+    private RestfulClient client = new RestfulClient("http://localhost:10000/restful/keyserver/v1");
     private Credential credential;
     private String authorization;
     private boolean started;
@@ -72,11 +71,19 @@ public class KeyClient implements Startable {
     private long connectionRetryWait = 10000L;
 
     public String getAddress() {
-        return address;
+        return client.getAddress();
     }
 
     public void setAddress(String address) {
-        this.address = address;
+        client.setAddress(address);
+    }
+
+    public RestfulClient getClient() {
+        return client;
+    }
+
+    public void setClient(RestfulClient client) {
+        this.client = client;
     }
 
     public Credential getCredential() {
@@ -123,8 +130,7 @@ public class KeyClient implements Startable {
 
     @SuppressWarnings("squid:S1181")
     private void initCredential() {
-        client = new RestfulClient();
-        client.setAddress(address);
+        String address = client.getAddress();
         PublicKey publicKey;
         net.e6tech.elements.network.restful.Response response = null;
         int numRetries = connectionRetries;
