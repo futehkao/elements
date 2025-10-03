@@ -84,4 +84,15 @@ public class StringUtil {
         }
         return true;
     }
+
+    /**
+     * Null-safe, bounds-safe substring. Trims s to at most maxLen characters.
+     * If s is null, returns empty string. Negative maxLen is treated as 0.
+     */
+    public static String trimToLength(String s, int maxLen) {
+        if (s == null) return "";
+        int len = Math.max(0, maxLen);
+        return s.substring(0, Math.min(len, s.length()));
+    }
+
 }
