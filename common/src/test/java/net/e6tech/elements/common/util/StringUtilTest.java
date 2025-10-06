@@ -70,4 +70,32 @@ class StringUtilTest {
         assertEquals("exactly16chars!!", result);
     }
 
+    // --- Tests for cleanInvalidXMLCharacters ---
+
+    @Test
+    void testCleanInvalidXMLCharactersWithNull() {
+        assertEquals("", StringUtil.cleanInvalidXMLCharacters(null));
+    }
+
+    @Test
+    void testCleanInvalidXMLCharactersAmpersandEscaping() {
+        assertEquals("Me &amp; You", StringUtil.cleanInvalidXMLCharacters("Me & You"));
+        assertEquals("Fish &amp; Chips &amp; Vinegar", StringUtil.cleanInvalidXMLCharacters("Fish & Chips &amp; Vinegar"));
+        assertEquals("&amp;&amp;", StringUtil.cleanInvalidXMLCharacters("&&"));
+        assertEquals("Already &amp; escaped", StringUtil.cleanInvalidXMLCharacters("Already &amp; escaped"));
+    }
+
+    @Test
+    void testCleanInvalidXMLCharactersControlCharsRemoved() {
+        String input = "A\u0001B\nC\tD\rE";
+        String expected = "ABCDE"; // all control characters removed, including \n, \t, \r
+        assertEquals(expected, StringUtil.cleanInvalidXMLCharacters(input));
+    }
+
+    @Test
+    void testCleanInvalidXMLCharactersMixedContent() {
+        String input = "Hello & World\u0000 with\ncontrols &amp; more & text";
+        String expected = "Hello &amp; World withcontrols &amp; more &amp; text";
+        assertEquals(expected, StringUtil.cleanInvalidXMLCharacters(input));
+    }
 }
