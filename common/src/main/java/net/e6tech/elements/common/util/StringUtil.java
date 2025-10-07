@@ -101,15 +101,15 @@ public class StringUtil {
      * <p>
      * This method performs two operations:
      * <ul>
-     *   <li>Escapes any bare ampersand character '&' that is not already the start of '&amp;'
-     *       (i.e., becomes "&amp;"). Existing "&amp;" sequences are preserved.</li>
+     *   <li>Escapes any bare ampersand character '&amp;' that is not already the start of '&amp;amp;'
+     *       (i.e., becomes "&amp;amp;"). Existing "&amp;amp;" sequences are preserved.</li>
      *   <li>Removes all control characters (Unicode category Cntrl), including ASCII control
      *       codes such as newline (\n), carriage return (\r), and tab (\t).</li>
      * </ul>
      * If the input is null, an empty string is returned.
      * <p>
      * Note: This is a lightweight helper intended to make strings safer to embed in XML. It does not
-     * perform full XML escaping (e.g., it does not convert '<' or '>' to entities) nor validate all
+     * perform full XML escaping (e.g., it does not convert '&lt;' or '&gt;' to entities) nor validate all
      * XML character constraints.
      *
      * @param s input string; may be null
