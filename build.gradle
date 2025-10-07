@@ -153,9 +153,6 @@ subprojects {
     }
 
 
-    test {
-        useJUnitPlatform()
-    }
 
     publishing {
         publications {
