@@ -1,3 +1,20 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath 'org.owasp:dependency-check-gradle:6.0.2'
+        classpath 'io.github.gradle-nexus:publish-plugin:1.1.0'
+    }
+}
+
+plugins {
+    id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
+}
+
 ext.elementsVersion = '2.7.13'
 ext.junitPlatformLauncherVersion = '1.6.2'
 ext.junitJupiterVersion = '5.6.2'
@@ -7,7 +24,7 @@ ext.findbugsVersion = '3.0.2'
 ext.lmaxDisruptorVerion = '3.4.2'
 ext.slf4jVersion = '1.7.36'
 ext.groovyVersion = '3.0.21'
-ext.guavaVerions = '33.0.0-jre'
+ext.guavaVerions = '31.1-jre'  // Using 31.1-jre to avoid Android/JRE variant ambiguity
 ext.scalaVersion = '2.13.10'
 ext.akkaVersion = '2.6.9'
 ext.akkaScalaVersion = '2.13'
@@ -44,21 +61,15 @@ ext.jnrffiVersion = '2.1.16'  // cassandra and akka cluster typed
 ext.nettyVersion = '4.1.119.Final'
 ext.commonsCodec = '1.16.1'
 
-buildscript {
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-    dependencies {
-        classpath 'org.owasp:dependency-check-gradle:6.0.2'
-    }
+// Add repositories for the root project
+repositories {
+    mavenCentral()
 }
 
 allprojects {
     group 'net.e6tech'
-    version '1.0-SNAPSHOT'
+    // version '1.0-SNAPSHOT'
+    version "${elementsVersion}"
 
     apply plugin: 'java'
 
@@ -84,6 +95,19 @@ allprojects {
     }
 }
 
+// Configure Nexus Publishing for automated staging repository management
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
+            username = project.findProperty("ossrhUsername") ?: System.getenv("OSSRH_USERNAME")
+            password = project.findProperty("ossrhPassword") ?: System.getenv("OSSRH_PASSWORD")
+
+        }
+    }
+}
+
 dependencies {
     testCompile("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
     testCompile("org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}")
@@ -98,14 +122,9 @@ subprojects {
     apply plugin: 'groovy'
     apply plugin: 'java'
     apply plugin: 'maven-publish'
-    apply plugin: 'maven'
     apply plugin: 'signing'
 
     archivesBaseName = "elements-${project.name}"
-
-    signing {
-        sign configurations.archives
-    }
 
     javadoc {
         source = sourceSets.main.allJava
@@ -125,7 +144,8 @@ subprojects {
     }
 
     task javadocJar(type: Jar) {
-        classifier = 'javadoc'
+        archiveBaseName.set "elements-${project.name}"
+        archiveClassifier.set 'javadoc'
         from javadoc
     }
 
@@ -136,58 +156,51 @@ subprojects {
 
     publishing {
         publications {
-            common(MavenPublication) {
+            mavenJava(MavenPublication) {
                 from components.java
                 artifactId "elements-${project.name}"
 
                 artifact sourcesJar
                 artifact javadocJar
-            }
-        }
-    }
 
-    uploadArchives {
-        repositories {
-            mavenDeployer {
-                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                    authentication(userName: ossrhUsername, password: ossrhPassword)
-                }
-
-                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                    authentication(userName: ossrhUsername, password: ossrhPassword)
-                }
-
-                pom.project {
-                    name project.name
-                    description "elements-${project.name}"
-                    packaging 'jar'
-                    // optionally artifactId can be defined here. description 'A application used as an example on how to set up pushing its components to the Central Repository.'
-                    url 'http://github.com/futehkao/elements.git'
-
-                    scm {
-                        connection 'scm:git:https://github.com/futehkao/elements.git'
-                        developerConnection 'scm:git:https://github.com/futehkao/elements.git'
-                        url 'https://github.com/futehkao/elements.git'
-                    }
+                pom {
+                    name = project.name
+                    description = "elements-${project.name}"
+                    url = 'https://github.com/futehkao/elements.git'
 
                     licenses {
                         license {
-                            name 'The Apache License, Version 2.0'
-                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
                         }
                     }
 
                     developers {
                         developer {
-                            id 'futeh'
-                            name 'Futeh Kao'
-                            email 'futeh@episodesix.com'
+                            id = 'futeh'
+                            name = 'Futeh Kao'
+                            email = 'futeh@episodesix.com'
                         }
+                    }
+
+                    scm {
+                        connection = 'scm:git:https://github.com/futehkao/elements.git'
+                        developerConnection = 'scm:git:https://github.com/futehkao/elements.git'
+                        url = 'https://github.com/futehkao/elements.git'
                     }
                 }
             }
         }
+    }
+
+    ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+
+    signing {
+        required { isReleaseVersion && gradle.taskGraph.hasTask("publish") }
+        sign publishing.publications.mavenJava
+    }
+
+    tasks.withType(Sign) {
+        onlyIf { isReleaseVersion && project.hasProperty("signing.keyId") }
     }
 }
