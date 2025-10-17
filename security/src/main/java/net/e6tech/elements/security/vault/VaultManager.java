@@ -15,7 +15,6 @@ limitations under the License.
 */
 package net.e6tech.elements.security.vault;
 
-import jdk.internal.joptsimple.internal.Strings;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.AsymmetricCipher;
