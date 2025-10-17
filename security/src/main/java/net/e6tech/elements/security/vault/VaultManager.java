@@ -1046,10 +1046,6 @@ public class VaultManager {
     }
 
     public void removeUser(DualEntry dualEntry, String alias) throws GeneralSecurityException {
-        if (!userLocalOpened) {
-            throw NOT_OPEN_EXCEPTION;
-        }
-
         if (dualEntry == null) {
             throw new GeneralSecurityException("DualEntry is required.");
         }
