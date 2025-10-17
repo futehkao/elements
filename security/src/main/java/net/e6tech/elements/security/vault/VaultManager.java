@@ -15,6 +15,7 @@ limitations under the License.
 */
 package net.e6tech.elements.security.vault;
 
+import jdk.internal.joptsimple.internal.Strings;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.AsymmetricCipher;
@@ -1042,6 +1043,38 @@ public class VaultManager {
         if (!userLocalOpened)
             throw NOT_OPEN_EXCEPTION;
         return userLocalStore.getVault(USER_VAULT).getSecret(alias, version);
+    }
+
+    public void removeUser(DualEntry dualEntry, String alias) throws GeneralSecurityException {
+        if (!userLocalOpened) {
+            throw NOT_OPEN_EXCEPTION;
+        }
+
+        if (dualEntry == null) {
+            throw new GeneralSecurityException("DualEntry is required.");
+        }
+
+        checkAccess(dualEntry);
+
+        Secret user = getUser(alias, null);
+        if (user == null) {
+            throw new GeneralSecurityException(String.format("User does not exist: %s", alias));
+        }
+
+        String user1 = dualEntry.getUser1() != null ? dualEntry.getUser1().getUser() : null;
+        String user2 = dualEntry.getUser2() != null ? dualEntry.getUser2().getUser() : null;
+
+        if (alias.equalsIgnoreCase(user1) || alias.equalsIgnoreCase(user2)) {
+            throw new GeneralSecurityException(
+                    String.format("Cannot remove a currently authenticated guardian user: %s", alias));
+        }
+
+        try {
+            removeUser(alias, null);
+        } catch (Exception exception) {
+            throw new GeneralSecurityException(
+                    String.format("Failed to remove user: %s", alias), exception);
+        }
     }
 
     private void removeUser(String alias, String version) throws GeneralSecurityException {
