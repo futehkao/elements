@@ -720,10 +720,23 @@ public class Reflection {
                                 if (!handled) {
                                     Object value = prop.getReadMethod().invoke(object);
 
-                                    if (!(value instanceof Collection) &&
-                                            setter.getParameterTypes()[0].isAssignableFrom(prop.getReadMethod().getReturnType())) {
+                                    if (value == null) {
                                         setter.invoke(target, value);
+                                    } else if (value.getClass().isPrimitive()
+                                            || value instanceof String
+                                            || value instanceof Number
+                                            || value instanceof Boolean
+                                            || value instanceof Character
+                                            || value.getClass().isEnum()) {
+                                        // For primitive types, wrapper classes, String, and enums, we can safely copy by reference
+                                        if (setter.getParameterTypes()[0].isAssignableFrom(prop.getReadMethod().getReturnType())) {
+                                            setter.invoke(target, value);
+                                        } else {
+                                            Object converted = newInstance(setter.getGenericParameterTypes()[0], value, seen, copyListener);
+                                            setter.invoke(target, converted);
+                                        }
                                     } else {
+                                        // For complex objects, always create a deep copy
                                         try {
                                             Object converted = newInstance(setter.getGenericParameterTypes()[0], value, seen, copyListener);
                                             setter.invoke(target, converted);

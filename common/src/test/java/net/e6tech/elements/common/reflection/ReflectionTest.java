@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Created by futeh.
@@ -65,6 +66,103 @@ public class ReflectionTest {
         Z1 z = Reflection.newInstance(Z1.class, x);
         assertTrue(z.getTypes().get(0) == Z1.Type.a);
     }
+
+    @Test
+    public void copyComplexObject(){
+        int id = 1;
+        String name = "foo";
+
+        ComplexObject complexObject = new ComplexObject(id, name);
+        ComplexObject target = new ComplexObject();
+
+        Reflection.copyInstance(target,complexObject);
+
+        String updateName = "bar";
+
+        assertEquals(target.getId(), id);
+        assertTrue(target.getName().equals(name));
+        assertTrue(target.getSimpleObject() != null);
+        assertEquals(target.getSimpleObject().getId(), id);
+
+        target.setName(updateName);
+        target.getSimpleObject().setName(updateName);
+
+        // original object should not be updated
+        assertTrue(complexObject.getName().equals(name));
+        assertTrue(complexObject.getSimpleObject().getName().equals(name));
+        assertTrue(target.getName().equals(updateName));
+        assertTrue(target.getSimpleObject().getName().equals(updateName));
+    }
+
+    public static class SimpleObject{
+
+        SimpleObject(){}
+
+        SimpleObject(int id, String name){
+            this.id = id;
+            this.name = name;
+        }
+
+        private int id;
+        private String name;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public void setId(int id) {
+            this.id = id;
+        }
+    }
+
+    public static class ComplexObject{
+
+        ComplexObject(){}
+
+        ComplexObject(int id, String name){
+            this.id = id;
+            this.name = name;
+            this.simpleObject = new SimpleObject(id, name);
+
+        }
+
+        private int id;
+        private String name;
+        private SimpleObject simpleObject;
+
+        public int getId() {
+            return id;
+        }
+
+        public void setId(int id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public SimpleObject getSimpleObject() {
+            return simpleObject;
+        }
+
+        public void setSimpleObject(SimpleObject simpleObject) {
+            this.simpleObject = simpleObject;
+        }
+    }
+
 
     public static class X {
         enum Type {
