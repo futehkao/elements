@@ -74,6 +74,7 @@ allprojects {
     apply plugin: 'java'
 
     sourceCompatibility = 1.8
+//    targetCompatibility = 1.8
 
     tasks.withType(Javadoc) {
         options.addStringOption('Xdoclint:syntax', '-quiet')
@@ -84,14 +85,14 @@ allprojects {
     }
 
     configurations {
-        compile.exclude(group: 'jakarta.annotation') // replaced with javaee-api, which used by hibernate
-        compile.exclude(group: 'jakarta.activation') // in javaee
-        compile.exclude group: 'javax.activation' // in javaee, but we need an implementation, which is in jaxb-runtime
-        compile.exclude(group: 'jakarta.ws.rs') // replaced with javaee-api from network
-        compile.exclude(group: 'javax.xml.bind')
+        api.exclude(group: 'jakarta.annotation') // replaced with javaee-api, which used by hibernate
+        api.exclude(group: 'jakarta.activation') // in javaee
+        api.exclude group: 'javax.activation' // in javaee, but we need an implementation, which is in jaxb-runtime
+        api.exclude(group: 'jakarta.ws.rs') // replaced with javaee-api from network
+        api.exclude(group: 'javax.xml.bind')
         // replaced with jakarta.xml.bind which comes from org.glassfish.jaxb:jaxb-runtime
-        compile.exclude(group: 'javax.persistence')    // in javaee
-        // compile.exclude(group: 'javax.servlet') // This is needed because LocalStrings resource bundle is missing from javaee
+        api.exclude(group: 'javax.persistence')    // in javaee
+        // api.exclude(group: 'javax.servlet') // This is needed because LocalStrings resource bundle is missing from javaee
     }
 }
 
@@ -109,9 +110,9 @@ nexusPublishing {
 }
 
 dependencies {
-    testCompile("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
-    testCompile("org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}")
-    testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
+    testImplementation("org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
 }
 
 subprojects {
@@ -120,7 +121,8 @@ subprojects {
     version "${elementsVersion}"
 
     apply plugin: 'groovy'
-    apply plugin: 'java'
+//    apply plugin: 'java'
+    apply plugin: 'java-library'
     apply plugin: 'maven-publish'
     apply plugin: 'signing'
 
@@ -128,7 +130,7 @@ subprojects {
 
     javadoc {
         source = sourceSets.main.allJava
-        classpath = configurations.compile
+        classpath = configurations.api
     }
 
     apply plugin: 'org.owasp.dependencycheck'
@@ -200,7 +202,7 @@ subprojects {
         sign publishing.publications.mavenJava
     }
 
-    tasks.withType(Sign) {
+    tasks.withType(Sign).configureEach {
         onlyIf { isReleaseVersion && project.hasProperty("signing.keyId") }
     }
 }

@@ -15,40 +15,40 @@ limitations under the License.
 */
 
 dependencies {
-    compile project(':common')
-    compile project(':security')
-    compile project(':network')
+    api project(':common')
+    api project(':security')
+    api project(':network')
 
-    compile ("com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${jacksonVersion}")
+    api ("com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${jacksonVersion}")
     
     // jetty
-    compile "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-continuation:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-http:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-server:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-util:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-security:${jettyVersion}"
-    compile "org.eclipse.jetty:jetty-io:${jettyVersion}"
+    api "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
+    api "org.eclipse.jetty:jetty-continuation:${jettyVersion}"
+    api "org.eclipse.jetty:jetty-http:${jettyVersion}"
+    api "org.eclipse.jetty:jetty-server:${jettyVersion}"
+    api "org.eclipse.jetty:jetty-util:${jettyVersion}"
+    api "org.eclipse.jetty:jetty-security:${jettyVersion}"
+    api "org.eclipse.jetty:jetty-io:${jettyVersion}"
 
-    // compile 'javax.ws.rs:jsr311-api:1.1.1'
-    compile ("commons-codec:commons-codec:${commonsCodec}")
-    compile ("org.codehaus.woodstox:stax2-api:${stax2ApiVersion}")
-    compile ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}")
-    compile group: 'org.slf4j', name: 'jcl-over-slf4j', version: "${slf4jVersion}"
-    compile ("org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}")
-    compile "org.apache.cxf:cxf-rt-transports-local:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-transports-http:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-transports-http-hc:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-transports-http-jetty:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-rs-extension-providers:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-rs-client:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-rs-security-cors:${cxfVersion}"
-    compile "org.apache.cxf:cxf-rt-features-logging:${cxfVersion}"
+    // api 'javax.ws.rs:jsr311-api:1.1.1'
+    api ("commons-codec:commons-codec:${commonsCodec}")
+    api ("org.codehaus.woodstox:stax2-api:${stax2ApiVersion}")
+    api ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}")
+    api group: 'org.slf4j', name: 'jcl-over-slf4j', version: "${slf4jVersion}"
+    api ("org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}")
+    api "org.apache.cxf:cxf-rt-transports-local:${cxfVersion}"
+    api "org.apache.cxf:cxf-rt-transports-http:${cxfVersion}"
+    api "org.apache.cxf:cxf-rt-transports-http-hc:${cxfVersion}"
+    api "org.apache.cxf:cxf-rt-transports-http-jetty:${cxfVersion}"
+    api "org.apache.cxf:cxf-rt-rs-extension-providers:${cxfVersion}"
+    api "org.apache.cxf:cxf-rt-rs-client:${cxfVersion}"
+    api "org.apache.cxf:cxf-rt-rs-security-cors:${cxfVersion}"
+    api "org.apache.cxf:cxf-rt-features-logging:${cxfVersion}"
 
-    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
-    testCompile "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"
-    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"
+    testImplementation "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }
 
 test {
