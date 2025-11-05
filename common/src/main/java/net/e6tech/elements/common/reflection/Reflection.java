@@ -655,17 +655,17 @@ public class Reflection {
                 return null;
 
             if (type == Boolean.TYPE || type == Boolean.class)
-                return new Boolean(object.toString());
+                return Boolean.valueOf(object.toString());
             else if (type == Double.TYPE || type == Double.class) {
-                return new Double(object.toString());
+                return Double.valueOf(object.toString());
             } else if (type == Float.TYPE || type == Float.class) {
-                return new Float(object.toString());
+                return Float.valueOf(object.toString());
             } else if (type == Integer.TYPE || type == Integer.class) {
-                return new Integer(object.toString());
+                return Integer.valueOf(object.toString());
             } else if (type == Long.TYPE || type == Long.class) {
-                return new Long(object.toString());
+                return Long.valueOf(object.toString());
             } else if (type == Short.TYPE || type == Short.class) {
-                return new Short(object.toString());
+                return Short.valueOf(object.toString());
             } else if (type == BigDecimal.class) {
                 return new BigDecimal(object.toString());
             } else if (type == BigInteger.class) {

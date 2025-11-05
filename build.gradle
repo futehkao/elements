@@ -15,7 +15,7 @@ plugins {
     id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
 }
 
-ext.elementsVersion = '2.7.13'
+ext.elementsVersion = '3.0.0'
 ext.junitPlatformLauncherVersion = '1.6.2'
 ext.junitJupiterVersion = '5.6.2'
 ext.snakeyamlVersion = '2.0'
@@ -35,6 +35,8 @@ ext.ehcacheVersion = '3.9.0'
 ext.javaCacheApiVerison = '1.1.1'
 ext.javamailVersion = '1.6.2'
 ext.javaxWsRsApiVersion = '2.1.6'
+ext.javaxWsApiVersion = '2.3.1'
+ext.javaxJwsApiVersion = '1.1'
 ext.javaeeApiVersion = '8.0.1'
 ext.jacksonVersion = '2.16.1'
 ext.jettyVersion =  '9.4.57.v20241219'
@@ -73,8 +75,8 @@ allprojects {
 
     apply plugin: 'java'
 
-    sourceCompatibility = 1.8
-//    targetCompatibility = 1.8
+    sourceCompatibility = 21
+    targetCompatibility = 21
 
     tasks.withType(Javadoc) {
         options.addStringOption('Xdoclint:syntax', '-quiet')
@@ -121,7 +123,6 @@ subprojects {
     version "${elementsVersion}"
 
     apply plugin: 'groovy'
-//    apply plugin: 'java'
     apply plugin: 'java-library'
     apply plugin: 'maven-publish'
     apply plugin: 'signing'

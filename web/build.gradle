@@ -31,9 +31,15 @@ dependencies {
     api "org.eclipse.jetty:jetty-io:${jettyVersion}"
 
     // api 'javax.ws.rs:jsr311-api:1.1.1'
+//    implementation "org.apache.httpcomponents:httpclient:$httpclientVersion"
+
     api ("commons-codec:commons-codec:${commonsCodec}")
     api ("org.codehaus.woodstox:stax2-api:${stax2ApiVersion}")
     api ("org.apache.cxf:cxf-rt-frontend-jaxws:${cxfVersion}")
+
+    implementation group: 'javax.xml.ws', name: 'jaxws-api', version: "$javaxWsApiVersion"
+    implementation group: 'javax.jws', name: 'javax.jws-api', version: "$javaxJwsApiVersion"
+
     api group: 'org.slf4j', name: 'jcl-over-slf4j', version: "${slf4jVersion}"
     api ("org.apache.cxf:cxf-rt-frontend-jaxrs:${cxfVersion}")
     api "org.apache.cxf:cxf-rt-transports-local:${cxfVersion}"
