@@ -25,9 +25,9 @@ dependencies {
     api ("org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}")
     api "org.apache.logging.log4j:log4j-jul:${log4jVersion}"
     api "com.lmax:disruptor:${lmaxDisruptorVerion}"
-    api ("org.codehaus.groovy:groovy:${groovyVersion}:indy")
-    api ("org.codehaus.groovy:groovy-json:${groovyVersion}:indy") {
-        exclude group: 'org.codehaus.groovy', module: 'groovy'
+    api ("org.apache.groovy:groovy:${groovyVersion}")
+    api ("org.apache.groovy:groovy-json:${groovyVersion}") {
+        exclude group: 'org.apache.groovy', module: 'groovy'
     }
     api "com.google.guava:guava:${guavaVerions}"
 

@@ -30,6 +30,7 @@ import net.e6tech.elements.network.cluster.catalyst.dataset.Segment;
 import net.e6tech.elements.network.cluster.catalyst.scalar.*;
 import net.e6tech.elements.network.cluster.catalyst.transform.*;
 import net.e6tech.elements.network.cluster.invocation.RegistryActor;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.lang.invoke.SerializedLambda;
@@ -71,6 +72,7 @@ public class CatalystTest {
     }
 
     @Test
+    @Tag("manual")
     public void vm1() throws Exception {
         create(2551);
         synchronized (this) {
@@ -79,6 +81,7 @@ public class CatalystTest {
     }
 
     @Test
+    @Tag("manual")
     public void vm2() throws Exception {
         create(2553);
         synchronized (this) {

@@ -22,6 +22,7 @@ import net.e6tech.elements.common.actor.GenesisActor;
 import net.e6tech.elements.common.subscribe.Notice;
 import net.e6tech.elements.network.cluster.catalyst.Reactor;
 import net.e6tech.elements.network.cluster.invocation.RegistryActor;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -92,6 +93,7 @@ public class ClusterNodeTest {
     }
 
     @Test
+    @Tag("manual")
     public void vm1() throws InterruptedException {
         ClusterNode node = start(2551);
         node.getBroadcast().subscribe("test2", notice -> {
@@ -105,6 +107,7 @@ public class ClusterNodeTest {
     }
 
     @Test
+    @Tag("manual")
     void messaging() throws InterruptedException {
         ClusterNode node = start(2552);
          while (node.getMembers().size() < 2)

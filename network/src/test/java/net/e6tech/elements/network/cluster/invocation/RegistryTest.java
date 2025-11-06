@@ -19,6 +19,7 @@ package net.e6tech.elements.network.cluster.invocation;
 import net.e6tech.elements.common.util.concurrent.Async;
 import net.e6tech.elements.network.cluster.ClusterNode;
 import net.e6tech.elements.network.cluster.ClusterNodeTest;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
@@ -160,6 +161,7 @@ public class RegistryTest {
     }
 
     @Test
+    @Tag("manual")
     public void asyncVM1_1() throws Exception {
         RegistryActor registry = createX(2553);
         synchronized (this) {

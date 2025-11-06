@@ -16,22 +16,22 @@ plugins {
 }
 
 ext.elementsVersion = '3.0.0'
-ext.junitPlatformLauncherVersion = '1.6.2'
-ext.junitJupiterVersion = '5.6.2'
+ext.junitPlatformLauncherVersion = '1.8.2'
+ext.junitJupiterVersion = '5.8.2'
 ext.snakeyamlVersion = '2.0'
 ext.simplejndiVersion = '0.11.4.1'
 ext.findbugsVersion = '3.0.2'
 ext.lmaxDisruptorVerion = '3.4.2'
 ext.slf4jVersion = '1.7.36'
-ext.groovyVersion = '3.0.21'
+ext.groovyVersion = '4.0.29'
 ext.guavaVerions = '33.5.0-jre'
 ext.scalaVersion = '2.13.10'
 ext.akkaVersion = '2.6.9'
 ext.akkaScalaVersion = '2.13'
 ext.aeronVersion = '1.30.0'
 ext.kryoVersion = '5.0.0-RC9'
-ext.bytebuddyVersion = '1.10.17'
-ext.ehcacheVersion = '3.9.0'
+ext.bytebuddyVersion = '1.17.8'
+ext.ehcacheVersion = '3.10.0'
 ext.javaCacheApiVerison = '1.1.1'
 ext.javamailVersion = '1.6.2'
 ext.javaxWsRsApiVersion = '2.1.6'
@@ -56,8 +56,8 @@ ext.hikariVersion = '3.4.5'
 ext.mariadbClientVersion = '2.6.2'
 ext.hibernateVersion = '5.4.27.Final'  // note 5.4.6 - 5.4.8 have major stack overflow issues
 ext.bouncycastleVersion = '1.79'
-ext.jaxbVersion = '2.3.1'      // security
-ext.jaxbRuntimeVersion = '2.3.3'
+ext.jaxbVersion = '2.4.0'      // security
+ext.jaxbRuntimeVersion = '2.3.5'
 ext.jaxbOldVersion = '2.3.0'
 ext.jnrffiVersion = '2.1.16'  // cassandra and akka cluster typed
 ext.nettyVersion = '4.1.119.Final'
@@ -129,7 +129,7 @@ subprojects {
 
     test {
         useJUnitPlatform {
-            ignoreFailures true
+            ignoreFailures = true
             excludeTags "manual"
         }
     }
