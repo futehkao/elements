@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.jmx;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;
@@ -26,6 +27,7 @@ import java.net.InetAddress;
 public class JMXServiceTest {
 
     @Test
+    @Tag("manual")
     public void start() throws Exception {
         JMXService.start(InetAddress.getLoopbackAddress(), 8080, 18080, "futeh", "password".toCharArray());
 

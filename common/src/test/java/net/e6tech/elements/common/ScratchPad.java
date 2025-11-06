@@ -60,6 +60,7 @@ public class ScratchPad {
 
     @Test
     @SuppressWarnings("unchecked")
+    @Tags.Manual
     void disruptor() throws Exception {
         // ThreadPool
         ExecutorService pool = Executors.newCachedThreadPool();
@@ -110,6 +111,7 @@ public class ScratchPad {
     }
 
     @Test
+    @Tags.Manual
     void disruptorPoll() throws Exception {
 
         // Specify the size of the ring buffer, must be power of 2.

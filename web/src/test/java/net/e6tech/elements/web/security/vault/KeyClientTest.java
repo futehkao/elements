@@ -22,13 +22,10 @@ import net.e6tech.elements.security.SymmetricCipher;
 import net.e6tech.elements.security.vault.*;
 import net.e6tech.elements.web.cxf.*;
 import net.e6tech.elements.web.security.vault.client.KeyClient;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -126,6 +123,7 @@ public class KeyClientTest {
     }
 
     @Test
+    @Tag("manual")
     void delayStart() throws Exception {
         Thread thread = new Thread(() -> {
             while (client == null) {

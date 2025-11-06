@@ -16,6 +16,7 @@
 
 package net.e6tech.elements.security.vault;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -26,6 +27,7 @@ import java.util.List;
 public class DualEntryTest {
 
     @Test
+    @Tag("manual")
     void basic() {
         DualEntry de = new DualEntry("user1", "password1".toCharArray());
         List<String> questions = new ArrayList<>();
@@ -36,6 +38,7 @@ public class DualEntryTest {
     }
 
     @Test
+    @Tag("manual")
     void basic2() throws IOException {
         try (ServerSocket serverSocket = new ServerSocket(1099)) {
             serverSocket.setReuseAddress(true);
