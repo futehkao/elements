@@ -17,6 +17,7 @@
 package net.e6tech.elements.common.actor;
 
 import net.e6tech.elements.common.resources.Resources;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -52,6 +53,7 @@ public class GenesisTest {
     }
 
     @Test
+//    @Disabled("Probably akka tests no need anymore")
     public void callable() throws Exception {
         GenesisActor genesis = new GenesisActor();
         genesis.setName("Genesis");

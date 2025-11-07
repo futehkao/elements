@@ -34,9 +34,8 @@ class LambdaTest {
     @SuppressWarnings("unchecked")
     @Test
     void methodHandle() throws Throwable {
-        Constructor constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, Integer.TYPE);
-        constructor.setAccessible(true);
-        MethodHandles.Lookup lookup = (MethodHandles.Lookup) constructor.newInstance(BindPropX.class, -1);
+        MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(BindPropX.class, MethodHandles.lookup());
+
         Method method = BindPropX.class.getDeclaredMethod("setA", BindPropA.class);
         Field field = BindPropX.class.getDeclaredField("a");
         field.setAccessible(true);
@@ -87,9 +86,8 @@ class LambdaTest {
     @SuppressWarnings("unchecked")
     @Test
     void methodLambda_unboxedTypes() throws Throwable {
-        Constructor constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, Integer.TYPE);
-        constructor.setAccessible(true);
-        MethodHandles.Lookup lookup = (MethodHandles.Lookup) constructor.newInstance(BindPropX.class, -1);
+        MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(BindPropX.class, MethodHandles.lookup());
+
         Method methodSet = BindPropX.class.getDeclaredMethod("setPrimitive", int.class);
         Method methodGet = BindPropX.class.getDeclaredMethod("getPrimitive");
         Field field = BindPropX.class.getDeclaredField("primitive");
