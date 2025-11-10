@@ -35,7 +35,7 @@ public class JaxWSTest {
 
         JaxWSServer server = new JaxWSServer();
         List<String> addresses = new ArrayList<>();
-        addresses.add("http://0.0.0.0:9000/helloWorld");
+        addresses.add("http://0.0.0.0:9010/helloWorld");
         server.setAddresses(addresses);
         server.setImplementor(new HelloWorldImpl());
         server.setServiceClass(HelloWorld.class);
@@ -49,7 +49,7 @@ public class JaxWSTest {
         feature.setOutSender(sender);
         factory.getFeatures().add(feature);
         factory.setServiceClass(HelloWorld.class);
-        factory.setAddress("http://localhost:9000/helloWorld");
+        factory.setAddress("http://localhost:9010/helloWorld");
         HelloWorld client = (HelloWorld) factory.create();
 
         String reply = client.sayHi("HI");

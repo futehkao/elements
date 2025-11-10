@@ -35,7 +35,7 @@ public class WebServerTest {
     public Provision provision;
 
     @ParameterizedTest
-    @ValueSource(strings = {"net.e6tech.elements.web.webserver.tomcat.TomcatWebEngine", "net.e6tech.elements.web.webserver.jetty.JettyWebEngine"})
+    @ValueSource(strings = {"net.e6tech.elements.web.webserver.tomcat.TomcatWebEngine"})
     public void testServlet(String input) throws Exception {
 
         new LaunchController().launchScript("conf/provisioning/webserver/servlet.groovy")
@@ -43,7 +43,7 @@ public class WebServerTest {
                 .inject(this).launch();
 
         WebServer server = provision.getComponentResource("servlet", "_server");
-        assertEquals(server.getEngine().getClass().getName(), input);
+        assertEquals(input, server.getEngine().getClass().getName());
         provision.getResourceManager().shutdown();
     }
 

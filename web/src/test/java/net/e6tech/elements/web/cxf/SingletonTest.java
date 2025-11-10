@@ -40,8 +40,8 @@ public class SingletonTest {
     @SuppressWarnings("squid:S2925")
     @Test
     void basic() {
-        setupServer(9000);
-        RestfulProxy proxy = new RestfulProxy("http://localhost:9000/restful");
+        setupServer(9011);
+        RestfulProxy proxy = new RestfulProxy("http://localhost:9011/restful");
         HelloWorldRS hello = proxy.newProxy(HelloWorldRS.class);
         wait(() -> {
             proxy.setRequestProperty("HELLO", "1");

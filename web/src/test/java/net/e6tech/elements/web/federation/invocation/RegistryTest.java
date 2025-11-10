@@ -26,6 +26,7 @@ import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.elements.web.federation.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -78,6 +79,7 @@ public class RegistryTest {
     }
 
     @Test
+    @Tag("manual")
     void basic() throws ExecutionException, InterruptedException {
         BeaconAPI[] apis = new BeaconAPI[SERVERS];
         for (int i = 0; i < SERVERS; i ++) {

@@ -69,7 +69,7 @@ public class GenesisTest {
         List<GenesisImpl> gens = new LinkedList<>();
         List<AtomicBoolean> recvs = new LinkedList<>();
         for (int i = 0; i < size; i++) {
-            gens.add(create(3903 + i));
+            gens.add(create(3920 + i));
             recvs.add(new AtomicBoolean(false));
             gens.get(i).getCluster().register("x", X.class, new XImpl(gens.get(i).getCluster()));
         }
@@ -90,7 +90,7 @@ public class GenesisTest {
         List<GenesisImpl> gens = new LinkedList<>();
         List<AtomicBoolean> recvs = new LinkedList<>();
         for (int i = 0; i < size; i++) {
-            gens.add(create(3903 + i));
+            gens.add(create(3910+ i));
             recvs.add(new AtomicBoolean(false));
         }
 
@@ -123,7 +123,7 @@ public class GenesisTest {
         List<GenesisImpl> gens = new LinkedList<>();
         List<AtomicBoolean> recvs = new LinkedList<>();
         for (int i = 0; i < size; i++) {
-            gens.add(create(3903 + i));
+            gens.add(create(3940 + i));
             recvs.add(new AtomicBoolean(false));
         }
 
@@ -185,8 +185,8 @@ public class GenesisTest {
 
     @Test
     void count() throws Exception {
-        GenesisImpl genesis = create(3903);
-        create(3904);
+        GenesisImpl genesis = create(3905);
+        create(3906);
 
         while (genesis.getRegistry().routes("blah", Reactor.class).size() < 2)
             Thread.sleep(100);
