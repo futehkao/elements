@@ -35,7 +35,7 @@ public class WebServerTest {
     public Provision provision;
 
     @ParameterizedTest
-    @ValueSource(strings = {"net.e6tech.elements.web.webserver.tomcat.TomcatWebEngine"})
+    @ValueSource(strings = {"net.e6tech.elements.web.webserver.jetty.JettyWebEngine"})
     public void testServlet(String input) throws Exception {
 
         new LaunchController().launchScript("conf/provisioning/webserver/servlet.groovy")

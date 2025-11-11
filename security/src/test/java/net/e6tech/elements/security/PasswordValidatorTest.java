@@ -19,6 +19,7 @@ public class PasswordValidatorTest {
         assertFalse(PasswordValidator.validate("12345"));
         assertFalse(PasswordValidator.validate("123456"));
         assertFalse(PasswordValidator.validate("1234567"));
+        assertFalse(PasswordValidator.validate("123456789012"));
         // too long (32 limit)                  01234567890123456789012345678901
         assertFalse(PasswordValidator.validate("BarryMeyer11234567890123456789012"));
         // does minimum of 3 groups
@@ -29,9 +30,9 @@ public class PasswordValidatorTest {
         assertFalse(PasswordValidator.validate("BARRYMEYER@"));
         assertFalse(PasswordValidator.validate("1234567@"));
         // valid passwords
-        assertTrue(PasswordValidator.validate("BarryMeyer1"));
-        assertTrue(PasswordValidator.validate("BarryMeyer!"));
-        assertTrue(PasswordValidator.validate("barry12!"));
-        assertTrue(PasswordValidator.validate("BARRY12!"));
+        assertTrue(PasswordValidator.validate("BarrrrrryMeyer1"));
+        assertTrue(PasswordValidator.validate("BarrrrrryMeyer!"));
+        assertTrue(PasswordValidator.validate("barrrrrrrrry12!"));
+        assertTrue(PasswordValidator.validate("BARRrrrrrrrY12!"));
     }
 }
