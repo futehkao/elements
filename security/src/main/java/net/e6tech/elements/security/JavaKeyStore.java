@@ -99,11 +99,11 @@ public class JavaKeyStore {
     }
 
     // CN=www.companyname.com,OU=IT,O=<Company Name>,L=Austin,ST=Texas,C=US,E=user@companyname.com
-    public static X509Certificate generateSelfSignedCertificate(String info, KeyPair pair, int years) {
+    public static X509Certificate generateSelfSignedCertificate(String info, KeyPair pair, long years) { //years must be long to prevent overflow in the middle of calculation
         try {
             X500Principal principal = new X500Principal(info);
             Date notBefore = new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000L);
-            Date notAfter = new Date(System.currentTimeMillis() + years * 365 * 24 * 60 * 60 * 1000L);
+            Date notAfter = new Date(System.currentTimeMillis() + 365 * 24 * 60 * 60 * 1000L * years); // "years" is long now so no overflow but if it was int it would overflow total result
             BigInteger serial = BigInteger.valueOf(System.currentTimeMillis());
             X509v3CertificateBuilder certGen = new JcaX509v3CertificateBuilder(
                     principal, serial,
