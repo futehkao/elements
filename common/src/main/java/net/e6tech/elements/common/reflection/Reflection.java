@@ -27,9 +27,12 @@ import net.e6tech.elements.common.util.lambda.Each;
 
 import java.beans.*;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.HttpURLConnection;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -423,17 +426,23 @@ public class Reflection {
     public static <V> V getField(Object object, String fieldName) {
         Field field = getField(object.getClass(), fieldName);
         try {
-            return (V) field.get(object);
-        } catch (IllegalAccessException e) {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(object.getClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findVarHandle(object.getClass(), field.getName(), field.getType());
+            return (V) varHandle.get(object);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    public static void setField(Object object, String fieldName, Object value) {
-        Field field = getField(object.getClass(), fieldName);
+    public static void setField(Object object, Field field, Object value) {
+        if (field == null) {
+            throw new IllegalStateException("can not set the field. the field is null");
+        }
         try {
-            field.set(object, value);
-        } catch (IllegalAccessException e) {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(object.getClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findVarHandle(object.getClass(), field.getName(), field.getType());
+            varHandle.set(object, value);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
     }
@@ -442,10 +451,8 @@ public class Reflection {
         Class cls = clazz;
         while (cls != null && !cls.equals(Object.class)) {
             try {
-                Field field = cls.getDeclaredField(fieldName);
-                field.setAccessible(true);
-                return field;
-            } catch (Exception e) {
+                return cls.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
                 Logger.suppress(e);
             }
             try {

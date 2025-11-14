@@ -100,9 +100,7 @@ public class Provision {
             Object from = map.get(f.getName());
             if (from != null) {
                 try {
-                    f.setAccessible(true);
                     f.set(this, converter.convert(from, f, null, null));
-                    f.setAccessible(false);
                 } catch (Exception e) {
                     throw new SystemException(e);
                 }

@@ -17,6 +17,7 @@ package net.e6tech.elements.network.restful;
 
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
@@ -31,9 +32,13 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.*;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -46,7 +51,6 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();
-    private static Field urlMethod;
 
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
@@ -454,16 +458,21 @@ public class RestfulClient {
                 else conn.setRequestProperty("Content-Type", marshaller.getContentType());
             }
 
+//          TODO: new client needed for PATH method
+//            HttpRequest request = HttpRequest.newBuilder()
+//                    .uri(URI.create("https://example.com"))
+//                    .method("DELETE", HttpRequest.BodyPublishers.noBody())
+//                    .build();
+//            HttpClient client = HttpClient.newHttpClient();
+//            HttpResponse<String> response1 =
+//                    client.send(request, HttpResponse.BodyHandlers.ofString());
+
             try {
                 conn.setRequestMethod(method);
             } catch (ProtocolException ex) {
-                Field field = urlMethod;
-                if (field == null) {
-                    field = HttpURLConnection.class.getDeclaredField("method");
-                    field.setAccessible(true);
-                    urlMethod = field;
-                }
-                field.set(conn, method);
+                // TODO: wont work for PATCH. Most likely it was needed exactly and only for it
+//                Field field = Reflection.getField(HttpURLConnection.class, "method");
+//                Reflection.setField(conn, field, method);
             }
             setConnectionProperties(conn);
             loadRequestProperties(conn, requestProperties);
