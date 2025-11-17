@@ -34,6 +34,7 @@ import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.Reflection;
 
 /**
  * Subclassed from HikariDataSource to support connectionInitStatments.
@@ -194,22 +195,21 @@ public class ElementsHikariDataSource extends HikariDataSource {
             return false;
         }
 
-        Field fastField = HikariDataSource.class.getDeclaredField("fastPathPool");
-        Field poolField = HikariDataSource.class.getDeclaredField("pool");
-        fastField.setAccessible(true);
-        poolField.setAccessible(true);
-        HikariPool pool = (HikariPool) fastField.get(this);
+        Field fastField = Reflection.getField(HikariDataSource.class, "fastPathPool");
+        Field poolField = Reflection.getField(HikariDataSource.class, "pool");
+
+        HikariPool pool = Reflection.getFieldValue(this, poolField);
         if (pool != null) {
-            fastField.set(this, null);
+            Reflection.setField(this, fastField, null);
         } else {
-            pool = (HikariPool) poolField.get(this);
+            pool = Reflection.getFieldValue(this, poolField);
         }
 
         if (pool != null) {
             lastReset = System.currentTimeMillis();
             resetCount++;
             logger.warn("Reset HikariPool due to getConnection timeout.");
-            poolField.set(this, null);
+            Reflection.setField(this, poolField, null);
             if (isAllowPoolSuspension())
                 pool.suspendPool();
             unregisterPool(pool);

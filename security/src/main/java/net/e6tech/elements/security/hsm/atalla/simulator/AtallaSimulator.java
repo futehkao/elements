@@ -17,6 +17,7 @@
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.security.Hex;
 import net.e6tech.elements.security.hsm.Simulator;
 import net.e6tech.elements.security.hsm.atalla.Message;
@@ -25,6 +26,8 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.security.GeneralSecurityException;
@@ -61,15 +64,14 @@ public class AtallaSimulator extends Simulator {
     public AtallaSimulator() throws GeneralSecurityException {
         Field[] fields = AtallaSimulator.class.getDeclaredFields();
         for (Field f : fields) {
-            if (Modifier.isStatic(f.getModifiers())
-                    && f.getType().isAssignableFrom(String.class)) {
-                f.setAccessible(true);
+            if (Modifier.isStatic(f.getModifiers()) && f.getType().isAssignableFrom(String.class)) {
                 try {
-                    String value = (String) f.get(null);
+                    String value = Reflection.getFieldValue(this, f);
+
                     String[] keyComponents = value.split(",");
                     if (keyComponents.length == 2)
                         keys.put(f.getName(), value);
-                } catch (IllegalAccessException e) {
+                } catch (IllegalStateException e) {
                     Logger.suppress(e);
                 }
             }

@@ -28,6 +28,9 @@ import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -177,11 +180,19 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
                 if (typed == null)
                     continue;
                 if (method.getParameterCount() == 1) {
-                    method.setAccessible(true);
+                    Class<?> paramType = method.getParameterTypes()[0];
+                    MethodHandle methodHandle;
+                    try {
+                        MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(method.getDeclaringClass(), MethodHandles.lookup());
+                        MethodType methodType = MethodType.methodType(method.getReturnType(), paramType);
+                        methodHandle = privateLookup.findVirtual(cls, method.getName(), methodType);
+                    } catch (IllegalAccessException | NoSuchMethodException e) {
+                        throw new SystemException("Couldn't  create method handle for method  " + method.getName());
+                    }
                     if (Signal.class.isAssignableFrom(method.getParameterTypes()[0])) {
-                        list.add(new OnSignal(method));
+                        list.add(new OnSignal(method, methodHandle));
                     } else {
-                        list.add(new OnMessage(method));
+                        list.add(new OnMessage(method, methodHandle));
                     }
 
                 } else {
@@ -274,11 +285,13 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
     abstract static class MessageBuilder {
         protected boolean behavior;
         protected Method method;
+        protected MethodHandle methodHandle;
         private String signature;
 
-        MessageBuilder(Method method) {
+        MessageBuilder(Method method, MethodHandle methodHandle) {
             this.behavior = Behavior.class.isAssignableFrom(method.getReturnType());
             this.method = method;
+            this.methodHandle = methodHandle;
             StringBuilder builder = new StringBuilder();
             builder.append(method.getName());
             builder.append("(");
@@ -305,8 +318,8 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
     static class OnMessage extends MessageBuilder {
         private static final BiConsumer<Object, Object> NO_OP = (arg, ret) -> {};
 
-        OnMessage(Method method) {
-            super(method);
+        OnMessage(Method method, MethodHandle methodHandle) {
+            super(method, methodHandle);
         }
 
         @SuppressWarnings("squid:S3776")
@@ -344,28 +357,42 @@ public abstract class Receptor<T, R extends Receptor<T, R>> {
                 }
                 eventCache.put(method, consumer);
             }
+
+            final Class<?> msgType = methodHandle.type().parameterType(0);
+            final MethodHandle invokeMethod = methodHandle.bindTo(target).asType(MethodType.methodType(Object.class, msgType));
+
             BiConsumer<Object, Object> responder = consumer;
-            return builder.onMessage(method.getParameterTypes()[0],
-                    m -> {
-                        Object ret = method.invoke(target, m);
-                        responder.accept(m, ret);
-                        return (behavior) ? ret : Behaviors.same();
-                    });
+            return builder.onMessage(msgType, arg -> {
+                Object ret;
+                try {
+                    ret = invokeMethod.invoke(arg);
+                } catch (Throwable e) {
+                    throw new SystemException("couldn't invoke method " + method.getName());
+                }
+                responder.accept(arg, ret);
+                return (behavior) ? ret : Behaviors.same();
+            });
         }
     }
 
     static class OnSignal extends MessageBuilder {
-        OnSignal(Method method) {
-            super(method);
+        OnSignal(Method method, MethodHandle methodHandle) {
+            super(method, methodHandle);
         }
 
         @Override
         public ReceiveBuilder build(ReceiveBuilder builder, Object target) {
-            return builder.onSignal(method.getParameterTypes()[0],
-                    m -> {
-                        Object ret = method.invoke(target, m);
-                        return (behavior) ? ret : Behaviors.same();
-                    });
+            final Class<?> msgType = methodHandle.type().parameterType(0);
+            final MethodHandle invokeMethod = methodHandle.bindTo(target).asType(MethodType.methodType(Object.class, msgType));
+
+            return builder.onSignal(method.getParameterTypes()[0], arg -> {
+                try {
+                    Object ret = invokeMethod.invoke(arg);
+                    return (behavior) ? ret : Behaviors.same();
+                } catch (Throwable e) {
+                    throw new SystemException("couldn't invoke method " + method.getName());
+                }
+            });
         }
     }
 

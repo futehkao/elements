@@ -41,6 +41,8 @@ import net.e6tech.elements.common.util.concurrent.ObjectPool;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -251,14 +253,15 @@ public class Interceptor {
                 }
 
                 DynamicType.Builder builder = newSingletonBuilder((Class<T>) anonymousClass);
-                Class p;
-                p = builder.make()
+                Class proxyClass = builder.make()
                         .load(anonymousClass.getClassLoader(), strategy)
                         .getLoaded();
-                Field field = p.getDeclaredField(HANDLER_FIELD);
-                field.setAccessible(true);
+                Field field = proxyClass.getDeclaredField(HANDLER_FIELD);
+                MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(proxyClass, MethodHandles.lookup());
+                VarHandle varHandle = privateLookup.findStaticVarHandle(proxyClass, field.getName(), field.getType());
+
                 InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
-                        p,
+                        proxyClass,
                         null,
                         null,
                         ctx -> { // the use of anonymousThreadLocal is necessary because the wrapper is only created once and cached.
@@ -273,26 +276,39 @@ public class Interceptor {
                             },
                         null,
                         null);
-                field.set(null, wrapper);
+
+                varHandle.set(wrapper);
 
                 Field[] fields = anonymousClass.getDeclaredFields();
                 AnonymousDescriptor desc = new AnonymousDescriptor();
                 Field[] copy = new Field[fields.length];
                 copy[0] = fields[fields.length - 1];
                 System.arraycopy(fields, 0, copy, 1,fields.length - 1);
-                desc.fields = copy;
-                for (Field f : desc.fields)
-                    f.setAccessible(true);
-                desc.classes = new Class[copy.length];
-                for (int i = 0; i < copy.length; i++)
-                    desc.classes[i] = copy[i].getType();
-                desc.constructor = p.getDeclaredConstructor(desc.classes);
+
+                Class<?>[] paramTypes = new Class<?>[copy.length];
+                for (int i = 0; i < copy.length; i++) {
+                    paramTypes[i] = copy[i].getType();
+                }
+
+                MethodHandles.Lookup anonPL  = MethodHandles.privateLookupIn(anonymousClass, MethodHandles.lookup());
+                MethodHandles.Lookup proxyPL = MethodHandles.privateLookupIn(proxyClass,     MethodHandles.lookup());
+
+                VarHandle[] varHandles = new VarHandle[copy.length];
+                for (int i = 0; i < copy.length; i++) {
+                    Field f = copy[i];
+                    varHandles[i] = anonPL.findVarHandle(anonymousClass, f.getName(), f.getType());
+                }
+                desc.varHandles = varHandles;
+
+                MethodType ctorType = MethodType.methodType(void.class, paramTypes);
+                desc.constructorHandle = proxyPL.findConstructor(proxyClass, ctorType);
+
                 return desc;
             });
 
             anonymousThreadLocal.set(target);
             descriptor.construct(anonymous);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new SystemException(e);
         } finally {
             anonymousThreadLocal.remove();
@@ -300,15 +316,15 @@ public class Interceptor {
     }
 
     private static final class AnonymousDescriptor {
-        Field[] fields;
-        Class[] classes;
-        Constructor constructor;
+        VarHandle[] varHandles;
+        MethodHandle constructorHandle;
 
-        final void construct(final Object anonymous) throws IllegalAccessException, InvocationTargetException, InstantiationException {
-            Object[] values = new Object[fields.length];
-            for (int i = 0; i < values.length; i++)
-                values[i] = fields[i].get(anonymous);
-            constructor.newInstance(values);
+        void construct(final Object anonymous) throws Throwable {
+            Object[] args = new Object[varHandles.length];
+            for (int i = 0; i < args.length; i++) {
+                args[i] = varHandles[i].get(anonymous);
+            }
+            constructorHandle.invokeWithArguments(args);
         }
     }
 

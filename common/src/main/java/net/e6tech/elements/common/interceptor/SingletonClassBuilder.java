@@ -18,6 +18,8 @@ package net.e6tech.elements.common.interceptor;
 
 import net.e6tech.elements.common.util.SystemException;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.util.concurrent.ExecutionException;
 
@@ -41,7 +43,10 @@ public class SingletonClassBuilder<T> extends AbstractBuilder<Class<T>, Singleto
             Class proxyClass = interceptor.singletonClasses.get(cls,
                     () -> interceptor.loadClass(interceptor.newSingletonBuilder(cls).make(), cls, classLoader));
             Field field = proxyClass.getDeclaredField(Interceptor.HANDLER_FIELD);
-            field.setAccessible(true);
+
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findStaticVarHandle(proxyClass, field.getName(), field.getType());
+
             Interceptor.InterceptorHandlerWrapper wrapper = new Interceptor.InterceptorHandlerWrapper(interceptor,
                     proxyClass,
                     null,
@@ -49,7 +54,9 @@ public class SingletonClassBuilder<T> extends AbstractBuilder<Class<T>, Singleto
                     handler,
                     listener,
                     newObject);
-            field.set(null, wrapper);
+
+            varHandle.set(wrapper);
+
             return proxyClass;
         } catch (ExecutionException e) {
             throw new SystemException(e.getCause());

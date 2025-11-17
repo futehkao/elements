@@ -51,6 +51,7 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();
+    private static Field urlMethod;
 
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
@@ -470,9 +471,12 @@ public class RestfulClient {
             try {
                 conn.setRequestMethod(method);
             } catch (ProtocolException ex) {
-                // TODO: wont work for PATCH. Most likely it was needed exactly and only for it
-//                Field field = Reflection.getField(HttpURLConnection.class, "method");
-//                Reflection.setField(conn, field, method);
+                try { //TODO: wont work without --add-open anyway
+                    Reflection.setField(conn, "method", method);
+
+                } catch (Exception e) {
+                    throw new SystemException(e);
+                }
             }
             setConnectionProperties(conn);
             loadRequestProperties(conn, requestProperties);

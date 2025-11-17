@@ -23,8 +23,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.security.*;
 import java.util.Base64;
 import java.util.Map;
@@ -82,78 +80,8 @@ public class SymmetricCipher {
         initialized = true;
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
-        String version = System.getProperty("java.version");
-        String[] components = version.split("\\.");
-
-        int major;
-        if (components[0].equals("1")) {
-            try {
-                major = Integer.valueOf(components[1]);
-            } catch (NumberFormatException ex) {
-                major = 8;
-            }
-        } else {
-            try {
-                major = Integer.valueOf(components[0]);
-            } catch (NumberFormatException ex) {
-                major = 9;
-            }
-        }
-        if (major >= 9)
-            unlimitedCrypto9();
-        else
-            unlimitedCrypto8();
-    }
-
-    @SuppressWarnings("squid:CommentedOutCodeLine")
-    private static void unlimitedCrypto9() {
         // In Java 9, default is unlimited.
         // Security.setProperty("crypto.policy", "unlimited");
-    }
-
-    @SuppressWarnings("squid:CommentedOutCodeLine")
-    private static void unlimitedCrypto8() {
-        try {
-            /*
-             * Do the following, but with reflection to bypass access checks:
-             *
-             * JceSecurity.isRestricted = false;
-             * JceSecurity.defaultPolicy.perms.clear();
-             * JceSecurity.defaultPolicy.add(CryptoAllPermission.INSTANCE);
-             */
-            final Class<?> jceSecurity = Class.forName("javax.crypto.JceSecurity");
-            final Class<?> cryptoPermissions = Class.forName("javax.crypto.CryptoPermissions");
-            final Class<?> cryptoAllPermission = Class.forName("javax.crypto.CryptoAllPermission");
-
-            final Field isRestrictedField = jceSecurity.getDeclaredField("isRestricted");
-            isRestrictedField.setAccessible(true);
-
-            // isRestrictedField is static final.  We need to change its modifiers field
-            // before we can change the its value.
-            Field modifiersField = Field.class.getDeclaredField("modifiers");
-            modifiersField.setAccessible(true);
-            int origMod = isRestrictedField.getModifiers();
-            modifiersField.setInt(isRestrictedField, isRestrictedField.getModifiers() & ~Modifier.FINAL);
-            isRestrictedField.set(null, false);
-            // ok change it back to before.
-            modifiersField.setInt(isRestrictedField, origMod);
-
-            final Field defaultPolicyField = jceSecurity.getDeclaredField("defaultPolicy");
-            defaultPolicyField.setAccessible(true);
-            final PermissionCollection defaultPolicy = (PermissionCollection) defaultPolicyField.get(null);
-
-            final Field perms = cryptoPermissions.getDeclaredField("perms");
-            perms.setAccessible(true);
-            ((Map<?, ?>) perms.get(defaultPolicy)).clear();
-
-            final Field instance = cryptoAllPermission.getDeclaredField("INSTANCE");
-            instance.setAccessible(true);
-            defaultPolicy.add((Permission) instance.get(null));
-
-            logger.info("Successfully removed cryptography restrictions");
-        } catch (final Exception e) {
-            logger.warn("Failed to remove cryptography restrictions", e);
-        }
     }
 
     public boolean isBase64() {

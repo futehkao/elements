@@ -31,6 +31,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.xml.bind.DatatypeConverter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -169,6 +170,7 @@ public class ScratchPad {
     @Test
     void methodHandle() throws Throwable {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
+
         Method method = BindPropX.class.getDeclaredMethod("setA", BindPropA.class);
         MethodHandle mh = lookup.unreflect(method);
 
@@ -191,20 +193,22 @@ public class ScratchPad {
         System.out.println("reflection " + (System.currentTimeMillis() - start));
 
         Field field = BindPropX.class.getDeclaredField("a");
-        field.setAccessible(true);
+        MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(BindPropX.class, MethodHandles.lookup());
 
-        mh = lookup.unreflectSetter(field);
+        mh = privateLookup.unreflectSetter(field);
         mh.invoke(x, a);
         start = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
             mh.invoke(x, a);
         }
-        System.out.println("method handle setter " + (System.currentTimeMillis() - start));
+        System.out.println("private method handle setter " + (System.currentTimeMillis() - start));
 
-        field.set(x, a);
+        VarHandle varHandle = privateLookup.findVarHandle(BindPropX.class, "a", BindPropA.class);
+        varHandle.set(x, a);
+
         start = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
-            field.set(x, a);
+            varHandle.set(x, a);
         }
         System.out.println("reflection " + (System.currentTimeMillis() - start));
     }

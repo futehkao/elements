@@ -128,13 +128,10 @@ public class Accessor {
             return this; // already set via property descriptor
         name = field.getName();
         type = field.getType();
-
-        if (!Modifier.isPublic(field.getModifiers()))
-            field.setAccessible(true);
-
         try {
-            this.setter = lookup.unreflectSetter(field);
-            this.getter = lookup.unreflectGetter(field);
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), lookup);
+            this.setter = privateLookup.unreflectSetter(field);
+            this.getter = privateLookup.unreflectGetter(field);
         } catch (Exception e) {
             throw new SystemException(e);
         }

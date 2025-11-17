@@ -31,7 +31,7 @@ public class DualBaseCase {
                 "launch=./conf/provisioning/sample2/sample2.groovy", "home=.", "name=sample2", "end");
     }
 
-//    @Test
+    @Test
     void basic() {
 
     }

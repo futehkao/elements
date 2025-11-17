@@ -423,11 +423,24 @@ public class Reflection {
         }
     }
 
-    public static <V> V getField(Object object, String fieldName) {
+    public static <V> V getFieldValue(Object object, String fieldName) {
         Field field = getField(object.getClass(), fieldName);
         try {
-            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(object.getClass(), MethodHandles.lookup());
-            VarHandle varHandle = privateLookup.findVarHandle(object.getClass(), field.getName(), field.getType());
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+            return (V) varHandle.get(object);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static <V> V getFieldValue(Object object, Field field) {
+        if (field == null) {
+            throw new IllegalStateException("can not get the field value. the field is null");
+        }
+        try {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
             return (V) varHandle.get(object);
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw new IllegalStateException(e);
@@ -439,12 +452,17 @@ public class Reflection {
             throw new IllegalStateException("can not set the field. the field is null");
         }
         try {
-            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(object.getClass(), MethodHandles.lookup());
-            VarHandle varHandle = privateLookup.findVarHandle(object.getClass(), field.getName(), field.getType());
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
             varHandle.set(object, value);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    public static void setField(Object object, String fieldName, Object value) {
+        Field field = getField(object.getClass(), fieldName);
+        setField(object, field, value);
     }
 
     public static Field getField(Class clazz, String fieldName) {
@@ -461,7 +479,7 @@ public class Reflection {
                 throw new IllegalStateException(e);
             }
         }
-        throw new IllegalStateException("No bankId defined");
+        throw new IllegalStateException("Field " + fieldName + " not found for class " + clazz.getName());
     }
 
     public static Class getParametrizedType(Class clazz, int index) {
