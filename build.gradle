@@ -24,7 +24,7 @@ ext.findbugsVersion = '3.0.2'
 ext.lmaxDisruptorVerion = '3.4.2'
 ext.slf4jVersion = '1.7.36'
 ext.groovyVersion = '3.0.21'
-ext.guavaVerions = '31.1-jre'  // Using 31.1-jre to avoid Android/JRE variant ambiguity
+ext.guavaVerions = '33.5.0-jre'  // Using explicit -jre variant to avoid Android/JRE ambiguity
 ext.scalaVersion = '2.13.10'
 ext.akkaVersion = '2.6.9'
 ext.akkaScalaVersion = '2.13'
@@ -74,6 +74,21 @@ allprojects {
     apply plugin: 'java'
 
     sourceCompatibility = 1.8
+
+    // Fix for Guava JRE vs Android ambiguity in Gradle 6.x
+    configurations.all {
+        resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'com.google.guava' && details.requested.name == 'guava') {
+                details.because('Enforce JRE variant to avoid Android/JRE ambiguity')
+                details.useTarget("${details.requested.group}:${details.requested.name}:${guavaVerions}")
+            }
+        }
+
+        // Additional attribute configuration for Gradle 6.x
+        attributes {
+            attribute(Attribute.of('org.gradle.jvm.environment', String), 'standard-jvm')
+        }
+    }
 
     tasks.withType(Javadoc) {
         options.addStringOption('Xdoclint:syntax', '-quiet')
