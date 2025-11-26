@@ -16,8 +16,6 @@
 
 package net.e6tech.elements.common.interceptor;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
@@ -42,8 +40,8 @@ import net.e6tech.elements.common.util.concurrent.ObjectPool;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by futeh.
@@ -52,22 +50,28 @@ import java.util.concurrent.TimeUnit;
 public class Interceptor {
     static final String HANDLER_FIELD = "handler";
 
-    private static Interceptor instance = new Interceptor();
+    private static Interceptor instance = new Interceptor(Provision.cacheGrandeInitialCapacity, Provision.cacheGrandeInitialCapacity * 2);
 
     private static ThreadLocal<Object> anonymousThreadLocal = new ThreadLocal<>();
 
     private int initialCapacity = 100;
-    private int maximumSize = 2000;
+    private int maximumSize = 1000;
     private long expiration = 180 * 60 * 1000L; // three hours
-    private Cache<Class, Class> proxyClasses;
-    Cache<Class, Class> singletonClasses;
-    private Cache<Class, AnonymousDescriptor> anonymousClasses;
+    private Map<Class, Class> proxyClasses;
+    Map<Class, Class> singletonClasses;
+    private Map<Class, AnonymousDescriptor> anonymousClasses;
 
     public static Interceptor getInstance() {
         return instance;
     }
 
     public Interceptor() {
+        initialize();
+    }
+
+    public Interceptor(int initialCapacity, int maximumSize) {
+        this.initialCapacity = initialCapacity;
+        this.maximumSize = maximumSize;
         initialize();
     }
 
@@ -95,13 +99,8 @@ public class Interceptor {
         this.expiration = expiration;
     }
 
-    private <T> Cache<Class, T> createCache() {
-        return CacheBuilder.newBuilder()
-                .initialCapacity(initialCapacity)
-                .maximumSize(maximumSize)
-                .expireAfterWrite(expiration, TimeUnit.MILLISECONDS)
-                .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-                .build();
+    private <T> Map<Class, T> createCache() {
+        return new ConcurrentHashMap<>(initialCapacity, 0.75f, Provision.cacheBuilderConcurrencyLevel);
     }
 
     public void initialize() {
@@ -229,65 +228,71 @@ public class Interceptor {
      * setName and setInt would be called on x.
      */
     public <T> void runAnonymous(MethodHandles.Lookup lookup, T target, T anonymous) {
+        if (anonymousClasses.size() > maximumSize)
+            anonymousClasses.clear();
         Class anonymousClass = anonymous.getClass();
         try {
-            AnonymousDescriptor descriptor = anonymousClasses.get(anonymousClass, () -> {
-                ClassLoadingStrategy strategy;
-                Class<?> enclosingClass = anonymousClass.getEnclosingClass();
-                if (lookup == null && enclosingClass != null && ClassInjector.UsingLookup.isAvailable() && Modifier.isPublic(enclosingClass.getModifiers())) {
-                    Class<?> methodHandles = Class.forName("java.lang.invoke.MethodHandles");
-                    Method lookupMethod = methodHandles.getMethod("lookup");
-                    DynamicType.Unloaded unloaded = new ByteBuddy()
-                            .subclass(enclosingClass)
-                            .defineMethod("_methodHandlesLookup", MethodHandles.Lookup.class, Modifier.PUBLIC ^ Modifier.STATIC)
-                            .intercept(MethodCall.invoke(lookupMethod))
-                            .make();
-                    Class enclosingClass2 = loadClass(unloaded, enclosingClass, null);
-                    Method enclosingLookup = enclosingClass2.getMethod("_methodHandlesLookup");
-                    MethodHandles.Lookup lookup2 = (MethodHandles.Lookup) enclosingLookup.invoke(null);
-                    strategy = getClassLoadingStrategy(lookup2, anonymousClass);
-                } else {
-                    strategy = getClassLoadingStrategy(lookup, anonymousClass);
-                }
+            AnonymousDescriptor descriptor = anonymousClasses.computeIfAbsent(anonymousClass, key -> {
+                try {
+                    ClassLoadingStrategy strategy;
+                    Class<?> enclosingClass = anonymousClass.getEnclosingClass();
+                    if (lookup == null && enclosingClass != null && ClassInjector.UsingLookup.isAvailable() && Modifier.isPublic(enclosingClass.getModifiers())) {
+                        Class<?> methodHandles = Class.forName("java.lang.invoke.MethodHandles");
+                        Method lookupMethod = methodHandles.getMethod("lookup");
+                        DynamicType.Unloaded unloaded = new ByteBuddy()
+                                .subclass(enclosingClass)
+                                .defineMethod("_methodHandlesLookup", MethodHandles.Lookup.class, Modifier.PUBLIC ^ Modifier.STATIC)
+                                .intercept(MethodCall.invoke(lookupMethod))
+                                .make();
+                        Class enclosingClass2 = loadClass(unloaded, enclosingClass, null);
+                        Method enclosingLookup = enclosingClass2.getMethod("_methodHandlesLookup");
+                        MethodHandles.Lookup lookup2 = (MethodHandles.Lookup) enclosingLookup.invoke(null);
+                        strategy = getClassLoadingStrategy(lookup2, anonymousClass);
+                    } else {
+                        strategy = getClassLoadingStrategy(lookup, anonymousClass);
+                    }
 
-                DynamicType.Builder builder = newSingletonBuilder((Class<T>) anonymousClass);
-                Class p;
-                p = builder.make()
-                        .load(anonymousClass.getClassLoader(), strategy)
-                        .getLoaded();
-                Field field = p.getDeclaredField(HANDLER_FIELD);
-                field.setAccessible(true);
-                InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
-                        p,
-                        null,
-                        null,
-                        ctx -> { // the use of anonymousThreadLocal is necessary because the wrapper is only created once and cached.
-                            Throwable th = new Throwable();
-                            StackTraceElement[] elements = th.getStackTrace();
-                            if (elements[3].getClassName().equals(anonymousClass.getName())) { // only for calls made within the anonymous class
-                                Object t = anonymousThreadLocal.get();
-                                return ctx.invoke(t);
-                            } else {
-                                return Primitives.defaultValue(ctx.getMethod().getReturnType());
-                            }
+                    DynamicType.Builder builder = newSingletonBuilder((Class<T>) anonymousClass);
+                    Class p;
+                    p = builder.make()
+                            .load(anonymousClass.getClassLoader(), strategy)
+                            .getLoaded();
+                    Field field = p.getDeclaredField(HANDLER_FIELD);
+                    field.setAccessible(true);
+                    InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
+                            p,
+                            null,
+                            null,
+                            ctx -> { // the use of anonymousThreadLocal is necessary because the wrapper is only created once and cached.
+                                Throwable th = new Throwable();
+                                StackTraceElement[] elements = th.getStackTrace();
+                                if (elements[3].getClassName().equals(anonymousClass.getName())) { // only for calls made within the anonymous class
+                                    Object t = anonymousThreadLocal.get();
+                                    return ctx.invoke(t);
+                                } else {
+                                    return Primitives.defaultValue(ctx.getMethod().getReturnType());
+                                }
                             },
-                        null,
-                        null);
-                field.set(null, wrapper);
+                            null,
+                            null);
+                    field.set(null, wrapper);
 
-                Field[] fields = anonymousClass.getDeclaredFields();
-                AnonymousDescriptor desc = new AnonymousDescriptor();
-                Field[] copy = new Field[fields.length];
-                copy[0] = fields[fields.length - 1];
-                System.arraycopy(fields, 0, copy, 1,fields.length - 1);
-                desc.fields = copy;
-                for (Field f : desc.fields)
-                    f.setAccessible(true);
-                desc.classes = new Class[copy.length];
-                for (int i = 0; i < copy.length; i++)
-                    desc.classes[i] = copy[i].getType();
-                desc.constructor = p.getDeclaredConstructor(desc.classes);
-                return desc;
+                    Field[] fields = anonymousClass.getDeclaredFields();
+                    AnonymousDescriptor desc = new AnonymousDescriptor();
+                    Field[] copy = new Field[fields.length];
+                    copy[0] = fields[fields.length - 1];
+                    System.arraycopy(fields, 0, copy, 1, fields.length - 1);
+                    desc.fields = copy;
+                    for (Field f : desc.fields)
+                        f.setAccessible(true);
+                    desc.classes = new Class[copy.length];
+                    for (int i = 0; i < copy.length; i++)
+                        desc.classes[i] = copy[i].getType();
+                    desc.constructor = p.getDeclaredConstructor(desc.classes);
+                    return desc;
+                } catch (Exception ex) {
+                    throw new SystemException(ex);
+                }
             });
 
             anonymousThreadLocal.set(target);
@@ -344,21 +349,19 @@ public class Interceptor {
     }
 
     Class createInstanceClass(Class cls, ClassLoader classLoader) {
-        try {
-            return proxyClasses.get(cls, () -> {
-                DynamicType.Unloaded unloaded =
-                new ByteBuddy()
-                        .subclass(cls)
-                        .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
-                        .intercept(MethodDelegation.toField(HANDLER_FIELD))
-                        .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
-                        .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
-                        .make();
-                return loadClass(unloaded, cls, classLoader);
-            });
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        if (proxyClasses.size() > maximumSize)
+            proxyClasses.clear();
+        return proxyClasses.computeIfAbsent(cls, key -> {
+            DynamicType.Unloaded unloaded =
+            new ByteBuddy()
+                    .subclass(cls)
+                    .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
+                    .intercept(MethodDelegation.toField(HANDLER_FIELD))
+                    .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
+                    .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
+                    .make();
+            return loadClass(unloaded, cls, classLoader);
+        });
     }
 
     public static boolean isProxyObject(Object proxyObject) {

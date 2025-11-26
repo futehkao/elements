@@ -44,6 +44,11 @@ public class Provision {
 
     public static final int JVM_VERSION;
     public static Integer cacheBuilderConcurrencyLevel = 32;
+    public static Integer cacheVentiInitialCapacity = 5000;
+    public static Integer cacheGrandeInitialCapacity = 2000;
+    public static Integer cacheTallInitialCapacity = 500;
+    public static Integer cacheShortInitialCapacity = 100;
+
 
     private ResourceManager resourceManager;
     private boolean suppressLogging = false;

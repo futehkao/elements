@@ -31,6 +31,7 @@ import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -72,90 +73,11 @@ public class Reflection {
 
     private static final PrivateSecurityManager securityManager = new PrivateSecurityManager();
 
-    private static LoadingCache<Method, PropertyDescriptor> methodPropertyDescriptors = CacheBuilder.newBuilder()
-            .maximumSize(10000)
-            .initialCapacity(500)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
-            .build(new CacheLoader<Method, PropertyDescriptor>() {
-                public PropertyDescriptor load(Method method) throws IntrospectionException {
-                    String name = method.getName();
-                    Parameter[] parameters = method.getParameters();
-                    String property ;
-                    if (name.startsWith("set")) {
-                        if (parameters.length != 1)
-                            throw new IllegalArgumentException("" + method.getName() + " is not a setter");
-                        property = name.substring(3);
-                    } else if (name.startsWith("get")) {
-                        if (parameters.length != 0)
-                            throw new IllegalArgumentException("" + method.getName() + " is not a getter");
-                        property = name.substring(3);
-                    } else if (name.startsWith("is")) {
-                        if (parameters.length != 0)
-                            throw new IllegalArgumentException("" + method.getName() + " is not a getter");
-                        property = name.substring(2);
-                    } else {
-                        throw new IllegalArgumentException("" + method.getName() + " is not an property accessor");
-                    }
+    private static final Map<Method, PropertyDescriptor> methodPropertyDescriptors = new ConcurrentHashMap<>(Provision.cacheGrandeInitialCapacity, 0.75f, Provision.cacheBuilderConcurrencyLevel);
 
-                    boolean lowerCase = true;
-                    if (property.length() > 1 && Character.isUpperCase(property.charAt(1)))
-                        lowerCase = false;
-                    if (lowerCase)
-                        property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
-                    return new PropertyDescriptor(property, method.getDeclaringClass());
-                }
-            });
+    private static final Map<Pair<Class, String>, PropertyDescriptor> propertyDescriptors = new ConcurrentHashMap<>(Provision.cacheGrandeInitialCapacity, 0.75f, Provision.cacheBuilderConcurrencyLevel);
 
-    private static LoadingCache<Pair<Class, String>, PropertyDescriptor> propertyDescriptors = CacheBuilder.newBuilder()
-            .maximumSize(10000)
-            .initialCapacity(500)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
-            .build(new CacheLoader<Pair<Class, String>, PropertyDescriptor>() {
-                @Override
-                public PropertyDescriptor load(Pair<Class, String> key) throws Exception {
-                    Class cls = key.key();
-                    String property = key.value();
-                    PropertyDescriptor descriptor;
-                    try {
-                        descriptor = new PropertyDescriptor(property, cls,
-                                "is" + TextSubstitution.capitalize(property), null);
-                    } catch (IntrospectionException e) {
-                        throw new SystemException(cls.getName() + "." + property, e);
-                    }
-                    return descriptor;
-                }
-            });
-
-    private static LoadingCache<Class, Type[]> parametrizedTypes = CacheBuilder.newBuilder()
-            .maximumSize(10000)
-            .initialCapacity(100)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
-            .build(new CacheLoader<Class, Type[]>() {
-                @Override
-                public Type[] load(Class clazz) throws Exception {
-                    Class cls = clazz;
-                    Type[] types = null;
-                    while (!cls.equals(Object.class)) {
-                        try {
-                            Type genericSuper = cls.getGenericSuperclass();
-                            if (genericSuper instanceof ParameterizedType) {
-                                ParameterizedType parametrizedType = (ParameterizedType) genericSuper;
-                                types = parametrizedType.getActualTypeArguments();
-                                break;
-                            }
-                        } catch (Exception th) {
-                            logger.warn(th.getMessage(), th);
-                        }
-                        cls = cls.getSuperclass();
-                    }
-                    if (types == null)
-                        throw new IllegalArgumentException("No parametrized types found");
-                    return types;
-                }
-            });
+    private static final Map<Class, Type[]> parametrizedTypes = new ConcurrentHashMap<>(Provision.cacheGrandeInitialCapacity, 0.75f, Provision.cacheBuilderConcurrencyLevel);
 
     static Logger logger = Logger.getLogger();
 
@@ -164,11 +86,37 @@ public class Reflection {
 
     // should use weak hash map
     public static PropertyDescriptor propertyDescriptor(Method method) {
-        try {
-            return methodPropertyDescriptors.get(method);
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        return methodPropertyDescriptors.computeIfAbsent(method, mth -> {
+            String name = method.getName();
+            Parameter[] parameters = method.getParameters();
+            String property ;
+            if (name.startsWith("set")) {
+                if (parameters.length != 1)
+                    throw new IllegalArgumentException("" + method.getName() + " is not a setter");
+                property = name.substring(3);
+            } else if (name.startsWith("get")) {
+                if (parameters.length != 0)
+                    throw new IllegalArgumentException("" + method.getName() + " is not a getter");
+                property = name.substring(3);
+            } else if (name.startsWith("is")) {
+                if (parameters.length != 0)
+                    throw new IllegalArgumentException("" + method.getName() + " is not a getter");
+                property = name.substring(2);
+            } else {
+                throw new IllegalArgumentException("" + method.getName() + " is not an property accessor");
+            }
+
+            boolean lowerCase = true;
+            if (property.length() > 1 && Character.isUpperCase(property.charAt(1)))
+                lowerCase = false;
+            if (lowerCase)
+                property = property.substring(0, 1).toLowerCase(ENGLISH) + property.substring(1);
+            try {
+                return new PropertyDescriptor(property, method.getDeclaringClass());
+            } catch (IntrospectionException e) {
+                throw new SystemException(e);
+            }
+        });
     }
 
     public static Class getCallingClass() {
@@ -413,11 +361,14 @@ public class Reflection {
     }
 
     public static PropertyDescriptor getPropertyDescriptor(Class cls, String property) {
-        try {
-            return propertyDescriptors.get(new Pair<>(cls, property));
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        return propertyDescriptors.computeIfAbsent(new Pair<>(cls, property), key -> {
+            try {
+                return new PropertyDescriptor(property, cls,
+                        "is" + TextSubstitution.capitalize(property), null);
+            } catch (IntrospectionException e) {
+                throw new SystemException(cls.getName() + "." + property, e);
+            }
+        });
     }
 
     public static <V> V getField(Object object, String fieldName) {
@@ -458,12 +409,25 @@ public class Reflection {
     }
 
     public static Class getParametrizedType(Class clazz, int index) {
-        Type[] types;
-        try {
-            types = parametrizedTypes.get(clazz);
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        Type[] types = parametrizedTypes.computeIfAbsent(clazz, cls -> {
+            Type[] tps = null;
+            while (!cls.equals(Object.class)) {
+                try {
+                    Type genericSuper = cls.getGenericSuperclass();
+                    if (genericSuper instanceof ParameterizedType) {
+                        ParameterizedType parametrizedType = (ParameterizedType) genericSuper;
+                        tps = parametrizedType.getActualTypeArguments();
+                        break;
+                    }
+                } catch (Exception th) {
+                    logger.warn(th.getMessage(), th);
+                }
+                cls = cls.getSuperclass();
+            }
+            if (tps == null)
+                throw new IllegalArgumentException("No parametrized types found");
+            return tps;
+        });
 
         if (types.length <= index) {
             throw new IllegalArgumentException("No parametrized type at index=" + index);

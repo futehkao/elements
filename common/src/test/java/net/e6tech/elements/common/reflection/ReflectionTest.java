@@ -19,6 +19,7 @@ package net.e6tech.elements.common.reflection;
 import net.e6tech.elements.common.Tags;
 import org.junit.jupiter.api.Test;
 
+import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +30,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tags.Common
 public class ReflectionTest {
+
+    @Test
+    public void getTest() throws NoSuchMethodException {
+        Class cls = Reflection.getParametrizedType(SubParametrized.class, 0);
+        assertTrue(cls.equals(String.class));
+        PropertyDescriptor desc = Reflection.propertyDescriptor(Parametrized.class.getMethod("getString"));
+        assertTrue(desc.getName().equals("string"));
+        desc = Reflection.propertyDescriptor(Parametrized.class.getMethod("setString", String.class));
+        assertTrue(desc.getName().equals("string"));
+    }
 
     @Test
     public void callingClass() {
@@ -136,6 +147,22 @@ public class ReflectionTest {
         public void setTypes(List<Type> types) {
             this.types = types;
         }
+    }
+
+    public static class Parametrized<T> {
+        String str;
+
+        public String getString() {
+            return str;
+        }
+
+        public void setString(String str) {
+            this.str = str;
+        }
+    }
+
+    public static class SubParametrized  extends Parametrized<String> {
+
     }
 
 }

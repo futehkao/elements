@@ -38,8 +38,10 @@ public class SingletonClassBuilder<T> extends AbstractBuilder<Class<T>, Singleto
         if (singleton == null)
             throw new IllegalArgumentException("target cannot be null");
         try {
-            Class proxyClass = interceptor.singletonClasses.get(cls,
-                    () -> interceptor.loadClass(interceptor.newSingletonBuilder(cls).make(), cls, classLoader));
+            if (interceptor.singletonClasses.size() > interceptor.getMaximumSize())
+                interceptor.singletonClasses.clear();
+            Class proxyClass = interceptor.singletonClasses.computeIfAbsent(cls,
+                    key -> interceptor.loadClass(interceptor.newSingletonBuilder(cls).make(), cls, classLoader));
             Field field = proxyClass.getDeclaredField(Interceptor.HANDLER_FIELD);
             field.setAccessible(true);
             Interceptor.InterceptorHandlerWrapper wrapper = new Interceptor.InterceptorHandlerWrapper(interceptor,
@@ -51,8 +53,6 @@ public class SingletonClassBuilder<T> extends AbstractBuilder<Class<T>, Singleto
                     newObject);
             field.set(null, wrapper);
             return proxyClass;
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
         } catch (Exception e) {
             throw new SystemException(e);
         }
