@@ -16,7 +16,7 @@ plugins {
     id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
 }
 
-ext.elementsVersion = '2.7.15'
+ext.elementsVersion = '2.7.16'
 ext.junitPlatformLauncherVersion = '1.6.2'
 ext.junitJupiterVersion = '5.6.2'
 ext.snakeyamlVersion = '2.0'
@@ -25,6 +25,7 @@ ext.findbugsVersion = '3.0.2'
 ext.lmaxDisruptorVerion = '3.4.2'
 ext.slf4jVersion = '1.7.36'
 ext.groovyVersion = '3.0.21'
+ext.caffeineVersion = '2.9.3'
 ext.guavaVerions = '33.5.0-jre'  // Using explicit -jre variant to avoid Android/JRE ambiguity
 ext.scalaVersion = '2.13.10'
 ext.akkaVersion = '2.6.9'

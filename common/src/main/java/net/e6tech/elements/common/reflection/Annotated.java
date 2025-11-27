@@ -16,11 +16,10 @@
 
 package net.e6tech.elements.common.reflection;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import net.e6tech.elements.common.resources.Provision;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.CacheLoader;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.common.util.datastructure.Pair;
 
@@ -31,7 +30,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -43,10 +41,9 @@ import java.util.function.Function;
 public class Annotated<R, A extends Annotation> {
     private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-    private static LoadingCache<Pair<Class<?>, Class<? extends Annotation>>, Annotated> annotatedCache = CacheBuilder.newBuilder()
+    private static LoadingCache<Pair<Class<?>, Class<? extends Annotation>>, Annotated> annotatedCache = Caffeine.newBuilder()
             .maximumSize(1000)
             .initialCapacity(100)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .build(new CacheLoader<Pair<Class<?>, Class<? extends Annotation>>, Annotated>() {
                 public Annotated load(Pair<Class<?>, Class<? extends Annotation>> pair)  {
@@ -56,8 +53,7 @@ public class Annotated<R, A extends Annotation> {
 
     private Class<A> annotationClass;
     private List<Entry<A>> entries = new ArrayList<>();
-    private Cache<Pair<String,?>, Lookup<A, ?, ?>> lookups = CacheBuilder.newBuilder()
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+    private Cache<Pair<String,?>, Lookup<A, ?, ?>> lookups = Caffeine.newBuilder()
             .maximumSize(1000)
             .initialCapacity(16)
             .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
@@ -76,11 +72,7 @@ public class Annotated<R, A extends Annotation> {
     }
 
     public static <A extends Annotation, E, V> Lookup<A, E, V> lookup(Class clazz, Class<A> annotationClass, Function<A, E> function, Class<V> valueType) {
-        try {
-            return annotatedCache.get(new Pair<>(clazz, annotationClass)).lookup(function, valueType);
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        return annotatedCache.get(new Pair<>(clazz, annotationClass)).lookup(function, valueType);
     }
 
     public <E, V> Lookup<A, E, V> lookup(Function<A, E> function, Class<V> valueType) {
@@ -91,11 +83,8 @@ public class Annotated<R, A extends Annotation> {
         if (method == null) {
             throw new IllegalArgumentException("Null annotation method for " + annotationClass);
         }
-        try {
-            return (Lookup) lookups.get(new Pair<>(method.getName(), valueType), () -> new Lookup<>(this, method, valueType));
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        return (Lookup) lookups.get(new Pair<>(method.getName(), valueType), key -> new Lookup<>(this, method, valueType));
+
     }
 
     private void fields(Class<R> clazz) {
