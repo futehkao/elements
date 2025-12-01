@@ -12,12 +12,14 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -203,6 +205,111 @@ public class VaultManagerTest {
         manager.changePassphrase(dualEntry);
         ClearText m2 = manager.getKey(Constants.MASTER_KEY_ALIAS, null);
         assertTrue(Arrays.equals(m1.getBytes(), m2.getBytes()));
+    }
+
+    @Test
+    void removeUser_userDoesNotExist_throws() {
+        GeneralSecurityException exception = assertThrows(GeneralSecurityException.class,
+                () -> manager.removeUser(dualEntry, "nonexistentuser"));
+        assertTrue(exception.getMessage().contains("User does not exist: nonexistentuser"));
+    }
+
+    @Test
+    void removeUser_attemptToRemoveUser1_throws() {
+        GeneralSecurityException exception = assertThrows(GeneralSecurityException.class,
+                () -> manager.removeUser(dualEntry, "user1"));
+        assertTrue(exception.getMessage().contains("Cannot remove a currently authenticated guardian user: user1"));
+    }
+
+    @Test
+    void removeUser_attemptToRemoveUser2_throws() {
+        GeneralSecurityException exception = assertThrows(GeneralSecurityException.class,
+                () -> manager.removeUser(dualEntry, "user2"));
+        assertTrue(exception.getMessage().contains("Cannot remove a currently authenticated guardian user: user2"));
+    }
+
+    @Test
+    void removeUser_successfullyRemovesUser() throws Exception {
+        Credential newUser = new Credential("user3", "password3".toCharArray());
+        manager.addUser(newUser, dualEntry.getUser1());
+
+        Set<String> usersBefore = manager.listUsers();
+        assertTrue(usersBefore.contains("user3"));
+        assertEquals(3, usersBefore.size());
+
+        manager.removeUser(dualEntry, "user3");
+
+        Set<String> usersAfter = manager.listUsers();
+        assertFalse(usersAfter.contains("user3"));
+        assertEquals(2, usersAfter.size());
+        assertTrue(usersAfter.contains("user1"));
+        assertTrue(usersAfter.contains("user2"));
+    }
+
+    @Test
+    void removeUser_successfullyRemovesUserAfterSaveAndReopen() throws Exception {
+        Credential newUser = new Credential("user3", "password3".toCharArray());
+        manager.addUser(newUser, dualEntry.getUser1());
+        manager.save();
+
+        reopen();
+
+        Set<String> usersBefore = manager.listUsers();
+        assertTrue(usersBefore.contains("user3"));
+
+        manager.removeUser(dualEntry, "user3");
+        manager.save();
+
+        reopen();
+
+        Set<String> usersAfter = manager.listUsers();
+        assertFalse(usersAfter.contains("user3"));
+        assertEquals(2, usersAfter.size());
+    }
+
+    @Test
+    void removeUser_withBadCredentials_throwsException() throws Exception {
+        Credential newUser = new Credential("user3", "password3".toCharArray());
+        manager.addUser(newUser, dualEntry.getUser1());
+
+        DualEntry badDualEntry = new DualEntry("user1", "wrongpassword".toCharArray(),
+                "user2", "password2".toCharArray());
+        assertThrows(GeneralSecurityException.class,
+                () -> manager.removeUser(badDualEntry, "user3"));
+
+        Set<String> users = manager.listUsers();
+        assertTrue(users.contains("user3"));
+    }
+    @Test
+    void removeUser_multipleUsers_removesCorrectOne() throws Exception {
+        Credential user3 = new Credential("user3", "password3".toCharArray());
+        Credential user4 = new Credential("user4", "password4".toCharArray());
+        manager.addUser(user3, dualEntry.getUser1());
+        manager.addUser(user4, dualEntry.getUser1());
+
+        Set<String> usersBefore = manager.listUsers();
+        assertEquals(4, usersBefore.size());
+
+        manager.removeUser(dualEntry, "user3");
+
+        Set<String> usersAfter = manager.listUsers();
+        assertEquals(3, usersAfter.size());
+        assertFalse(usersAfter.contains("user3"));
+        assertTrue(usersAfter.contains("user4"));
+        assertTrue(usersAfter.contains("user1"));
+        assertTrue(usersAfter.contains("user2"));
+    }
+
+    @Test
+    void removeUser_cannotValidateDeletedUser() throws Exception {
+        Credential newUser = new Credential("user3", "password3".toCharArray());
+        manager.addUser(newUser, dualEntry.getUser1());
+
+        assertTrue(manager.validateUser("user3", "password3".toCharArray()));
+
+        manager.removeUser(dualEntry, "user3");
+
+        assertFalse(manager.validateUser("user3", "password3".toCharArray()));
     }
 
 }
