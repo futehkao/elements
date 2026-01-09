@@ -16,7 +16,10 @@
 
 package net.e6tech.elements.common.inject;
 
+import java.lang.invoke.MethodHandles;
+
 public class BindPropX {
+    public static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
     private BindPropA a;
     private BindPropB b;

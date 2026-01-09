@@ -1,10 +1,9 @@
 package net.e6tech.elements.web.federation;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.e6tech.elements.common.federation.Member;
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.subscribe.Notice;
 
 import java.net.MalformedURLException;
@@ -123,8 +122,7 @@ public class Beacon {
             events.invalidateAll();
             events.cleanUp();
         }
-        events = CacheBuilder.newBuilder()
-                .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+        events = Caffeine.newBuilder()
                 .initialCapacity(collective.getEventCacheInitialCapacity())
                 .expireAfterAccess(collective.getEventCacheExpire(), TimeUnit.MILLISECONDS)
                 .build();
@@ -338,7 +336,7 @@ public class Beacon {
         int before;
         int after;
         synchronized (events) {
-            while (events.size() == 0 || knownFrequencies() <= collective.getHostedMembers().size()) {
+            while (events.asMap().isEmpty() || knownFrequencies() <= collective.getHostedMembers().size()) {
                 try {
                     events.wait();
                 } catch (InterruptedException e) {

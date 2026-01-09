@@ -16,8 +16,8 @@
 
 package net.e6tech.elements.common.resources.plugin;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
 import net.e6tech.elements.common.inject.ModuleFactory;
@@ -57,8 +57,7 @@ public class PluginManager {
         classLoader = new PluginClassLoader(resourceManager.getClass().getClassLoader());
         plugins = new ConcurrentHashMap<>(1024);
         defaultPlugins = new ConcurrentHashMap<>(1024);
-        startWithCache = CacheBuilder.newBuilder()
-                .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+        startWithCache = Caffeine.newBuilder()
                 .initialCapacity(200)
                 .maximumSize(500)
                 .build();

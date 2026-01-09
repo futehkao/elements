@@ -28,8 +28,8 @@ import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.ClosureSerializer;
 import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy;
 import com.esotericsoftware.kryo.util.Pool;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.e6tech.elements.common.util.SystemException;
 import org.objenesis.strategy.SerializingInstantiatorStrategy;
 
@@ -49,8 +49,7 @@ public class Serializer extends SerializerWithStringManifest {
     private ActorRefSerializer actorRefSerializer;
     private TypedActorRefSerializer typedActorRefSerializer;
     int compressionLevel = Deflater.BEST_SPEED;
-    private Cache<String, Class> classCache = CacheBuilder.newBuilder()
-            .concurrencyLevel(32)
+    private Cache<String, Class> classCache = Caffeine.newBuilder()
             .initialCapacity(128)
             .expireAfterWrite(10, TimeUnit.MINUTES)
             .maximumSize(500)

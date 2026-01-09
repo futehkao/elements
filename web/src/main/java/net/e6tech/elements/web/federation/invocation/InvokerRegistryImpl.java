@@ -16,8 +16,8 @@
 
 package net.e6tech.elements.web.federation.invocation;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.e6tech.elements.common.federation.Frequency;
 import net.e6tech.elements.common.federation.Member;
 import net.e6tech.elements.common.federation.Registry;
@@ -41,8 +41,7 @@ import java.util.function.Function;
 @SuppressWarnings("unchecked")
 public class InvokerRegistryImpl implements InvokerRegistry, Initializable {
 
-    private static Cache<String, Set<String>> cache = CacheBuilder.newBuilder()
-            .concurrencyLevel(32)
+    private static Cache<String, Set<String>> cache = Caffeine.newBuilder()
             .initialCapacity(128)
             .maximumSize(100)
             .expireAfterWrite(10 * 60 * 1000L, TimeUnit.MILLISECONDS)

@@ -16,12 +16,11 @@
 
 package net.e6tech.elements.jmx.stat;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.e6tech.elements.common.logging.LogLevel;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Initializable;
-import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
 
 import java.util.List;
@@ -68,8 +67,10 @@ public class Gauge implements Initializable {
     }
 
     private synchronized void initCache() {
-        measurements = CacheBuilder.newBuilder()
-                .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+        if (measurements != null) {
+            return;
+        }
+        measurements = Caffeine.newBuilder()
                 .initialCapacity(cacheInitialCapacity)
                 .maximumSize(cacheMaxSize)
                 .expireAfterAccess(2 * period + 10000L, TimeUnit.MILLISECONDS)
@@ -186,28 +187,27 @@ public class Gauge implements Initializable {
         schedule(false);
     }
 
-    public synchronized Measurement getMeasurement(String key) {
-        try {
-            if (measurements == null) {
-                initCache();
-            }
-            return measurements.get(key, () -> {
-                Measurement m = new Measurement();
-                m.setEnabled(enabled);
-                m.setWindowWidth(windowWidth);
-                m.setWindowMaxCount(maxCount);
-                return m;
-            });
-        } catch (ExecutionException e) {
-            return measurements.getIfPresent(key);
+    public Measurement getMeasurement(String key) {
+        if (measurements == null) {
+            initCache();
         }
+
+        return measurements.get(key, k -> {
+            Measurement m = new Measurement();
+            m.setEnabled(enabled);
+            m.setWindowWidth(windowWidth);
+            m.setWindowMaxCount(maxCount);
+            return m;
+        });
     }
 
     class GaugeTask implements Runnable {
         public void run() {
             synchronized (Gauge.this) {
                 Map<String, Measurement> map = measurements.asMap();
-                map.values().removeIf(val -> val.getCount() <= 0);
+                map.values().removeIf(val -> {
+                    return val.getCount() <= 0;
+                });
 
                 if (!map.isEmpty()) {
                     schedule(true);
