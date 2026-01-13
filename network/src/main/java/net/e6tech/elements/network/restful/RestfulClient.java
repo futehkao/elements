@@ -17,30 +17,31 @@ package net.e6tech.elements.network.restful;
 
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.security.JavaKeyStore;
 import net.e6tech.elements.security.SSLSocketConfig;
 
-import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocketFactory;
 import javax.ws.rs.*;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.io.*;
-import java.lang.invoke.VarHandle;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.io.PrintWriter;
 import java.net.*;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 
@@ -51,7 +52,6 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();
-    private static Field urlMethod;
 
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
@@ -409,38 +409,6 @@ public class RestfulClient {
         return fullPath;
     }
 
-    @SuppressWarnings("squid:S3510")
-    HttpURLConnection open(String dest, String context, Param... params) throws IOException {
-        String fullPath = constructPath(dest, context, params);
-        URL url = null;
-        try {
-            logger.debug(fullPath);
-            url = new URL(fullPath);
-
-            HttpURLConnection conn = null;
-            if (proxyHost != null && proxyPort > 0) {
-                Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
-                conn = (HttpURLConnection) url.openConnection(proxy);
-            } else {
-                conn = (HttpURLConnection) url.openConnection();
-            }
-
-            if (connectionTimeout >= 0)
-                conn.setConnectTimeout(connectionTimeout);
-            if (readTimeout >= 0)
-                conn.setReadTimeout(readTimeout);
-            if (conn instanceof HttpsURLConnection) {
-                HttpsURLConnection https = (HttpsURLConnection) conn;
-                https.setSSLSocketFactory(getSSLSocketFactory());
-                if (skipHostnameCheck || skipCertCheck)
-                    https.setHostnameVerifier((hostname, session) -> true);
-            }
-            return conn;
-        } catch (MalformedURLException e) {
-            throw logger.systemException(e);
-        }
-    }
-
     protected Response submit(String context, String method, Map<String, String> requestProperties, PostData postData, Param... params) throws Exception {
         return _submit(staticAddress, context, method, requestProperties, postData, params);
     }
@@ -449,74 +417,98 @@ public class RestfulClient {
         if (postData == null)
             postData = new PostData();
         Response response = null;
-        HttpURLConnection conn = null;
         try {
-            conn = open(dest, context, params);
+
+            URI uri = URI.create(constructPath(dest, context, params));
+
+            HttpClient client = newHttpClient();
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(uri);
+
+            if (readTimeout >= 0)
+                requestBuilder.timeout(Duration.ofMillis(readTimeout));
+
             if (postData.isSpecified()) {
-                conn.setDoOutput(true);
                 if (postData.getEncoder() != null)
-                    conn.setRequestProperty("Content-Type", postData.getEncoder().getContentType());
-                else conn.setRequestProperty("Content-Type", marshaller.getContentType());
+                    requestBuilder.header("Content-Type", postData.getEncoder().getContentType());
+                else requestBuilder.header("Content-Type", marshaller.getContentType());
             }
 
-//          TODO: new client needed for PATH method
-//            HttpRequest request = HttpRequest.newBuilder()
-//                    .uri(URI.create("https://example.com"))
-//                    .method("DELETE", HttpRequest.BodyPublishers.noBody())
-//                    .build();
-//            HttpClient client = HttpClient.newHttpClient();
-//            HttpResponse<String> response1 =
-//                    client.send(request, HttpResponse.BodyHandlers.ofString());
+            requestBuilder.header("Accept", marshaller.getAccept());
+            for (Map.Entry<String, String> entry : requestProperties.entrySet())
+                requestBuilder.header(entry.getKey(), entry.getValue());
 
-            try {
-                conn.setRequestMethod(method);
-            } catch (ProtocolException ex) {
-                try { //TODO: wont work without --add-open anyway
-                    Reflection.setField(conn, "method", method);
-
-                } catch (Exception e) {
-                    throw new SystemException(e);
-                }
-            }
-            setConnectionProperties(conn);
-            loadRequestProperties(conn, requestProperties);
-
-            printRequest(conn, dest, context, method, requestProperties, postData, params);
+            printRequest(uri, method, requestProperties, postData);
 
             if (postData.isSpecified()) {
-                // for POST, and PUT we MUST call conn.getOutputStream even if data is null
-                OutputStream out = conn.getOutputStream();
                 if (postData.getData() != null) {
-                    try (Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), StandardCharsets.UTF_8)) {
-                        String posted = postData.encode(marshaller);
-                        writer.write(posted);
-                        logger.debug(posted);
-                        writer.flush();
-                    }
+                    String posted = postData.encode(marshaller);
+                    requestBuilder.method(method, HttpRequest.BodyPublishers.ofString(posted, charset()));
+                    logger.debug(posted);
+                } else {
+                    requestBuilder.method(method, HttpRequest.BodyPublishers.noBody());
                 }
-                out.close();
+            } else {
+                requestBuilder.method(method, HttpRequest.BodyPublishers.noBody());
             }
 
-            response = readResponse(conn);
+            HttpResponse<byte[]> resp = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
+            response = readResponse(resp);
             printResponse(response);
 
-        } catch (MalformedURLException e) {
+        } catch (IllegalArgumentException e) {
             logger.systemException(e);
-        } finally {
-            if (conn != null)
-                conn.disconnect();
         }
 
         return response;
     }
 
-    private void printRequest(HttpURLConnection conn, String dest, String context, String method, Map<String, String> requestProperties, PostData postData, Param... params)
+    private Charset charset() {
+        try {
+            return Charset.forName(encoding);
+        } catch (Exception e) {
+            return StandardCharsets.UTF_8;
+        }
+    }
+
+    private HttpClient newHttpClient() {
+        HttpClient.Builder builder = HttpClient.newBuilder()
+//                .version(HttpClient.Version.HTTP_1_1)
+                .followRedirects(HttpClient.Redirect.NEVER);
+
+        if (connectionTimeout >= 0)
+            builder.connectTimeout(Duration.ofMillis(connectionTimeout));
+
+        if (proxyHost != null && proxyPort > 0) {
+            ProxySelector proxySelector = ProxySelector.of(new InetSocketAddress(proxyHost, proxyPort));
+            builder.proxy(proxySelector);
+        }
+
+        SSLContext sslContext = getSSLContext();
+        if (sslContext != null) {
+            builder.sslContext(sslContext);
+            builder.sslParameters(getSSLParameters());
+        }
+
+        return builder.build();
+    }
+
+    private SSLParameters getSSLParameters() {
+        SSLParameters params = new SSLParameters();
+        if (skipHostnameCheck || skipCertCheck) {
+            params.setEndpointIdentificationAlgorithm(null);
+        } else {
+            params.setEndpointIdentificationAlgorithm("HTTPS");
+        }
+        return params;
+    }
+
+    private void printRequest(URI uri, String method, Map<String, String> requestProperties, PostData postData)
             throws Exception {
         if (printer != null) {
             printer.println("REQUEST ----------------------------");
-            printer.println(method + " " + constructPath(dest, context, params));
+            printer.println(method + " " + uri.toString());
             printHeaders((Map) requestProperties);
-            printHeaders(conn.getRequestProperties());
             if (postData.getData() != null) {
                 printer.println(marshaller.prettyPrintRequest(postData.getData()));
             }
@@ -546,49 +538,26 @@ public class RestfulClient {
         }
     }
 
-    private Response readResponse(HttpURLConnection conn) throws Exception {
+    private Response readResponse(HttpResponse<byte[]> resp) throws Exception {
         Response response = new Response();
 
-        response.setHeaderFields(conn.getHeaderFields());
-        response.setResponseCode(conn.getResponseCode());
+        response.setResponseCode(resp.statusCode());
+        response.setHeaderFields(toHeaderFields(resp));
 
-        if (conn.getResponseCode() == HTTP_NO_CONTENT)
+        if (resp.statusCode() == HTTP_NO_CONTENT)
             return response;
 
-        InputStream in = null;
-        try {
-            in = conn.getInputStream();
-        } catch (IOException ex) {
-            Logger.suppress(ex);
-            in = conn.getErrorStream();
-            if (in == null)
-                checkResponseCode(conn.getResponseCode(), conn.getResponseMessage());
-        }
-
-        try {
-            BufferedInputStream bis = new BufferedInputStream(in);
-            ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
-            int read = 0;
-            int bufSize = 4096;
-            byte[] buffer = new byte[bufSize];
-            while (true) {
-                read = bis.read(buffer);
-                if (read == -1) {
-                    break;
-                }
-                byteArray.write(buffer, 0, read);
-            }
-            String result = new String(byteArray.toByteArray(), encoding);
+        byte[] body = resp.body();
+        if (body != null && body.length > 0) {
+            String result = new String(body, encoding);
             response.setResult(result);
-        } catch (IOException ex) {
-            throw new IllegalStateException(ex);
         }
 
         try {
             checkResponseCode(response.getResponseCode(), response.getResult());
         } catch (ClientErrorException ex) {
             Throwable mappedThrowable = null;
-            String result = ex.getMessage();
+            String result = response.getResult() != null ? response.getResult() : ex.getMessage();
             if (result != null && exceptionMapper != null) {
                 try {
                     Object error = marshaller.readErrorResponse(result);
@@ -612,6 +581,13 @@ public class RestfulClient {
         }
 
         return response;
+    }
+
+    private Map<String, List<String>> toHeaderFields(HttpResponse<?> resp) {
+        Map<String, List<String>> map = new java.util.LinkedHashMap<>();
+        map.put(null, List.of("HTTP " + resp.statusCode()));
+        resp.headers().map().forEach((k, v) -> map.put(k, v));
+        return map;
     }
 
     @SuppressWarnings({"squid:MethodCyclomaticComplexity", "squid:SwitchLastCaseIsDefaultCheck"})
@@ -701,41 +677,30 @@ public class RestfulClient {
         printer.flush();
     }
 
-    private void setConnectionProperties(HttpURLConnection conn) {
-        conn.setDoInput(true);
-        conn.setUseCaches(false);
-        conn.setAllowUserInteraction(false);
-        conn.setRequestProperty("Accept", marshaller.getAccept());
+    // kept: you can still explicitly set the SSLSocketFactory, used to derive SSLContext below
+    public void setSSLSocketFactory(SSLSocketFactory sslSocketFactory) {
+        this.sslSocketFactory = sslSocketFactory;
     }
 
-    private void loadRequestProperties(HttpURLConnection conn, Map<String, String> properties) {
-        for (Map.Entry<String, String> entry : properties.entrySet())
-            conn.setRequestProperty(entry.getKey(), entry.getValue());
-    }
-
-    private SSLSocketFactory getSSLSocketFactory() {
-        if (sslSocketFactory != null)
-            return sslSocketFactory;
-        SSLSocketConfig config = new SSLSocketConfig();
-        config.setKeyStore(trustStore);
-        config.setKeyStorePassword(trustStorePassword);
-        config.setKeyStoreFormat(trustStoreFormat);
-        config.setSkipCertCheck(skipCertCheck);
-        config.setKeyManagerPassword(privateKeyPassword);
-        config.setErasePasswords(true);
+    private SSLContext getSSLContext() {
+        // no cache: always build a new SSLContext (or derive from config)
         try {
-            sslSocketFactory = config.getSSLSocketFactory();
+            // If caller explicitly provided SSLSocketFactory, we still need SSLContext for HttpClient.
+            // Best effort: build from SSLSocketConfig (preferred path).
+            SSLSocketConfig config = new SSLSocketConfig();
+            config.setKeyStore(trustStore);
+            config.setKeyStorePassword(trustStorePassword);
+            config.setKeyStoreFormat(trustStoreFormat);
+            config.setSkipCertCheck(skipCertCheck);
+            config.setKeyManagerPassword(privateKeyPassword);
+            config.setErasePasswords(true);
+
+            SSLContext ctx = config.getSSLContext();
             privateKeyPassword = null;
+            return ctx;
         } catch (Exception e) {
             throw logger.systemException(e);
         }
-        return sslSocketFactory;
-    }
-
-
-    // you can always explicitly set the SSLSocketFactory if you don't like how RestfulClient creates a SSLSocketFactory
-    public void setSSLSocketFactory(SSLSocketFactory sslSocketFactory) {
-        this.sslSocketFactory = sslSocketFactory;
     }
 
 }

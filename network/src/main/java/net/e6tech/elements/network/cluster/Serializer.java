@@ -72,7 +72,7 @@ public class Serializer extends SerializerWithStringManifest {
                 kryo.addDefaultSerializer(ActorRef.class, actorRefSerializer);
                 kryo.addDefaultSerializer(akka.actor.typed.ActorRef.class, typedActorRefSerializer);
 //                kryo.register(SerializedLambda.class);  // cant use internal jdk classes anymore here. kryo will try to access its private fields and it fails under jdk9+
-                kryo.register(ClosureSerializer.Closure.class, new ClosureSerializer());
+//                kryo.register(ClosureSerializer.Closure.class, new ClosureSerializer());
                 return kryo;
             }
         };

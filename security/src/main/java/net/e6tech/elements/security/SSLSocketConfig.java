@@ -25,11 +25,15 @@ import java.security.cert.X509Certificate;
 public class SSLSocketConfig extends SSLBaseConfig {
     private boolean skipCertCheck = false;
     private static final X509Certificate[] EMPTY_CERTIFICATES = new X509Certificate[0];
-    private SSLSocketFactory sslSocketFactory;
+    private SSLContext sslContext;
 
     public SSLSocketFactory getSSLSocketFactory() throws GeneralSecurityException, IOException {
-        if (sslSocketFactory != null)
-            return sslSocketFactory;
+        return getSSLContext().getSocketFactory();
+    }
+
+    public SSLContext getSSLContext() throws GeneralSecurityException, IOException {
+        if (sslContext != null)
+            return sslContext;
         TrustManager[] trustManagers;
         KeyManager[] keyManagers = null;
 
@@ -53,12 +57,12 @@ public class SSLSocketConfig extends SSLBaseConfig {
         }
 
         erasePasswords();
-        SSLContext ctx;
-        ctx = SSLContext.getInstance(getTlsProtocol());
+        SSLContext ctx  = SSLContext.getInstance(getTlsProtocol());
         ctx.init(keyManagers, trustManagers, null);
-        sslSocketFactory = ctx.getSocketFactory();
-        return sslSocketFactory;
+        sslContext = ctx;
+        return sslContext;
     }
+
 
     public boolean isSkipCertCheck() {
         return skipCertCheck;
