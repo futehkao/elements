@@ -18,8 +18,10 @@ package net.e6tech.elements.security;
 
 import javax.net.ssl.*;
 import java.io.IOException;
+import java.net.Socket;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 public class SSLSocketConfig extends SSLBaseConfig {
@@ -53,7 +55,7 @@ public class SSLSocketConfig extends SSLBaseConfig {
         }
 
         if (skipCertCheck) {
-            trustManagers = new TrustManager[]{new AcceptAllTrustManager()};
+            trustManagers = new TrustManager[]{acceptAllTrustManager};
         }
 
         erasePasswords();
@@ -72,19 +74,42 @@ public class SSLSocketConfig extends SSLBaseConfig {
         this.skipCertCheck = skipCertCheck;
     }
 
-    @SuppressWarnings("squid:S4424")
-    public class AcceptAllTrustManager implements X509TrustManager {
+    private final TrustManager acceptAllTrustManager = new X509ExtendedTrustManager() {
 
-        public void checkClientTrusted(X509Certificate[] chain, String authType) {
-            // do nothing
-        }
-
-        public void checkServerTrusted(X509Certificate[] chain, String authType) {
-            // do nothing
-        }
-
+        @Override
         public X509Certificate[] getAcceptedIssuers() {
-            return EMPTY_CERTIFICATES;
+            return new X509Certificate[0];
         }
-    }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType, Socket socket) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType, Socket socket) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType, SSLEngine engine) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine engine) throws CertificateException {
+
+        }
+    };
+
 }

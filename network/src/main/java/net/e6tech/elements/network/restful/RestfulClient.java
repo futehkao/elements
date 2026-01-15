@@ -629,10 +629,9 @@ public class RestfulClient {
                 throw new BadRequestException(message);
             case UNAUTHORIZED:
                 throw new NotAuthorizedException(javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.UNAUTHORIZED).build());
-            case PAYMENT_REQUIRED:
-            case FORBIDDEN:
+            case PAYMENT_REQUIRED, FORBIDDEN:
                 throw new ForbiddenException(message);
-            case NOT_FOUND:
+            case NOT_FOUND, FOUND:
                 throw new NotFoundException(message);
             case METHOD_NOT_ALLOWED:
                 throw new NotAllowedException(message,
