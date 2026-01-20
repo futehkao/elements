@@ -676,16 +676,12 @@ public class RestfulClient {
         printer.flush();
     }
 
-    // kept: you can still explicitly set the SSLSocketFactory, used to derive SSLContext below
     public void setSSLSocketFactory(SSLSocketFactory sslSocketFactory) {
         this.sslSocketFactory = sslSocketFactory;
     }
 
     private SSLContext getSSLContext() {
-        // no cache: always build a new SSLContext (or derive from config)
         try {
-            // If caller explicitly provided SSLSocketFactory, we still need SSLContext for HttpClient.
-            // Best effort: build from SSLSocketConfig (preferred path).
             SSLSocketConfig config = new SSLSocketConfig();
             config.setKeyStore(trustStore);
             config.setKeyStorePassword(trustStorePassword);
