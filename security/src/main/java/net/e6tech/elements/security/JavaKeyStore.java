@@ -73,7 +73,7 @@ public class JavaKeyStore {
             if (format == null)
                 format = DEFAULT_FORMAT;
             keyStore = KeyStore.getInstance(format);
-            keyStore.load(new FileInputStream(file), password);
+            keyStore.load(new FileInputStream(file), (password == null) ? null : password.clone());
         }
     }
 
@@ -82,7 +82,7 @@ public class JavaKeyStore {
             if (format == null)
                 format = DEFAULT_FORMAT;
             keyStore = KeyStore.getInstance(format);
-            keyStore.load(inputStream, password);
+            keyStore.load(inputStream, (password == null) ? null : password.clone());
         }
     }
 
@@ -128,7 +128,7 @@ public class JavaKeyStore {
     public JavaKeyStore init(char[] password) throws GeneralSecurityException {
         if (password != null) {
             KeyManagerFactory factory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            factory.init(keyStore, password);
+            factory.init(keyStore, password.clone());
             keyManagers = factory.getKeyManagers();
         }
         initTrustManagers();
