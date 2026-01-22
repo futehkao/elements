@@ -63,7 +63,6 @@ public class RestfulClient {
     private String TLSProtocol = "TLS";
     private boolean skipHostnameCheck = false;
     private boolean skipCertCheck = false;
-    private SSLSocketFactory sslSocketFactory;
     private int connectionTimeout = -1;
     private int readTimeout = -1;
     private PrintWriter printer;
@@ -127,7 +126,6 @@ public class RestfulClient {
     }
 
     public void setTrustStore(String trustStore) {
-        sslSocketFactory = null;
         this.trustStore = trustStore;
     }
 
@@ -167,7 +165,6 @@ public class RestfulClient {
     }
 
     public void setSkipHostnameCheck(boolean skipHostnameCheck) {
-        sslSocketFactory = null;
         this.skipHostnameCheck = skipHostnameCheck;
     }
 
@@ -181,7 +178,6 @@ public class RestfulClient {
     }
 
     public void setSkipCertCheck(boolean skipCertCheck) {
-        sslSocketFactory = null;
         this.skipCertCheck = skipCertCheck;
     }
 
@@ -674,10 +670,6 @@ public class RestfulClient {
             printer.println();
         }
         printer.flush();
-    }
-
-    public void setSSLSocketFactory(SSLSocketFactory sslSocketFactory) {
-        this.sslSocketFactory = sslSocketFactory;
     }
 
     private SSLContext getSSLContext() {
