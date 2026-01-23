@@ -188,6 +188,10 @@ public class RestfulProxy {
         return client;
     }
 
+    public void refreshClient() {
+        client.refreshClient();
+    }
+
     public static class InvocationHandler implements InterceptorHandler {
         private Gauge gauge;
         private final RestfulProxy proxy;

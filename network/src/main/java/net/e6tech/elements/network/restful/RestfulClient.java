@@ -70,6 +70,7 @@ public class RestfulClient {
     private String proxyHost;
     private int proxyPort = -1;
     private Marshaller marshaller = new JsonMarshaller<>(ErrorResponse.class);
+    private HttpClient httpClient;
 
     public RestfulClient() {
     }
@@ -93,6 +94,10 @@ public class RestfulClient {
     public RestfulClient exceptionMapper(ExceptionMapper exceptionMapper) {
         setExceptionMapper(exceptionMapper);
         return this;
+    }
+
+    public void refreshClient() {
+        this.httpClient = null;
     }
 
     public synchronized String getAddress() {
@@ -417,7 +422,10 @@ public class RestfulClient {
 
             URI uri = URI.create(constructPath(dest, context, params));
 
-            HttpClient client = newHttpClient();
+            if (httpClient == null) {
+                httpClient = newHttpClient();
+            }
+
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(uri);
 
@@ -448,7 +456,7 @@ public class RestfulClient {
                 requestBuilder.method(method, HttpRequest.BodyPublishers.noBody());
             }
 
-            HttpResponse<byte[]> resp = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
+            HttpResponse<byte[]> resp = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
             response = readResponse(resp);
             printResponse(response);
 
@@ -469,7 +477,6 @@ public class RestfulClient {
 
     private HttpClient newHttpClient() {
         HttpClient.Builder builder = HttpClient.newBuilder()
-//                .version(HttpClient.Version.HTTP_1_1)
                 .followRedirects(HttpClient.Redirect.NEVER);
 
         if (connectionTimeout >= 0)
