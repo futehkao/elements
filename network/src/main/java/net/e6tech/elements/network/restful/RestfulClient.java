@@ -676,10 +676,10 @@ public class RestfulClient {
         try {
             SSLSocketConfig config = new SSLSocketConfig();
             config.setKeyStore(trustStore);
-            config.setKeyStorePassword(trustStorePassword);
+            config.setKeyStorePassword(trustStorePassword == null ? null : trustStorePassword.clone());
             config.setKeyStoreFormat(trustStoreFormat);
             config.setSkipCertCheck(skipCertCheck);
-            config.setKeyManagerPassword(privateKeyPassword);
+            config.setKeyManagerPassword(privateKeyPassword == null ? null : privateKeyPassword.clone());
             config.setErasePasswords(true);
 
             SSLContext ctx = config.getSSLContext();
