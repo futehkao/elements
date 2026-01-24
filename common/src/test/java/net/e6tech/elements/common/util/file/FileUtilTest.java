@@ -18,16 +18,13 @@ package net.e6tech.elements.common.util.file;
 
 import net.e6tech.elements.common.Tags;
 import net.e6tech.elements.common.resources.ResourceManager;
-import net.e6tech.elements.common.resources.plugin.Plugin;
 import net.e6tech.elements.common.resources.plugin.PluginManager;
-import net.e6tech.elements.common.resources.plugin.PluginPath;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Paths;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tags.Common
@@ -50,8 +47,6 @@ public class FileUtilTest {
     @Test
     void classpath() throws Exception {
         String[] paths = FileUtil.listFiles("classpath:/net/e6tech/elements/common" + "/**", null);
-        assertTrue(paths.length > 0);
-        paths = FileUtil.listFiles("classpath:/net/e6tech/elements/common/actor" + "/**", null);
         assertTrue(paths.length > 0);
         paths = FileUtil.listFiles("classpath:/net/e6tech/elements/common/resources" + "/*", null);
         assertTrue(paths.length > 0);

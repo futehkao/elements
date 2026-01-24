@@ -13,30 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* import net.e6tech.elements.network.cluster.ClusterNode
-import net.e6tech.elements.common.actor.GenesisActor
-
-
-atom("cluster") {
-
-    configuration = """
-        genesis:
-            name: ${clusterName}
-            workPoolConfig:
-                initialCapacity: 10
-           
-"""
-    genesis = GenesisActor
-    genesis.configuration = """
-akka.cluster.seed-nodes = ${clusterSeeds}
-akka.remote.artery.canonical.port = ${clusterPort}
-akka.remote.artery.canonical.hostname = ${clusterHost}
-"""
-    myCluster = ClusterNode
-    postInit {
-        notificationCenter.addBroadcast(myCluster.broadcast)
-    }
-} */
 
 
 import net.e6tech.elements.web.federation.*
