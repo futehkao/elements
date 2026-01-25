@@ -16,7 +16,6 @@
 
 package net.e6tech.sample.entity;
 
-import com.zaxxer.hikari.HikariDataSource;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.persist.EntityManagerConfig;
@@ -40,8 +39,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -317,7 +314,7 @@ public class PersistenceTest extends BaseCase {
 
         provision.open().accept(EntityManager.class, (em) -> {
             Department d = em.find(Department.class, department.getId());
-            assertTrue(d.getEmployees().size() == size);
+            assertEquals(d.getEmployees().size(), size);
         });
     }
 
@@ -333,7 +330,7 @@ public class PersistenceTest extends BaseCase {
                     .where(new Employee() {{
                         setAdditionalInfo(null);
                     }}).getResultList();
-            assertTrue(list.size() > 0);
+            assertFalse(list.isEmpty());
         });
     }
 

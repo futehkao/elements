@@ -18,6 +18,7 @@ package net.e6tech.elements.persist.datasource.hikari;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 import com.zaxxer.hikari.pool.HikariPool;
 
 import javax.management.MBeanServer;
@@ -198,10 +199,8 @@ public class ElementsHikariDataSource extends HikariDataSource {
         Field fastField = Reflection.getField(HikariDataSource.class, "fastPathPool");
         Field poolField = Reflection.getField(HikariDataSource.class, "pool");
 
-        HikariPool pool = Reflection.getFieldValue(this, poolField);
-        if (pool != null) {
-            Reflection.setField(this, fastField, null);
-        } else {
+        HikariPool pool = Reflection.getFieldValue(this, fastField);
+        if (pool == null) {
             pool = Reflection.getFieldValue(this, poolField);
         }
 
@@ -209,7 +208,12 @@ public class ElementsHikariDataSource extends HikariDataSource {
             lastReset = System.currentTimeMillis();
             resetCount++;
             logger.warn("Reset HikariPool due to getConnection timeout.");
-            Reflection.setField(this, poolField, null);
+
+            HikariPoolMXBean hikariPoolMXBean = this.getHikariPoolMXBean();
+            if (hikariPoolMXBean != null) {
+                hikariPoolMXBean.softEvictConnections();
+            }
+
             if (isAllowPoolSuspension())
                 pool.suspendPool();
             unregisterPool(pool);
