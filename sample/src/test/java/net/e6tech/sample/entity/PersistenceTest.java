@@ -295,9 +295,7 @@ public class PersistenceTest extends BaseCase {
                 .accept(EntityManager.class, (em) -> {
                     try {
                         Department d = Select.create(em, Department.class)
-                                .where(new Department() {{
-                                    setName(department.getName());
-                                }})
+                                .where(dep -> dep.setName(department.getName()))
                                 .getSingleResult();
                         department = d;
                     } catch (NoResultException ex) {
@@ -327,9 +325,7 @@ public class PersistenceTest extends BaseCase {
 
         provision.open().accept(EntityManager.class, Resources.class, (em, res) -> {
             List<Employee> list = Select.create(em, Employee.class)
-                    .where(new Employee() {{
-                        setAdditionalInfo(null);
-                    }}).getResultList();
+                    .where( empl -> empl.setAdditionalInfo(null)).getResultList();
             assertFalse(list.isEmpty());
         });
     }

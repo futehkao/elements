@@ -63,7 +63,6 @@ public class Interceptor {
     private long expiration = 180 * 60 * 1000L; // three hours
     private Cache<Class, Class> proxyClasses;
     Cache<Class, Class> singletonClasses;
-    private Cache<Class, AnonymousDescriptor> anonymousClasses;
 
     public static Interceptor getInstance() {
         return instance;
@@ -109,7 +108,6 @@ public class Interceptor {
     public void initialize() {
         proxyClasses = createCache();
         singletonClasses = createCache();
-        anonymousClasses = createCache();
     }
 
     <T> Class<? extends T> loadClass(DynamicType.Unloaded<T> unloaded, Class<T> cls, ClassLoader classLoader) {
@@ -214,105 +212,6 @@ public class Interceptor {
             throw new SystemException(ex);
         }
         return strategy;
-    }
-
-    public <T> void runAnonymous(T target, T anonymous) {
-        runAnonymous(null, target, anonymous);
-    }
-
-    /**
-     * Trying to emulate Groovy's with block.  The constructor must be a no-arg.
-     * X x = ...;
-     * runAnonymous(x, new X() {{
-     *     setName(...);
-     *     setInt(...);
-     * }}
-     *
-     * setName and setInt would be called on x.
-     */
-    public <T> void runAnonymous(MethodHandles.Lookup lookup, T target, T anonymous) {
-        Class anonymousClass = anonymous.getClass();
-        try {
-            AnonymousDescriptor descriptor = anonymousClasses.get(anonymousClass, () -> {
-                ClassLoadingStrategy strategy;
-                Class<?> enclosingClass = anonymousClass.getEnclosingClass();
-                if (lookup == null && enclosingClass != null && ClassInjector.UsingLookup.isAvailable() && Modifier.isPublic(enclosingClass.getModifiers())) {
-                    Class<?> methodHandles = Class.forName("java.lang.invoke.MethodHandles");
-                    Method lookupMethod = methodHandles.getMethod("lookup");
-                    DynamicType.Unloaded unloaded = new ByteBuddy()
-                            .subclass(enclosingClass)
-                            .defineMethod("_methodHandlesLookup", MethodHandles.Lookup.class, Modifier.PUBLIC ^ Modifier.STATIC)
-                            .intercept(MethodCall.invoke(lookupMethod))
-                            .make();
-                    Class enclosingClass2 = loadClass(unloaded, enclosingClass, null);
-                    Method enclosingLookup = enclosingClass2.getMethod("_methodHandlesLookup");
-                    MethodHandles.Lookup lookup2 = (MethodHandles.Lookup) enclosingLookup.invoke(null);
-                    strategy = getClassLoadingStrategy(lookup2, anonymousClass);
-                } else {
-                    strategy = getClassLoadingStrategy(lookup, anonymousClass);
-                }
-
-                DynamicType.Builder builder = newSingletonBuilder((Class<T>) anonymousClass);
-                Class proxyClass = builder.make()
-                        .load(anonymousClass.getClassLoader(), strategy)
-                        .getLoaded();
-                Field field = proxyClass.getDeclaredField(HANDLER_FIELD);
-                MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(proxyClass, MethodHandles.lookup());
-                VarHandle varHandle = privateLookup.findStaticVarHandle(proxyClass, field.getName(), field.getType());
-
-                InterceptorHandlerWrapper wrapper = new InterceptorHandlerWrapper(this,
-                        proxyClass,
-                        null,
-                        null,
-                        ctx -> { // the use of anonymousThreadLocal is necessary because the wrapper is only created once and cached.
-                            Throwable th = new Throwable();
-                            StackTraceElement[] elements = th.getStackTrace();
-                            if (elements[3].getClassName().equals(anonymousClass.getName())) { // only for calls made within the anonymous class
-                                Object t = anonymousThreadLocal.get();
-                                return ctx.invoke(t);
-                            } else {
-                                return Primitives.defaultValue(ctx.getMethod().getReturnType());
-                            }
-                            },
-                        null,
-                        null);
-
-                varHandle.set(wrapper);
-
-                Field[] fields = anonymousClass.getDeclaredFields();
-                AnonymousDescriptor desc = new AnonymousDescriptor();
-                Field[] copy = new Field[fields.length];
-                copy[0] = fields[fields.length - 1];
-                System.arraycopy(fields, 0, copy, 1,fields.length - 1);
-
-                Class<?>[] paramTypes = new Class<?>[copy.length];
-                for (int i = 0; i < copy.length; i++) {
-                    paramTypes[i] = copy[i].getType();
-                }
-
-                MethodHandles.Lookup anonPL  = MethodHandles.privateLookupIn(anonymousClass, MethodHandles.lookup());
-                MethodHandles.Lookup proxyPL = MethodHandles.privateLookupIn(proxyClass,     MethodHandles.lookup());
-
-                VarHandle[] varHandles = new VarHandle[copy.length];
-                for (int i = 0; i < copy.length; i++) {
-                    Field f = copy[i];
-                    varHandles[i] = anonPL.findVarHandle(anonymousClass, f.getName(), f.getType());
-                }
-                desc.varHandles = varHandles;
-
-                MethodType ctorType = MethodType.methodType(void.class, paramTypes);
-                desc.constructorHandle = proxyPL.findConstructor(proxyClass, ctorType);
-
-                return desc;
-            });
-
-            anonymousThreadLocal.set(target);
-            descriptor.construct(anonymous);
-        } catch (Throwable e) {
-            throw new SystemException(e);
-        } finally {
-            anonymousThreadLocal.remove();
-        }
     }
 
     private static final class AnonymousDescriptor {

@@ -179,43 +179,6 @@ public class InterceptorTest {
         Interceptor.getInstance().newInterceptor(target, frame -> null);
     }
 
-    @Test
-    void anonymousClassThreads() throws Exception{
-        long start = System.currentTimeMillis();
-        anonymousClass();
-        System.out.println("" + (System.currentTimeMillis() - start) + "ms");
-
-        List<Thread> threads = new ArrayList<>();
-        for (int i = 0; i < 2000; i++) {
-            threads.add(new Thread(this::anonymousClass));
-        }
-        start = System.currentTimeMillis();
-        for (Thread thread : threads)
-            thread.start();
-
-        for (Thread thread : threads)
-            thread.join();
-        System.out.println("" + (System.currentTimeMillis() - start) + "ms");
-    }
-
-    @Test
-    void anonymousClass() {
-        X target = new X();
-        target.setN(1);
-        Random random = new Random();
-        int n = random.nextInt();
-        Interceptor.getInstance().runAnonymous(target, new X() {{
-            setX(n);
-            setY(n);
-            setZ(n);
-            a = getX();
-        }});
-
-        assertTrue(target.getX() == n);
-       // assertTrue(a == target.getX());
-        assertTrue(target.getN() == 1);
-    }
-
     private static class X extends Y {
         private int x;
         private int y;
