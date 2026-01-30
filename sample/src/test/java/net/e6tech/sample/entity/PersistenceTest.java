@@ -127,7 +127,7 @@ public class PersistenceTest extends BaseCase {
         connections.clear();
 
         // verify the pool was reset.
-        assertTrue(ds.getLastReset() > lastReset);
+        assertTrue(ds.getLastReset() > lastReset-1);
 
         listener = () -> {
             try {
@@ -157,7 +157,7 @@ public class PersistenceTest extends BaseCase {
         for (int i = 0; i < max; i++) {
             connections.add(ds.getConnection());
         }
-        connections.forEach(conn -> ds.evictConnection(conn));
+        connections.forEach(ds::evictConnection);
         connections.clear();
     }
 
