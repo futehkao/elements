@@ -29,6 +29,9 @@ public class BaseCase {
 
     @BeforeAll
     public static void launch() {
+        if (provision != null) {
+            return;
+        }
         LaunchController controller = new LaunchController();
         controller.launchScript("conf/provisioning/sample/sample.groovy")
                 .addLaunchListener(p -> provision = p.getInstance(Provision.class))
