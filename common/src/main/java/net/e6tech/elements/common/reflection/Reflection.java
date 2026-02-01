@@ -423,6 +423,13 @@ public class Reflection {
         }
     }
 
+    @Deprecated(forRemoval = true)
+    /* Usse getFieldValue(Object object, String fieldName)
+    * */
+    public static <V> V getField(Object object, String fieldName) {
+        return getFieldValue(object, fieldName);
+    }
+
     public static <V> V getFieldValue(Object object, String fieldName) {
         Field field = getField(object.getClass(), fieldName);
         try {
