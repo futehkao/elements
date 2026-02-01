@@ -16,8 +16,8 @@
 
 package net.e6tech.elements.common.interceptor.builder;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.e6tech.elements.common.interceptor.CallFrame;
 import net.e6tech.elements.common.interceptor.Interceptor;
 import net.e6tech.elements.common.interceptor.InterceptorHandler;
@@ -39,13 +39,11 @@ import java.util.function.Consumer;
 public class Builder<T> implements InterceptorHandler {
 
     private static Interceptor interceptor = new Interceptor();
-    protected static Cache<Class, Map<String, String>> propertyNames = CacheBuilder.newBuilder()
-            .concurrencyLevel(32)
+    protected static Cache<Class, Map<String, String>> propertyNames = Caffeine.newBuilder()
             .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .initialCapacity(50)
             .build();
-    protected static Cache<Class, Map<String, PropertyDescriptor>> descriptors = CacheBuilder.newBuilder()
-            .concurrencyLevel(32)
+    protected static Cache<Class, Map<String, PropertyDescriptor>> descriptors = Caffeine.newBuilder()
             .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
             .initialCapacity(50)
             .build();

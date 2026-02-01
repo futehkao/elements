@@ -15,10 +15,10 @@
  */
 package net.e6tech.elements.common.util.file;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.reflect.ClassPath;
-import net.e6tech.elements.common.resources.Provision;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -39,11 +38,10 @@ public class FileUtil {
 
     private static final String[] EMPTY_FILE_LIST = new String[0];
 
-    private static Cache<ClassLoader, List<String>> resourcesCache = CacheBuilder.newBuilder()
+    private static Cache<ClassLoader, List<String>> resourcesCache = Caffeine.newBuilder()
             .initialCapacity(20)
             .maximumSize(100)
             .expireAfterWrite(10, TimeUnit.MINUTES)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .build();
 
 
@@ -92,10 +90,15 @@ public class FileUtil {
         while (fileName.endsWith("/"))
             fileName = fileName.substring(0, fileName.length() - 1);
 
-        List<String> resources = null;
+        List<String> resources;
         try {
-            resources = resourcesCache.get(classLoader, () -> {
-                ClassPath classPath = ClassPath.from(classLoader);
+            resources = resourcesCache.get(classLoader, key -> {
+                ClassPath classPath = null;
+                try {
+                    classPath = ClassPath.from(classLoader);
+                } catch (IOException e) {
+                    throw new SystemException(e);
+                }
                 List<String> found = new LinkedList<>();
                 for (ClassPath.ResourceInfo info : classPath.getResources()) {
                     if (!(info instanceof ClassPath.ClassInfo)) {
@@ -104,7 +107,7 @@ public class FileUtil {
                 }
                 return found;
             });
-        } catch (ExecutionException e) {
+        } catch (SystemException e) {
             resources = new LinkedList<>();
             ClassPath classPath = ClassPath.from(classLoader);
             for (ClassPath.ResourceInfo info : classPath.getResources()) {

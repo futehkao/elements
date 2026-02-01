@@ -15,9 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.web.security.vault;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
@@ -49,17 +48,15 @@ public class KeyServer {
     private static Logger logger = Logger.getLogger();
     private VaultManager vaultManager;
     private Provision provision;
-    private LoadingCache<String, SecretKey> clientKeys = CacheBuilder.newBuilder()
+    private LoadingCache<String, SecretKey> clientKeys = Caffeine.newBuilder()
             .maximumSize(1000)
             .initialCapacity(20)
             .expireAfterWrite(60 * 60 * 1000L, TimeUnit.MILLISECONDS)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .build(new CacheLoader<String, SecretKey>() {
-                public SecretKey load(String clientKey) throws Exception {
+            .build((clientKey) -> {
                     byte[] decrypted = vaultManager.decryptPrivate(clientKey);
                     return new SecretKeySpec(decrypted, vaultManager.getSymmetricCipher().getAlgorithm());
                 }
-            });
+            );
 
     public VaultManager getVaultManager() {
         return vaultManager;

@@ -1,3 +1,4 @@
+// to publish run ./gradlew --stacktrace publishToSonatype closeAndReleaseSonatypeStagingRepository
 buildscript {
     repositories {
         mavenCentral()
@@ -24,7 +25,8 @@ ext.findbugsVersion = '3.0.2'
 ext.lmaxDisruptorVerion = '3.4.2'
 ext.slf4jVersion = '1.7.36'
 ext.groovyVersion = '4.0.29'
-ext.guavaVerions = '33.5.0-jre'
+ext.caffeineVersion = '2.9.3'
+ext.guavaVerions = '33.5.0-jre'  // Using explicit -jre variant to avoid Android/JRE ambiguity
 ext.scalaVersion = '2.13.10'
 ext.akkaVersion = '2.6.9'
 ext.akkaScalaVersion = '2.13'

@@ -16,8 +16,6 @@
 
 package net.e6tech.elements.common.interceptor;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
@@ -44,8 +42,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by futeh.
@@ -54,21 +52,27 @@ import java.util.concurrent.TimeUnit;
 public class Interceptor {
     static final String HANDLER_FIELD = "handler";
 
-    private static Interceptor instance = new Interceptor();
+    private static Interceptor instance = new Interceptor(Provision.cacheGrandeInitialCapacity, Provision.cacheGrandeInitialCapacity * 2);
 
     private static ThreadLocal<Object> anonymousThreadLocal = new ThreadLocal<>();
 
     private int initialCapacity = 100;
-    private int maximumSize = 2000;
+    private int maximumSize = 1000;
     private long expiration = 180 * 60 * 1000L; // three hours
-    private Cache<Class, Class> proxyClasses;
-    Cache<Class, Class> singletonClasses;
+    private Map<Class, Class> proxyClasses;
+    Map<Class, Class> singletonClasses;
 
     public static Interceptor getInstance() {
         return instance;
     }
 
     public Interceptor() {
+        initialize();
+    }
+
+    public Interceptor(int initialCapacity, int maximumSize) {
+        this.initialCapacity = initialCapacity;
+        this.maximumSize = maximumSize;
         initialize();
     }
 
@@ -96,13 +100,8 @@ public class Interceptor {
         this.expiration = expiration;
     }
 
-    private <T> Cache<Class, T> createCache() {
-        return CacheBuilder.newBuilder()
-                .initialCapacity(initialCapacity)
-                .maximumSize(maximumSize)
-                .expireAfterWrite(expiration, TimeUnit.MILLISECONDS)
-                .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-                .build();
+    private <T> Map<Class, T> createCache() {
+        return new ConcurrentHashMap<>(initialCapacity, 0.75f, Provision.cacheBuilderConcurrencyLevel);
     }
 
     public void initialize() {
@@ -259,21 +258,19 @@ public class Interceptor {
     }
 
     Class createInstanceClass(Class cls, ClassLoader classLoader) {
-        try {
-            return proxyClasses.get(cls, () -> {
-                DynamicType.Unloaded unloaded =
-                new ByteBuddy()
-                        .subclass(cls)
-                        .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
-                        .intercept(MethodDelegation.toField(HANDLER_FIELD))
-                        .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
-                        .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
-                        .make();
-                return loadClass(unloaded, cls, classLoader);
-            });
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        if (proxyClasses.size() > maximumSize)
+            proxyClasses.clear();
+        return proxyClasses.computeIfAbsent(cls, key -> {
+            DynamicType.Unloaded unloaded =
+            new ByteBuddy()
+                    .subclass(cls)
+                    .method(ElementMatchers.any().and(ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class))))
+                    .intercept(MethodDelegation.toField(HANDLER_FIELD))
+                    .defineField(HANDLER_FIELD, Handler.class, Visibility.PRIVATE)
+                    .implement(HandlerAccessor.class).intercept(FieldAccessor.ofBeanProperty())
+                    .make();
+            return loadClass(unloaded, cls, classLoader);
+        });
     }
 
     public static boolean isProxyObject(Object proxyObject) {

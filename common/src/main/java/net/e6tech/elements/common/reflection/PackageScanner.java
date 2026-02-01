@@ -16,15 +16,15 @@
 
 package net.e6tech.elements.common.reflection;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import net.e6tech.elements.common.util.SystemException;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class PackageScanner {
@@ -64,20 +64,17 @@ public class PackageScanner {
     }
 
     public void reset() {
-        topLevelRecursive = CacheBuilder.newBuilder()
-                .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
+        topLevelRecursive = Caffeine.newBuilder()
                 .initialCapacity(initialCapacity)
                 .maximumSize(maximumSize)
                 .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
                 .build();
-        topLevel = CacheBuilder.newBuilder()
-                .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
+        topLevel = Caffeine.newBuilder()
                 .initialCapacity(initialCapacity)
                 .maximumSize(maximumSize)
                 .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
                 .build();
-        classPathCache = CacheBuilder.newBuilder()
-                .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
+        classPathCache = Caffeine.newBuilder()
                 .initialCapacity(initialCapacity)
                 .maximumSize(maximumSize)
                 .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
@@ -85,36 +82,38 @@ public class PackageScanner {
     }
 
     public Class[] getTopLevelClassesRecursive(final ClassLoader classLoader, String packageName) {
-        ClassPath classPath;
-        try {
-            classPath = classPathCache.get(classLoader, () -> ClassPath.from(classLoader));
-            Cache<String, Class[]> cache= topLevelRecursive.get(classLoader, () ->
-                    CacheBuilder.newBuilder()
-                            .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
-                            .initialCapacity(initialCapacity)
-                            .maximumSize(maximumSize)
-                            .build());
-            return cache.get(packageName, () -> toClasses(classPath.getTopLevelClassesRecursive(packageName)));
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        ClassPath classPath = classPathCache.get(classLoader, key -> {
+            try {
+                return ClassPath.from(classLoader);
+            } catch (IOException e) {
+                throw new SystemException(e);
+            }
+        });
+        Cache<String, Class[]> cache= topLevelRecursive.get(classLoader, key ->
+                Caffeine.newBuilder()
+                        .initialCapacity(initialCapacity)
+                        .maximumSize(maximumSize)
+                        .build());
+        return cache.get(packageName, key -> toClasses(classPath.getTopLevelClassesRecursive(packageName)));
+
     }
 
     public Class[] getTopLevelClasses(final ClassLoader classLoader, String packageName) {
-        ClassPath classPath;
-        try {
-            classPath = classPathCache.get(classLoader, () -> ClassPath.from(classLoader));
-            Cache<String, Class[]> cache= topLevel.get(classLoader, () ->
-                    CacheBuilder.newBuilder()
-                            .concurrencyLevel(concurrencyLevel) //32 concurrent accessors should be plenty
-                            .initialCapacity(initialCapacity)
-                            .maximumSize(maximumSize)
-                            .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
-                            .build());
-            return cache.get(packageName, () -> toClasses(classPath.getTopLevelClasses(packageName)));
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
-        }
+        ClassPath classPath = classPathCache.get(classLoader, key -> {
+            try {
+                return ClassPath.from(classLoader);
+            } catch (IOException e) {
+                throw new SystemException(e);
+            }
+        });
+        Cache<String, Class[]> cache= topLevel.get(classLoader, key ->
+                Caffeine.newBuilder()
+                        .initialCapacity(initialCapacity)
+                        .maximumSize(maximumSize)
+                        .expireAfterWrite(120 * 60 * 1000L, TimeUnit.MILLISECONDS)
+                        .build());
+        return cache.get(packageName, key -> toClasses(classPath.getTopLevelClasses(packageName)));
+
     }
 
     @SuppressWarnings("unchecked")

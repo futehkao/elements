@@ -16,18 +16,15 @@
 
 package net.e6tech.elements.common.inject;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.reflect.TypeToken;
 import net.e6tech.elements.common.resources.BindClass;
 import net.e6tech.elements.common.resources.BindProperties;
-import net.e6tech.elements.common.resources.Provision;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -36,36 +33,30 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings({"squid:S1214", "unchecked"})
 public interface Module {
 
-    LoadingCache<Class<?>, String[]> bindProperties = CacheBuilder.newBuilder()
+    LoadingCache<Class<?>, String[]> bindProperties = Caffeine.newBuilder()
             .maximumSize(10000)
             .initialCapacity(100)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .expireAfterWrite(360 * 60 * 1000L,TimeUnit.MILLISECONDS)
-            .build(new CacheLoader<Class<?>, String[]>() {
-        public String[] load(Class<?> cls)  {
-            Objects.requireNonNull(cls);
-            Class<?> c = cls;
-            Set<String> set = new LinkedHashSet<>();
-            while (c != null && !c.equals(Object.class)) {
-                BindProperties annotation = c.getAnnotation(BindProperties.class);
-                if (annotation != null) {
-                    Collections.addAll(set, annotation.value());
+            .build(cls -> {
+                Objects.requireNonNull(cls);
+                Class<?> c = cls;
+                Set<String> set = new LinkedHashSet<>();
+                while (c != null && !c.equals(Object.class)) {
+                    BindProperties annotation = c.getAnnotation(BindProperties.class);
+                    if (annotation != null) {
+                        Collections.addAll(set, annotation.value());
+                    }
+                    c = c.getSuperclass();
                 }
-                c = c.getSuperclass();
-            }
-            return set.toArray(new String[set.size()]);
-        }
-    });
+                return set.toArray(new String[set.size()]);
+            });
 
     @SuppressWarnings({"unchecked","squid:CommentedOutCodeLine"})
-    LoadingCache<Class<?>, Type[]> bindTypes = CacheBuilder.newBuilder()
+    LoadingCache<Class<?>, Type[]> bindTypes = Caffeine.newBuilder()
             .maximumSize(10000)
             .initialCapacity(100)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
             .expireAfterWrite(360 * 60 * 1000L, TimeUnit.MILLISECONDS)
-            .build(new CacheLoader<Class<?>, Type[]>() {
-        public Type[] load(Class<?> cls) { return Module.load(cls);}
-            });
+            .build(cls -> { return Module.load(cls);});
 
     static Type[] load(Class<?> cls)  {
         Objects.requireNonNull(cls);
@@ -130,19 +121,11 @@ public interface Module {
     }
 
     default String[] getBindProperties(Class cls) {
-        try {
-            return bindProperties.get(cls);
-        } catch (ExecutionException e) {
-            return new String[0];
-        }
+        return bindProperties.get(cls);
     }
 
     default Type[] getBindTypes(Class<?> cls) {
-        try {
-            return bindTypes.get(cls);
-        } catch (ExecutionException e) {
-            return new Type[0];
-        }
+        return bindTypes.get(cls);
     }
 
     ModuleFactory getFactory();

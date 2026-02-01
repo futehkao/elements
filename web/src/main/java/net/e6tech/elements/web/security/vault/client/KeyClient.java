@@ -15,10 +15,9 @@ limitations under the License.
 */
 package net.e6tech.elements.web.security.vault.client;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Startable;
 import net.e6tech.elements.common.util.SystemException;
 import net.e6tech.elements.network.restful.RestfulClient;
@@ -28,14 +27,11 @@ import net.e6tech.elements.security.vault.ClearText;
 import net.e6tech.elements.security.vault.Credential;
 
 import javax.crypto.SecretKey;
-import javax.ws.rs.NotAuthorizedException;
 import java.io.IOException;
-import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.spec.RSAPublicKeySpec;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static net.e6tech.elements.security.vault.Constants.mapper;
@@ -46,13 +42,11 @@ import static net.e6tech.elements.security.vault.Constants.mapper;
 public class KeyClient implements Startable {
 
     private static Logger logger = Logger.getLogger();
-    private Cache<String, SecretKey> cachedSecretKeys = CacheBuilder.newBuilder()
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+    private Cache<String, SecretKey> cachedSecretKeys = Caffeine.newBuilder()
             .initialCapacity(50)
             .expireAfterWrite(600, TimeUnit.SECONDS)
             .build();
-    private Cache<String, ClearText> cachedSecrets = CacheBuilder.newBuilder()
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
+    private Cache<String, ClearText> cachedSecrets = Caffeine.newBuilder()
             .initialCapacity(50)
             .expireAfterWrite(600, TimeUnit.SECONDS)
             .build();
@@ -199,13 +193,19 @@ public class KeyClient implements Startable {
     public ClearText getSecret(String alias) throws GeneralSecurityException {
         checkAuthorize();
         try {
-            return cachedSecrets.get(alias, ()-> {
+            return cachedSecrets.get(alias, key-> {
                 GetSecret request = new GetSecret();
                 request.setAlias(alias);
-                String ret = submit(request);
-                return decryptResult(ret, ClearText.class);
+                String ret = null;
+                try {
+                    ret = submit(request);
+                    return decryptResult(ret, ClearText.class);
+                } catch (GeneralSecurityException e) {
+                    throw new SystemException(e);
+                }
+
             });
-        } catch (ExecutionException e) {
+        } catch (SystemException e) {
             throw new GeneralSecurityException(e.getCause());
         }
     }
@@ -253,11 +253,16 @@ public class KeyClient implements Startable {
 
     private SecretKey getSecretKey(String key) throws GeneralSecurityException {
         try {
-            return cachedSecretKeys.get(key, ()-> {
-                byte[] keyBytes = decrypt(key);
-                return sym.getKeySpec(keyBytes);
+            return cachedSecretKeys.get(key, k -> {
+                byte[] keyBytes = null;
+                try {
+                    keyBytes = decrypt(key);
+                    return sym.getKeySpec(keyBytes);
+                } catch (GeneralSecurityException e) {
+                    throw new SystemException(e);
+                }
             });
-        } catch (ExecutionException e) {
+        } catch (SystemException e) {
             throw new GeneralSecurityException(e.getCause());
         }
     }

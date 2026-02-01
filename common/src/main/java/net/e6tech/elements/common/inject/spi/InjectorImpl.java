@@ -16,9 +16,6 @@
 
 package net.e6tech.elements.common.inject.spi;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Named;
@@ -32,11 +29,8 @@ import java.beans.PropertyDescriptor;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -47,18 +41,7 @@ import java.util.function.Supplier;
 public class InjectorImpl implements Injector {
     private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-    private static LoadingCache<Class<?>, List<InjectionPoint>> injectionPoints = CacheBuilder.newBuilder()
-            .maximumSize(10000)
-            .initialCapacity(200)
-            .concurrencyLevel(Provision.cacheBuilderConcurrencyLevel)
-            .expireAfterWrite(360 * 60 * 1000L, TimeUnit.MILLISECONDS)
-            .build(new CacheLoader<Class<?>, List<InjectionPoint>>() {
-        public List<InjectionPoint> load(Class<?> instanceClass)  {
-            List<InjectionPoint> points = injectionProperties(instanceClass);
-            points.addAll(injectionFields(instanceClass));
-            return points;
-        }
-    });
+    private static final Map<Class<?>, List<InjectionPoint>> injectionPoints2 = new ConcurrentHashMap<>(Provision.cacheTallInitialCapacity, 0.75f, Provision.cacheBuilderConcurrencyLevel);
 
     private ModuleImpl module;
     private InjectorImpl parentInjector;
@@ -112,21 +95,24 @@ public class InjectorImpl implements Injector {
         if (instance == null)
             return false;
         Class instanceClass = instance.getClass();
-        List<InjectionPoint> points;
+        List<InjectionPoint> points = null;
         boolean allInjected = true;
-        try {
-            points = injectionPoints.get(instanceClass);
-            for (InjectionPoint pt : points) {
-                boolean success = inject(pt, instance);
-                if (!success)
-                    allInjected = false;
-                if (!success && strict) {
-                    throw new SystemException("Cannot inject " + pt + "; no instances bound to " + pt.getType());
-                }
+
+        points = injectionPoints2.computeIfAbsent(instanceClass, key -> {
+            List<InjectionPoint> pts = injectionProperties(instanceClass);
+            pts.addAll(injectionFields(instanceClass));
+            return pts;
+        });
+
+        for (InjectionPoint pt : points) {
+            boolean success = inject(pt, instance);
+            if (!success)
+                allInjected = false;
+            if (!success && strict) {
+                throw new SystemException("Cannot inject " + pt + "; no instances bound to " + pt.getType());
             }
-        } catch (ExecutionException e) {
-            throw new SystemException(e.getCause());
         }
+
         return allInjected;
     }
 

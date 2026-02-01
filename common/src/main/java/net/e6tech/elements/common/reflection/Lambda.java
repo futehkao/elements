@@ -16,23 +16,21 @@
 
 package net.e6tech.elements.common.reflection;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import net.e6tech.elements.common.util.SystemException;
 
 import java.lang.invoke.*;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("squid:S00112")
 public class Lambda {
-    private static final Cache<Method, Function> GETTERS = CacheBuilder.newBuilder().weakValues().build();
-    private static final Cache<Method, BiConsumer> SETTERS = CacheBuilder.newBuilder().weakValues().build();
+    private static final Cache<Method, Function> GETTERS = Caffeine.newBuilder().weakValues().build();
+    private static final Cache<Method, BiConsumer> SETTERS = Caffeine.newBuilder().weakValues().build();
 
     private static Function createGetter(final MethodHandles.Lookup lookup,
                                          final MethodHandle getter) throws Exception {
@@ -77,16 +75,28 @@ public class Lambda {
 
     public static Function reflectGetter(final MethodHandles.Lookup lookup, final Method getter) throws ReflectiveOperationException {
         try {
-            return GETTERS.get(getter, () -> createGetter(lookup, lookup.unreflect(getter)));
-        } catch (final ExecutionException e) {
+            return GETTERS.get(getter, key -> {
+                try {
+                    return createGetter(lookup, lookup.unreflect(getter));
+                } catch (Exception e) {
+                    throw new SystemException(e);
+                }
+            });
+        } catch (final SystemException e) {
             throw new ReflectiveOperationException(e.getCause());
         }
     }
 
     public static BiConsumer reflectSetter(final MethodHandles.Lookup lookup, final Method setter) throws ReflectiveOperationException {
         try {
-            return SETTERS.get(setter, () -> createSetter(lookup, lookup.unreflect(setter)));
-        } catch (final ExecutionException e) {
+            return SETTERS.get(setter, key -> {
+                try {
+                    return createSetter(lookup, lookup.unreflect(setter));
+                } catch (Exception e) {
+                    throw new SystemException(e);
+                }
+            });
+        } catch (final SystemException e) {
             throw new ReflectiveOperationException(e.getCause());
         }
     }

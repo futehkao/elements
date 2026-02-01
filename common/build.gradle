@@ -29,6 +29,7 @@ dependencies {
     api ("org.apache.groovy:groovy-json:${groovyVersion}") {
         exclude group: 'org.apache.groovy', module: 'groovy'
     }
+    api "com.github.ben-manes.caffeine:caffeine:${caffeineVersion}"
     api "com.google.guava:guava:${guavaVerions}"
 
     api ("com.sun.mail:javax.mail:${javamailVersion}")
