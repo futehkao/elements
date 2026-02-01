@@ -27,5 +27,5 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testImplementation "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
-    testImplementation group: 'com.typesafe.akka', name: "akka-testkit_${akkaScalaVersion}", version: "${akkaVersion}"
+//    testImplementation group: 'com.typesafe.akka', name: "akka-testkit_${akkaScalaVersion}", version: "${akkaVersion}"
 }
