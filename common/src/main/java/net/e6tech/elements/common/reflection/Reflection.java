@@ -29,7 +29,6 @@ import java.lang.invoke.VarHandle;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.HttpURLConnection;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -387,10 +386,13 @@ public class Reflection {
         }
         try {
             MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
-            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
-            return  (V) (Modifier.isStatic(field.getModifiers())
-                    ? varHandle.get()          // static field
-                    : varHandle.get(object));  // instance field
+            if (Modifier.isStatic(field.getModifiers())) {
+                VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+                return (V) varHandle.get();
+            } else {
+                VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+                return  (V) varHandle.get(object);
+            }
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw new IllegalStateException(e);
         }
