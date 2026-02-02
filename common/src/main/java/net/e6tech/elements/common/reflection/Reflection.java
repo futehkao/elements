@@ -381,13 +381,39 @@ public class Reflection {
         try {
             MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
             VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
-            return (V) varHandle.get(object);
+            return  (V) (Modifier.isStatic(field.getModifiers())
+                    ? varHandle.get()          // static field
+                    : varHandle.get(object));  // instance field
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw new IllegalStateException(e);
         }
     }
 
     public static <V> V getFieldValue(Object object, Field field) {
+        if (field == null) {
+            throw new IllegalStateException("can not get the field value. the field is null");
+        }
+        try {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+            return (V) varHandle.get(object);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static <V> V getStaticFieldValue(Class<?> clazz, String fieldName) {
+        Field field = getField(clazz, fieldName);
+        try {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+            return (V) varHandle.get();
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static <V> V getStaticFieldValue(Object object, Field field) {
         if (field == null) {
             throw new IllegalStateException("can not get the field value. the field is null");
         }

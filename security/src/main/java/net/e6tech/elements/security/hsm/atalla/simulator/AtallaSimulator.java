@@ -26,8 +26,6 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.security.GeneralSecurityException;
@@ -64,7 +62,8 @@ public class AtallaSimulator extends Simulator {
     public AtallaSimulator() throws GeneralSecurityException {
         Field[] fields = AtallaSimulator.class.getDeclaredFields();
         for (Field f : fields) {
-            if (Modifier.isStatic(f.getModifiers()) && f.getType().isAssignableFrom(String.class)) {
+            if (Modifier.isStatic(f.getModifiers())
+                    && f.getType().isAssignableFrom(String.class)) {
                 try {
                     String value = Reflection.getFieldValue(this, f);
 
