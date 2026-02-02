@@ -387,7 +387,7 @@ public class Reflection {
         try {
             MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
             if (Modifier.isStatic(field.getModifiers())) {
-                VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+                VarHandle varHandle = privateLookup.findStaticVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
                 return (V) varHandle.get();
             } else {
                 VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
