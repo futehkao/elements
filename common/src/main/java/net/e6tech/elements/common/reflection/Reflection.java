@@ -378,6 +378,13 @@ public class Reflection {
 
     public static <V> V getFieldValue(Object object, String fieldName) {
         Field field = getField(object.getClass(), fieldName);
+        return getFieldValue(object, field);
+    }
+
+    public static <V> V getFieldValue(Object object, Field field) {
+        if (field == null) {
+            throw new IllegalStateException("can not get the field value. the field is null");
+        }
         try {
             MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
             VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
@@ -389,41 +396,9 @@ public class Reflection {
         }
     }
 
-    public static <V> V getFieldValue(Object object, Field field) {
-        if (field == null) {
-            throw new IllegalStateException("can not get the field value. the field is null");
-        }
-        try {
-            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
-            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
-            return (V) varHandle.get(object);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
     public static <V> V getStaticFieldValue(Class<?> clazz, String fieldName) {
         Field field = getField(clazz, fieldName);
-        try {
-            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
-            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
-            return (V) varHandle.get();
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    public static <V> V getStaticFieldValue(Object object, Field field) {
-        if (field == null) {
-            throw new IllegalStateException("can not get the field value. the field is null");
-        }
-        try {
-            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
-            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
-            return (V) varHandle.get(object);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            throw new IllegalStateException(e);
-        }
+        return getFieldValue(clazz, field);
     }
 
     public static void setField(Object object, Field field, Object value) {
