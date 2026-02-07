@@ -460,7 +460,7 @@ public class RestfulClient {
             response = readResponse(resp);
             printResponse(response);
 
-        } catch (IllegalArgumentException e) {
+        } catch (MalformedURLException e) {
             logger.systemException(e);
         }
 
