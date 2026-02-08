@@ -432,13 +432,19 @@ public class RestfulClient {
             if (readTimeout >= 0)
                 requestBuilder.timeout(Duration.ofMillis(readTimeout));
 
-            if (postData.isSpecified()) {
+            //Set it if not overridden by requestProperties.
+            if (!requestProperties.containsKey("Content-Type") && postData.isSpecified()) {
                 if (postData.getEncoder() != null)
                     requestBuilder.header("Content-Type", postData.getEncoder().getContentType());
-                else requestBuilder.header("Content-Type", marshaller.getContentType());
+                else
+                    requestBuilder.header("Content-Type", marshaller.getContentType());
             }
 
-            requestBuilder.header("Accept", marshaller.getAccept());
+            //Set it if not overridden by requestProperties.
+            if (!requestProperties.containsKey("Accept")) {
+                requestBuilder.header("Accept", marshaller.getAccept());
+            }
+
             for (Map.Entry<String, String> entry : requestProperties.entrySet())
                 requestBuilder.header(entry.getKey(), entry.getValue());
 
