@@ -445,8 +445,13 @@ public class RestfulClient {
                 requestBuilder.header("Accept", marshaller.getAccept());
             }
 
-            for (Map.Entry<String, String> entry : requestProperties.entrySet())
+            for (Map.Entry<String, String> entry : requestProperties.entrySet()) {
+                if (entry.getKey() == null)
+                    throw new BadRequestException ("Header key is null");
+                if (entry.getValue() == null)
+                    throw new BadRequestException ("Header value is null");
                 requestBuilder.header(entry.getKey(), entry.getValue());
+            }
 
             printRequest(uri, method, requestProperties, postData);
 
@@ -595,7 +600,7 @@ public class RestfulClient {
     private Map<String, List<String>> toHeaderFields(HttpResponse<?> resp) {
         Map<String, List<String>> map = new java.util.LinkedHashMap<>();
         map.put(null, List.of("HTTP " + resp.statusCode()));
-        resp.headers().map().forEach((k, v) -> map.put(k, v));
+        map.putAll(resp.headers().map());
         return map;
     }
 
