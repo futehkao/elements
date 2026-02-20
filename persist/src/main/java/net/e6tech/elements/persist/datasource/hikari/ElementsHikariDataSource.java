@@ -79,17 +79,6 @@ public class ElementsHikariDataSource extends HikariDataSource {
         externalPool = true;
     }
 
-//    public ElementsHikariDataSource(HikariConfig configuration) {
-//        configuration.validate();
-//        configuration.copyStateTo(this);
-//        logger.info("{} - Starting...", configuration.getPoolName());
-//        setPool(new HikariPool(this));
-//        logger.info("{} - Start completed.", configuration.getPoolName());
-//        setSealed();
-//
-//        externalPool = true;
-//    }
-
     public List<String> getConnectionInitStatements() {
         return connectionInitStatements;
     }
