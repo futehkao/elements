@@ -208,20 +208,7 @@ public class Job implements Initializable, Startable, LaunchListener {
                     scheduler.start();
                 }
             }
-            JobKey jobKey = jobDetail.getKey();
-            TriggerKey triggerKey = trigger.getKey();
-
-            if (!scheduler.checkExists(jobKey)) {
-                scheduler.scheduleJob(jobDetail, trigger);
-            } else {
-                scheduler.addJob(jobDetail, true);
-
-                if (scheduler.checkExists(triggerKey)) {
-                    scheduler.rescheduleJob(triggerKey, trigger);
-                } else {
-                    scheduler.scheduleJob(trigger);
-                }
-            }
+            scheduler.scheduleJob(jobDetail, trigger);
             started = true;
         } catch (Exception ex) {
             throw new SystemException(ex);
