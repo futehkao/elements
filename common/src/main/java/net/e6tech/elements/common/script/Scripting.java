@@ -26,7 +26,7 @@ import org.codehaus.groovy.runtime.InvokerHelper;
 import javax.script.ScriptException;
 import java.io.*;
 import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
+
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -533,6 +533,12 @@ public class Scripting {
 
         public void shutdown() {
             try {
+                getBinding().getVariables().clear();
+                if (getBinding().getVariables() instanceof ThreadLocalMap) {
+                    ThreadLocalMap<?,?> map = (ThreadLocalMap<?,?>) getBinding().getVariables();
+                    map.close();
+                }
+                localVars.remove();
                 shell.getClassLoader().close();
             } catch (IOException e) {
                 throw new SystemException(e);
@@ -737,6 +743,7 @@ public class Scripting {
         public MyBinding(String[] args) {
             super(args);
         }
+
         @Override
         public void setVariable(String name, Object value) {
             lastModified = new Object();

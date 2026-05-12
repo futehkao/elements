@@ -15,6 +15,8 @@ limitations under the License.
 */
 package net.e6tech.elements.common.resources;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.inject.Injector;
 import net.e6tech.elements.common.inject.Module;
@@ -36,11 +38,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * A Resources instance is use to manage resource level injection and resources.
+ * A Resources instance is used to manage resource level injection and resources.
  * Rules for injection.  Only annotate injection for instances that are configured
  * during program start up.  During runtime, it is better to store resources via put.
  * This prevents a overly complicated dependency wiring.  For dynamically created
@@ -55,7 +58,6 @@ import java.util.function.Supplier;
 public class Resources implements AutoCloseable, ResourcePool {
 
     private static ThreadLocal<Deque<Resources>> activeResources = new ThreadLocal<>();
-
     private static Logger logger = Logger.getLogger(Resources.class);
     private static final String ABORT_DUE_TO_EXCEPTION = "Aborting due to exception";
     private ResourceManager resourceManager;
@@ -69,6 +71,8 @@ public class Resources implements AutoCloseable, ResourcePool {
     private Throwable lastException;
     private boolean submitting = false;
     private Boolean replayable;
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Map<Thread, Boolean> dependents = Collections.synchronizedMap(new WeakHashMap<>());
 
     public static Resources parent(Resources current) {
         Deque<Resources> deque = activeResources.get();
@@ -609,13 +613,21 @@ public class Resources implements AutoCloseable, ResourcePool {
         }
     }
 
+    public void addDependent(Thread th) {
+        dependents.put(th, Boolean.TRUE);
+    }
+
+    public void removeDependent(Thread th) {
+        dependents.remove(th);
+    }
+
     // return null because we want this type of work to be stateless outside of
     // Resources.
-    public synchronized <R extends Resources, E extends Exception> void submit(ConsumerWithException<R, E> work) {
+    public <R extends Resources, E extends Exception> void submit(ConsumerWithException<R, E> work) {
         play(new Replay<R, Object, E>(work));
     }
 
-    public synchronized <T extends Resources, R, E extends Exception> R submit(FunctionWithException<T, R, E> work) {
+    public <T extends Resources, R, E extends Exception> R submit(FunctionWithException<T, R, E> work) {
         return play(new Replay<>(work));
     }
 
@@ -628,8 +640,14 @@ public class Resources implements AutoCloseable, ResourcePool {
         boolean topLevel = !submitting;
         submitting = true;
         Deque<Resources> deque = activeResources.get();
-
+        boolean shouldLock = !dependents.containsKey(Thread.currentThread());
         try {
+            if (shouldLock) {
+                if (lock.isLocked()) {
+                    logger.warn("Potential deadlock in Resources.", new Throwable());
+                }
+                lock.lock();
+            }
             if (deque == null) {
                 deque = new LinkedList<>();
                 activeResources.set(deque);
@@ -662,6 +680,8 @@ public class Resources implements AutoCloseable, ResourcePool {
             deque.remove(this);
             if (deque.isEmpty())
                 activeResources.remove();
+            if (shouldLock)
+                lock.unlock();
         }
         return ret;
     }
@@ -672,6 +692,9 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public synchronized <R> R commit() {
+        if (dependents.containsKey(Thread.currentThread()))
+            return null;
+
         R ret = null;
         try {
             ret = _commit();
@@ -775,6 +798,9 @@ public class Resources implements AutoCloseable, ResourcePool {
     }
 
     public void close() throws Exception {
+        if (dependents.containsKey(Thread.currentThread()))
+            return;
+
         if (!isOpen())
             return;
 
@@ -796,6 +822,7 @@ public class Resources implements AutoCloseable, ResourcePool {
         } catch (Exception ex) {
             log(LogLevel.TRACE, ex.getMessage(), ex);
         }
+        dependents.clear();
         state.cleanup();
         configurator.clear();
         replays.clear();  // cannot be set to null because during replay abort may be called.

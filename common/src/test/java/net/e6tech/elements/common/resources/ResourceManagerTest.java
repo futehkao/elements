@@ -16,9 +16,12 @@
 
 package net.e6tech.elements.common.resources;
 
+import net.e6tech.elements.common.script.AbstractScriptShell;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,6 +36,19 @@ public class ResourceManagerTest {
         ResourceManager resourceManager = new ResourceManager();
         resourceManager.load("src/test/conf/simple.groovy");
         resourceManager.getAtoms();
+    }
+
+    @Test
+    public void shutdown() throws Exception{
+
+        while (true) {
+            ResourceManager resourceManager = new ResourceManager();
+            resourceManager.load("src/test/conf/simple.groovy");
+            resourceManager.getAtoms();
+            System.gc();
+            Thread.sleep(100);
+        }
+
     }
 
     @Test

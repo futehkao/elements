@@ -26,25 +26,38 @@ import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Configuration;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.ResourcesFactory;
+import net.e6tech.elements.common.util.Tunnel;
+import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.network.restful.JsonMarshaller;
+import net.e6tech.elements.network.restful.Request;
+import net.e6tech.elements.network.restful.RequestEncoder;
 import net.e6tech.elements.network.restful.RestfulClient;
+import net.e6tech.elements.security.JavaKeyStore;
+import net.e6tech.elements.security.SelfSignedCert;
 import org.apache.cxf.ext.logging.LoggingFeature;
 import org.apache.cxf.ext.logging.event.LogEvent;
 import org.apache.cxf.ext.logging.event.LogEventSender;
 import org.apache.cxf.ext.logging.event.LogMessageFormatter;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxrs.lifecycle.ResourceProvider;
+import org.apache.cxf.message.Message;
 import org.apache.cxf.rs.security.cors.CrossOriginResourceSharingFilter;
 
+import javax.net.ssl.SSLSocketFactory;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
+import java.io.PrintWriter;
 import java.net.*;
+import java.security.KeyStore;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Created by futeh.
@@ -60,6 +73,7 @@ public class JaxRSServer extends CXFServer {
     private static final Logger messageLogger = Logger.getLogger(JaxRSServer.class.getName() + ".message");
     private static final Map<Integer, JaxRSServerController> entries = new ConcurrentHashMap<>();
     private static Logger logger = Logger.getLogger();
+    private static ThreadLocal<JaxMessageLocal> messageThreadLocal = new ThreadLocal<>();
 
     private List<Map<String, Object>> resources = new ArrayList<>();
     private List<JaxResource> jaxResources = new ArrayList<>();
@@ -71,6 +85,48 @@ public class JaxRSServer extends CXFServer {
     private LogEventSender logEventSender;
     private ResourcesFactory resourcesFactory;
     private Consumer<JAXRSServerFactoryBean> customizer;
+    private RestfulClient loopbackClient;
+    private String loopbackTLSProtocol = "TLSv1.2";
+
+    public static ThreadLocal<JaxMessageLocal> getMessageThreadLocal() {
+        return messageThreadLocal;
+    }
+
+    public static Request createLoopbackRequest() {
+        return createLoopbackRequest(null);
+    }
+
+    public static Request createLoopbackRequest(Resources resources) {
+        return createLoopbackRequest(resources, (RequestEncoder) null);
+    }
+
+    public static Request createLoopbackRequest(Resources resources, Function<Object, String> encoderFunction) {
+        JsonMarshaller<ErrorResponse> encoder = null;
+        if (encoderFunction != null) {
+            encoder = new JsonMarshaller<ErrorResponse>(ErrorResponse.class);
+            encoder.setEncoderFunction(encoderFunction);
+        }
+        return createLoopbackRequest(resources, encoder);
+    }
+
+    public static Request createLoopbackRequest(Resources resources, RequestEncoder encoder) {
+        JaxRSServer server = JaxMessageLocal.get().getServer();
+        Message message = JaxMessageLocal.get().getMessage();
+        HttpServletRequest request = server.getServletRequestResponse(message).key();
+        Enumeration<String>  enumeration = request.getHeaderNames();
+        Request newRequest = server.getLoopbackClient().create();
+        while (enumeration.hasMoreElements()) {
+            String key = enumeration.nextElement();
+            newRequest.setRequestProperty(key, request.getHeader(key));
+        }
+
+        if (resources != null) {
+            newRequest.setRequestProperty(Request.getHeader(Resources.class), Tunnel.getKey(resources));
+        }
+
+        newRequest.setPayloadEncoder(encoder);
+        return newRequest;
+    }
 
     public static Logger getLogger() {
         return logger;
@@ -90,6 +146,14 @@ public class JaxRSServer extends CXFServer {
 
     public List<JaxResource> getJaxResources() {
         return jaxResources;
+    }
+
+    public String getLoopbackTLSProtocol() {
+        return loopbackTLSProtocol;
+    }
+
+    public void setLoopbackTLSProtocol(String loopbackTLSProtocol) {
+        this.loopbackTLSProtocol = loopbackTLSProtocol;
     }
 
     public void setJaxResources(List<JaxResource> jaxResources) {
@@ -479,5 +543,58 @@ public class JaxRSServer extends CXFServer {
             }
             return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(response).build();
         }
+    }
+
+    public RestfulClient getLoopbackClient() {
+        if (loopbackClient != null)
+            return loopbackClient;
+        String keyStoreFile =  getKeyStoreFile();
+        SelfSignedCert selfSignedCert = getSelfSignedCert();
+        KeyStore keyStore = getKeyStore();
+        SSLSocketFactory factory = null;
+        if (keyStoreFile != null || selfSignedCert != null || keyStore != null) {
+            try {
+                if (keyStore != null || keyStoreFile != null) {
+                    JavaKeyStore jceKeyStore;
+                    if (keyStore != null) {
+                        jceKeyStore = new JavaKeyStore(keyStore);
+                    } else {
+                        jceKeyStore = new JavaKeyStore(keyStoreFile, getKeyStorePassword(), getKeyStoreFormat());
+                    }
+                    jceKeyStore.init(getKeyManagerPassword());
+                    factory = jceKeyStore.createSocketFactory(loopbackTLSProtocol);
+                } else { // selfSignedCert
+                    factory = selfSignedCert.getJavaKeyStore().createSocketFactory(loopbackTLSProtocol);
+                }
+            } catch (Exception ex) {
+                throw new SystemException(ex);
+            }
+        }
+
+        Enumeration<NetworkInterface> nets = null;
+        String localhost = "127.0.0.1";
+        List<String> localHosts = new ArrayList<>();
+        try {
+            nets = NetworkInterface.getNetworkInterfaces();
+        } catch (SocketException e) {
+            throw new RuntimeException(e);
+        }
+        for (NetworkInterface netint : Collections.list(nets)) {
+            Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
+            for (InetAddress inetAddress : Collections.list(inetAddresses)) {
+                if (inetAddress instanceof Inet6Address)
+                    continue;
+                localHosts.add(inetAddress.getLoopbackAddress().getHostAddress());
+            }
+        }
+        if (!localHosts.isEmpty()) {
+            localhost = localHosts.get(0);
+        }
+
+        URL url = getURLs().get(0);
+        loopbackClient = new RestfulClient(url.getProtocol() + "://" + localhost + ":" + url.getPort()); // don't forget to used kickstart
+        loopbackClient.setSSLSocketFactory(factory);
+        loopbackClient.setPrinter(new PrintWriter(System.out, true));
+        return loopbackClient;
     }
 }

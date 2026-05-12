@@ -22,6 +22,7 @@ import net.e6tech.elements.common.util.function.RunnableWithException;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -35,6 +36,7 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
     Consumer<Resources> preOpen;
     private Configurator configurator = new Configurator();
     Resources resources;
+    Thread dependent;
 
     public UnitOfWork(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
@@ -53,6 +55,15 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
 
     public Resources getResources() {
         return resources;
+    }
+
+    public void fromResources(Resources resources) {
+        if (this.resources != null && this.resources.isOpen())
+            throw new IllegalStateException("An open Resources instance already exists.");
+        this.resources = resources;
+        this.resourceManager = resources.getResourceManager();
+        this.resources.addDependent(Thread.currentThread());
+        dependent = Thread.currentThread();
     }
 
     public Configurator configurator() {
@@ -79,7 +90,8 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
         if (resources == null || !resources.isOpen())
             throw new IllegalStateException("Resources not opened");
         resources.commit();
-        cleanup();
+        if (!resources.isOpen())
+            cleanup();
     }
 
     public void abort() {
@@ -90,6 +102,7 @@ public class UnitOfWork implements Transactional, Configurable<UnitOfWork> {
     }
 
     protected void cleanup() {
+        resources.removeDependent(dependent);
         resourceProviders.clear();
         resources = null;
         configurator.clear();

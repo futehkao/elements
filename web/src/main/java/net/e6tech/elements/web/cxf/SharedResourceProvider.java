@@ -29,13 +29,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 class SharedResourceProvider extends SingletonResourceProvider {
-
-    private static ThreadLocal<Message> messageThreadLocal = new ThreadLocal<>();
-
     private Observer observer;
     private Object proxy = null;
     private Map<Method, String> methods = new ConcurrentHashMap<>();
-    private CXFServer server;
+    private JaxRSServer server;
 
     SharedResourceProvider(JaxRSServer server, Object instance, Observer observer) {
         super(instance, true);
@@ -46,11 +43,11 @@ class SharedResourceProvider extends SingletonResourceProvider {
     @Override
     @SuppressWarnings({"squid:S1188", "squid:S3776"})
     public Object getInstance(Message m) {
-        messageThreadLocal.set(m);
+        JaxMessageLocal.set(l -> l.server(server).message(m));
         if (proxy == null) {
             Observer cloneObserver = (observer !=  null) ? observer.clone(): null;
             proxy = server.getInterceptor().newInterceptor(super.getInstance(null), frame -> {
-                Message message = messageThreadLocal.get();
+                Message message = JaxMessageLocal.get().getMessage();
                 try {
                     server.checkInvocation(frame.getMethod(), frame.getArguments());
                     if (cloneObserver != null && message != null) {
@@ -79,7 +76,7 @@ class SharedResourceProvider extends SingletonResourceProvider {
                     server.getProvision().log(JaxRSServer.getLogger(), LogLevel.DEBUG, th.getMessage(), th);
                     server.handleException(message, frame, th);
                 } finally {
-                    messageThreadLocal.remove();
+                    JaxMessageLocal.remove();
                 }
                 return null;
             });

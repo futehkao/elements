@@ -17,11 +17,13 @@
 package net.e6tech.sample.web.cxf;
 
 import net.e6tech.elements.common.inject.Inject;
-import net.e6tech.elements.common.resources.InstanceNotFoundException;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.util.Tunnel;
 import net.e6tech.elements.persist.EntityManagerConfig;
+import net.e6tech.elements.web.cxf.JaxRSServer;
 import net.e6tech.sample.entity.Employee;
+import org.eclipse.jetty.server.Request;
 
 import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
@@ -32,10 +34,7 @@ import javax.persistence.EntityManager;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Path("/helloworld")
 @SuppressWarnings("all") // it is a test case
@@ -46,6 +45,9 @@ public class HelloWorld {
 
     @Inject
     Resources resources;
+
+    Request request;
+    org.eclipse.jetty.server.Response response;
 
     private String extraMessage;
 
@@ -72,11 +74,6 @@ public class HelloWorld {
     @Path("hello")
     @EntityManagerConfig(disable = true)
     public String ping() {
-        try {
-            resources.getInstance(EntityManager.class);
-        } catch (InstanceNotFoundException ex) {
-            System.out.println("No transaction");
-        }
         return "ping ...";
     }
 
@@ -85,6 +82,7 @@ public class HelloWorld {
     @Path("hello/echo")
     @EntityManagerConfig(disable = true)
     public String echo(@QueryParam("param") String echo) {
+        System.out.println("echo: " + Tunnel.getKey(resources));
         return echo;
     }
 
@@ -149,6 +147,20 @@ public class HelloWorld {
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/{greeting}")
     public String sayHello(@PathParam("greeting") String greeting) {
+        Tunnel.tunnel(resources, res -> {
+            net.e6tech.elements.network.restful.Request request = JaxRSServer.createLoopbackRequest(resources, obj -> obj == null ? "" : obj.toString());
+            net.e6tech.elements.network.restful.Response response;
+            try {
+                System.out.println("sayHello: " + Tunnel.getKey(res));
+                response = request.sendWithoutPayload("/restful/helloworld/hello/echo?param=abc", "GET");
+                response.getResult();
+                response = request.sendWithPayload("/restful/helloworld/hello", "POST", "{ \"data\" :  \"hello world\"}");
+                response.getResult();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
         return provision.open()
                 .annotate(EntityManagerConfig.class, EntityManagerConfig::names, new String[] {"sample-rw"})
                 .apply(EntityManager.class, Resources.class,  (em, res) -> {
@@ -184,6 +196,7 @@ public class HelloWorld {
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello")
     public HelloData post(HelloData data) {
+        System.out.println("post: " + Tunnel.getKey(resources));
         if (data == null) throw new NullPointerException();
         return data;
     }
