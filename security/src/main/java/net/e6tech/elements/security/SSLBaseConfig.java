@@ -24,6 +24,7 @@ public abstract class SSLBaseConfig {
     private String keyStoreFormat = JavaKeyStore.DEFAULT_FORMAT;
     private char[] keyStorePassword;
     private char[] keyManagerPassword;
+    private JavaKeyStore javaKeyStore;
     private boolean includeSystem = true;
     private boolean erasePasswords = true;
 
@@ -92,5 +93,13 @@ public abstract class SSLBaseConfig {
 
     public void setErasePasswords(boolean erasePasswords) {
         this.erasePasswords = erasePasswords;
+    }
+
+    public JavaKeyStore getJavaKeyStore() {
+        return javaKeyStore;
+    }
+
+    public void setJavaKeyStore(JavaKeyStore javaKeyStore) {
+        this.javaKeyStore = javaKeyStore;
     }
 }

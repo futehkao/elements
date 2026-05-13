@@ -30,16 +30,22 @@ public class SSLServerSocketConfig extends SSLBaseConfig {
     public SSLServerSocketFactory getSSLServerSocketFactory() throws GeneralSecurityException, IOException {
         if (sslServerSocketFactory != null)
             return sslServerSocketFactory;
-        sslServerSocketFactory  = new JavaKeyStore(getKeyStore(), getKeyStorePassword(), getKeyStoreFormat())
-                .includeSystem(isIncludeSystem())
-                .init(getKeyManagerPassword())
-                .createServerSocketFactory(getTlsProtocol());
-        erasePasswords();
+
+        if (getJavaKeyStore() != null) {
+            sslServerSocketFactory = getJavaKeyStore().createServerSocketFactory(getTlsProtocol());
+        } else {
+            sslServerSocketFactory = new JavaKeyStore(getKeyStore(), getKeyStorePassword(), getKeyStoreFormat())
+                    .includeSystem(isIncludeSystem())
+                    .init(getKeyManagerPassword())
+                    .createServerSocketFactory(getTlsProtocol());
+            erasePasswords();
+        }
+
         return sslServerSocketFactory;
     }
 
     public ServerSocket createServerSocket(int port) throws GeneralSecurityException, IOException {
-        if (getKeyStore() != null) {
+        if (getKeyStore() != null || getJavaKeyStore() != null) {
             SSLServerSocket sslServerSocket = (SSLServerSocket) getSSLServerSocketFactory().createServerSocket(port);
 
             if (enabledProtocols != null) {

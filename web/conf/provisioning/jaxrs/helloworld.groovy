@@ -15,6 +15,32 @@
  */
 
 import net.e6tech.elements.web.cxf.JaxRSServer
+import net.e6tech.elements.network.cluster.ClusterNode
+
+
+/*
+atom("cluster") {
+
+    configuration = """
+        genesis:
+            name: hello
+            workPoolConfig:
+                initialCapacity: 10
+           
+"""
+    genesis = Genesis
+    genesis.configuration = """
+akka.cluster.seed-nodes = ["akka://hello@127.0.0.1:2552"]
+akka.remote.artery.canonical.port = 2552
+akka.remote.artery.canonical.hostname = 127.0.0.1
+"""
+    myCluster = ClusterNode
+    postInit {
+        notificationCenter.addBroadcast(myCluster.broadcast)
+    }
+}
+
+ */
 
 atom("serverEngine") {
     configuration = """

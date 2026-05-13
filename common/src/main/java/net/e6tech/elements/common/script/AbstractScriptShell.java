@@ -89,6 +89,10 @@ public abstract class AbstractScriptShell {
         }
     }
 
+    public void shutdown() {
+        getScripting().shutdown();
+    }
+
     public Scripting getScripting() {
         return scripting;
     }

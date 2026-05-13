@@ -22,17 +22,27 @@ import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 public class JsonMarshaller<R> implements Marshaller<R> {
     public static final ObjectMapper mapper = ObjectMapperFactory.newInstance();
 
     private Class<R> errorResponseClass ;
+    private Function<Object, String> encoderFunction;
 
     public JsonMarshaller() {
     }
 
     public JsonMarshaller(Class<R> errorResponseClass) {
         this.errorResponseClass = errorResponseClass;
+    }
+
+    public Function<Object, String> getEncoderFunction() {
+        return encoderFunction;
+    }
+
+    public void setEncoderFunction(Function<Object, String> encoderFunction) {
+        this.encoderFunction = encoderFunction;
     }
 
     @Override
@@ -47,11 +57,15 @@ public class JsonMarshaller<R> implements Marshaller<R> {
 
     @Override
     public String prettyPrintRequest(Object data) throws Exception {
+        if (encoderFunction != null)
+            return encoderFunction.apply(data);
         return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(data);
     }
 
     @Override
     public String encodeRequest(Object data) throws Exception {
+        if (encoderFunction != null)
+            return encoderFunction.apply(data);
         return mapper.writeValueAsString(data);
     }
 

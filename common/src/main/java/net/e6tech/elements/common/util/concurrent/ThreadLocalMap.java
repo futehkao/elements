@@ -19,9 +19,9 @@ package net.e6tech.elements.common.util.concurrent;
 import java.util.*;
 
 public class ThreadLocalMap<K, V> implements Map<K, V> {
-    private final ThreadLocal<Map<K, V>> threadLocal = new ThreadLocal<>();
+    private ThreadLocal<Map<K, V>> threadLocal = new ThreadLocal<>();
 
-    private final ThreadLocal<Object> lastUpdate = new ThreadLocal<>();
+    private ThreadLocal<Object> lastUpdate = new ThreadLocal<>();
 
     private Map<K, V> map;
 
@@ -278,6 +278,16 @@ public class ThreadLocalMap<K, V> implements Map<K, V> {
 
         threadLocal.remove();
         lastUpdate.set(dirty);
+    }
+
+    public synchronized void close() {
+        clearThreadLocal();
+        threadLocal.remove();
+        lastUpdate.remove();
+        threadLocal = null;
+        lastUpdate = null;
+        map = null;
+        dirty = null;
     }
 
     class TLEntry<K, V> implements Entry<K, V> {

@@ -25,13 +25,17 @@ import net.e6tech.elements.common.reflection.ClassSignature;
 import net.e6tech.elements.common.reflection.MethodSignature;
 import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.common.reflection.Signature;
+import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.ResourcesFactory;
+import net.e6tech.elements.common.util.Tunnel;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.common.util.ExceptionMapper;
 import net.e6tech.elements.common.util.datastructure.Pair;
+import net.e6tech.elements.network.restful.Request;
 import org.apache.cxf.io.CachedOutputStream;
 import org.apache.cxf.jaxrs.lifecycle.PerRequestResourceProvider;
 import org.apache.cxf.message.Message;
+import org.apache.cxf.transport.http.AbstractHTTPDestination;
 
 import javax.annotation.PreDestroy;
 import javax.servlet.http.HttpServletRequest;
@@ -40,6 +44,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 class InstanceResourceProvider extends PerRequestResourceProvider {
@@ -47,7 +52,7 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
     private Observer observer;
     private Map<Method, String> methods = new ConcurrentHashMap<>();
     private Object prototype;
-    private CXFServer server;
+    private JaxRSServer server;
     private Map<Signature, Map<Class<? extends Annotation>, Annotation>> annotations;
 
     @SuppressWarnings("unchecked")
@@ -76,6 +81,11 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
             Reflection.copyInstance(instance, prototype);
         Observer cloneObserver = (observer == null) ? null : observer.clone();
         UnitOfWork uow = (cloneObserver != null) ? cloneObserver.open(factory) : factory.open();
+
+        HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
+        Optional<Resources> cached = Tunnel.getValue(request.getHeader(Request.getHeader(Resources.class)));
+        cached.ifPresent(uow::fromResources);
+
         return server.getInterceptor().newInterceptor(instance, new Handler(uow, methods, cloneObserver, message));
     }
 
@@ -133,9 +143,18 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
             }
 
             try {
-                server.checkInvocation(frame.getMethod(), frame.getArguments());
                 Pair<HttpServletRequest, HttpServletResponse> pair = server.getServletRequestResponse(message);
+                server.checkInvocation(frame.getMethod(), frame.getArguments());
                 if (!ignored) {
+
+                    // this chunk is to store Message, Resources, and CXFServer to ThreadLocal
+                    // we also store the resources to cachedReesources on the CXFServer.  This allows another thread
+                    // to pick it up via restful call.  We will put in UUID of the Resources in the HTTP header
+                    // the receiver can then look it up.
+                    Resources resources = uow.getResources();
+                    JaxMessageLocal.set(m -> m.server(server).message(message).resources(resources));
+
+                    // This where we execute the code.
                     long start = System.currentTimeMillis();
                     result = uow.submit(() -> {
                         try {
@@ -177,11 +196,15 @@ class InstanceResourceProvider extends PerRequestResourceProvider {
                 server.getProvision().log(JaxRSServer.getLogger(), LogLevel.DEBUG, th.getMessage(), th);
                 server.handleException(message, frame, th);
             } finally {
+                // clean up ThreadLocal
+                JaxMessageLocal.remove();
+
                 if (uowOpen) {
                     if (exception)
                         uow.abort();
-                    else if (!uow.isAborted()) // application can call abort
+                    else if (!uow.isAborted()) {// application can call abort
                         uow.commit();
+                    }
                 }
             }
             return result;

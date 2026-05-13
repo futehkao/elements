@@ -17,6 +17,7 @@
 package net.e6tech.sample.web.cxf;
 
 import net.e6tech.elements.common.resources.Atom;
+import net.e6tech.elements.common.util.Tunnel;
 import net.e6tech.elements.common.util.concurrent.ObjectPool;
 import net.e6tech.elements.network.restful.RestfulProxy;
 import net.e6tech.elements.web.cxf.SecurityAnnotationEngine;
@@ -75,6 +76,7 @@ class HelloWorldTest extends BaseCase {
         Thread.sleep(500L); // for printing out measurements.
         helloWorld.sayHello("hello");
         Thread.sleep(500L);
+        assertTrue(Tunnel.getTunnelSize() == 0);
     }
 
     @Test
