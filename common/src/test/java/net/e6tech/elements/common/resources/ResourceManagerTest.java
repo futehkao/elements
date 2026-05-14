@@ -16,12 +16,10 @@
 
 package net.e6tech.elements.common.resources;
 
-import net.e6tech.elements.common.script.AbstractScriptShell;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,6 +37,7 @@ public class ResourceManagerTest {
     }
 
     @Test
+    @Tag("manual")
     public void shutdown() throws Exception{
 
         while (true) {

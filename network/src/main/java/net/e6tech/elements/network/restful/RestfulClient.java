@@ -25,7 +25,6 @@ import net.e6tech.elements.security.SSLSocketConfig;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
-import javax.net.ssl.SSLSocketFactory;
 import javax.ws.rs.*;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -42,6 +41,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 
@@ -52,6 +52,12 @@ import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 public class RestfulClient {
 
     private static Logger logger = Logger.getLogger();
+    private static final Set<String> RESTRICTED_HEADERS = Set.of( //HTTP Client will throw an exception if these headers are set.
+            "connection",
+            "content-length",
+            "expect",
+            "host",
+            "upgrade");
 
     private ExceptionMapper exceptionMapper;
     private String staticAddress;
@@ -60,6 +66,7 @@ public class RestfulClient {
     private String trustStoreFormat = JavaKeyStore.DEFAULT_FORMAT;
     private char[] trustStorePassword;
     private char[] privateKeyPassword;
+    private JavaKeyStore javaKeyStore;
     private String TLSProtocol = "TLS";
     private boolean skipHostnameCheck = false;
     private boolean skipCertCheck = false;
@@ -162,6 +169,19 @@ public class RestfulClient {
 
     public RestfulClient trustStorePassword(char[] trustStorePassword) {
         setTrustStorePassword(trustStorePassword);
+        return this;
+    }
+
+    public JavaKeyStore getJavaKeyStore() {
+        return javaKeyStore;
+    }
+
+    public void setJavaKeyStore(JavaKeyStore javaKeyStore) {
+        this.javaKeyStore = javaKeyStore;
+    }
+
+    public RestfulClient javaKeyStore(JavaKeyStore javaKeyStore) {
+        setJavaKeyStore(javaKeyStore);
         return this;
     }
 
@@ -450,6 +470,8 @@ public class RestfulClient {
                     throw new BadRequestException ("Header key is null");
                 if (entry.getValue() == null)
                     throw new BadRequestException ("Header value is null");
+                if (RESTRICTED_HEADERS.contains(entry.getKey().toLowerCase()))
+                    continue;
                 requestBuilder.header(entry.getKey(), entry.getValue());
             }
 
@@ -696,8 +718,10 @@ public class RestfulClient {
             config.setKeyStore(trustStore);
             config.setKeyStorePassword(trustStorePassword == null ? null : trustStorePassword.clone());
             config.setKeyStoreFormat(trustStoreFormat);
+            config.setJavaKeyStore(javaKeyStore);
             config.setSkipCertCheck(skipCertCheck);
             config.setKeyManagerPassword(privateKeyPassword == null ? null : privateKeyPassword.clone());
+            config.setTlsProtocol(TLSProtocol);
             config.setErasePasswords(true);
 
             SSLContext ctx = config.getSSLContext();
