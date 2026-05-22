@@ -95,11 +95,15 @@ public abstract class SSLBaseConfig {
         this.erasePasswords = erasePasswords;
     }
 
-    public JavaKeyStore getJavaKeyStore() {
+    // this cannot be a getter because ObjectMapper cannot serialize JavaKeyStore and this will break during Atom configuration.
+    // this is related to JPMS introduced in JDK 9
+    public JavaKeyStore javaKeyStore() {
         return javaKeyStore;
     }
 
-    public void setJavaKeyStore(JavaKeyStore javaKeyStore) {
+    // this cannot be a setter because ObjectMapper cannot serialize JavaKeyStore and this will break during Atom configuration.
+    // this is related to JPMS introduced in JDK 9
+    public void javaKeyStore(JavaKeyStore javaKeyStore) {
         this.javaKeyStore = javaKeyStore;
     }
 }
