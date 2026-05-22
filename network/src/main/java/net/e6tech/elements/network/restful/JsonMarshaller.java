@@ -45,6 +45,11 @@ public class JsonMarshaller<R> implements Marshaller<R> {
         this.encoderFunction = encoderFunction;
     }
 
+    public JsonMarshaller<R> encoderFunction(Function<Object, String> encoderFunction) {
+        setEncoderFunction(encoderFunction);
+        return this;
+    }
+
     @Override
     public String getContentType() {
         return "application/json";

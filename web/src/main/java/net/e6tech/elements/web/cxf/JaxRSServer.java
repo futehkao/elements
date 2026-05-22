@@ -56,6 +56,7 @@ import java.net.*;
 import java.security.KeyStore;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -92,6 +93,20 @@ public class JaxRSServer extends CXFServer {
         return messageThreadLocal;
     }
 
+    public static void tunnel(Resources resources, Consumer<Request> consumer) {
+        Tunnel.tunnel(resources, res -> {
+            Request request = createLoopbackRequest(resources);
+            consumer.accept(request);
+        });
+    }
+
+    public static void tunnel(Resources resources, Consumer<Request> consumer, Function<Object, String> encoderFunction) {
+        Tunnel.tunnel(resources, res -> {
+            Request request = createLoopbackRequest(resources, encoderFunction);
+            consumer.accept(request);
+        });
+    }
+
     public static Request createLoopbackRequest() {
         return createLoopbackRequest(null);
     }
@@ -103,7 +118,7 @@ public class JaxRSServer extends CXFServer {
     public static Request createLoopbackRequest(Resources resources, Function<Object, String> encoderFunction) {
         JsonMarshaller<ErrorResponse> encoder = null;
         if (encoderFunction != null) {
-            encoder = new JsonMarshaller<ErrorResponse>(ErrorResponse.class);
+            encoder = new JsonMarshaller<>(ErrorResponse.class);
             encoder.setEncoderFunction(encoderFunction);
         }
         return createLoopbackRequest(resources, encoder);
