@@ -33,8 +33,8 @@ public class SSLSocketConfig extends SSLBaseConfig {
         TrustManager[] trustManagers;
         KeyManager[] keyManagers = null;
 
-        if (javaKeyStore() != null) {
-            JavaKeyStore javaKeyStore = javaKeyStore();
+        if (getJavaKeyStore() != null) {
+            JavaKeyStore javaKeyStore = getJavaKeyStore();
             trustManagers = javaKeyStore.getTrustManagers();
             keyManagers = javaKeyStore.getKeyManagers();
         } else if (getKeyStore() != null) {

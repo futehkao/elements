@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.security;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Arrays;
 
 public abstract class SSLBaseConfig {
@@ -95,15 +97,17 @@ public abstract class SSLBaseConfig {
         this.erasePasswords = erasePasswords;
     }
 
-    // this cannot be a getter because ObjectMapper cannot serialize JavaKeyStore and this will break during Atom configuration.
+    // ObjectMapper cannot serialize JavaKeyStore and this will break during Atom configuration.
     // this is related to JPMS introduced in JDK 9
-    public JavaKeyStore javaKeyStore() {
+    @JsonIgnore
+    public JavaKeyStore getJavaKeyStore() {
         return javaKeyStore;
     }
 
-    // this cannot be a setter because ObjectMapper cannot serialize JavaKeyStore and this will break during Atom configuration.
+    // ObjectMapper cannot serialize JavaKeyStore and this will break during Atom configuration.
     // this is related to JPMS introduced in JDK 9
-    public void javaKeyStore(JavaKeyStore javaKeyStore) {
+    @JsonIgnore
+    public void setJavaKeyStore(JavaKeyStore javaKeyStore) {
         this.javaKeyStore = javaKeyStore;
     }
 }
