@@ -19,7 +19,9 @@ package net.e6tech.sample.web.cxf;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.resources.Provision;
 import net.e6tech.elements.common.resources.Resources;
+import net.e6tech.elements.common.util.ErrorResponse;
 import net.e6tech.elements.common.util.Tunnel;
+import net.e6tech.elements.network.restful.JsonMarshaller;
 import net.e6tech.elements.persist.EntityManagerConfig;
 import net.e6tech.elements.web.cxf.JaxRSServer;
 import net.e6tech.sample.entity.Employee;
@@ -147,11 +149,11 @@ public class HelloWorld {
     @Produces({MediaType.APPLICATION_JSON})
     @Path("hello/{greeting}")
     public String sayHello(@PathParam("greeting") String greeting) {
-        Tunnel.tunnel(resources, res -> {
-            net.e6tech.elements.network.restful.Request request = JaxRSServer.createLoopbackRequest(resources, obj -> obj == null ? "" : obj.toString());
+        JaxRSServer.tunnel(resources, request -> {
+            request.setPayloadEncoder(new JsonMarshaller<>(ErrorResponse.class).encoderFunction(obj -> obj == null ? "" : obj.toString()));
             net.e6tech.elements.network.restful.Response response;
             try {
-                System.out.println("sayHello: " + Tunnel.getKey(res));
+                System.out.println("sayHello: " + Tunnel.getKey(resources));
                 response = request.sendWithoutPayload("/restful/helloworld/hello/echo?param=abc", "GET");
                 response.getResult();
                 response = request.sendWithPayload("/restful/helloworld/hello", "POST", "{ \"data\" :  \"hello world\"}");
