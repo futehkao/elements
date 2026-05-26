@@ -20,9 +20,11 @@ import net.e6tech.elements.web.cxf.JaxRSServer
 import net.e6tech.elements.web.cxf.SecurityAnnotationEngine
 import net.e6tech.sample.web.cxf.HelloWorld
 import net.e6tech.sample.web.cxf.HelloWorldRoles
+import org.apache.cxf.jaxrs.JAXRSServerFactoryBean
+import net.e6tech.sample.web.cxf.SSLSocketConfigWrapper
+
 import javax.ws.rs.*
 import javax.ws.rs.core.MediaType
-import org.apache.cxf.jaxrs.JAXRSServerFactoryBean
 
 helloWorldPort = 19001
 roleMap = [(HelloWorld.getName()): HelloWorldRoles]
@@ -44,6 +46,9 @@ atom("helloWorld") {
         'Y' : 'Y val'
     # _helloWorld.serverEngineClass: net.e6tech.elements.web.cxf.tomcat.TomcatEngine
     _securityAnnotation.securityProviders: ^roleMap
+    _wrapper.sslSocketConfig:
+        tlsProtocol: 'TLSv1.2'
+
  """
     _classLoader = this.getClass().getClassLoader()
     _prototype = HelloWorld
@@ -57,5 +62,6 @@ atom("helloWorld") {
     _helloWorld.customizer = (JAXRSServerFactoryBean b) -> {
         b.getInInterceptors()
     }
+    _wrapper = SSLSocketConfigWrapper
 }
 
