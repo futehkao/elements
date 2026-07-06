@@ -84,7 +84,11 @@ public class LoggerAdapter extends java.util.logging.Logger {
 
     @Override
     public void setLevel(final Level newLevel) {
-        throw new UnsupportedOperationException("Cannot set level through log4j-api");
+        try {
+            super.setLevel(newLevel);
+        } catch (Exception ex) {
+            // ignore, log4j does not support Java Logger.
+        }
     }
 
     @Override
