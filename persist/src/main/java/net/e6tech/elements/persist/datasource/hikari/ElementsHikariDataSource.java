@@ -34,6 +34,7 @@ import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.Reflection;
 
 /**
  * Subclassed from HikariDataSource to support connectionInitStatments.
@@ -64,11 +65,17 @@ public class ElementsHikariDataSource extends HikariDataSource {
 
     private int resetCount = 0;
 
+    private final Field poolField = Reflection.getField(HikariDataSource.class, "pool");
+    private final Field sealedField = Reflection.getField(HikariDataSource.class, "sealed");
+
+    private HikariPool fastPathPool;
+
     public ElementsHikariDataSource() {
     }
 
     public ElementsHikariDataSource(HikariConfig configuration) {
         super(configuration);
+        fastPathPool = getPool();
         externalPool = true;
     }
 
@@ -155,12 +162,12 @@ public class ElementsHikariDataSource extends HikariDataSource {
         }
 
         try {
-            return super.getConnection();
+            return getConnectionOverride();
         } catch (Exception e) {
             try {
                 if (e instanceof SQLTransientConnectionException && resetPool()) {
                     try {
-                        return super.getConnection();
+                        return getConnectionOverride();
                     } catch (Exception e2) {
                         logger.error("HikariPool: failed obtaining connection after reset: {}", e2.getMessage(), e2);
                         throw e2;
@@ -172,6 +179,59 @@ public class ElementsHikariDataSource extends HikariDataSource {
                 throw e;
             }
         }
+    }
+
+    /*
+    * the method is copied from HikariDataSource. the only difference is to use fastPathPool from this class.
+    * We need to do this because pool field in HikariDataSource is "private final".
+    * Previously we used reflection to reset fastPathPool but with jdk9+ it is not possible to set a final field from subclass.
+    * */
+    private Connection getConnectionOverride() throws SQLException {
+        if (this.isClosed()) {
+            throw new SQLException("HikariDataSource " + this + " has been closed.");
+        } else if (fastPathPool != null) { //first difference from original method. it's made because of jdk9+ final field restriction
+            return fastPathPool.getConnection();
+        } else {
+            HikariPool result = getPool();
+            if (result == null) {
+                synchronized(this) {
+                    result = getPool();
+                    if (result == null) {
+                        this.validate();
+                        logger.info("{} - Starting...", this.getPoolName());
+
+                        try {
+                            result = new HikariPool(this);
+                            setPool(result);
+                            setSealed();
+                        } catch (HikariPool.PoolInitializationException pie) {
+                            if (pie.getCause() instanceof SQLException) {
+                                throw (SQLException)pie.getCause();
+                            }
+
+                            throw pie;
+                        }
+
+                        logger.info("{} - Start completed.", this.getPoolName());
+                    }
+                }
+            }
+
+            fastPathPool = result; //second difference from original method. Needed because we don't wanna getting pool via reflection every time after reset.
+            return result.getConnection();
+        }
+    }
+
+    private void setPool(HikariPool pool) {
+        Reflection.setField(this, poolField, pool);
+    }
+
+    private HikariPool getPool() {
+        return Reflection.getFieldValue(this, poolField);
+    }
+
+    private void setSealed() {
+        Reflection.setField(this, sealedField, true);
     }
 
     synchronized protected boolean resetPool() throws Exception {
@@ -194,22 +254,14 @@ public class ElementsHikariDataSource extends HikariDataSource {
             return false;
         }
 
-        Field fastField = HikariDataSource.class.getDeclaredField("fastPathPool");
-        Field poolField = HikariDataSource.class.getDeclaredField("pool");
-        fastField.setAccessible(true);
-        poolField.setAccessible(true);
-        HikariPool pool = (HikariPool) fastField.get(this);
-        if (pool != null) {
-            fastField.set(this, null);
-        } else {
-            pool = (HikariPool) poolField.get(this);
-        }
+        HikariPool pool = fastPathPool != null ? fastPathPool : getPool();
 
         if (pool != null) {
             lastReset = System.currentTimeMillis();
             resetCount++;
             logger.warn("Reset HikariPool due to getConnection timeout.");
-            poolField.set(this, null);
+            fastPathPool = null;
+            setPool(null);
             if (isAllowPoolSuspension())
                 pool.suspendPool();
             unregisterPool(pool);

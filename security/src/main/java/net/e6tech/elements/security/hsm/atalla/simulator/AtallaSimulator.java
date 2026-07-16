@@ -17,6 +17,7 @@
 package net.e6tech.elements.security.hsm.atalla.simulator;
 
 import net.e6tech.elements.common.logging.Logger;
+import net.e6tech.elements.common.reflection.Reflection;
 import net.e6tech.elements.security.Hex;
 import net.e6tech.elements.security.hsm.Simulator;
 import net.e6tech.elements.security.hsm.atalla.Message;
@@ -63,13 +64,13 @@ public class AtallaSimulator extends Simulator {
         for (Field f : fields) {
             if (Modifier.isStatic(f.getModifiers())
                     && f.getType().isAssignableFrom(String.class)) {
-                f.setAccessible(true);
                 try {
-                    String value = (String) f.get(null);
+                    String value = Reflection.getFieldValue(this, f);
+
                     String[] keyComponents = value.split(",");
                     if (keyComponents.length == 2)
                         keys.put(f.getName(), value);
-                } catch (IllegalAccessException e) {
+                } catch (IllegalStateException e) {
                     Logger.suppress(e);
                 }
             }

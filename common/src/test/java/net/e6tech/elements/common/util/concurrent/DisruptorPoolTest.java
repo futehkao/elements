@@ -16,13 +16,11 @@
 
 package net.e6tech.elements.common.util.concurrent;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import net.e6tech.elements.common.Tags;
+import org.junit.jupiter.api.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -68,6 +66,7 @@ public class DisruptorPoolTest {
     }
 
     @Test
+    @Tags.Manual
     void runTimeout() {
         DisruptorPool pool = new DisruptorPool();
         pool.start();

@@ -18,29 +18,28 @@ package net.e6tech.elements.common.util;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.function.Function;
 
 public class CompressionSerializerTest {
 
     @Test
     void basic() throws IOException, ClassNotFoundException {
-        Function<String, String> func = s -> {
+        SerializableFunction<String, String> func = s -> {
             System.out.println(s);
             return s;
         };
 
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream out = new ObjectOutputStream(bos);
         CompressionSerializer serializer = new CompressionSerializer();
         byte[] payload = serializer.toBytes(func);
-        out.write(payload);
-        out.close();
 
-        func = CompressionSerializer.fromBytes(bos.toByteArray());
+        func = CompressionSerializer.fromBytes(payload);
         func.apply("hello");
+
+    }
+
+    interface SerializableFunction<T, R> extends Function<T, R>, Serializable {
 
     }
 }

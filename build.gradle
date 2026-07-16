@@ -16,27 +16,29 @@ plugins {
     id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
 }
 
-ext.elementsVersion = '2.7.18'
-ext.junitPlatformLauncherVersion = '1.6.2'
-ext.junitJupiterVersion = '5.6.2'
+ext.elementsVersion = '3.0.14-SNAPSHOT'
+ext.junitPlatformLauncherVersion = '1.8.2'
+ext.junitJupiterVersion = '5.8.2'
 ext.snakeyamlVersion = '2.0'
 ext.simplejndiVersion = '0.11.4.1'
 ext.findbugsVersion = '3.0.2'
 ext.lmaxDisruptorVerion = '3.4.2'
 ext.slf4jVersion = '1.7.36'
-ext.groovyVersion = '3.0.21'
+ext.groovyVersion = '4.0.29'
 ext.caffeineVersion = '2.9.3'
 ext.guavaVerions = '33.5.0-jre'  // Using explicit -jre variant to avoid Android/JRE ambiguity
 ext.scalaVersion = '2.13.10'
 ext.akkaVersion = '2.6.9'
 ext.akkaScalaVersion = '2.13'
 ext.aeronVersion = '1.30.0'
-ext.kryoVersion = '5.0.0-RC9'
-ext.bytebuddyVersion = '1.10.17'
-ext.ehcacheVersion = '3.9.0'
+ext.kryoVersion = '5.6.2'
+ext.bytebuddyVersion = '1.17.8'
+ext.ehcacheVersion = '3.10.0'
 ext.javaCacheApiVerison = '1.1.1'
 ext.javamailVersion = '1.6.2'
 ext.javaxWsRsApiVersion = '2.1.6'
+ext.javaxWsApiVersion = '2.3.1'
+ext.javaxJwsApiVersion = '1.1'
 ext.javaeeApiVersion = '8.0.1'
 ext.jacksonVersion = '2.16.1'
 ext.jettyVersion =  '9.4.57.v20241219'
@@ -56,8 +58,8 @@ ext.hikariVersion = '3.4.5'
 ext.mariadbClientVersion = '2.6.2'
 ext.hibernateVersion = '5.4.27.Final'  // note 5.4.6 - 5.4.8 have major stack overflow issues
 ext.bouncycastleVersion = '1.79'
-ext.jaxbVersion = '2.3.1'      // security
-ext.jaxbRuntimeVersion = '2.3.3'
+ext.jaxbVersion = '2.4.0'      // security
+ext.jaxbRuntimeVersion = '2.3.5'
 ext.jaxbOldVersion = '2.3.0'
 ext.jnrffiVersion = '2.1.16'  // cassandra and akka cluster typed
 ext.nettyVersion = '4.1.119.Final'
@@ -75,22 +77,8 @@ allprojects {
 
     apply plugin: 'java'
 
-    sourceCompatibility = 1.8
-
-    // Fix for Guava JRE vs Android ambiguity in Gradle 6.x
-    configurations.all {
-        resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-            if (details.requested.group == 'com.google.guava' && details.requested.name == 'guava') {
-                details.because('Enforce JRE variant to avoid Android/JRE ambiguity')
-                details.useTarget("${details.requested.group}:${details.requested.name}:${guavaVerions}")
-            }
-        }
-
-        // Additional attribute configuration for Gradle 6.x
-        attributes {
-            attribute(Attribute.of('org.gradle.jvm.environment', String), 'standard-jvm')
-        }
-    }
+    sourceCompatibility = 21
+    targetCompatibility = 21
 
     tasks.withType(Javadoc) {
         options.addStringOption('Xdoclint:syntax', '-quiet')
@@ -101,14 +89,14 @@ allprojects {
     }
 
     configurations {
-        compile.exclude(group: 'jakarta.annotation') // replaced with javaee-api, which used by hibernate
-        compile.exclude(group: 'jakarta.activation') // in javaee
-        compile.exclude group: 'javax.activation' // in javaee, but we need an implementation, which is in jaxb-runtime
-        compile.exclude(group: 'jakarta.ws.rs') // replaced with javaee-api from network
-        compile.exclude(group: 'javax.xml.bind')
+        api.exclude(group: 'jakarta.annotation') // replaced with javaee-api, which used by hibernate
+        api.exclude(group: 'jakarta.activation') // in javaee
+        api.exclude group: 'javax.activation' // in javaee, but we need an implementation, which is in jaxb-runtime
+        api.exclude(group: 'jakarta.ws.rs') // replaced with javaee-api from network
+        api.exclude(group: 'javax.xml.bind')
         // replaced with jakarta.xml.bind which comes from org.glassfish.jaxb:jaxb-runtime
-        compile.exclude(group: 'javax.persistence')    // in javaee
-        // compile.exclude(group: 'javax.servlet') // This is needed because LocalStrings resource bundle is missing from javaee
+        api.exclude(group: 'javax.persistence')    // in javaee
+        // api.exclude(group: 'javax.servlet') // This is needed because LocalStrings resource bundle is missing from javaee
     }
 }
 
@@ -126,9 +114,9 @@ nexusPublishing {
 }
 
 dependencies {
-    testCompile("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
-    testCompile("org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}")
-    testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
+    testImplementation("org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
 }
 
 subprojects {
@@ -137,15 +125,21 @@ subprojects {
     version "${elementsVersion}"
 
     apply plugin: 'groovy'
-    apply plugin: 'java'
+    apply plugin: 'java-library'
     apply plugin: 'maven-publish'
     apply plugin: 'signing'
+
+    test {
+        useJUnitPlatform {
+            excludeTags "manual"
+        }
+    }
 
     archivesBaseName = "elements-${project.name}"
 
     javadoc {
         source = sourceSets.main.allJava
-        classpath = configurations.compile
+        classpath = configurations.api
     }
 
     apply plugin: 'org.owasp.dependencycheck'
@@ -217,7 +211,7 @@ subprojects {
         sign publishing.publications.mavenJava
     }
 
-    tasks.withType(Sign) {
+    tasks.withType(Sign).configureEach {
         onlyIf { isReleaseVersion && project.hasProperty("signing.keyId") }
     }
 }

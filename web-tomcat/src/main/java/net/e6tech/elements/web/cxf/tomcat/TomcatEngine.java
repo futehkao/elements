@@ -16,7 +16,6 @@
 
 package net.e6tech.elements.web.cxf.tomcat;
 
-import net.e6tech.elements.common.actor.typed.worker.WorkerPoolConfig;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
@@ -55,7 +54,6 @@ public class TomcatEngine implements ServerEngine {
     private String baseDir;
     private Provision provision;
     private boolean useThreadPool = false;
-    private WorkerPoolConfig workerPoolConfig = new WorkerPoolConfig();
     private TomcatSSL tomcatSSL = new TomcatSSL();
 
     public int getMaxThreads() {
@@ -97,15 +95,6 @@ public class TomcatEngine implements ServerEngine {
     @Inject(optional = true)
     public void setProvision(Provision provision) {
         this.provision = provision;
-    }
-
-    public WorkerPoolConfig getWorkerPoolConfig() {
-        return workerPoolConfig;
-    }
-
-    @Inject(optional = true)
-    public void setWorkerPoolConfig(WorkerPoolConfig workerPoolConfig) {
-        this.workerPoolConfig = workerPoolConfig;
     }
 
     public boolean isUseThreadPool() {

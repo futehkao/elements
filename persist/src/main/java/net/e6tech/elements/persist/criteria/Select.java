@@ -95,12 +95,6 @@ public class Select<T> extends Statement<T> {
         return this;
     }
 
-    public Select<T> where(T template) {
-        Where.interceptor.runAnonymous(null, where.getTemplate(), template);
-        where.onQuery();
-        return this;
-    }
-
     public Select<T> where(BiConsumer<Select<T>, T> consumer) {
         consumer.accept(this, where.getTemplate());
         where.onQuery();

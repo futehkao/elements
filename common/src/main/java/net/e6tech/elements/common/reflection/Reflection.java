@@ -24,6 +24,8 @@ import net.e6tech.elements.common.util.lambda.Each;
 
 import java.beans.*;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -366,32 +368,65 @@ public class Reflection {
         });
     }
 
+    @Deprecated(forRemoval = true)
+    /* Usse getFieldValue(Object object, String fieldName)
+    * */
     public static <V> V getField(Object object, String fieldName) {
+        return getFieldValue(object, fieldName);
+    }
+
+    public static <V> V getFieldValue(Object object, String fieldName) {
         Field field = getField(object.getClass(), fieldName);
+        return getFieldValue(object, field);
+    }
+
+    public static <V> V getFieldValue(Object object, Field field) {
+        if (field == null) {
+            throw new IllegalStateException("can not get the field value. the field is null");
+        }
         try {
-            return (V) field.get(object);
-        } catch (IllegalAccessException e) {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
+            if (Modifier.isStatic(field.getModifiers())) {
+                VarHandle varHandle = privateLookup.findStaticVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+                return (V) varHandle.get();
+            } else {
+                VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+                return  (V) varHandle.get(object);
+            }
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static <V> V getStaticFieldValue(Class<?> clazz, String fieldName) {
+        Field field = getField(clazz, fieldName);
+        return getFieldValue(clazz, field);
+    }
+
+    public static void setField(Object object, Field field, Object value) {
+        if (field == null) {
+            throw new IllegalStateException("can not set the field. the field is null");
+        }
+        try {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), MethodHandles.lookup());
+            VarHandle varHandle = privateLookup.findVarHandle(field.getDeclaringClass(), field.getName(), field.getType());
+            varHandle.set(object, value);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
     }
 
     public static void setField(Object object, String fieldName, Object value) {
         Field field = getField(object.getClass(), fieldName);
-        try {
-            field.set(object, value);
-        } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
-        }
+        setField(object, field, value);
     }
 
     public static Field getField(Class clazz, String fieldName) {
         Class cls = clazz;
         while (cls != null && !cls.equals(Object.class)) {
             try {
-                Field field = cls.getDeclaredField(fieldName);
-                field.setAccessible(true);
-                return field;
-            } catch (Exception e) {
+                return cls.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
                 Logger.suppress(e);
             }
             try {
@@ -400,7 +435,7 @@ public class Reflection {
                 throw new IllegalStateException(e);
             }
         }
-        throw new IllegalStateException("No bankId defined");
+        throw new IllegalStateException("Field " + fieldName + " not found for class " + clazz.getName());
     }
 
     public static Class getParametrizedType(Class clazz, int index) {
@@ -614,17 +649,17 @@ public class Reflection {
                 return null;
 
             if (type == Boolean.TYPE || type == Boolean.class)
-                return new Boolean(object.toString());
+                return Boolean.valueOf(object.toString());
             else if (type == Double.TYPE || type == Double.class) {
-                return new Double(object.toString());
+                return Double.valueOf(object.toString());
             } else if (type == Float.TYPE || type == Float.class) {
-                return new Float(object.toString());
+                return Float.valueOf(object.toString());
             } else if (type == Integer.TYPE || type == Integer.class) {
-                return new Integer(object.toString());
+                return Integer.valueOf(object.toString());
             } else if (type == Long.TYPE || type == Long.class) {
-                return new Long(object.toString());
+                return Long.valueOf(object.toString());
             } else if (type == Short.TYPE || type == Short.class) {
-                return new Short(object.toString());
+                return Short.valueOf(object.toString());
             } else if (type == BigDecimal.class) {
                 return new BigDecimal(object.toString());
             } else if (type == BigInteger.class) {

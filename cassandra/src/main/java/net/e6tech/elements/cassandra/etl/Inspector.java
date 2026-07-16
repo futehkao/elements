@@ -247,7 +247,6 @@ public class Inspector {
             descriptor = new ColumnAccessor(position, gen.getColumnName(desc), desc.getName(), desc);
         } else {
             descriptor = new ColumnAccessor(position, gen.getColumnName(field), field.getName(), field);
-            field.setAccessible(true);
         }
         return descriptor;
     }

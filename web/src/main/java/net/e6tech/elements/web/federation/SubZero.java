@@ -46,7 +46,7 @@ public class SubZero {
                 kryo.setRegistrationRequired(false);
                 kryo.register(Object[].class);
                 kryo.register(Class.class);
-                kryo.register(SerializedLambda.class);
+//                kryo.register(SerializedLambda.class); // cant use internal jdk classes anymore here. kryo will try to access its private fields and it fails under jdk9+
                 kryo.register(ClosureSerializer.Closure.class, new ClosureSerializer());
                 return kryo;
             }

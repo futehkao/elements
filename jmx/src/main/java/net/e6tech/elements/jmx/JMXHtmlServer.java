@@ -17,7 +17,7 @@ package net.e6tech.elements.jmx;
 
 
 import net.e6tech.elements.common.logging.Logger;
-import net.e6tech.elements.common.util.SystemException;
+import net.e6tech.elements.common.reflection.Reflection;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -68,10 +68,8 @@ public class JMXHtmlServer extends com.sun.jdmk.comm.HtmlAdaptorServer {
 
         try {
             ServerSocket serverSocket = new ServerSocket(port, 2 * maxActiveClientCount, getBindAddress());
-            // we need set set super class sockListen to this
-            Field field = com.sun.jdmk.comm.HtmlAdaptorServer.class.getDeclaredField("sockListen");
-            field.setAccessible(true);
-            field.set(this, serverSocket);
+            // we need set super class sockListen to this
+            Reflection.setField(this, "sockListen", serverSocket);
             myLogger.info("doBind: Bound to [Address={}, Port={}]", serverSocket.getInetAddress(), serverSocket.getLocalPort());
         } catch (SocketException e) {
             if (e.getMessage().equals(INTERRUPT_SYS_CALL_MSG))
@@ -83,8 +81,6 @@ public class JMXHtmlServer extends com.sun.jdmk.comm.HtmlAdaptorServer {
             throw new InterruptedException(e.toString()) ;
         } catch (IOException e) {
             throw new com.sun.jdmk.comm.CommunicationException(e) ;
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            throw new SystemException(e);
         }
     }
 }

@@ -32,6 +32,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -59,8 +60,8 @@ public class Scripting {
     }
 
     private GroovyEngine engine;
-    private List runAfterList = new LinkedList<>();
-    private List launchedList = new LinkedList<>();
+    private Collection runAfterList = new ConcurrentLinkedQueue<>();
+    private Collection launchedList = new ConcurrentLinkedQueue<>();
     private boolean silent = false;
 
     protected Scripting() {
@@ -349,7 +350,7 @@ public class Scripting {
         runAfterList.clear();
     }
 
-    private void executeList(List list) {
+    private void executeList(Collection list) {
         // to prevent concurrent modification (because calling the closure or runnable can modify the list),
         // we copy list to items.
         Object[] items = list.toArray(new Object[list.size()]);

@@ -35,6 +35,9 @@ import javax.script.ScriptException;
 import java.beans.PropertyDescriptor;
 import java.io.File;
 import java.io.IOException;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -793,11 +796,13 @@ public class ResourceManager extends AbstractScriptShell implements ResourcePool
         Provision provision = getInstance(Provision.class);
         Class clazz = provision.getResourcesClass();
         try {
-            Constructor constructor = clazz.getDeclaredConstructor(ResourceManager.class);
-            constructor.setAccessible(true);
-            T resources = (T) constructor.newInstance(this);
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(clazz, MethodHandles.lookup());
+            MethodType constructorType = MethodType.methodType(void.class, ResourceManager.class);
+            MethodHandle ctor = privateLookup.findConstructor(clazz, constructorType);
+
+            T resources = (T) ctor.invoke(this);
             return inject(resources);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new SystemException(e);
         }
     }

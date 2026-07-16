@@ -45,7 +45,6 @@ import org.apache.cxf.jaxrs.lifecycle.ResourceProvider;
 import org.apache.cxf.message.Message;
 import org.apache.cxf.rs.security.cors.CrossOriginResourceSharingFilter;
 
-import javax.net.ssl.SSLSocketFactory;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -566,20 +565,18 @@ public class JaxRSServer extends CXFServer {
         String keyStoreFile =  getKeyStoreFile();
         SelfSignedCert selfSignedCert = getSelfSignedCert();
         KeyStore keyStore = getKeyStore();
-        SSLSocketFactory factory = null;
+        JavaKeyStore jceKeyStore = null;
         if (keyStoreFile != null || selfSignedCert != null || keyStore != null) {
             try {
                 if (keyStore != null || keyStoreFile != null) {
-                    JavaKeyStore jceKeyStore;
                     if (keyStore != null) {
                         jceKeyStore = new JavaKeyStore(keyStore);
                     } else {
                         jceKeyStore = new JavaKeyStore(keyStoreFile, getKeyStorePassword(), getKeyStoreFormat());
                     }
                     jceKeyStore.init(getKeyManagerPassword());
-                    factory = jceKeyStore.createSocketFactory(loopbackTLSProtocol);
                 } else { // selfSignedCert
-                    factory = selfSignedCert.getJavaKeyStore().createSocketFactory(loopbackTLSProtocol);
+                    jceKeyStore = selfSignedCert.getJavaKeyStore();
                 }
             } catch (Exception ex) {
                 throw new SystemException(ex);
@@ -608,7 +605,8 @@ public class JaxRSServer extends CXFServer {
 
         URL url = getURLs().get(0);
         loopbackClient = new RestfulClient(url.getProtocol() + "://" + localhost + ":" + url.getPort()); // don't forget to used kickstart
-        loopbackClient.setSSLSocketFactory(factory);
+        loopbackClient.setJavaKeyStore(jceKeyStore);
+        loopbackClient.setTLSProtocol(loopbackTLSProtocol);
         loopbackClient.setPrinter(new PrintWriter(System.out, true));
         return loopbackClient;
     }

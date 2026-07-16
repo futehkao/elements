@@ -16,11 +16,14 @@ limitations under the License.
 
 package net.e6tech.elements.common.notification;
 
-import net.e6tech.elements.common.actor.GenesisActor;
+import net.e6tech.elements.common.federation.Genesis;
 import net.e6tech.elements.common.inject.Inject;
 import net.e6tech.elements.common.logging.Logger;
 import net.e6tech.elements.common.resources.Provision;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,27 +38,38 @@ import java.util.concurrent.ExecutorService;
 public class NotificationProcessor implements NotificationListener {
 
     private ExecutorService threadPool;
-    private GenesisActor genesis;
+    private Genesis genesis;
     private NotificationCenter notificationCenter;
     private Provision provision;
 
-    private Map<Class<? extends Notification>, Method> methods = new HashMap<>();
+    private Map<Class<? extends Notification>, MethodHandle> methods = new HashMap<>();
     private Class<? extends Notification>[] notificationTypes = new Class[0];
+
+    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     public NotificationProcessor() {
         Class cls = getClass();
         List<Class<? extends Notification>> types = new ArrayList<>();
         while (cls != null && !cls.equals(Object.class)) {
-            Method[] methodArray = cls.getDeclaredMethods();
-            for (Method method : methodArray) {
+            for (Method method : cls.getDeclaredMethods()) {
                 if ("processEvent".equals(method.getName())
                         && method.getParameterCount() == 1
                         && Notification.class.isAssignableFrom(method.getParameterTypes()[0])) {
-                    method.setAccessible(true);
+
                     Class<? extends Notification> notificationType = (Class<? extends Notification>) method.getParameterTypes()[0];
+
                     methods.computeIfAbsent(notificationType, key -> {
-                        types.add(notificationType);
-                        return method;
+                        try {
+                            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(method.getDeclaringClass(), LOOKUP);
+                            MethodType mt = MethodType.methodType(method.getReturnType(), notificationType);
+                            MethodHandle handle = privateLookup.findVirtual(method.getDeclaringClass(), method.getName(), mt).bindTo(this);
+
+                            types.add(notificationType);
+                            return handle;
+                        } catch (NoSuchMethodException | IllegalAccessException e) {
+                            Logger.suppress(e);
+                            return null;
+                        }
                     });
                 }
             }
@@ -73,12 +87,12 @@ public class NotificationProcessor implements NotificationListener {
         this.threadPool = threadPool;
     }
 
-    public GenesisActor getGenesis() {
+    public Genesis getGenesis() {
         return genesis;
     }
 
     @Inject(optional = true)
-    public void setGenesis(GenesisActor genesis) {
+    public void setGenesis(Genesis genesis) {
         this.genesis = genesis;
     }
 
@@ -116,11 +130,11 @@ public class NotificationProcessor implements NotificationListener {
     public void onEvent(Notification notification) {
         Class cls = notification.getClass();
         while (!cls.equals(Object.class)) {
-            Method method = methods.get(cls);
-            if (method != null) {
+            MethodHandle handle = methods.get(cls);
+            if (handle != null) {
                 try {
-                    method.invoke(this, notification);
-                } catch (Exception e) {
+                    handle.invoke(notification);
+                } catch (Throwable e) {
                     Logger.suppress(e);
                 }
                 return;

@@ -439,7 +439,6 @@ public class Resources implements AutoCloseable, ResourcePool {
                     for (Field f : cls.getDeclaredFields()) {
                         if (f.getAnnotation(Injectable.class) != null
                                 || f.getType().getAnnotation(Injectable.class) != null) {
-                            f.setAccessible(true);
                             info.addInjectableField(f);
                         }
                     }
@@ -465,11 +464,11 @@ public class Resources implements AutoCloseable, ResourcePool {
 
         for (Field f : info.getInjectableFields()) {
             try {
-                Object injectField = f.get(object);
+                Object injectField = Reflection.getFieldValue(object, f);
                 if (injectField != null) {
                     inject(injectField, strict, seen);
                 }
-            } catch (IllegalAccessException e) {
+            } catch (IllegalStateException e) {
                 throw new SystemException(e);
             }
         }

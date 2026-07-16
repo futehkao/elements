@@ -29,4 +29,11 @@ public interface Tags {
     @Tag("common")
     @interface Common {
     }
+
+    @Target({ ElementType.TYPE, ElementType.METHOD })
+    @Retention(RetentionPolicy.RUNTIME)
+    @Tag("manual")
+    @interface Manual {
+    }
+
 }

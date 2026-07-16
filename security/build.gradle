@@ -14,19 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 dependencies {
-    compile project(':common')
-    compile "org.bouncycastle:bcprov-jdk18on:${bouncycastleVersion}"
-    compile "org.bouncycastle:bcpg-jdk18on:${bouncycastleVersion}"
-    compile "org.bouncycastle:bcpkix-jdk18on:${bouncycastleVersion}"
-    compile "org.bouncycastle:bcmail-jdk18on:${bouncycastleVersion}"
-    // compile ("javax.xml.bind:jaxb-api:${jaxbVersion}")
+    api project(':common')
+    api "org.bouncycastle:bcprov-jdk18on:${bouncycastleVersion}"
+    api "org.bouncycastle:bcpg-jdk18on:${bouncycastleVersion}"
+    api "org.bouncycastle:bcpkix-jdk18on:${bouncycastleVersion}"
+    api "org.bouncycastle:bcmail-jdk18on:${bouncycastleVersion}"
+    // api ("javax.xml.bind:jaxb-api:${jaxbVersion}")
 
     // Below as put in because java 11 and above don't come with jaxb.  But, glassfish's jaxb provides the implementation
     // left the comments in place in case of issues when we move to java 17.
-    // compile "com.sun.xml.bind:jaxb-core:${jaxbOldVersion}" // don't need this because of glassfish jaxb-runtime
-    // compile "com.sun.xml.bind:jaxb-impl:${jaxbOldVersion}"      // replaced by glasshfish jaxb-runtime
+    // api "com.sun.xml.bind:jaxb-core:${jaxbOldVersion}" // don't need this because of glassfish jaxb-runtime
+    // api "com.sun.xml.bind:jaxb-impl:${jaxbOldVersion}"      // replaced by glasshfish jaxb-runtime
 
-    testCompile "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
-    testCompile "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testImplementation "org.junit.platform:junit-platform-launcher:${junitPlatformLauncherVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }

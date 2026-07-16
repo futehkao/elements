@@ -231,11 +231,9 @@ public class InjectorImpl implements Injector {
         InjectionPoint(Field field) {
             accessible = field;
             this.setterType = field.getGenericType();
-            if (!Modifier.isPublic(field.getModifiers()))
-                field.setAccessible(true);
-
             try {
-                this.setter = lookup.unreflectSetter(field);
+                MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(field.getDeclaringClass(), lookup);
+                this.setter = privateLookup.unreflectSetter(field);
             } catch (Exception e) {
                 throw new SystemException(e);
             }

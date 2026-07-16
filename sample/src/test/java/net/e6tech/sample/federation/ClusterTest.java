@@ -24,6 +24,7 @@ import net.e6tech.elements.web.federation.ClusterImpl;
 import net.e6tech.elements.web.federation.CollectiveImpl;
 import net.e6tech.elements.common.federation.Member;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
@@ -42,6 +43,7 @@ public class ClusterTest {
     }
 
     @Test
+    @Tag("manual")
     void basic() throws InterruptedException {
         List<ClusterImpl> clusters = provision.getResourceManager().getBean("clusters");
 

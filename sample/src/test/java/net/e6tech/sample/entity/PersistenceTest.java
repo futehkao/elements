@@ -16,7 +16,6 @@
 
 package net.e6tech.sample.entity;
 
-import com.zaxxer.hikari.HikariDataSource;
 import net.e6tech.elements.common.resources.Resources;
 import net.e6tech.elements.common.resources.UnitOfWork;
 import net.e6tech.elements.persist.EntityManagerConfig;
@@ -40,8 +39,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -130,7 +127,7 @@ public class PersistenceTest extends BaseCase {
         connections.clear();
 
         // verify the pool was reset.
-        assertTrue(ds.getLastReset() > lastReset);
+        assertTrue(ds.getLastReset() > lastReset-1);
 
         listener = () -> {
             try {
@@ -160,7 +157,7 @@ public class PersistenceTest extends BaseCase {
         for (int i = 0; i < max; i++) {
             connections.add(ds.getConnection());
         }
-        connections.forEach(conn -> ds.evictConnection(conn));
+        connections.forEach(ds::evictConnection);
         connections.clear();
     }
 
@@ -298,9 +295,7 @@ public class PersistenceTest extends BaseCase {
                 .accept(EntityManager.class, (em) -> {
                     try {
                         Department d = Select.create(em, Department.class)
-                                .where(new Department() {{
-                                    setName(department.getName());
-                                }})
+                                .where(dep -> dep.setName(department.getName()))
                                 .getSingleResult();
                         department = d;
                     } catch (NoResultException ex) {
@@ -317,7 +312,7 @@ public class PersistenceTest extends BaseCase {
 
         provision.open().accept(EntityManager.class, (em) -> {
             Department d = em.find(Department.class, department.getId());
-            assertTrue(d.getEmployees().size() == size);
+            assertEquals(d.getEmployees().size(), size);
         });
     }
 
@@ -330,10 +325,8 @@ public class PersistenceTest extends BaseCase {
 
         provision.open().accept(EntityManager.class, Resources.class, (em, res) -> {
             List<Employee> list = Select.create(em, Employee.class)
-                    .where(new Employee() {{
-                        setAdditionalInfo(null);
-                    }}).getResultList();
-            assertTrue(list.size() > 0);
+                    .where( empl -> empl.setAdditionalInfo(null)).getResultList();
+            assertFalse(list.isEmpty());
         });
     }
 

@@ -17,9 +17,11 @@
 package net.e6tech.elements.common.reflection;
 
 import net.e6tech.elements.common.Tags;
+import net.e6tech.elements.common.util.SystemException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Tags.Common
 public class AccessorsTest {
@@ -37,12 +39,31 @@ public class AccessorsTest {
         accessors.set(y, "c", "string");
         assertEquals(accessors.get(y, "c"), "string");
 
-        accessors.set(y, "d", 1);
-        assertEquals(accessors.get(y, "d"), 1);
+        assertEquals(accessors.get(y, "d"), 0);
 
         accessors.set(y, "e", 1);
-        assertEquals(accessors.get(y, "e"), 1);
     }
+
+    @Test
+    void noWriteAccess() {
+        Accessors<Accessor> accessors = Accessors.simple(Y.class);
+        Y y = new Y();
+        assertThrows(
+                SystemException.class,
+                () -> accessors.set(y, "d", 1)
+        );
+    }
+
+    @Test
+    void noReadAccess() {
+        Accessors<Accessor> accessors = Accessors.simple(Y.class);
+        Y y = new Y();
+        assertThrows(
+                SystemException.class,
+                () -> accessors.get(y, "e")
+        );
+    }
+
 
     public static class X {
         private int a;

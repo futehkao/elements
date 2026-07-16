@@ -18,18 +18,24 @@ package net.e6tech.elements.security;
 
 import javax.net.ssl.*;
 import java.io.IOException;
+import java.net.Socket;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 public class SSLSocketConfig extends SSLBaseConfig {
     private boolean skipCertCheck = false;
     private static final X509Certificate[] EMPTY_CERTIFICATES = new X509Certificate[0];
-    private SSLSocketFactory sslSocketFactory;
+    private SSLContext sslContext;
 
     public SSLSocketFactory getSSLSocketFactory() throws GeneralSecurityException, IOException {
-        if (sslSocketFactory != null)
-            return sslSocketFactory;
+        return getSSLContext().getSocketFactory();
+    }
+
+    public SSLContext getSSLContext() throws GeneralSecurityException, IOException {
+        if (sslContext != null)
+            return sslContext;
         TrustManager[] trustManagers;
         KeyManager[] keyManagers = null;
 
@@ -53,16 +59,16 @@ public class SSLSocketConfig extends SSLBaseConfig {
         }
 
         if (skipCertCheck) {
-            trustManagers = new TrustManager[]{new AcceptAllTrustManager()};
+            trustManagers = new TrustManager[]{acceptAllTrustManager};
         }
 
         erasePasswords();
-        SSLContext ctx;
-        ctx = SSLContext.getInstance(getTlsProtocol());
+        SSLContext ctx  = SSLContext.getInstance(getTlsProtocol());
         ctx.init(keyManagers, trustManagers, null);
-        sslSocketFactory = ctx.getSocketFactory();
-        return sslSocketFactory;
+        sslContext = ctx;
+        return sslContext;
     }
+
 
     public boolean isSkipCertCheck() {
         return skipCertCheck;
@@ -72,19 +78,42 @@ public class SSLSocketConfig extends SSLBaseConfig {
         this.skipCertCheck = skipCertCheck;
     }
 
-    @SuppressWarnings("squid:S4424")
-    public class AcceptAllTrustManager implements X509TrustManager {
+    private final TrustManager acceptAllTrustManager = new X509ExtendedTrustManager() {
 
-        public void checkClientTrusted(X509Certificate[] chain, String authType) {
-            // do nothing
-        }
-
-        public void checkServerTrusted(X509Certificate[] chain, String authType) {
-            // do nothing
-        }
-
+        @Override
         public X509Certificate[] getAcceptedIssuers() {
-            return EMPTY_CERTIFICATES;
+            return new X509Certificate[0];
         }
-    }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType, Socket socket) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType, Socket socket) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType, SSLEngine engine) throws CertificateException {
+
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine engine) throws CertificateException {
+
+        }
+    };
+
 }

@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -34,12 +35,10 @@ class LambdaTest {
     @SuppressWarnings("unchecked")
     @Test
     void methodHandle() throws Throwable {
-        Constructor constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, Integer.TYPE);
-        constructor.setAccessible(true);
-        MethodHandles.Lookup lookup = (MethodHandles.Lookup) constructor.newInstance(BindPropX.class, -1);
+        MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(BindPropX.class, MethodHandles.lookup());
+
         Method method = BindPropX.class.getDeclaredMethod("setA", BindPropA.class);
         Field field = BindPropX.class.getDeclaredField("a");
-        field.setAccessible(true);
 
         BiConsumer methodLambda = Lambda.reflectSetter(lookup, method);
 
@@ -68,10 +67,12 @@ class LambdaTest {
         }
         System.out.println("MethodHandle invoke " + (System.currentTimeMillis() - start)+ "ms");
 
-        field.set(x, a);
+        VarHandle vh = lookup.findVarHandle(BindPropX.class, "a", BindPropA.class);
+        vh.set(x, a);
+
         start = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
-            field.set(x, a);
+            vh.set(x, a);
         }
         System.out.println("Reflection field access " + (System.currentTimeMillis() - start)+ "ms");
 
@@ -87,13 +88,12 @@ class LambdaTest {
     @SuppressWarnings("unchecked")
     @Test
     void methodLambda_unboxedTypes() throws Throwable {
-        Constructor constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, Integer.TYPE);
-        constructor.setAccessible(true);
-        MethodHandles.Lookup lookup = (MethodHandles.Lookup) constructor.newInstance(BindPropX.class, -1);
+        MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(BindPropX.class, MethodHandles.lookup());
+
         Method methodSet = BindPropX.class.getDeclaredMethod("setPrimitive", int.class);
         Method methodGet = BindPropX.class.getDeclaredMethod("getPrimitive");
         Field field = BindPropX.class.getDeclaredField("primitive");
-        field.setAccessible(true);
+        VarHandle vh = lookup.findVarHandle(BindPropX.class, "primitive", int.class);
 
         BiConsumer methodLambdaSet = Lambda.reflectSetter(lookup, methodSet);
         Function methodLambdaGet = Lambda.reflectGetter(lookup, methodGet);
@@ -122,10 +122,10 @@ class LambdaTest {
         }
         System.out.println("MethodHandle invoke " + (System.currentTimeMillis() - start)+ "ms");
 
-        field.set(x, 1);
+        vh.set(x, 1);
         start = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
-            field.set(x, 1);
+            vh.set(x, 1);
         }
         System.out.println("Reflection field access " + (System.currentTimeMillis() - start)+ "ms");
 

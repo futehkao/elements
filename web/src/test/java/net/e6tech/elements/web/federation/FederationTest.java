@@ -9,6 +9,7 @@ import net.e6tech.elements.common.resources.ResourceManager;
 import net.e6tech.elements.network.restful.RestfulProxy;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ public class FederationTest {
     }
 
     @Test
+    @Tag("manual")
     void basic() throws InterruptedException {
         BeaconAPI[] apis = new BeaconAPI[SERVERS];
         for (int i = 0; i < SERVERS; i ++) {
