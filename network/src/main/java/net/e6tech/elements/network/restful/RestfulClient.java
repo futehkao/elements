@@ -185,6 +185,12 @@ public class RestfulClient {
         return this;
     }
 
+    public RestfulClient javaKeyStore(JavaKeyStore javaKeyStore, String protocol) {
+        setJavaKeyStore(javaKeyStore);
+        setTLSProtocol(protocol);
+        return this;
+    }
+
     public boolean isSkipHostnameCheck() {
         return skipHostnameCheck;
     }
