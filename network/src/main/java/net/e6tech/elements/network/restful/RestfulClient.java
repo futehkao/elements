@@ -35,6 +35,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.util.*;
 
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
@@ -719,10 +720,20 @@ public class RestfulClient {
         return sslSocketFactory;
     }
 
-
+    @Deprecated
+    /*Use javaKeyStore*/
     // you can always explicitly set the SSLSocketFactory if you don't like how RestfulClient creates a SSLSocketFactory
     public void setSSLSocketFactory(SSLSocketFactory sslSocketFactory) {
         this.sslSocketFactory = sslSocketFactory;
     }
 
+    public RestfulClient javaKeyStore(JavaKeyStore keyStore, String protocol) {
+        try {
+            this.sslSocketFactory = keyStore.createSocketFactory(protocol);
+        } catch (GeneralSecurityException e) {
+            logger.error("Failed to create SSL Socket Factory", e);
+            throw new SystemException("Failed to create SSL Socket Factory", e);
+        }
+        return this;
+    }
 }
