@@ -16,6 +16,8 @@
 
 package net.e6tech.elements.network.restful;
 
+import java.net.HttpURLConnection;
+
 class PostData {
     private Object data;
     private boolean specified;
@@ -61,9 +63,9 @@ class PostData {
      * @throws Exception general exception if there is encoding issue.  The exact exception depends oon the actual implementation
      * of the encoding.
      */
-    public String encode(RequestEncoder encoder) throws Exception {
+    public String encode(HttpURLConnection conn, RequestEncoder encoder) throws Exception {
         if (this.encoder != null)
-            return this.encoder.encodeRequest(getData());
-        return encoder.encodeRequest(getData());
+            return this.encoder.encodeRequest(conn, getData());
+        return encoder.encodeRequest(conn, getData());
     }
 }

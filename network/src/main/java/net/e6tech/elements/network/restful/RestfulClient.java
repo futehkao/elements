@@ -476,7 +476,7 @@ public class RestfulClient {
                 OutputStream out = conn.getOutputStream();
                 if (postData.getData() != null) {
                     try (Writer writer = new OutputStreamWriter(new BufferedOutputStream(out), StandardCharsets.UTF_8)) {
-                        String posted = postData.encode(marshaller);
+                        String posted = postData.encode(conn, marshaller);
                         writer.write(posted);
                         logger.debug(posted);
                         writer.flush();

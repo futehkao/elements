@@ -16,9 +16,15 @@
 
 package net.e6tech.elements.network.restful;
 
+import java.net.HttpURLConnection;
+
 public interface RequestEncoder {
 
     String getContentType();
 
     String encodeRequest(Object data) throws Exception;
+
+    default String encodeRequest(HttpURLConnection conn, Object data) throws Exception {
+        return encodeRequest(data);
+    }
 }
