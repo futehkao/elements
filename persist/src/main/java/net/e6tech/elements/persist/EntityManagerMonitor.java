@@ -34,6 +34,7 @@ public class EntityManagerMonitor {
     private Executor threadPool;
     private Thread originatingThread;
     private volatile boolean interrupted = false;
+    private volatile boolean closed = false;
     private String alias;
 
     EntityManagerMonitor(String alias, Executor threadPool, EntityManagerProvider provider, Resources resources,
@@ -95,7 +96,7 @@ public class EntityManagerMonitor {
     }
 
     private synchronized void interrupt() {
-        if (!interrupted) {
+        if (!interrupted && !closed) {
             originatingThread.interrupt();
             interrupted = true;
         }
@@ -106,5 +107,6 @@ public class EntityManagerMonitor {
         if (interrupted) {
             Thread.interrupted(); // clear current interrupt so that it won't propagate further.
         }
+        closed = true;
     }
 }

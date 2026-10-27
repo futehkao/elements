@@ -610,6 +610,8 @@ public class JaxRSServer extends CXFServer {
         loopbackClient = new RestfulClient(url.getProtocol() + "://" + localhost + ":" + url.getPort()); // don't forget to used kickstart
         loopbackClient.setSSLSocketFactory(factory);
         loopbackClient.setPrinter(new PrintWriter(System.out, true));
+        loopbackClient.setSkipHostnameCheck(true);
+        loopbackClient.setSkipCertCheck(true);
         return loopbackClient;
     }
 }

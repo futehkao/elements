@@ -22,6 +22,8 @@ import net.e6tech.elements.common.serialization.ObjectMapperFactory;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class JsonMarshaller<R> implements Marshaller<R> {
@@ -85,11 +87,24 @@ public class JsonMarshaller<R> implements Marshaller<R> {
             } else if (response.startsWith("\"")){
                 ret = mapper.readValue(response, String.class);
             } else if (Character.isDigit(response.charAt(0))) {
-                if (response.contains(".")) {
-                    ret = mapper.readValue(response, BigDecimal.class);
-                } else {
-                    ret = mapper.readValue(response, Long.class);
+                int decimalCount = 0;
+                boolean allDigits = true;
+                for (int i = 0; i < response.length(); i++) {
+                    int ch = response.codePointAt(i);
+                    if (ch == '.')
+                        decimalCount ++;
+                    else if (!Character.isDigit(ch)) {
+                        allDigits = false;
+                        break;
+                    }
                 }
+
+                if (decimalCount == 1 && allDigits)
+                    ret = mapper.readValue(response, BigDecimal.class);
+                else if (decimalCount == 0 && allDigits)
+                    ret = mapper.readValue(response, Long.class);
+                else
+                    ret = response;
             } else if ("true".equalsIgnoreCase(response) || "false".equalsIgnoreCase(response)) {
                 ret = Boolean.getBoolean(response);
             } else {
